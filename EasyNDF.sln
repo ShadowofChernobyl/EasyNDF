@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36616.10
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NDFParser", "NDFParser\NDFParser.csproj", "{AB155FC7-D66B-40EA-A500-27BAAE8BF2DE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NDFCLI", "NDFCLI\NDFCLI.csproj", "{F6BE750C-F469-4B8F-90C1-A7E5CC2A29AD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NDFParserTests", "NDFParserTests\NDFParserTests.csproj", "{FE491E24-C5FD-40C1-9A13-D661586BB390}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AB155FC7-D66B-40EA-A500-27BAAE8BF2DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB155FC7-D66B-40EA-A500-27BAAE8BF2DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB155FC7-D66B-40EA-A500-27BAAE8BF2DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB155FC7-D66B-40EA-A500-27BAAE8BF2DE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6BE750C-F469-4B8F-90C1-A7E5CC2A29AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6BE750C-F469-4B8F-90C1-A7E5CC2A29AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6BE750C-F469-4B8F-90C1-A7E5CC2A29AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6BE750C-F469-4B8F-90C1-A7E5CC2A29AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE491E24-C5FD-40C1-9A13-D661586BB390}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE491E24-C5FD-40C1-9A13-D661586BB390}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE491E24-C5FD-40C1-9A13-D661586BB390}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE491E24-C5FD-40C1-9A13-D661586BB390}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {82510CB8-CFCF-45F9-A2BB-2F1F9DEDCB84}
+	EndGlobalSection
+EndGlobal
