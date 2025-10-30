@@ -8,6 +8,14 @@ using System.Xml.Serialization;
 
 namespace NDFParser
 {
+    public class ThrowingErrorListener : BaseErrorListener
+    {
+        public override void SyntaxError(TextWriter output, IRecognizer recognizer, IToken offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
+        {
+            throw new Exception($"Syntax Verror at {line}:{charPositionInLine}: {msg}");
+        }
+    }
+
     public class ASTBuilder: ndfBaseVisitor<IASTNode>
     {
         public override IASTNode VisitFile([NotNull] ndfParser.FileContext context)
@@ -64,7 +72,7 @@ namespace NDFParser
 
         public override IASTNode VisitOrValue([NotNull] ndfParser.OrValueContext context)
         {
-            return new OrValue((IValue)context.value()[0].Accept(this), (IValue)context.value()[0].Accept(this));
+            return new OrValue((IValue)context.value()[0].Accept(this), (IValue)context.value()[1].Accept(this));
         }
 
         public override IASTNode VisitPathValue([NotNull] ndfParser.PathValueContext context)
@@ -103,6 +111,11 @@ namespace NDFParser
             return new ArrayValue(context.value().Select(x => (IValue)x.Accept(this)).ToArray());
         }
 
+        public override IASTNode VisitParenthesis([NotNull] ndfParser.ParenthesisContext context)
+        {
+            return context.value().Accept(this);
+        }
+
         public override IASTNode VisitErrorNode(IErrorNode node)
         {
             throw new Exception($"Error occurred while parsing {node.ToString()}"); 
@@ -128,6 +141,7 @@ namespace NDFParser
             CommonTokenStream commonTokenStream = new CommonTokenStream(lexer);
 
             ndfParser parser = new ndfParser(commonTokenStream);
+            parser.AddErrorListener(new ThrowingErrorListener());
 
             ASTBuilder values = new ASTBuilder();
             var res = (FileDeclaration)values.Visit(parser.file());
