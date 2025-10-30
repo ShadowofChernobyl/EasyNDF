@@ -61,9 +61,12 @@ namespace NDFParser
 
         int IASTVisitor<int>.VisitAssignmentValue(AssignmentValue assignmentValue)
         {
+            //TODO: intelligently decide when parenthesis are required
+            writer.Write('(');
             writer.Write(assignmentValue.Name);
             writer.Write(" is ");
             assignmentValue.Value.Accept(this);
+            writer.Write(')');
             return 0;
         }
 
@@ -125,9 +128,12 @@ namespace NDFParser
 
         int IASTVisitor<int>.VisitOrValue(OrValue orValue)
         {
+            //TODO: intelligently decide when parenthesis are required
+            writer.Write('(');
             orValue.ValueL.Accept(this);
-            writer.Write(", ");
+            writer.Write(" | ");
             orValue.ValueR.Accept(this);
+            writer.Write(')');
             return 0;
         }
 

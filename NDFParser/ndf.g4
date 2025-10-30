@@ -2,7 +2,7 @@ grammar ndf;
 
 // -------------------- Parser Rules --------------------
 
-file: declaration+ EOF;
+file: declaration* EOF;
 
 declaration
     : EXPORT? ID IS value #assignDecl
@@ -24,6 +24,7 @@ value
     | NIL #nilLiteral
     | RELREFERENCE #refRelativeValue
     | ABSREFERENCE #refAbsoluteValue
+    | '(' value ')' #parenthesis
     ;
 
 array
