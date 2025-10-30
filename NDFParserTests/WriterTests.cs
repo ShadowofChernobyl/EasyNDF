@@ -206,7 +206,7 @@ namespace NDFParserTests
         {
             IASTNode input = new AssignmentValue("Name", new NilLiteral());
 
-            string expected = "Name is nil";
+            string expected = "(Name is nil)";
                 
             StringWriter actual = new StringWriter();
 
