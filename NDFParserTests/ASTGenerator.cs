@@ -60,7 +60,7 @@ namespace NDFParserTests
             IEnumerable<Func<Gen<IValue>>> innerNodes =
                 [() => GenerateArrayValue(d-1).Select(x => x as IValue)
                 ,() => GenerateAssignmentValue(d-1).Select(x => x as IValue)
-                ,() => GenerateOrValue(d - 1).Select(x => x as IValue)
+                ,() => GenerateCombinedValue(d - 1).Select(x => x as IValue)
                 ,() => GeneratePairValue(d-1).Select(x => x as IValue)
                 ,() => GenerateObjectValue(d-1).Select(x => x as IValue)
                 ,() => GenerateStructValue(d-1).Select(x => x as IValue)
@@ -97,12 +97,12 @@ namespace NDFParserTests
                 select new AssignmentValue(name, value);
         }
             
-        public static Gen<OrValue> GenerateOrValue(int d)
+        public static Gen<CombinedValue> GenerateCombinedValue(int d)
         {
             return
                 from value1 in GenerateValue(d - 1)
                 from value2 in GenerateValue(d - 1)
-                select new OrValue(value1, value2);
+                select new CombinedValue(value1, value2);
         }
 
         public static Gen<PairValue> GeneratePairValue(int d)
@@ -311,11 +311,11 @@ namespace NDFParserTests
                 return withoutStruct.Concat(reducedStruct).Concat(simplifiedChildren);
             }
 
-            IEnumerable<IASTNode> IASTVisitor<IEnumerable<IASTNode>>.VisitOrValue(OrValue orValue)
+            IEnumerable<IASTNode> IASTVisitor<IEnumerable<IASTNode>>.VisitCombinedValue(CombinedValue CombinedValue)
             {
-                IEnumerable<IASTNode> singleChild = [orValue.ValueL, orValue.ValueR];
-                IEnumerable<IASTNode> simplifyLeft = orValue.ValueL.Accept(this).Select(x => orValue with { ValueL = (IValue)x });
-                IEnumerable<IASTNode> simplifyRight = orValue.ValueR.Accept(this).Select(x => orValue with { ValueR = (IValue)x });
+                IEnumerable<IASTNode> singleChild = [CombinedValue.ValueL, CombinedValue.ValueR];
+                IEnumerable<IASTNode> simplifyLeft = CombinedValue.ValueL.Accept(this).Select(x => CombinedValue with { ValueL = (IValue)x });
+                IEnumerable<IASTNode> simplifyRight = CombinedValue.ValueR.Accept(this).Select(x => CombinedValue with { ValueR = (IValue)x });
                 return singleChild.Concat(simplifyLeft).Concat(simplifyRight);
             }
 

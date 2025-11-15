@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NDFCLI", "NDFCLI\NDFCLI.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NDFParserTests", "NDFParserTests\NDFParserTests.csproj", "{FE491E24-C5FD-40C1-9A13-D661586BB390}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyNDF", "EasyNDF\EasyNDF.csproj", "{190A2119-82E7-7F89-84FA-A2691A90F93E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{FE491E24-C5FD-40C1-9A13-D661586BB390}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FE491E24-C5FD-40C1-9A13-D661586BB390}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FE491E24-C5FD-40C1-9A13-D661586BB390}.Release|Any CPU.Build.0 = Release|Any CPU
+		{190A2119-82E7-7F89-84FA-A2691A90F93E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{190A2119-82E7-7F89-84FA-A2691A90F93E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{190A2119-82E7-7F89-84FA-A2691A90F93E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{190A2119-82E7-7F89-84FA-A2691A90F93E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

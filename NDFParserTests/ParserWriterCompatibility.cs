@@ -36,9 +36,9 @@ namespace NDFParserTests
         public void ParserMatchesWriterForBinOps()
         {
             var file = new FileDeclaration([new UnnamedDeclaration
-                (new OrValue
-                    ( new OrValue(new IDValue("A"), new IDValue("B"))
-                    , new OrValue(new IDValue("C"), new IDValue("D"))
+                (new CombinedValue
+                    ( new CombinedValue(new IDValue("A"), new IDValue("B"))
+                    , new CombinedValue(new IDValue("C"), new IDValue("D"))
                     )
                 )]);
             StringWriter writer = new StringWriter();

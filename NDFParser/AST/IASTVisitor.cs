@@ -18,7 +18,7 @@ namespace NDFParser.AST
         T VisitNilLiteral(NilLiteral nilLiteral);
         T VisitNumericLiteral(NumericLiteral numericLiteral);
         T VisitObjectValue(ObjectValue objectValue);
-        T VisitOrValue(OrValue orValue);
+        T VisitCombinedValue(CombinedValue CombinedValue);
         T VisitPairValue(PairValue pairValue);
         T VisitPathValue(PathValue pathValue);
         T VisitRelReference(RelReference relReference);

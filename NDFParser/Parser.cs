@@ -12,7 +12,7 @@ namespace NDFParser
     {
         public override void SyntaxError(TextWriter output, IRecognizer recognizer, IToken offendingSymbol, int line, int charPositionInLine, string msg, RecognitionException e)
         {
-            throw new Exception($"Syntax Verror at {line}:{charPositionInLine}: {msg}");
+            throw new Exception($"Syntax error at {line}:{charPositionInLine}: {msg}");
         }
     }
 
@@ -70,9 +70,9 @@ namespace NDFParser
             return new PairValue((IValue)context.value()[0].Accept(this), (IValue)context.value()[1].Accept(this));
         }
 
-        public override IASTNode VisitOrValue([NotNull] ndfParser.OrValueContext context)
+        public override IASTNode VisitCombinedValue([NotNull] ndfParser.CombinedValueContext context)
         {
-            return new OrValue((IValue)context.value()[0].Accept(this), (IValue)context.value()[1].Accept(this));
+            return new CombinedValue((IValue)context.value()[0].Accept(this), (IValue)context.value()[1].Accept(this));
         }
 
         public override IASTNode VisitPathValue([NotNull] ndfParser.PathValueContext context)

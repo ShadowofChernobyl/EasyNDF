@@ -126,13 +126,13 @@ namespace NDFParser
             return 0;
         }
 
-        int IASTVisitor<int>.VisitOrValue(OrValue orValue)
+        int IASTVisitor<int>.VisitCombinedValue(CombinedValue CombinedValue)
         {
             //TODO: intelligently decide when parenthesis are required
             writer.Write('(');
-            orValue.ValueL.Accept(this);
+            CombinedValue.ValueL.Accept(this);
             writer.Write(" | ");
-            orValue.ValueR.Accept(this);
+            CombinedValue.ValueR.Accept(this);
             writer.Write(')');
             return 0;
         }

@@ -17,7 +17,7 @@ value
     | ID '(' (ID '=' value)* ')' #objectValue
     | ID array #structValue
     | '(' value ',' value ')' #pairValue
-    | value '|' value #orValue
+    | value '|' value #CombinedValue
     | PATH #pathValue
     | ID #idValue
     | ID IS value #assignValue

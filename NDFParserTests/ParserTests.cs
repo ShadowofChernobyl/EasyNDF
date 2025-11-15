@@ -74,8 +74,8 @@ namespace NDFParserTests
                 )
                 """;
 
-            FileDeclaration expected = new FileDeclaration([new AssignDeclaration(false, "Ammo_RocketAir_Hydra_APKWS_x7", new ObjectValue
-                ( "TAmmunitionDescriptor",
+            FileDeclaration expected = new FileDeclaration(
+                [new AssignDeclaration(false, "Ammo_RocketAir_Hydra_APKWS_x7", new ObjectValue( "TAmmunitionDescriptor",
                     [ ("TraitsToken", new ArrayValue([new StringLiteral("'MOTION'"), new StringLiteral("'HE'"), new StringLiteral("'CLGP'")]))
                     ]
                 ))]);
@@ -119,9 +119,10 @@ namespace NDFParserTests
                 )
                 """;
 
-            FileDeclaration expected = new FileDeclaration([new AssignDeclaration(false, "Ammo_RocketAir_Hydra_APKWS_x7", new ObjectValue
-                ( "TAmmunitionDescriptor",
-                    [   ("HitRollRuleDescriptor", new ObjectValue("TDiceHitRollRuleDescriptor", 
+            FileDeclaration expected = new FileDeclaration(
+                [new AssignDeclaration(false, "Ammo_RocketAir_Hydra_APKWS_x7", new ObjectValue( "TAmmunitionDescriptor",
+                    [   
+                        ("HitRollRuleDescriptor", new ObjectValue("TDiceHitRollRuleDescriptor", 
                         [
                             
                         ]))
@@ -146,9 +147,10 @@ namespace NDFParserTests
                 )
                 """;
 
-            FileDeclaration expected = new FileDeclaration([new AssignDeclaration(false, "Ammo_RocketAir_Hydra_APKWS_x7", new ObjectValue
-                ( "TAmmunitionDescriptor",
-                    [ ("BaseHitValueModifiers", new ArrayValue(
+            FileDeclaration expected = new FileDeclaration(
+                [new AssignDeclaration(false, "Ammo_RocketAir_Hydra_APKWS_x7", new ObjectValue( "TAmmunitionDescriptor",
+                    [ 
+                        ("BaseHitValueModifiers", new ArrayValue(
                         [
                             new PairValue(new PathValue("EBaseHitValueModifier/Base"), new NumericLiteral("0.0"))
                         ]))                       
