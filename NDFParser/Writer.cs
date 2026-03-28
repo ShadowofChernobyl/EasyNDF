@@ -26,12 +26,21 @@ namespace NDFParser
             }
         }
 
+        public static string WriteToString(IASTNode node)
+        {
+            using (var stringWriter = new System.IO.StringWriter())
+            {
+                var writer = new Writer(stringWriter);
+                node.Accept(writer);
+                return stringWriter.ToString();
+            }
+        }
+
         int IASTVisitor<int>.VisitAbsReference(AbsReference absReference)
         {
             writer.Write(absReference.Reference);
             return 0;
         }
-
 
         int IASTVisitor<int>.VisitArrayValue(ArrayValue arrayValue)
         {
@@ -62,11 +71,11 @@ namespace NDFParser
         int IASTVisitor<int>.VisitAssignmentValue(AssignmentValue assignmentValue)
         {
             //TODO: intelligently decide when parenthesis are required
-            writer.Write('(');
+            //writer.Write('('); [Commented out due to causing duplicate parenthesis in UniteDescriptor and probably other files]
             writer.Write(assignmentValue.Name);
             writer.Write(" is ");
             assignmentValue.Value.Accept(this);
-            writer.Write(')');
+            //writer.Write(')'); [Commented out due to causing duplicate parenthesis in UniteDescriptor and probably other files]
             return 0;
         }
 

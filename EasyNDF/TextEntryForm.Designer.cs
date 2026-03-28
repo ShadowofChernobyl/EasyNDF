@@ -54,17 +54,21 @@
             TextBox.Name = "TextBox";
             TextBox.PlaceholderText = "Enter some text";
             TextBox.Size = new Size(278, 26);
-            TextBox.TabIndex = 2;
+            TextBox.TabIndex = 0;
             // 
             // ApplyButton
             // 
             ApplyButton.BackColor = Color.YellowGreen;
+            ApplyButton.BackgroundImage = Properties.Resources.buttonBG4_128x32_Tr1;
+            ApplyButton.BackgroundImageLayout = ImageLayout.Stretch;
+            ApplyButton.DialogResult = DialogResult.OK;
+            ApplyButton.FlatAppearance.BorderSize = 0;
             ApplyButton.FlatStyle = FlatStyle.Flat;
             ApplyButton.Font = new Font("Verdana", 12F, FontStyle.Bold);
             ApplyButton.Location = new Point(296, 25);
             ApplyButton.Name = "ApplyButton";
-            ApplyButton.Size = new Size(76, 32);
-            ApplyButton.TabIndex = 4;
+            ApplyButton.Size = new Size(80, 32);
+            ApplyButton.TabIndex = 1;
             ApplyButton.Text = "Apply";
             ApplyButton.UseVisualStyleBackColor = false;
             ApplyButton.Click += ApplyButton_Click;
@@ -83,7 +87,7 @@
             MinimumSize = new Size(399, 108);
             Name = "TextEntryForm";
             StartPosition = FormStartPosition.CenterParent;
-            Text = "Text Entry";
+            Text = "           ";
             Load += TextEntryForm_Load;
             ResumeLayout(false);
             PerformLayout();
@@ -93,6 +97,6 @@
 
         public Label TextEntryLabel;
         public TextBox TextBox;
-        public Button ApplyButton;
+        private Button ApplyButton;
     }
 }

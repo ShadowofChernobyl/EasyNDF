@@ -28,15 +28,19 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             ValueTextBox = new TextBox();
             OperandComboBox = new ComboBox();
             OperatorComboBox = new ComboBox();
-            ApplyButton = new Button();
             OperandLabel = new Label();
             OperatorLabel = new Label();
             ValueLabel = new Label();
             RuleNameLabel = new Label();
             ConditionNameBox = new TextBox();
+            ApplyButton = new Button();
+            ConditionFormToolTip = new ToolTip(components);
+            OverrideCheckBox = new CheckBox();
+            OverrideTextBox = new TextBox();
             SuspendLayout();
             // 
             // ValueTextBox
@@ -86,20 +90,6 @@
             OperatorComboBox.Size = new Size(310, 28);
             OperatorComboBox.TabIndex = 2;
             // 
-            // ApplyButton
-            // 
-            ApplyButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            ApplyButton.BackColor = Color.YellowGreen;
-            ApplyButton.FlatStyle = FlatStyle.Flat;
-            ApplyButton.Font = new Font("Verdana", 12F, FontStyle.Bold);
-            ApplyButton.Location = new Point(246, 282);
-            ApplyButton.Name = "ApplyButton";
-            ApplyButton.Size = new Size(76, 32);
-            ApplyButton.TabIndex = 4;
-            ApplyButton.Text = "Apply";
-            ApplyButton.UseVisualStyleBackColor = false;
-            ApplyButton.Click += ApplyButton_Click;
-            // 
             // OperandLabel
             // 
             OperandLabel.AutoSize = true;
@@ -107,9 +97,10 @@
             OperandLabel.ForeColor = Color.Linen;
             OperandLabel.Location = new Point(12, 75);
             OperandLabel.Name = "OperandLabel";
-            OperandLabel.Size = new Size(77, 18);
+            OperandLabel.Size = new Size(84, 18);
             OperandLabel.TabIndex = 9;
-            OperandLabel.Text = "Operand";
+            OperandLabel.Text = "Operand:";
+            ConditionFormToolTip.SetToolTip(OperandLabel, "Select the item you'd like to compare");
             // 
             // OperatorLabel
             // 
@@ -121,6 +112,7 @@
             OperatorLabel.Size = new Size(87, 18);
             OperatorLabel.TabIndex = 10;
             OperatorLabel.Text = "Operator:";
+            ConditionFormToolTip.SetToolTip(OperatorLabel, "Choose how you're comparing the selected item");
             // 
             // ValueLabel
             // 
@@ -132,6 +124,7 @@
             ValueLabel.Size = new Size(60, 18);
             ValueLabel.TabIndex = 11;
             ValueLabel.Text = "Value:";
+            ConditionFormToolTip.SetToolTip(ValueLabel, "Enter the value that wish to compare the Operand with");
             // 
             // RuleNameLabel
             // 
@@ -143,6 +136,7 @@
             RuleNameLabel.Size = new Size(62, 18);
             RuleNameLabel.TabIndex = 13;
             RuleNameLabel.Text = "Name:";
+            ConditionFormToolTip.SetToolTip(RuleNameLabel, "Enter the desired name for this Condition");
             // 
             // ConditionNameBox
             // 
@@ -157,6 +151,52 @@
             ConditionNameBox.Size = new Size(310, 26);
             ConditionNameBox.TabIndex = 0;
             // 
+            // ApplyButton
+            // 
+            ApplyButton.BackColor = Color.YellowGreen;
+            ApplyButton.BackgroundImage = Properties.Resources.buttonBG4_128x32_Tr1;
+            ApplyButton.BackgroundImageLayout = ImageLayout.Stretch;
+            ApplyButton.DialogResult = DialogResult.OK;
+            ApplyButton.FlatAppearance.BorderSize = 0;
+            ApplyButton.FlatStyle = FlatStyle.Flat;
+            ApplyButton.Font = new Font("Verdana", 12F, FontStyle.Bold);
+            ApplyButton.Location = new Point(242, 282);
+            ApplyButton.Name = "ApplyButton";
+            ApplyButton.Size = new Size(80, 32);
+            ApplyButton.TabIndex = 4;
+            ApplyButton.Text = "Apply";
+            ConditionFormToolTip.SetToolTip(ApplyButton, "Apply changes");
+            ApplyButton.UseVisualStyleBackColor = false;
+            ApplyButton.Click += ApplyButton_Click;
+            // 
+            // OverrideCheckBox
+            // 
+            OverrideCheckBox.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            OverrideCheckBox.AutoSize = true;
+            OverrideCheckBox.Font = new Font("Verdana", 12F);
+            OverrideCheckBox.ForeColor = Color.Linen;
+            OverrideCheckBox.Location = new Point(233, 72);
+            OverrideCheckBox.Name = "OverrideCheckBox";
+            OverrideCheckBox.Size = new Size(89, 22);
+            OverrideCheckBox.TabIndex = 15;
+            OverrideCheckBox.Text = "Custom";
+            OverrideCheckBox.UseVisualStyleBackColor = true;
+            OverrideCheckBox.CheckedChanged += OverrideCheckBox_CheckedChanged;
+            // 
+            // OverrideTextBox
+            // 
+            OverrideTextBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            OverrideTextBox.BackColor = Color.FromArgb(15, 15, 15);
+            OverrideTextBox.BorderStyle = BorderStyle.FixedSingle;
+            OverrideTextBox.Font = new Font("Microsoft Sans Serif", 12F);
+            OverrideTextBox.ForeColor = Color.Linen;
+            OverrideTextBox.Location = new Point(13, 96);
+            OverrideTextBox.Name = "OverrideTextBox";
+            OverrideTextBox.PlaceholderText = "Enter custom operand";
+            OverrideTextBox.Size = new Size(307, 26);
+            OverrideTextBox.TabIndex = 25;
+            OverrideTextBox.Visible = false;
+            // 
             // ConditionForm
             // 
             AcceptButton = ApplyButton;
@@ -164,20 +204,23 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(30, 30, 30);
             ClientSize = new Size(334, 326);
+            Controls.Add(OverrideTextBox);
+            Controls.Add(OverrideCheckBox);
+            Controls.Add(ApplyButton);
             Controls.Add(RuleNameLabel);
             Controls.Add(ConditionNameBox);
             Controls.Add(ValueLabel);
             Controls.Add(OperatorLabel);
             Controls.Add(OperandLabel);
-            Controls.Add(ApplyButton);
             Controls.Add(OperatorComboBox);
             Controls.Add(OperandComboBox);
             Controls.Add(ValueTextBox);
+            MaximizeBox = false;
             MaximumSize = new Size(600, 365);
             MinimumSize = new Size(350, 365);
             Name = "ConditionForm";
             StartPosition = FormStartPosition.CenterParent;
-            Text = "Condition Editor";
+            Text = "Condition Configuration";
             ResumeLayout(false);
             PerformLayout();
         }
@@ -185,7 +228,6 @@
         #endregion
 
         public TextBox ValueTextBox;
-        public Button ApplyButton;
         public Label OperandLabel;
         public Label OperatorLabel;
         public Label ValueLabel;
@@ -193,5 +235,9 @@
         public ComboBox OperatorComboBox;
         public Label RuleNameLabel;
         public TextBox ConditionNameBox;
+        private Button ApplyButton;
+        private ToolTip ConditionFormToolTip;
+        public CheckBox OverrideCheckBox;
+        public TextBox OverrideTextBox;
     }
 }

@@ -17,15 +17,9 @@ namespace EasyNDF
             InitializeComponent();
         }
 
-        private void CommentCheckbox_CheckedChanged(object sender, EventArgs e)
+        private void SettingsForm_Load(object sender, EventArgs e)
         {
 
-        }
-
-        private void AppendCheckbox_MouseHover(object sender, EventArgs e)
-        {
-            SettingsToolTip.SetToolTip(AppendCheckbox, "If you would like to have comments appended to the end of\n" +
-                                                       "each modified line in the .ndf files, check this box.");
         }
     }
 }

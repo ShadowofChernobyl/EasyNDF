@@ -15,13 +15,32 @@ namespace EasyNDF
         public ConditionForm()
         {
             InitializeComponent();
-            OperandComboBox.Items.AddRange(FileManager.PopulateOperandList().Cast<string>().ToArray());
+            OperandComboBox.Items.AddRange(FileManager.FetchOperandList().Cast<string>().ToArray());
+            RefreshOverrideVisibility();
         }
 
         private void ApplyButton_Click(object sender, EventArgs e)
         {
-            DialogResult = DialogResult.OK;
-            this.Close();
+            if (string.IsNullOrWhiteSpace(ConditionNameBox.Text))
+            {
+                MessageBox.Show("Condition must have a name.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else
+            {
+                DialogResult = DialogResult.OK;
+                this.Close();
+            }
+        }
+
+        private void OverrideCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            RefreshOverrideVisibility();
+        }
+
+        private void RefreshOverrideVisibility()
+        {
+            OverrideTextBox.Visible = OverrideCheckBox.Checked;
+            OperandComboBox.Visible = !OverrideCheckBox.Checked;
         }
     }
 }

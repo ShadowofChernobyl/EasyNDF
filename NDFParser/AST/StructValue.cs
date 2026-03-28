@@ -6,8 +6,17 @@ using System.Threading.Tasks;
 
 namespace NDFParser.AST
 {
-    public record StructValue(string Type, IValue[] Values) : IValue
+    public class StructValue : IValue
     {
+        public string Type { get; set; }
+        public IValue[] Values { get; set; }
+
+        public StructValue(string type, IValue[] values)
+        {
+            Type = type;
+            Values = values;
+        }
+
         public T Accept<T>(IASTVisitor<T> visitor)
         {
             return visitor.VisitStructValue(this);
@@ -18,9 +27,9 @@ namespace NDFParser.AST
             return $"StructValue {{ Values = [{string.Join(", ", Values as IEnumerable<IValue>)}] }}";
         }
 
-        public virtual bool Equals(StructValue? other)
+        public override bool Equals(object? obj)
         {
-            if (other is null) return false;
+            if (obj is not StructValue other) return false;
             if (ReferenceEquals(this, other)) return true;
             return Values.SequenceEqual(other.Values);
         }

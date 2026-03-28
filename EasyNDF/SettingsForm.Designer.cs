@@ -29,36 +29,8 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            AppendCheckbox = new CheckBox();
-            AppendTextBox = new TextBox();
             SettingsToolTip = new ToolTip(components);
             SuspendLayout();
-            // 
-            // AppendCheckbox
-            // 
-            AppendCheckbox.AutoSize = true;
-            AppendCheckbox.Font = new Font("Verdana", 12F);
-            AppendCheckbox.ForeColor = Color.Linen;
-            AppendCheckbox.Location = new Point(12, 9);
-            AppendCheckbox.Name = "AppendCheckbox";
-            AppendCheckbox.Size = new Size(236, 22);
-            AppendCheckbox.TabIndex = 0;
-            AppendCheckbox.Text = "Append in-line comments";
-            AppendCheckbox.UseVisualStyleBackColor = true;
-            AppendCheckbox.CheckedChanged += CommentCheckbox_CheckedChanged;
-            AppendCheckbox.MouseHover += AppendCheckbox_MouseHover;
-            // 
-            // AppendTextBox
-            // 
-            AppendTextBox.BackColor = Color.FromArgb(15, 15, 15);
-            AppendTextBox.BorderStyle = BorderStyle.FixedSingle;
-            AppendTextBox.Font = new Font("Microsoft Sans Serif", 12F);
-            AppendTextBox.ForeColor = Color.Linen;
-            AppendTextBox.Location = new Point(12, 37);
-            AppendTextBox.Name = "AppendTextBox";
-            AppendTextBox.PlaceholderText = "Enter your preferred in-line comment";
-            AppendTextBox.Size = new Size(354, 26);
-            AppendTextBox.TabIndex = 4;
             // 
             // SettingsForm
             // 
@@ -66,18 +38,13 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(30, 30, 30);
             ClientSize = new Size(784, 415);
-            Controls.Add(AppendTextBox);
-            Controls.Add(AppendCheckbox);
             Name = "SettingsForm";
             Text = "Settings";
+            Load += SettingsForm_Load;
             ResumeLayout(false);
-            PerformLayout();
         }
 
         #endregion
-
-        private CheckBox AppendCheckbox;
-        public TextBox AppendTextBox;
         private ToolTip SettingsToolTip;
     }
 }

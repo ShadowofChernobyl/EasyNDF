@@ -15,23 +15,26 @@ namespace EasyNDF
 
     internal class OpenForms
     {
-        public RuleEngine.Rule OpenRuleForm(string name, RuleEngine.Condition[] conditions, RuleEngine.Action[] actions)
+        public RuleEngine.Rule OpenRuleForm(RuleEngine.Rule rule)
         {
             RuleForm ruleForm = new RuleForm();
-            RuleEngine.Rule rule = new RuleEngine.Rule(name, conditions, actions);
+            
 
             // Populate controls with saved rule information.
-            ruleForm.RuleNameBox.Text = name;
+            ruleForm.RuleNameBox.Text = rule.Name;
+            ruleForm.FilterComboBox.Text = rule.LogicGate;
+            ruleForm.EnableCheckBox.Checked = rule.Enabled;
 
-            foreach (var condition in conditions) 
+            foreach (var condition in rule.Conditions) 
             {
+                if (condition.Name == "") continue;
                 var newItem = ruleForm.ConditionListView.Items.Add(condition.Name);
                 newItem.Tag = condition;
-                    
             };
             
-            foreach (var action in actions) 
+            foreach (var action in rule.Actions) 
             {
+                if (action.Name == "") continue;
                 var newItem = ruleForm.ActionListView.Items.Add(action.Name);
                 newItem.Tag = action;
             };
@@ -44,6 +47,8 @@ namespace EasyNDF
                 rule.Name = ruleForm.RuleNameBox.Text;
                 rule.Conditions = RuleEngine.Condition.ListViewItemsToConditions(ruleForm.ConditionListView.Items);
                 rule.Actions = RuleEngine.Action.ListViewItemsToActions(ruleForm.ActionListView.Items);
+                rule.Enabled = ruleForm.EnableCheckBox.Checked;
+                rule.LogicGate = ruleForm.FilterComboBox.Text;
             }
             else
             {
@@ -52,15 +57,11 @@ namespace EasyNDF
 
             ruleForm.Dispose();
             return rule;
-
-
-
         }
-
         public RuleEngine.Condition OpenConditionForm(RuleEngine.Condition condition)
         {
             ConditionForm conditionForm = new ConditionForm();
-            conditionForm.OperandComboBox.Items.AddRange(FileManager.PopulateOperandList().Cast<string>().ToArray());
+            conditionForm.OperandComboBox.Items.AddRange(FileManager.FetchOperandList().Cast<string>().ToArray());
 
             if (condition.Name != null)
                 conditionForm.ConditionNameBox.Text = condition.Name;
@@ -74,6 +75,14 @@ namespace EasyNDF
             if (condition.Value != null)
                 conditionForm.ValueTextBox.Text = condition.Value;
 
+            if (condition.CustomOperand != null)
+                conditionForm.OverrideTextBox.Text = condition.CustomOperand;
+
+            if (condition.ManualOverride)
+            {
+                conditionForm.OverrideCheckBox.Checked = true;
+            }
+
             DialogResult result = conditionForm.ShowDialog();
 
             if (result == DialogResult.OK) 
@@ -82,10 +91,8 @@ namespace EasyNDF
                 condition.Operand = conditionForm.OperandComboBox.Text;
                 condition.Operator = conditionForm.OperatorComboBox.Text;
                 condition.Value = conditionForm.ValueTextBox.Text;
-            }
-            else
-            {
-
+                condition.ManualOverride = conditionForm.OverrideCheckBox.Checked;
+                condition.CustomOperand = conditionForm.OverrideTextBox.Text;
             }
 
             conditionForm.Dispose();
@@ -93,11 +100,10 @@ namespace EasyNDF
 
             
         }
-
         public RuleEngine.Action OpenActionForm(RuleEngine.Action action)
         {
             ActionForm actionForm = new ActionForm();
-            actionForm.TargetComboBox.Items.AddRange(FileManager.PopulateOperandList().Cast<string>().ToArray());
+            actionForm.TargetComboBox.Items.AddRange(FileManager.FetchOperandList().Cast<string>().ToArray());
 
             if (action.Name != null)
                 actionForm.ActionNameBox.Text = action.Name;
@@ -111,6 +117,22 @@ namespace EasyNDF
             if (action.Value != null)
                 actionForm.ValueTextBox.Text = action.Value;
 
+            if (action.CustomTarget != null)
+                actionForm.OverrideTextBox.Text = action.CustomTarget;
+
+            if (action.ManualOverride)
+            {
+                actionForm.OverrideCheckBox.Checked = true;
+            }
+
+            if (action.Comment.Text != null && action.Comment.Text != "")
+            {
+                actionForm.CommentCheckBox.Checked = action.Comment.Enabled;
+                actionForm.CommentTextBox.Text = action.Comment.Text;
+                actionForm.CommentTimestampCheckBox.Checked = action.Comment.IncludeTimestamp;
+                actionForm.CommentOriginalValueCheckBox.Checked = action.Comment.IncludeOriginalValue;
+            }
+
             DialogResult result = actionForm.ShowDialog();
 
             if (result == DialogResult.OK)
@@ -119,35 +141,40 @@ namespace EasyNDF
                 action.Target = actionForm.TargetComboBox.Text;
                 action.Operator = actionForm.OperatorComboBox.Text;
                 action.Value = actionForm.ValueTextBox.Text;
-            }
-            else
-            {
+                action.ManualOverride = actionForm.OverrideCheckBox.Checked;
+                action.CustomTarget = actionForm.OverrideTextBox.Text;
 
+                // Fix for CS1612: Work with a local copy of Comment, then assign it back
+                var comment = action.Comment;
+                comment.Text = actionForm.CommentTextBox.Text;
+                comment.Enabled = actionForm.CommentCheckBox.Checked;
+                comment.IncludeTimestamp = actionForm.CommentTimestampCheckBox.Checked;
+                comment.IncludeOriginalValue = actionForm.CommentOriginalValueCheckBox.Checked;
+                action.Comment = comment;
             }
 
             actionForm.Dispose();
             return action;
         }
-
         public string OpenSettingsForm()
         {
             SettingsForm settingsForm = new SettingsForm();
             DialogResult result = settingsForm.ShowDialog();
-            string commentText = settingsForm.AppendTextBox.Text;
             if (result == DialogResult.OK)
             {
-
+                // TO DO
             }
             settingsForm.Dispose();
-            return commentText;
+            return "";
         }
-
-        public String OpenTextEntryForm(string windowName, string labelText, string placeHolderText)
+        public String OpenTextEntryForm(string windowName, string labelText, string textBoxText, string placeHolderText, bool isForPresetNaming)
         {
             TextEntryForm textEntryForm = new TextEntryForm();
             textEntryForm.Text = windowName;
+            textEntryForm.TextBox.Text = textBoxText;
             textEntryForm.TextEntryLabel.Text = labelText;
             textEntryForm.TextBox.PlaceholderText = placeHolderText;
+            textEntryForm.isForPresetNaming = isForPresetNaming;
             DialogResult result = textEntryForm.ShowDialog();
             
 
