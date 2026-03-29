@@ -84,7 +84,7 @@
             OperatorComboBox.ForeColor = Color.Linen;
             OperatorComboBox.FormattingEnabled = true;
             OperatorComboBox.IntegralHeight = false;
-            OperatorComboBox.Items.AddRange(new object[] { "Starts With", "Ends With", "Contains", "Does Not Contain", "Is Equal To", "Is Not Equal To", "Is Less Than", "Is Less Than Or Equal To", "Is Greater Than", "Is Greater Than Or Equal To", "Matches", "Does Not Match", "Is Empty", "Is Not Empty", "Is True", "Is False", "Contains Any Of", "Contains All Of" });
+            OperatorComboBox.Items.AddRange(new object[] { "Starts With", "Ends With", "Contains", "Does Not Contain", "Is Equal To", "Is Not Equal To", "Is Less Than", "Is Less Than Or Equal To", "Is Greater Than", "Is Greater Than Or Equal To", "Contains Any Of", "Contains All Of" });
             OperatorComboBox.Location = new Point(12, 160);
             OperatorComboBox.Name = "OperatorComboBox";
             OperatorComboBox.Size = new Size(310, 28);

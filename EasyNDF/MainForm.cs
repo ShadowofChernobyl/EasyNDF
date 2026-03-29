@@ -14,7 +14,6 @@ using static EasyNDF.RuleEngine;
 namespace EasyNDF
 {
     /* TO DO:
-     * - [P2] Need to get StructValue/PairValues working in RuleEngine
      * - [P2] Fix issue with RuleEngine.Remove() turning descriptors into strings and preventing other rules from working.
      * - [P3] Prevent dialogs closing when user forgets to enter a name for rules/conditions/actions. Keep window open until valid name is entered or user cancels.
      * - [P3] Implement feature via RuleEngine.Contains() that allows user to remove specific values/propterties in an array/object
@@ -440,7 +439,7 @@ namespace EasyNDF
                     break;
 
             }
-            /**
+            /** // Old version of RefreshPresetComboBox() before switch statement refactor, which caused some issues with maintaining selected preset and rule list when importing files and deleting presets. Keeping it here for reference in case of future issues with the new version.
             PresetComboBox.Items.Clear();
             PresetComboBox.Items.Add(EmptyPresetLabel); // Add a default empty option
             PresetComboBox.Items.AddRange(presets.ToArray());
