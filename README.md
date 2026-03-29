@@ -2,7 +2,7 @@
 
 # EasyNDF (In Alpha)
 
-EasyNDF is a Windows desktop tool and .NET codebase for parsing and batch-editing `.ndf` files through reusable rules.
+EasyNDF is a Windows desktop tool and .NET codebase for parsing and modifying `.ndf` files through reusable rules.
 
 It consists of three main parts:
 
