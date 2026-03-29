@@ -167,8 +167,9 @@ There are also a few code-level implementation details worth being aware of:
 * **Silver (AKA Playmobill)** - Provided stylistic overlays for buttons and other UI elements as well and guided me through many design decisions pertaining to the UI.
 * **Yokaiste** - Creator of Yokaiste's Sandbox Mod, a Steam Workshop mod for WARNO which has driven my desire to continue my work with modding WARNO and the eventual development of this modding tool.
 * **Chinofchrist** - Creator of Chinofchrist's Realism Mod, a Steam Workshop mod for WARNO which initially piqued my interest in the WARNO modding scene years ago.
+* **CHO KING (AKA étouf fement)** - Creator of A World in Flames, a Steam Workshop mod for WARNO which has provided myself, my friends and the greater WARNO community with great enjoyment.
 * **Eugen Systems** - Development team behind great games like Steel Division 2, Wargame and WARNO
-* **The WARNO Modding Community** - Many thanks for saving me countless hours of troubleshooting time by having stepped on many landmines (encountered bugs) before me and posting their findings in the Official Eugen Discord Server
+* **The Entire WARNO Modding Community** - Many thanks for saving me countless hours of troubleshooting time by having stepped on many landmines (encountered bugs) before me and posting their findings in the Official Eugen Discord Server
 
 ---
 
