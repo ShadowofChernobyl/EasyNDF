@@ -286,7 +286,6 @@
             ApplyButton.BackColor = Color.YellowGreen;
             ApplyButton.BackgroundImage = Properties.Resources.buttonBG4_128x32_Tr1;
             ApplyButton.BackgroundImageLayout = ImageLayout.Stretch;
-            ApplyButton.DialogResult = DialogResult.OK;
             ApplyButton.FlatAppearance.BorderSize = 0;
             ApplyButton.FlatStyle = FlatStyle.Flat;
             ApplyButton.Font = new Font("Verdana", 12F, FontStyle.Bold);

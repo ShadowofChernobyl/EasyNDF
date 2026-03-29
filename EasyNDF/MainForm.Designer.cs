@@ -57,7 +57,7 @@
             NewRuleButton.FlatAppearance.BorderSize = 0;
             NewRuleButton.FlatStyle = FlatStyle.Flat;
             NewRuleButton.Font = new Font("Verdana", 12F, FontStyle.Bold);
-            NewRuleButton.Location = new Point(501, 12);
+            NewRuleButton.Location = new Point(428, 12);
             NewRuleButton.Name = "NewRuleButton";
             NewRuleButton.Size = new Size(109, 32);
             NewRuleButton.TabIndex = 5;
@@ -79,7 +79,7 @@
             HelpMenuButton.FlatStyle = FlatStyle.Flat;
             HelpMenuButton.Font = new Font("Verdana", 14F, FontStyle.Bold);
             HelpMenuButton.ForeColor = Color.Linen;
-            HelpMenuButton.Location = new Point(12, 642);
+            HelpMenuButton.Location = new Point(12, 510);
             HelpMenuButton.Name = "HelpMenuButton";
             HelpMenuButton.Size = new Size(25, 26);
             HelpMenuButton.TabIndex = 4;
@@ -129,9 +129,9 @@
             PresetComboBox.Font = new Font("Microsoft Sans Serif", 12F);
             PresetComboBox.ForeColor = Color.Linen;
             PresetComboBox.FormattingEnabled = true;
-            PresetComboBox.Location = new Point(12, 708);
+            PresetComboBox.Location = new Point(12, 576);
             PresetComboBox.Name = "PresetComboBox";
-            PresetComboBox.Size = new Size(560, 28);
+            PresetComboBox.Size = new Size(487, 28);
             PresetComboBox.TabIndex = 9;
             MainFormToolTip.SetToolTip(PresetComboBox, "Right-Click to delete the current preset (permanently)");
             PresetComboBox.SelectedIndexChanged += PresetComboBox_SelectedIndexChanged;
@@ -149,7 +149,7 @@
             SettingsButton.FlatAppearance.MouseOverBackColor = Color.Silver;
             SettingsButton.FlatStyle = FlatStyle.Flat;
             SettingsButton.Font = new Font("Verdana", 12F, FontStyle.Bold);
-            SettingsButton.Location = new Point(43, 644);
+            SettingsButton.Location = new Point(43, 512);
             SettingsButton.Name = "SettingsButton";
             SettingsButton.Size = new Size(25, 26);
             SettingsButton.TabIndex = 3;
@@ -163,7 +163,7 @@
             PresetLabel.AutoSize = true;
             PresetLabel.Font = new Font("Verdana", 12F);
             PresetLabel.ForeColor = Color.Linen;
-            PresetLabel.Location = new Point(12, 687);
+            PresetLabel.Location = new Point(12, 555);
             PresetLabel.Name = "PresetLabel";
             PresetLabel.Size = new Size(109, 18);
             PresetLabel.TabIndex = 8;
@@ -179,7 +179,7 @@
             SavePresetButton.FlatAppearance.BorderSize = 0;
             SavePresetButton.FlatStyle = FlatStyle.Flat;
             SavePresetButton.Font = new Font("Verdana", 12F, FontStyle.Bold);
-            SavePresetButton.Location = new Point(578, 707);
+            SavePresetButton.Location = new Point(505, 575);
             SavePresetButton.Name = "SavePresetButton";
             SavePresetButton.Size = new Size(32, 32);
             SavePresetButton.TabIndex = 10;
@@ -205,7 +205,7 @@
             RuleListView.Location = new Point(12, 77);
             RuleListView.Name = "RuleListView";
             RuleListView.ShowGroups = false;
-            RuleListView.Size = new Size(598, 559);
+            RuleListView.Size = new Size(525, 427);
             RuleListView.TabIndex = 6;
             RuleListView.UseCompatibleStateImageBehavior = false;
             RuleListView.View = View.Details;
@@ -241,7 +241,7 @@
             FileNameBox.ReadOnly = true;
             FileNameBox.RightToLeft = RightToLeft.Yes;
             FileNameBox.ShortcutsEnabled = false;
-            FileNameBox.Size = new Size(534, 26);
+            FileNameBox.Size = new Size(461, 26);
             FileNameBox.TabIndex = 13;
             FileNameBox.TabStop = false;
             // 
@@ -260,7 +260,7 @@
             MoveRuleUpButton.FlatAppearance.BorderSize = 0;
             MoveRuleUpButton.FlatStyle = FlatStyle.Flat;
             MoveRuleUpButton.Font = new Font("Verdana", 12F, FontStyle.Bold);
-            MoveRuleUpButton.Location = new Point(542, 644);
+            MoveRuleUpButton.Location = new Point(469, 512);
             MoveRuleUpButton.Name = "MoveRuleUpButton";
             MoveRuleUpButton.Size = new Size(32, 32);
             MoveRuleUpButton.TabIndex = 7;
@@ -278,7 +278,7 @@
             MoveRuleDownButton.FlatAppearance.BorderSize = 0;
             MoveRuleDownButton.FlatStyle = FlatStyle.Flat;
             MoveRuleDownButton.Font = new Font("Verdana", 12F, FontStyle.Bold);
-            MoveRuleDownButton.Location = new Point(578, 644);
+            MoveRuleDownButton.Location = new Point(505, 512);
             MoveRuleDownButton.Name = "MoveRuleDownButton";
             MoveRuleDownButton.Size = new Size(32, 32);
             MoveRuleDownButton.TabIndex = 8;
@@ -294,7 +294,7 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.FromArgb(30, 30, 30);
             BackgroundImageLayout = ImageLayout.Stretch;
-            ClientSize = new Size(622, 748);
+            ClientSize = new Size(549, 616);
             Controls.Add(MoveRuleDownButton);
             Controls.Add(MoveRuleUpButton);
             Controls.Add(FileNameBox);
