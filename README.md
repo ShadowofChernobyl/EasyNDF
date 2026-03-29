@@ -133,9 +133,7 @@ In the rule list:
 These are the main issues visible from the current source code:
 
 * `MainForm` still lists several TODO items, including a more complete settings window, tooltips/help, better file path display, and broader multi-item copy/paste support.
-* The condition UI exposes operators such as **Matches**, **Does Not Match**, **Is Empty**, **Is Not Empty**, **Is True**, and **Is False**, but those operators are not currently dispatched in `RuleEngine.CheckConditions(...)`.
 * `Remove [array]` is marked in code as not fully implemented.
-* `MainForm` includes a TODO noting incomplete or problematic support for some `StructValue` / `PairValue` handling.
 * The settings form is currently just a placeholder shell.
 
 There are also a few code-level implementation details worth being aware of:
