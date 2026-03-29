@@ -14,7 +14,6 @@ using static EasyNDF.RuleEngine;
 namespace EasyNDF
 {
     /* TO DO:
-     * - [P2] Fix issue with RuleEngine.Remove() turning descriptors into strings and preventing other rules from working.
      * - [P3] Prevent dialogs closing when user forgets to enter a name for rules/conditions/actions. Keep window open until valid name is entered or user cancels.
      * - [P3] Implement feature via RuleEngine.Contains() that allows user to remove specific values/propterties in an array/object
      * - [P4] Override feature for ConditionForm/ActionForm ComboBoxes (let user define custom Operands/Targets)
