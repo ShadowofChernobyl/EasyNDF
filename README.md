@@ -132,8 +132,7 @@ In the rule list:
 
 These are the main issues visible from the current source code:
 
-* `MainForm` still lists several TODO items, including a more complete settings window, tooltips/help, better file path display, and broader multi-item copy/paste support.
-* `Remove [array]` is marked in code as not fully implemented.
+* `MainForm` still lists several TODO items, including a more complete settings window, tooltips/help and better file path display.
 * The settings form is currently just a placeholder shell.
 
 There are also a few code-level implementation details worth being aware of:
