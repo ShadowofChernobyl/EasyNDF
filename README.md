@@ -224,8 +224,6 @@ Behavior:
 This is mainly useful as a parser/writer smoke test or a base for future automation.
 
 
----
-
 ## Project Structure
 
 ```text
