@@ -1476,7 +1476,7 @@ namespace EasyNDF
             }
             return descriptor;
         }
-        public Descriptor Remove(FileManager.Descriptor descriptor, Action action) 
+        public Descriptor Remove(FileManager.Descriptor descriptor, Action action)
         {
             switch (action.Target)
             {
@@ -1489,43 +1489,69 @@ namespace EasyNDF
                 default:
                     foreach (var (property, i) in descriptor.Properties.Select((value, index) => (value, index)))
                     {
-                        var nestedDescriptor = new FileManager.Descriptor(); // Declare nestedDescriptor here to be used in the switch statement below
-                        switch (property.Item2) // Recursion
+                        bool handled = false;
+                        switch (property.Item2)
                         {
-                            // Ensure ObjectValues inside ArrayValues are handled recursively
-                            case ObjectValue objectValue: // Recursively handle nested ObjectValues and their properties
-                                nestedDescriptor = new FileManager.Descriptor
-                                { Properties = objectValue.Properties };
-                                Remove(nestedDescriptor, action);
+                            case ObjectValue objectValue:
+                                var nestedObj = new FileManager.Descriptor { Properties = objectValue.Properties };
+                                nestedObj = Remove(nestedObj, action);
+                                descriptor.Properties[i] = (property.Item1, new ObjectValue(objectValue.Type, nestedObj.Properties));
+                                handled = true;
                                 break;
-                            // Ensure ObjectValues inside ArrayValues are handled recursively
+
                             case ArrayValue arrayValue:
-                                nestedDescriptor = new FileManager.Descriptor
-                                { Properties = arrayValue.Values.Select((v, idx) => ($"Index{idx}", v)).ToArray() };
-                                Remove(nestedDescriptor, action);
-                                break;
-                            // Ensure ObjectValues inside StructValues are handled recursively
+                                // If this array IS the target property, remove the matching element from it
+                                if ((action.ManualOverride == false && property.Item1 == action.Target) ||
+                                    (action.ManualOverride == true && property.Item1 == action.CustomTarget))
+                                {
+                                    var valueToRemove = HandleNewlines(action.Value).Trim();
+                                    var currentValues = arrayValue.Values.ToList();
+                                    // Find and remove the first element whose serialized form matches the value
+                                    int removeIndex = currentValues.FindIndex(v =>
+                                        Writer.WriteToString(v).Trim() == valueToRemove ||
+                                        Writer.WriteToString(v).Trim().TrimEnd(',') == valueToRemove.TrimEnd(','));
+                                    if (removeIndex >= 0)
+                                    {
+                                        currentValues.RemoveAt(removeIndex);
+                                        descriptor.Properties[i] = (property.Item1, new ArrayValue(currentValues.ToArray()));
+                                    }
+                                    handled = true;
+                                    break;
+                                }
+                                else
+                                {
+                                    // Not targeting this array by name — recurse into elements
+                                    var nestedArr = new FileManager.Descriptor { Properties = arrayValue.Values.Select((v, idx) => ($"Index{idx}", v)).ToArray() };
+                                    nestedArr = Remove(nestedArr, action);
+                                    descriptor.Properties[i] = (property.Item1, new ArrayValue(nestedArr.Properties.Select(p => p.Item2).ToArray()));
+                                    handled = true;
+                                    break;
+                                }
+
                             case StructValue structValue:
-                                nestedDescriptor = new FileManager.Descriptor
-                                { Properties = structValue.Values.Select((v, idx) => ($"Index{idx}", v)).ToArray() };
-                                Remove(nestedDescriptor, action);
+                                var nestedStruct = new FileManager.Descriptor { Properties = structValue.Values.Select((v, idx) => ($"Index{idx}", v)).ToArray() };
+                                nestedStruct = Remove(nestedStruct, action);
+                                descriptor.Properties[i] = (property.Item1, new StructValue(structValue.Type, nestedStruct.Properties.Select(p => p.Item2).ToArray()));
+                                handled = true;
                                 break;
-                            // Ensure ObjectValues inside PairValues are handled recursively
+
                             case PairValue pairValue:
-                                nestedDescriptor = new FileManager.Descriptor
-                                { Properties = new (string, IValue)[] { ("Value1", pairValue.Value1), ("Value2", pairValue.Value2) } };
-                                Remove(nestedDescriptor, action);
+                                var nestedPair = new FileManager.Descriptor { Properties = new (string, IValue)[] { ("Value1", pairValue.Value1), ("Value2", pairValue.Value2) } };
+                                nestedPair = Remove(nestedPair, action);
+                                descriptor.Properties[i] = (property.Item1, new PairValue(nestedPair.Properties[0].Item2, nestedPair.Properties[1].Item2));
+                                handled = true;
                                 break;
                         }
 
+                        if (handled) continue;
+
                         // Continue if not the target property
-                        if (action.ManualOverride == false) // If the user is not using a custom operand, compare against the selected predefined operand
+                        if (action.ManualOverride == false)
                         { if (property.Item1 != action.Target) continue; }
-                        else // If the user is using a custom operand, compare against the user-entered operand instead
+                        else
                         { if (property.Item1 != action.CustomTarget) continue; }
 
-                        if (property.Item1 != action.Target) continue;
-                        //descriptor.Properties[i] = (property.Item1, new StringLiteral(Writer.WriteToString(property.Item2).Replace(HandleNewlines(action.Value), "") + BuildComment(action, Writer.WriteToString(property.Item2))));
+                        // Fallback for non-array properties: do a string-based removal
                         descriptor.Properties[i] = (property.Item1, new StringLiteral(Writer.WriteToString(property.Item2).Replace(HandleNewlines(action.Value), "") + BuildComment(action, Writer.WriteToString(property.Item2))));
 
                     }

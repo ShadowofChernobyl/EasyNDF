@@ -165,9 +165,9 @@
             PresetLabel.ForeColor = Color.Linen;
             PresetLabel.Location = new Point(12, 687);
             PresetLabel.Name = "PresetLabel";
-            PresetLabel.Size = new Size(118, 18);
+            PresetLabel.Size = new Size(109, 18);
             PresetLabel.TabIndex = 8;
-            PresetLabel.Text = "Rule Presets:";
+            PresetLabel.Text = "Rule Preset:";
             MainFormToolTip.SetToolTip(PresetLabel, resources.GetString("PresetLabel.ToolTip"));
             // 
             // SavePresetButton
