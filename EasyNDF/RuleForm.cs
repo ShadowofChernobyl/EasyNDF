@@ -66,15 +66,18 @@ namespace EasyNDF
                 cm.Items.Add("Create New Condition", null, new EventHandler(AddConditionButton_Click));
                 try
                 {
-                    if (JsonSerializer.Deserialize<RuleEngine.Rule>(Clipboard.GetText()).Name != "")
+                    // Only show Paste option if clipboard contains valid Condition JSON
+                    var conditions = JsonSerializer.Deserialize<RuleEngine.Condition[]>(Clipboard.GetText());
+                    if (FileManager.importedFile.ParsedFile != null) // Don't show Paste option if no NDF file has been imported, even if clipboard contains valid Condition JSON
                     {
-                        cm.Items.Add("Paste", null, new EventHandler(PasteCondition_ContextClick));
+                        foreach (RuleEngine.Condition condition in conditions)
+                        {
+                            if (!string.IsNullOrWhiteSpace(condition.Name)) // If at least one valid condition is found in the clipboard JSON, show the Paste option.
+                            { cm.Items.Add("Paste", null, new EventHandler(PasteCondition_ContextClick)); break; }
+                        }
                     }
                 }
-                catch (Exception)
-                {
-                    // If the clipboard does not contain a valid Rule JSON, do nothing
-                }
+                catch (Exception) { } // If the clipboard does not contain a valid Condition JSON, do nothing
             }
             ConditionListView.ContextMenuStrip = cm;
         }
@@ -154,7 +157,7 @@ namespace EasyNDF
             try
             {
                 RuleEngine ruleEngine = new RuleEngine();
-                Clipboard.SetText(ruleEngine.ConvertItemToJSON(ConditionListView.SelectedItems[0]));
+                Clipboard.SetText(ruleEngine.ConvertItemsToJSON(ConditionListView.SelectedItems));
             }
             catch (Exception)
             { } // Ignore errors when no item is selected
@@ -164,15 +167,22 @@ namespace EasyNDF
             try
             {
                 RuleEngine ruleEngine = new RuleEngine();
-                ListViewItem item = ruleEngine.ConvertJSONToItem(Clipboard.GetText());
-                if (item.Tag is RuleEngine.Condition)
-                { ConditionListView.Items.Add(item); }
-                else
+                List<ListViewItem> items = ruleEngine.ConvertJSONToItems(Clipboard.GetText());
+
+                foreach (ListViewItem item in items)
                 {
-                    MessageBox.Show("Copied item data type did not match destination data type.",
-                                  "Failed to paste",
-                                  MessageBoxButtons.OK,
-                                  MessageBoxIcon.Error);
+                    if (item.Tag is RuleEngine.Condition condition)
+                    {
+                        ListViewItem newItem = ConditionListView.Items.Add(condition.Name);
+                        newItem.Tag = condition;
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Copied item data type did not match destination data type.",
+                                       "Failed to paste",
+                                       MessageBoxButtons.OK,
+                                       MessageBoxIcon.Error);
+                    }
                 }
             }
             catch (Exception)
@@ -269,15 +279,18 @@ namespace EasyNDF
                 cm.Items.Add("Create New Action", null, new EventHandler(AddActionButton_Click));
                 try
                 {
-                    if (JsonSerializer.Deserialize<RuleEngine.Rule>(Clipboard.GetText()).Name != "")
+                    // Only show Paste option if clipboard contains valid Action JSON
+                    var actions = JsonSerializer.Deserialize<RuleEngine.Action[]>(Clipboard.GetText());
+                    if (FileManager.importedFile.ParsedFile != null) // Don't show Paste option if no NDF file has been imported, even if clipboard contains valid Action JSON
                     {
-                        cm.Items.Add("Paste", null, new EventHandler(PasteAction_ContextClick));
+                        foreach (RuleEngine.Action action in actions)
+                        {
+                            if (!string.IsNullOrWhiteSpace(action.Name)) // If at least one valid action is found in the clipboard JSON, show the Paste option.
+                            { cm.Items.Add("Paste", null, new EventHandler(PasteAction_ContextClick)); break; }
+                        }
                     }
                 }
-                catch (Exception)
-                {
-                    // If the clipboard does not contain a valid Rule JSON, do nothing
-                }
+                catch (Exception) { } // If the clipboard does not contain a valid Action JSON, do nothing
             }
             ActionListView.ContextMenuStrip = cm;
         }
@@ -354,22 +367,29 @@ namespace EasyNDF
         private void CopyAction_ContextClick(object? sender, EventArgs e)
         {
             RuleEngine ruleEngine = new RuleEngine();
-            Clipboard.SetText(ruleEngine.ConvertItemToJSON(ActionListView.SelectedItems[0]));
+            Clipboard.SetText(ruleEngine.ConvertItemsToJSON(ActionListView.SelectedItems));
         }
         private void PasteAction_ContextClick(object? sender, EventArgs e)
         {
             try
             {
                 RuleEngine ruleEngine = new RuleEngine();
-                ListViewItem item = ruleEngine.ConvertJSONToItem(Clipboard.GetText());
-                if (item.Tag is RuleEngine.Action)
-                { ActionListView.Items.Add(item); }
-                else
+                List<ListViewItem> items = ruleEngine.ConvertJSONToItems(Clipboard.GetText());
+
+                foreach (ListViewItem item in items)
                 {
-                    MessageBox.Show("Copied item data type did not match destination data type.",
-                                  "Failed to paste",
-                                  MessageBoxButtons.OK,
-                                  MessageBoxIcon.Error);
+                    if (item.Tag is RuleEngine.Action action)
+                    {
+                        ListViewItem newItem = ActionListView.Items.Add(action.Name);
+                        newItem.Tag = action;
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Copied item data type did not match destination data type.",
+                                       "Failed to paste",
+                                       MessageBoxButtons.OK,
+                                       MessageBoxIcon.Error);
+                    }
                 }
             }
             catch (Exception)

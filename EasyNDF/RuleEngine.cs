@@ -60,7 +60,7 @@ namespace EasyNDF
             public string Value { get; set; } // The value to compare against the descriptor's operand value using the specified operator
             public Boolean ManualOverride { get; set; } = false; // Boolean to track if the user has entered a custom operand that isn't in the predefined list
             public string CustomOperand { get; set; } = ""; // If ManualOverride is true, this property can store the user-entered operand to be used in condition evaluation instead of the predefined options
-            public string DataTypeToString { get; set;  } = "Condition"; // This property is used to identify the type of this struct when it's stored in a ListViewItem's Tag as an IValue, since ListViewItems can store any type of object in their Tag property. By checking this DataTypeToString property, the code can determine whether the Tag contains a Condition, Action, or Comment when converting back from ListViewItems to these structs.
+            public string DataTypeToString { get; set; } = "Condition"; // This property is used to identify the type of this struct when it's stored in a ListViewItem's Tag as an IValue, since ListViewItems can store any type of object in their Tag property. By checking this DataTypeToString property, the code can determine whether the Tag contains a Condition, Action, or Comment when converting back from ListViewItems to these structs.
             public static Condition Empty() => new Condition("", "", "", ""); // Static method to create an empty Condition with default values
             public static Condition[] ListViewItemsToConditions(ListView.ListViewItemCollection items)
             {
@@ -142,7 +142,7 @@ namespace EasyNDF
             switch (condition.Operand) {
                 case "Descriptor Title":
                     if (descriptor.Name.StartsWith(condition.Value)) { return true; } break;
-                    
+
                 case "Descriptor Type":
                     if (descriptor.Type.StartsWith(condition.Value)) { return true; } break;
 
@@ -193,7 +193,7 @@ namespace EasyNDF
 
                         if (propertyValue.ToString()!.StartsWith(condition.Value)) { return true; }
                     }
-                break;
+                    break;
             }
 
             return false; // Default to false if no match found
@@ -257,7 +257,7 @@ namespace EasyNDF
 
                         if (propertyValue.ToString()!.EndsWith(condition.Value)) { return true; }
                     }
-                break;
+                    break;
             }
 
             return false; // Default to false if no match found
@@ -321,7 +321,7 @@ namespace EasyNDF
 
                         if (propertyValue.ToString()!.Contains(condition.Value)) { return true; }
                     }
-                break;
+                    break;
             }
 
             return false; // Default to false if no match found
@@ -376,7 +376,7 @@ namespace EasyNDF
                                 if (DoesNotContain(nestedDescriptor, condition) == true)
                                     return true;
 
-                            break;
+                                break;
                         }
 
                         if (condition.ManualOverride == false) // If the user is not using a custom operand, compare against the selected predefined operand
@@ -389,7 +389,7 @@ namespace EasyNDF
 
                         if (!propertyValue.ToString()!.Contains(condition.Value)) { return true; }
                     }
-                break;
+                    break;
             }
 
             return false; // Default to false if no match found
@@ -442,7 +442,7 @@ namespace EasyNDF
 
                                 break;
                         }
-                            
+
                         if (condition.ManualOverride == false) // If the user is not using a custom operand, compare against the selected predefined operand
                         { if (property.Item1 != condition.Operand) continue; }
                         else // If the user is using a custom operand, compare against the user-entered operand instead
@@ -452,9 +452,9 @@ namespace EasyNDF
                         var propertyValue = property.Item2;
 
                         if (propertyValue.ToString()!.Equals(condition.Value)) { return true; }
-                        
+
                     }
-                break;
+                    break;
             }
 
             return false; // Default to false if no match found
@@ -504,7 +504,7 @@ namespace EasyNDF
                                 { Properties = new (string, IValue)[] { ("Value1", pairValue.Value1), ("Value2", pairValue.Value2) } };
                                 if (IsNotEqualTo(nestedDescriptor, condition) == true)
                                     return true;
-                                break;  
+                                break;
                         }
 
                         if (condition.ManualOverride == false) // If the user is not using a custom operand, compare against the selected predefined operand
@@ -556,7 +556,7 @@ namespace EasyNDF
                         { Properties = new (string, IValue)[] { ("Value1", pairValue.Value1), ("Value2", pairValue.Value2) } };
                         if (IsLessThan(nestedDescriptor, condition) == true)
                             return true;
-                    break;
+                        break;
                 }
 
 
@@ -678,7 +678,7 @@ namespace EasyNDF
         }
         public Boolean IsGreaterThanOrEqualTo(FileManager.Descriptor descriptor, Condition condition)
         {
-            foreach (var (property, i) in descriptor.Properties.Select((value, index) => (value, index))) 
+            foreach (var (property, i) in descriptor.Properties.Select((value, index) => (value, index)))
             {
                 var nestedDescriptor = new FileManager.Descriptor(); // Declare nestedDescriptor here to be used in the switch statement below
                 switch (property.Item2) // Recursion
@@ -774,7 +774,7 @@ namespace EasyNDF
                 { if (property.Item1 != condition.CustomOperand) continue; }
 
                 var propertyName = property.Item1;
-                var propertyValue = property.Item2; 
+                var propertyValue = property.Item2;
 
                 foreach (var value in propertyValue.ToString()!.Split(',').Select(v => v.Trim()))
                 { if (propertyValue.ToString()!.Contains(value)) { return true; }
@@ -834,7 +834,7 @@ namespace EasyNDF
             }
 
             return false; // Default to false if no match found
-        } 
+        }
         #endregion
 
         #region Actions
@@ -994,7 +994,7 @@ namespace EasyNDF
                         handled = true;
                         break;
                 }
-                
+
                 if (handled) continue;
 
                 // Continue if not the target property
@@ -1573,7 +1573,7 @@ namespace EasyNDF
             if (action.Comment.Enabled)
             {
                 string originalVal = action.Comment.IncludeOriginalValue ? $" Original Value: {originalValue}" : "";
-                string timestamp = action.Comment.IncludeTimestamp ? $" [{DateTime.UtcNow} UTC]" : ""; 
+                string timestamp = action.Comment.IncludeTimestamp ? $" [{DateTime.UtcNow} UTC]" : "";
                 commentText = $" /*{action.Comment.Text}{timestamp}{originalVal}*/";
             }
             return commentText;
@@ -1591,7 +1591,7 @@ namespace EasyNDF
                             case "All":
                                 if (StartsWith(descriptor, condition)) { continue; } else { return false; }
                             case "Any":
-                                if (StartsWith(descriptor, condition)) { trueCount++; } else { continue; } break;    
+                                if (StartsWith(descriptor, condition)) { trueCount++; } else { continue; } break;
                             default: break;
                         }
                         break;
@@ -1721,7 +1721,7 @@ namespace EasyNDF
                         break;
                 }
             } // iterate through each condition in the current rule and verify that each one comes out as true
-            
+
             if (logicGate == "Any" && trueCount > 0)
             { return true; }
             else if (logicGate == "All")
@@ -1765,12 +1765,79 @@ namespace EasyNDF
 
                     case "Remove [array]": // TO DO - Not yet implemented
                         descriptor = Remove(descriptor, action); break;
-                       
+
                 }
             } // iterate through each action in the current rule and execute them
 
             return descriptor;
+        }     
+        public string ConvertItemsToJSON(ListView.SelectedListViewItemCollection items)
+        {
+            List<string> jsonFragments = new List<string>();
+            foreach (ListViewItem item in items)
+            {
+                if (item.Tag is Rule rule)
+                {
+                    string type = item.Tag!.GetType().ToString();
+                    rule = (item.Tag is Rule r ? r : new Rule(item.Text, new[] { Condition.Empty() }, new[] { Action.Empty() }));
+                    rule.DataTypeToString = "Rule";
+                    jsonFragments.Add(JsonSerializer.Serialize(rule));
+                }
+                else if (item.Tag is Condition condition)
+                {
+                    string type = item.Tag!.GetType().ToString();
+                    condition = (item.Tag is Condition cond ? cond : Condition.Empty());
+                    condition.DataTypeToString = "Condition";
+                    jsonFragments.Add(JsonSerializer.Serialize(condition));
+                }
+                else if (item.Tag is Action action)
+                {
+                    string type = item.Tag!.GetType().ToString();
+                    action = (item.Tag is Action act ? act : Action.Empty());
+                    action.DataTypeToString = "Action";
+                    jsonFragments.Add(JsonSerializer.Serialize(action));
+                }
+            }
+            return "[" + string.Join(",", jsonFragments) + "]";
         }
+        public List<ListViewItem> ConvertJSONToItems(string json)
+        {
+            List<ListViewItem> items = new List<ListViewItem>();
+            var jsonElements = JsonDocument.Parse(json).RootElement.EnumerateArray();
+            foreach (var element in jsonElements)
+            {
+                string elementJson = element.GetRawText();
+                if (elementJson.Contains("\"DataTypeToString\":\"Rule\""))
+                {
+                    Rule rule = JsonSerializer.Deserialize<Rule>(elementJson);
+                    ListViewItem ruleItem = new ListViewItem(rule.Name);
+                    ruleItem.Name = rule.Name;
+                    ruleItem.Tag = rule;
+                    items.Add(ruleItem);
+                }
+                else if (elementJson.Contains("\"DataTypeToString\":\"Condition\""))
+                {
+                    Condition condition = JsonSerializer.Deserialize<Condition>(elementJson);
+                    ListViewItem conditionItem = new ListViewItem(condition.Name);
+                    conditionItem.Name = condition.Name;
+                    conditionItem.Tag = condition;
+                    items.Add(conditionItem);
+                }
+                else if (elementJson.Contains("\"DataTypeToString\":\"Action\""))
+                {
+                    Action action = JsonSerializer.Deserialize<Action>(elementJson);
+                    ListViewItem actionItem = new ListViewItem(action.Name);
+                    actionItem.Name = action.Name;
+                    actionItem.Tag = action;
+                    items.Add(actionItem);
+                }
+                else
+                { return new List<ListViewItem>(); }
+            }
+            return items;
+        }
+
+        /* // Phasing this method out in favor of ConvertItemsToJSON which can handle multiple items at once.
         public string ConvertItemToJSON(ListViewItem item)
         {
             if (item.Tag is Rule rule)
@@ -1798,7 +1865,9 @@ namespace EasyNDF
             {
                 throw new InvalidOperationException("ListViewItem does not contain valid Rule, Condition, or Action data.");
             }
-        }
+        }*/
+
+        /* // Phasing this method out in favor of ConvertJSONToItems which can handle multiple items at once.
         public ListViewItem ConvertJSONToItem(string json)
         {   
             if (json.Contains("""DataTypeToString":"Rule"""))
@@ -1831,7 +1900,8 @@ namespace EasyNDF
                 return new ListViewItem("");
             }
 
-        }
+        }*/
+
         #endregion
     }
 }

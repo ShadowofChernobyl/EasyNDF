@@ -14,14 +14,11 @@ using static EasyNDF.RuleEngine;
 namespace EasyNDF
 {
     /* TO DO:
-     * - [P3] Implement feature via RuleEngine.Contains() that allows user to remove specific values/propterties in an array/object
-     * - [P4] Override feature for ConditionForm/ActionForm ComboBoxes (let user define custom Operands/Targets)
      * - [P4] Allow for copying/pasting of multiple rules/conditions/actions at once
      * - [P5] Make the filepath label look better (maybe ellipsize the middle?)
      * - [P5] Settings Window
      * - [P5] Control Tooltips
      * - [P5] Help Windows for each form
-     * - [P5] In the GitHub description, include "What this mod is" and "What this mod is not"
      */
     public partial class MainForm : Form
     {
@@ -192,16 +189,20 @@ namespace EasyNDF
                 catch (Exception) { } // Ignore errors when no item is selected
                 cm.Items.Add("Delete", null, new EventHandler(DeleteRule_ContextClick));
             }
-            if (e.Button == MouseButtons.Right
-            && RuleListView.GetItemAt(e.X, e.Y) == null)
+            if (e.Button == MouseButtons.Right && RuleListView.GetItemAt(e.X, e.Y) == null)
             {
                 cm.Items.Add("Create New Rule", null, new EventHandler(NewRuleButton_Click));
                 try
                 {
-                    if (JsonSerializer.Deserialize<RuleEngine.Rule>(Clipboard.GetText()).Name != ""
-                     && FileManager.importedFile.ParsedFile != null)
+                    // Only show Paste option if clipboard contains valid Rule JSON
+                    var rules = JsonSerializer.Deserialize<RuleEngine.Rule[]>(Clipboard.GetText());
+                    if (FileManager.importedFile.ParsedFile != null) // Don't show Paste option if no NDF file has been imported, even if clipboard contains valid Rule JSON
                     {
-                        cm.Items.Add("Paste", null, new EventHandler(PasteRule_ContextClick));
+                        foreach (RuleEngine.Rule rule in rules)
+                        {
+                            if (!string.IsNullOrWhiteSpace(rule.Name)) // If at least one valid rule is found in the clipboard JSON, show the Paste option.
+                            { cm.Items.Add("Paste", null, new EventHandler(PasteRule_ContextClick));  break; }
+                        }
                     }
                 }
                 catch (Exception) { } // If the clipboard does not contain a valid Rule JSON, do nothing
@@ -274,7 +275,7 @@ namespace EasyNDF
             try
             {
                 RuleEngine ruleEngine = new RuleEngine();
-                Clipboard.SetText(ruleEngine.ConvertItemToJSON(RuleListView.SelectedItems[0]));
+                Clipboard.SetText(ruleEngine.ConvertItemsToJSON(RuleListView.SelectedItems));      
             }
             catch (Exception)
             { } // Ignore errors when no item is selected
@@ -284,15 +285,22 @@ namespace EasyNDF
             try
             {
                 RuleEngine ruleEngine = new RuleEngine();
-                ListViewItem item = ruleEngine.ConvertJSONToItem(Clipboard.GetText());
-                if (item.Tag is RuleEngine.Rule)
-                { RuleListView.Items.Add(item); }
-                else
+                List<ListViewItem> items = ruleEngine.ConvertJSONToItems(Clipboard.GetText());
+
+                foreach (ListViewItem item in items)
                 {
-                    MessageBox.Show($"Copied item data type did not match destination data type.",
-                                   "Failed to paste",
-                                   MessageBoxButtons.OK,
-                                   MessageBoxIcon.Error);
+                    if (item.Tag is RuleEngine.Rule rule)
+                    {
+                        ListViewItem newItem = RuleListView.Items.Add(rule.Name);
+                        newItem.Tag = rule;
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Copied item data type did not match destination data type.",
+                                       "Failed to paste",
+                                       MessageBoxButtons.OK,
+                                       MessageBoxIcon.Error);
+                    }
                 }
             }
             catch (Exception)
