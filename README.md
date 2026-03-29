@@ -272,15 +272,3 @@ Tests cover:
 * parser correctness on representative examples
 * writer output formatting
 * parser/writer round-trip compatibility across generated ASTs
-
----
-
-## License
-
-This repository is distributed under the MIT license included in `LICENSE`.
-
-Current repository note:
-
-> "ShadowofChernobyl" is the author's username. This project is not affiliated with, endorsed by, or associated with GSC GAME WORLD GLOBAL LTD, the S.T.A.L.K.E.R. game series or its rights holders.
-
-
