@@ -135,6 +135,7 @@ These are the main issues visible from the current source code:
 * Users currently cannot import NDF files that contain comments left by EasyNDF. This is an issue with NDFParser's limited understanding of `/* block comments */` and we plan to rectify this issue soon.
 * `MainForm` still lists several TODO items, including a more complete settings window, tooltips/help and better file path display.
 * The settings form is currently just a placeholder shell.
+* Closing the export file dialog window before selecting a file will still cause a message to appear stating the export was successful, even though no export took place.
 
 There are also a few code-level implementation details worth being aware of:
 
