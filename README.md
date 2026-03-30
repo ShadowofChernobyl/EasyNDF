@@ -35,7 +35,7 @@ At the code level, the repository is also a general NDF parsing project. The `ND
 ## What this project is not
 
 * Not a general-purpose text editor
-* Not a full semantic validator for every possible NDF construct
+* Not a tool for creating or modifying assets/models. You'll want to use Blender for that
 * Not a mod manager
 * Not a command-line-heavy automation suite **_yet_**; the CLI is currently minimal
 
