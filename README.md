@@ -27,10 +27,10 @@ At the code level, the repository is also a general NDF parsing project. The `ND
 
 ## What this project is
 
-* A **rule-based NDF modding tool**
-* A **parser/writer library** for NDF syntax
-* A **WinForms desktop application** targeting **.NET 8 / Windows**
-* A **developer-oriented codebase** with parser tests and property-based round-trip tests
+* A rule-based NDF modding tool meant to make repetitive changes in .NDF files quickly and easily
+* A parser/writer library for NDF syntax
+* A WinForms desktop application targeting .NET 8 / Windows
+* A developer-oriented codebase with parser tests and property-based round-trip tests
 
 ## What this project is not
 
