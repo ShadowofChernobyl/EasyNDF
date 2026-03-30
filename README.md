@@ -44,7 +44,7 @@ At the code level, the repository is also a general NDF parsing project. The `ND
 
 ### Rule-based editing
 
-Rules are applied in the order shown in the main list (top-to-bottom)
+Rules are applied to each descriptor in an NDF file in the order shown in the main list (top-to-bottom)
 ![Insert Rule List Description.](https://github.com/ShadowofChernobyl/EasyNDF/blob/master/images/RuleListPreview.png?raw=true)
 
 Each rule contains:
