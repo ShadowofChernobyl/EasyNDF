@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EasyNdf.App/EasyNdf.App.csproj" />
+    <Project Path="src/EasyNdf.Data/EasyNdf.Data.csproj" />
+    <Project Path="src/EasyNdf.Engine/EasyNdf.Engine.csproj" />
+  </Folder>
+</Solution>

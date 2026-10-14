@@ -1,0 +1,27 @@
+# Builds EasyNDF on every push and pull request.
+# Windows, because the app itself (WPF) only builds there.
+
+name: Build
+
+on:
+  push:
+    branches: [ "master", "feature/**" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: 10.0.x
+    - name: Restore
+      run: dotnet restore EasyNDF.slnx
+    - name: Build
+      run: dotnet build EasyNDF.slnx --no-restore -c Release

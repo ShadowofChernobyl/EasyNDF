@@ -1,0 +1,15 @@
+<!--
+  The main window. Its title bar is the title row of MainView (see Windowing/CustomTitleBar.cs): drag it to move the
+  window, double-click it to maximize; the buttons at its right end minimize, maximize and close.
+-->
+<Window x:Class="EasyNdf.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="clr-namespace:EasyNdf.App"
+        Title="EasyNDF" Icon="Assets/EasyNDF.ico"
+        Width="1280" Height="800" MinWidth="600" MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource panel}">
+
+    <app:MainView x:Name="View" />
+</Window>

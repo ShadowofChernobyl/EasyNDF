@@ -1,0 +1,58 @@
+<!--
+  The welcome window (the HTML app's #welcome): shown the first time the app starts, and again after Clear all data; the
+  Help tab opens it too. 34rem wide, 16 pixels in at the top and bottom and 18 at the sides.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.WelcomeWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             Visibility="Collapsed" KeyDown="KeyPressed">
+    <!-- the dimmed backdrop; a click on it closes the window -->
+    <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed">
+        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                        Padding="18,16" Width="544" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
+            <StackPanel>
+                <controls:Bevel Style="{StaticResource Heading}" Margin="0,0,0,10">
+                    <TextBlock Text="Welcome to EasyNDF" FontSize="15" LineHeight="21.75" LineStackingStrategy="BlockLineHeight" />
+                </controls:Bevel>
+                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ink}" Margin="0,0,0,10">
+                    <Bold>Mod WARNO without the copy-paste.</Bold>
+                    <Run Text="Describe a change once, such as &quot;double the range of every autocannon&quot;, and EasyNDF applies it to every matching entry in the game's" />
+                    <Run Text=".ndf" FontFamily="{DynamicResource mono}" FontSize="12" /><Run Text=" files." />
+                </TextBlock>
+                <!-- the three steps, 22 pixels in, 4 pixels apart -->
+                <Grid Margin="0,0,0,10" TextElement.Foreground="{DynamicResource ink}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="22" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="4" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="4" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="1." HorizontalAlignment="Right" Margin="0,0,4,0" />
+                    <TextBlock Grid.Column="1" TextWrapping="Wrap"><Bold>Rules:</Bold> import a mod, or build your own rules.</TextBlock>
+                    <TextBlock Grid.Row="2" Text="2." HorizontalAlignment="Right" Margin="0,0,4,0" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" TextWrapping="Wrap"><Bold>Files:</Bold> drop your mod folder on the window.</TextBlock>
+                    <TextBlock Grid.Row="4" Text="3." HorizontalAlignment="Right" Margin="0,0,4,0" />
+                    <TextBlock Grid.Row="4" Grid.Column="1" TextWrapping="Wrap"><Bold>Preview</Bold> what would change, then <Bold>Run export</Bold>.</TextBlock>
+                </Grid>
+                <TextBlock Style="{StaticResource Note}" Margin="0,0,0,10"
+                           Text="Your files never leave this computer, and your originals are never changed. Export your mod to keep a copy of your rules." />
+                <!-- the note above keeps its 10 pixels, which win over the bar's 4 -->
+                <DockPanel>
+                    <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
+                        <Button x:Name="TourButton" Content="Start the tutorial" ToolTip="A hands-on tour with a sample file. No game files needed"
+                                IsEnabled="False" />
+                        <Button x:Name="OkButton" Content="Get started" Style="{StaticResource GoButton}" ToolTip="Close" Click="OkClicked" />
+                    </controls:SnappedRow>
+                    <TextBlock Style="{StaticResource Note}" Text="This window is on the Help tab." VerticalAlignment="Center" />
+                </DockPanel>
+            </StackPanel>
+        </controls:Bevel>
+    </Grid>
+</UserControl>

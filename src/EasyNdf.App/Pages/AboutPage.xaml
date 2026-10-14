@@ -1,0 +1,20 @@
+<!--
+  The About tab (the HTML app's #pageAbout): Change log and License above the text of Help/about.html, which
+  AboutPage.xaml.cs draws, and which scrolls under them.
+-->
+<UserControl x:Class="EasyNdf.App.Pages.AboutPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls">
+    <!-- the two buttons stay put; the text under them scrolls -->
+    <DockPanel>
+        <!-- .helpmode: the two buttons in the middle, 7rem wide at least -->
+        <controls:SnappedRow DockPanel.Dock="Top" Gap="6" HorizontalAlignment="Center" Margin="0,2,0,0">
+            <Button x:Name="ChangeLogButton" Content="Change log" MinWidth="112" ToolTip="What changed in each version" Click="ChangeLogClicked" />
+            <Button Content="License" MinWidth="112" ToolTip="The license EasyNDF is under" Click="LicenseClicked" />
+        </controls:SnappedRow>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+            <ContentControl x:Name="Body" Focusable="False" />
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

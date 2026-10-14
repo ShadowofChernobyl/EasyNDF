@@ -1,0 +1,137 @@
+<!--
+  The colour window, laid out as Windows' own colour window (the one Paint uses) but drawn in the theme: basic and
+  custom colours on the left; on the right the spectrum (hue across, saturation down), the lightness strip beside it,
+  the colour before and now, and its hue, saturation, lightness, red, green, blue and hex. The theme changes while the
+  mouse drags. ColourWindow.xaml.cs fills it in and works it.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.ColourWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             Visibility="Collapsed" PreviewKeyDown="KeyPressed">
+    <!--
+      No dimming: the theme behind the window changes as the colour does, and has to be seen clearly. A click outside the
+      window keeps the colour, as a click elsewhere does in the browser's picker. The window opens beside the preview (see
+      ColourWindow.xaml.cs) and can be moved by its title.
+    -->
+    <Grid x:Name="Backdrop" Background="Transparent" MouseLeftButtonDown="BackdropPressed">
+        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                        Padding="12,10,12,12" HorizontalAlignment="Left" VerticalAlignment="Top"
+                        MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" Background="Transparent" Cursor="SizeAll" ToolTip="Drag to move the window"
+                           MouseLeftButtonDown="TitlePressed" MouseMove="TitleDragged" MouseLeftButtonUp="TitleReleased">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="Cancel (Escape)" Click="CancelClicked" />
+                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
+                </DockPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- left: the basic and custom colours, then OK and Cancel at the bottom -->
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
+                            <Button Style="{StaticResource GoButton}" Content="OK" MinWidth="72" ToolTip="Keep this color (Enter)" Click="OkClicked" />
+                            <Button Content="Cancel" MinWidth="72" Margin="6,0,0,0" ToolTip="Put the old color back (Escape)" Click="CancelClicked" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="Basic colors:" Margin="0,0,0,4" />
+                            <UniformGrid x:Name="BasicColours" Columns="8" />
+                            <TextBlock Text="Custom colors:" Margin="0,12,0,4" />
+                            <UniformGrid x:Name="CustomColours" Columns="8" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <!-- right: the spectrum and lightness strip, then the colour and its numbers -->
+                    <StackPanel Grid.Column="2">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Padding="1">
+                                <Grid x:Name="Spectrum" Width="200" Height="180" Cursor="Cross" ClipToBounds="True" ToolTip="Hue across, saturation down. Drag to change the color"
+                                      MouseLeftButtonDown="SpectrumPressed" MouseMove="SpectrumDragged" MouseLeftButtonUp="DragEnded">
+                                    <Grid.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="#FF0000" Offset="0" />
+                                            <GradientStop Color="#FFFF00" Offset="0.1667" />
+                                            <GradientStop Color="#00FF00" Offset="0.3333" />
+                                            <GradientStop Color="#00FFFF" Offset="0.5" />
+                                            <GradientStop Color="#0000FF" Offset="0.6667" />
+                                            <GradientStop Color="#FF00FF" Offset="0.8333" />
+                                            <GradientStop Color="#FF0000" Offset="1" />
+                                        </LinearGradientBrush>
+                                    </Grid.Background>
+                                    <!-- saturation falls to grey going down: at half lightness, a colour is the grey plus a share of the pure hue -->
+                                    <Rectangle>
+                                        <Rectangle.Fill>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#00808080" Offset="0" />
+                                                <GradientStop Color="#FF808080" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Rectangle.Fill>
+                                    </Rectangle>
+                                    <Canvas IsHitTestVisible="False">
+                                        <Ellipse x:Name="SpectrumMark" Width="11" Height="11" Stroke="White" StrokeThickness="2" />
+                                        <Ellipse x:Name="SpectrumMarkEdge" Width="13" Height="13" Stroke="Black" StrokeThickness="1" />
+                                    </Canvas>
+                                </Grid>
+                            </controls:Bevel>
+                            <!-- the lightness strip: white at the top, the colour in the middle, black at the bottom; ◀ marks it -->
+                            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Padding="1" Margin="8,0,0,0">
+                                <Rectangle x:Name="LightnessStrip" Width="14" Height="180" Cursor="Hand" ToolTip="Lightness. Drag to change it"
+                                           MouseLeftButtonDown="LightnessPressed" MouseMove="LightnessDragged" MouseLeftButtonUp="DragEnded" />
+                            </controls:Bevel>
+                            <Canvas Width="10" Height="182">
+                                <TextBlock x:Name="LightnessMark" Text="◀" FontSize="11" Foreground="{DynamicResource ink}" Canvas.Left="1" />
+                            </Canvas>
+                        </StackPanel>
+
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <!-- the colour before and now, side by side -->
+                            <StackPanel Grid.RowSpan="3">
+                                <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Padding="1">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border x:Name="BeforeSwatch" Width="36" Height="56" ToolTip="The color before" />
+                                        <Border x:Name="NowSwatch" Width="36" Height="56" ToolTip="The color now" />
+                                    </StackPanel>
+                                </controls:Bevel>
+                                <TextBlock Text="Before | Now" Foreground="{DynamicResource muted}" FontSize="11" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="2" Text="Hue:" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="HueBox" Grid.Column="3" Style="{StaticResource MonoBox}" Width="44" Margin="0,0,0,4" ToolTip="Hue, 0 to 240" />
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="Sat:" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="SatBox" Grid.Row="1" Grid.Column="3" Style="{StaticResource MonoBox}" Width="44" Margin="0,0,0,4" ToolTip="Saturation, 0 to 240" />
+                            <TextBlock Grid.Row="2" Grid.Column="2" Text="Lum:" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="LumBox" Grid.Row="2" Grid.Column="3" Style="{StaticResource MonoBox}" Width="44" Margin="0,0,0,4" ToolTip="Lightness, 0 to 240" />
+                            <TextBlock Grid.Column="5" Text="Red:" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="RedBox" Grid.Column="6" Style="{StaticResource MonoBox}" Width="44" Margin="0,0,0,4" ToolTip="Red, 0 to 255" />
+                            <TextBlock Grid.Row="1" Grid.Column="5" Text="Green:" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="GreenBox" Grid.Row="1" Grid.Column="6" Style="{StaticResource MonoBox}" Width="44" Margin="0,0,0,4" ToolTip="Green, 0 to 255" />
+                            <TextBlock Grid.Row="2" Grid.Column="5" Text="Blue:" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="BlueBox" Grid.Row="2" Grid.Column="6" Style="{StaticResource MonoBox}" Width="44" Margin="0,0,0,4" ToolTip="Blue, 0 to 255" />
+                            <TextBlock Grid.Row="3" Grid.Column="5" Text="Hex:" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                            <TextBox x:Name="HexBox" Grid.Row="3" Grid.Column="6" Style="{StaticResource MonoBox}" Width="70" MaxLength="7" ToolTip="The color as hex, like #7fb88a" />
+                        </Grid>
+                        <Button Content="Add to Custom Colors" Margin="0,8,0,0" HorizontalAlignment="Stretch" ToolTip="Keep this color in the next custom color box" Click="AddCustomClicked" />
+                    </StackPanel>
+                </Grid>
+            </DockPanel>
+        </controls:Bevel>
+    </Grid>
+</UserControl>

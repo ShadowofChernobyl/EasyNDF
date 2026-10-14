@@ -1,0 +1,256 @@
+<!--
+  The Settings tab (the HTML app's #pageSettings): cards of settings, each saved as soon as it is changed. The browser's
+  own rows (downloads, themed dropdowns) are left out, and the languages wait until language packs are taken up again.
+  SettingsPage.xaml.cs reads and writes the settings.
+-->
+<UserControl x:Class="EasyNdf.App.Pages.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             xmlns:pages="clr-namespace:EasyNdf.App.Pages">
+    <!-- every category on one page that scrolls; the list on the left jumps to each and marks the one in view -->
+    <DockPanel>
+        <!-- .bar.qtop: the ? at the right -->
+        <Button DockPanel.Dock="Top" Style="{StaticResource HelpButton}" HorizontalAlignment="Right" Margin="0,0,0,6" controls:QuickHelp.Page="tab-settings" />
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="180" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <!-- the search box above the list, as on the Help tab; it hides the settings that do not match -->
+                    <StackPanel Margin="8">
+                        <TextBox x:Name="SettingsSearch" Margin="0,0,0,8" Tag="Search settings" ToolTip="Show only the settings whose name or note holds this (Escape clears it)"
+                                 TextChanged="SearchChanged" KeyDown="SearchKeyDown" />
+                        <TextBlock x:Name="NoMatch" Style="{StaticResource Note}" Margin="4,0,0,0" Text="No settings match." Visibility="Collapsed" />
+                        <StackPanel x:Name="Categories" />
+                    </StackPanel>
+                </ScrollViewer>
+            </controls:Bevel>
+            <ScrollViewer x:Name="CardScroller" Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+                          ScrollChanged="CardsScrolled">
+        <!-- one card per category, all on the page; SettingsPage.xaml.cs lists them on the left by their headings -->
+        <StackPanel x:Name="Cards">
+            <!-- Results -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="Results" /></controls:Bevel>
+                    <controls:SettingGrid Margin="12,2,12,8">
+                        <controls:SettingRow x:Name="CapRow" Label="Edits listed per rule">
+                            <TextBox x:Name="CapBox" Style="{StaticResource MonoBox}" Width="172" ToolTip="Edits listed per rule in Details"
+                                     LostKeyboardFocus="CapLeft" KeyDown="BoxKeyDown" />
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                </StackPanel>
+            </controls:Bevel>
+
+            <!-- Export -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="Export" /></controls:Bevel>
+                    <controls:SettingGrid Margin="12,2,12,8">
+                        <controls:SettingRow Label="Keep source comments" Note="Off: only comments written by rules are exported.">
+                            <CheckBox x:Name="CommentsSwitch" Style="{StaticResource Toggle}" ToolTip="Keep comments from the source file" Click="SwitchClicked" Tag="keepComments" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Line endings" Note="The game's own files use LF.">
+                            <ComboBox x:Name="LineEndChoice" MinWidth="144" ToolTip="Line endings of exported files" SelectionChanged="ChoiceChanged" Tag="eol">
+                                <ComboBoxItem Content="LF" Tag="lf" />
+                                <ComboBoxItem Content="CRLF (Windows)" Tag="crlf" />
+                                <ComboBoxItem Content="Same as source" Tag="keep" />
+                            </ComboBox>
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Files to export" Note="All files: unchanged files and files with no preset are copied as they are. Slow and memory-heavy for large folders.">
+                            <ComboBox x:Name="ScopeChoice" MinWidth="144" ToolTip="Files Run export includes" SelectionChanged="ChoiceChanged" Tag="exportScope">
+                                <ComboBoxItem Content="Changed files" Tag="changed" />
+                                <ComboBoxItem Content="All files that are on" Tag="all" />
+                            </ComboBox>
+                        </controls:SettingRow>
+                        <controls:SettingRow x:Name="DecimalsRow" Label="Decimal places">
+                            <TextBox x:Name="DecimalsBox" Style="{StaticResource MonoBox}" Width="172" ToolTip="Maximum decimal places written by arithmetic"
+                                     LostKeyboardFocus="DecimalsLeft" KeyDown="BoxKeyDown" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Confirm before Run export" Note="Says how many files will be written, and where, before writing them.">
+                            <CheckBox x:Name="ConfirmExportSwitch" Style="{StaticResource Toggle}" ToolTip="Ask before Run export writes files" Click="SwitchClicked" Tag="confirmExport" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Back up overwritten files" Note="A file an export replaces is kept beside it first, as .bak.">
+                            <CheckBox x:Name="BackupSwitch" Style="{StaticResource Toggle}" ToolTip="Keep a .bak copy of each file an export replaces" Click="SwitchClicked" Tag="backupOverwritten" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Open the folder after export" Note="Opens the export folder in File Explorer when Run export finishes.">
+                            <CheckBox x:Name="OpenFolderSwitch" Style="{StaticResource Toggle}" ToolTip="Open the export folder when Run export finishes" Click="SwitchClicked" Tag="openAfterExport" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="&quot;Edited with EasyNDF&quot; comment" Note="First line of each edited file, with the version.">
+                            <CheckBox x:Name="StampSwitch" Style="{StaticResource Toggle}" ToolTip="Start each edited file with a comment naming EasyNDF and its version" Click="SwitchClicked" Tag="stamp" />
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                </StackPanel>
+            </controls:Bevel>
+
+            <!-- Files -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="Files" /></controls:Bevel>
+                    <controls:SettingGrid Margin="12,2,12,8">
+                        <controls:SettingRow Label="Add folder lists" Note="Subfolders are included. The export zip keeps the folder structure.">
+                            <ComboBox x:Name="FolderChoice" MinWidth="144" ToolTip="Files listed when a folder is added" SelectionChanged="ChoiceChanged" Tag="folderMode">
+                                <ComboBoxItem Content="All .ndf files" Tag="all" />
+                                <ComboBoxItem Content="Files with a preset in the open mod" Tag="matched" />
+                            </ComboBox>
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Duplicate files" Note="Same name and folder. Replace keeps the row's preset and export folder.">
+                            <ComboBox x:Name="DuplicateChoice" MinWidth="144" ToolTip="When an added file is already listed" SelectionChanged="ChoiceChanged" Tag="dupes">
+                                <ComboBoxItem Content="Ask" Tag="ask" />
+                                <ComboBoxItem Content="Replace" Tag="replace" />
+                                <ComboBoxItem Content="Skip" Tag="skip" />
+                            </ComboBox>
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Wrap text in lists" Note="File, Details, preset and rule lists.">
+                            <CheckBox x:Name="WrapSwitch" Style="{StaticResource Toggle}" ToolTip="Wrap long text in list rows" Click="SwitchClicked" Tag="wrapRows" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Auto-fit file list columns" Note="Resizing a column by hand overrides this until Reset column widths.">
+                            <CheckBox x:Name="FitSwitch" Style="{StaticResource Toggle}" ToolTip="Size file list columns to their content" Click="SwitchClicked" Tag="autoFit" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Auto-assign presets by file name" Note="Applies when exactly one preset name contains the file's whole name, capitals included.">
+                            <CheckBox x:Name="AssignSwitch" Style="{StaticResource Toggle}" ToolTip="Assign the preset whose name contains the file's whole name, capitals included" Click="SwitchClicked" Tag="autoAssign" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Reopen the last files" Note="When the app starts, the file list comes back as it was left, with the files that are still where they were.">
+                            <CheckBox x:Name="SessionSwitch" Style="{StaticResource Toggle}" ToolTip="Open the file list as it was left" Click="SwitchClicked" Tag="restoreSession" />
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                </StackPanel>
+            </controls:Bevel>
+
+            <!-- Editing -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="Editing" /></controls:Bevel>
+                    <controls:SettingGrid Margin="12,2,12,8">
+                        <controls:SettingRow Label="Confirm rule deletion" Note="Presets always ask.">
+                            <CheckBox x:Name="ConfirmSwitch" Style="{StaticResource Toggle}" ToolTip="Confirm before deleting a rule" Click="SwitchClicked" Tag="confirmDelete" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Double-click adds" Note="Double-clicking the empty part of a rule's condition or action list adds one.">
+                            <CheckBox x:Name="DoubleClickSwitch" Style="{StaticResource Toggle}" ToolTip="Add a condition or action by double-clicking the empty part of its list" Click="SwitchClicked" Tag="dblClickAdds" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Undo steps" Note="How many changes to rules and the file list Ctrl+Z can take back.">
+                            <ComboBox x:Name="UndoChoice" MinWidth="144" ToolTip="How many changes can be undone" SelectionChanged="ChoiceChanged" Tag="undoSteps">
+                                <ComboBoxItem Content="30" Tag="30" />
+                                <ComboBoxItem Content="60" Tag="60" />
+                                <ComboBoxItem Content="100" Tag="100" />
+                                <ComboBoxItem Content="200" Tag="200" />
+                                <ComboBoxItem Content="500" Tag="500" />
+                            </ComboBox>
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                </StackPanel>
+            </controls:Bevel>
+
+            <!-- File Editor -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="File Editor" /></controls:Bevel>
+                    <controls:SettingGrid Margin="12,2,12,8">
+                        <controls:SettingRow Label="Text size" Note="Ctrl+scroll in the text changes it too.">
+                            <ComboBox x:Name="TextSizeChoice" MinWidth="144" ToolTip="The File Editor's text size" SelectionChanged="TextSizeChosen" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Line numbers">
+                            <CheckBox x:Name="LineNumbersSwitch" Style="{StaticResource Toggle}" ToolTip="Show line numbers beside the text" Click="SwitchClicked" Tag="lineNumbers" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Word wrap" Note="Long lines wrap instead of scrolling sideways.">
+                            <CheckBox x:Name="WordWrapSwitch" Style="{StaticResource Toggle}" ToolTip="Wrap long lines" Click="SwitchClicked" Tag="wordWrap" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Scope lines" Note="Thin lines down each level of indentation in the File Editor.">
+                            <CheckBox x:Name="GuidesSwitch" Style="{StaticResource Toggle}" ToolTip="Show lines down each level of indentation" Click="SwitchClicked" Tag="indentGuides" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Close brackets and quotes" Note="Typing ( [ { &quot; or ' also types its partner, with the cursor between them.">
+                            <CheckBox x:Name="PairsSwitch" Style="{StaticResource Toggle}" ToolTip="Type the closing bracket or quote too" Click="SwitchClicked" Tag="autoPairs" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Show everything in the descriptor tree" Note="Off: a descriptor opens to the descriptors it names in other files, to show how files connect. On: also to its objects, lists and the descriptors it names in its own file.">
+                            <CheckBox x:Name="TreeAllSwitch" Style="{StaticResource Toggle}" ToolTip="Show objects, lists and same-file descriptors in the tree" Click="SwitchClicked" Tag="treeShowsAll" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Reopen the last file" Note="When the app starts, the file last open in the File Editor opens again, where it was left.">
+                            <CheckBox x:Name="ReopenFileSwitch" Style="{StaticResource Toggle}" ToolTip="Open the last file again when the app starts" Click="SwitchClicked" Tag="reopenFile" />
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                </StackPanel>
+            </controls:Bevel>
+
+            <!-- Appearance -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="Appearance" /></controls:Bevel>
+                    <controls:SettingGrid Margin="12,2,12,8">
+                        <controls:SettingRow Label="Theme" Note="Colors and scrollbars. Automatic follows the system.">
+                            <ComboBox x:Name="ThemeChoice" MinWidth="144" ToolTip="Colors, fonts and scrollbars" SelectionChanged="ThemeChosen" />
+                        </controls:SettingRow>
+                        <controls:SettingRow x:Name="FontsRow" Label="Fonts" Note="The interface font and the code font, for every theme.">
+                            <Button Content="Fonts..." ToolTip="Choose the interface font and the code font" Click="FontsClicked" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Beveled edges" Note="Raised buttons and sunken boxes, in any theme.">
+                            <CheckBox x:Name="BevelSwitch" Style="{StaticResource Toggle}" ToolTip="Raised buttons and sunken boxes" Click="BevelClicked" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Interface size" Note="Makes everything in the window larger or smaller.">
+                            <ComboBox x:Name="ScaleChoice" MinWidth="144" ToolTip="The size of everything in the window" SelectionChanged="ChoiceChanged" Tag="uiScale">
+                                <ComboBoxItem Content="90%" Tag="90" />
+                                <ComboBoxItem Content="100%" Tag="100" />
+                                <ComboBoxItem Content="110%" Tag="110" />
+                                <ComboBoxItem Content="125%" Tag="125" />
+                                <ComboBoxItem Content="150%" Tag="150" />
+                            </ComboBox>
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Tooltips" Note="The notes that appear when the mouse rests on a control.">
+                            <CheckBox x:Name="TooltipsSwitch" Style="{StaticResource Toggle}" ToolTip="Show tooltips" Click="SwitchClicked" Tag="tooltips" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Remember the window" Note="The window opens where it was, at the size it was.">
+                            <CheckBox x:Name="WindowSwitch" Style="{StaticResource Toggle}" ToolTip="Open the window where and as large as it was left" Click="SwitchClicked" Tag="rememberWindow" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Tread scrollbars" Note="A raised thumb with a grip, in a sunken track, in any theme.">
+                            <CheckBox x:Name="TreadSwitch" Style="{StaticResource Toggle}" ToolTip="Olivine's scrollbars in every theme" Click="TreadClicked" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Panes grow with the window" Note="Details and Descriptors keep their share of the window as it is resized. Off, they keep the size they were dragged to.">
+                            <CheckBox x:Name="PanesScaleSwitch" Style="{StaticResource Toggle}" ToolTip="Resize Details and Descriptors with the window" Click="SwitchClicked" Tag="panesScale" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="Column widths" Note="Drag the line between two headings to resize. Widths are saved per table.">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="Reset column widths" ToolTip="Reset all column widths" Click="ResetColumnsClicked" />
+                                <TextBlock x:Name="ColumnsNote" Style="{StaticResource Note}" Margin="4,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                    <!-- the Theme Designer (the HTML app's .tdz): under a line, with a bold heading of its own -->
+                    <Border x:Name="DesignerBlock" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource line}">
+                        <StackPanel>
+                            <TextBlock Text="Theme Designer" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource ink}" Margin="12,12,12,-4" />
+                            <pages:ThemeDesigner x:Name="Designer" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </controls:Bevel>
+
+            <!-- Data -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="Data" /></controls:Bevel>
+                    <controls:SettingGrid Margin="12,2,12,8">
+                        <controls:SettingRow Note="One file with all your mods, to keep or move to another computer.">
+                            <controls:SnappedRow Gap="6">
+                                <Button Content="Back up all mods" ToolTip="Save all mods as one file" Click="BackupClicked" />
+                                <Button Content="Restore backup..." ToolTip="Load a backup of all mods" Click="RestoreClicked" />
+                            </controls:SnappedRow>
+                        </controls:SettingRow>
+                        <controls:SettingRow Note="Reset settings keeps your mods. Clear all data deletes everything EasyNDF has saved.">
+                            <controls:SnappedRow Gap="6">
+                                <Button Content="Reset settings" ToolTip="Reset settings. Mods are kept" Click="ResetClicked" />
+                                <Button Content="Clear all data" ToolTip="Delete everything EasyNDF has saved" Click="ClearClicked" />
+                            </controls:SnappedRow>
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                    <TextBlock x:Name="DataNote" Style="{StaticResource Note}" Margin="12,0,12,8" />
+                </StackPanel>
+            </controls:Bevel>
+        </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</UserControl>
