@@ -1,0 +1,1162 @@
+<!--
+  The look of the app's controls, copied from the HTML app's CSS. Colours come from the theme (see Theming/ThemeManager.cs),
+  always through DynamicResource so that a new theme recolours everything at once.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:controls="clr-namespace:EasyNdf.App.Controls">
+
+    <!-- true shows a control, false hides it -->
+    <BooleanToVisibilityConverter x:Key="ShowWhenTrue" />
+
+    <!-- button, .btn: a raised panel; the text turns accent under the mouse; pressed, the edges swap -->
+    <Style TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <controls:Bevel x:Name="Edge" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}"
+                                    Background="{DynamicResource panel}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Edge" Property="TopLeft" Value="{DynamicResource lo}" />
+                            <Setter TargetName="Edge" Property="BottomRight" Value="{DynamicResource hi}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource muted}" />
+                            <Setter Property="Opacity" Value="0.6" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      button[aria-pressed=true]: a button that stays pressed while what it shows is on, such as the File Editor's
+      "Changes only": its edges swap, it takes the box colour, and its text turns accent
+    -->
+    <Style x:Key="PressedToggle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <controls:Bevel x:Name="Edge" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}"
+                                    Background="{DynamicResource panel}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Edge" Property="TopLeft" Value="{DynamicResource lo}" />
+                            <Setter TargetName="Edge" Property="BottomRight" Value="{DynamicResource hi}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Edge" Property="TopLeft" Value="{DynamicResource lo}" />
+                            <Setter TargetName="Edge" Property="BottomRight" Value="{DynamicResource hi}" />
+                            <Setter TargetName="Edge" Property="Background" Value="{DynamicResource well}" />
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource muted}" />
+                            <Setter Property="Opacity" Value="0.6" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- .dvbar button: the descriptor viewer's small buttons, 12-pixel text on 18-pixel lines, 8 pixels each side -->
+    <Style x:Key="SmallButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextBlock.LineHeight" Value="18" />
+    </Style>
+
+    <!-- .dvbar button[aria-pressed=true]: a small button that stays chosen, edged and lettered in the accent colour -->
+    <Style x:Key="SmallChoice" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Padding" Value="8,0" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextBlock.LineHeight" Value="18" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <controls:Bevel x:Name="Edge" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}"
+                                    Background="{DynamicResource panel}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Edge" Property="TopLeft" Value="{DynamicResource accent}" />
+                            <Setter TargetName="Edge" Property="BottomRight" Value="{DynamicResource accent}" />
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Edge" Property="TopLeft" Value="{DynamicResource lo}" />
+                            <Setter TargetName="Edge" Property="BottomRight" Value="{DynamicResource hi}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      a setting: its name at the left, its control at the right, its note under both, and a line under the row. Without a
+      name (buttons that name themselves, such as Data's), the control sits at the left, over its note.
+    -->
+    <Style TargetType="controls:SettingRow">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="controls:SettingRow">
+                    <Border BorderBrush="{DynamicResource line}" BorderThickness="0,0,0,1" Padding="0,7,0,7">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock x:Name="LabelText" Text="{TemplateBinding Label}" Foreground="{DynamicResource ink}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0" />
+                            <ContentPresenter x:Name="Control" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <TextBlock x:Name="NoteText" Grid.Row="1" Grid.ColumnSpan="2" Text="{TemplateBinding Note}" Foreground="{DynamicResource muted}"
+                                       FontSize="11.5" LineHeight="15.5" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Note" Value="">
+                            <Setter TargetName="NoteText" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="NoteIsWarning" Value="True">
+                            <Setter TargetName="NoteText" Property="Foreground" Value="{DynamicResource warn}" />
+                        </Trigger>
+                        <Trigger Property="Label" Value="">
+                            <Setter TargetName="LabelText" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="Control" Property="Grid.Column" Value="0" />
+                            <Setter TargetName="Control" Property="Grid.ColumnSpan" Value="2" />
+                            <Setter TargetName="Control" Property="HorizontalAlignment" Value="Left" />
+                            <Setter TargetName="NoteText" Property="Margin" Value="0,4,0,0" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- .card: a raised panel with its heading on a strip of the box colour, a line under it -->
+    <Style x:Key="Card" TargetType="controls:Bevel">
+        <Setter Property="TopLeft" Value="{DynamicResource hi}" />
+        <Setter Property="BottomRight" Value="{DynamicResource lo}" />
+        <Setter Property="Background" Value="{DynamicResource panel}" />
+    </Style>
+    <!-- .tbox: a box of the Theme Designer, with a line around it -->
+    <Style x:Key="ThemeBox" TargetType="controls:Bevel">
+        <Setter Property="TopLeft" Value="{DynamicResource line}" />
+        <Setter Property="BottomRight" Value="{DynamicResource line}" />
+        <Setter Property="Background" Value="{DynamicResource panel}" />
+    </Style>
+    <Style x:Key="CardHeading" TargetType="controls:Bevel">
+        <Setter Property="Background" Value="{DynamicResource well}" />
+        <Setter Property="Edges" Value="0,0,0,1" />
+        <Setter Property="BottomRight" Value="{DynamicResource line}" />
+        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource accent}" />
+        <Setter Property="TextElement.FontWeight" Value="Bold" />
+    </Style>
+
+    <!-- button.go: the main action of a bar, such as Run export -->
+    <Style x:Key="GoButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{DynamicResource accent}" />
+    </Style>
+
+    <!--
+      The window's own buttons in the title row: minimize, maximize and close. The HTML app has none; they are drawn like
+      its small icon buttons (button.icon, such as the "?" buttons), and kept no taller than the name badge so the title row
+      keeps its height.
+    -->
+    <Style x:Key="CaptionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="Margin" Value="4,0,0,0" />
+        <Setter Property="MinWidth" Value="26" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+        <Setter Property="FontSize" Value="9" />
+        <Setter Property="TextBlock.LineHeight" Value="9" />
+        <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+
+    <!--
+      #title .vt: the version next to the name, a sunken label that opens the change log. Its CSS asks for a smaller font,
+      but that rule is not valid CSS, so browsers show it at the normal size; this copies what they show.
+    -->
+    <Style x:Key="VersionTag" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <!-- the edges are an inset shadow in the HTML app: drawn over the text's box, not around it (hence the -1) -->
+                    <controls:Bevel x:Name="Edge" Margin="0,2,2,2" Padding="5,-1" TopLeft="{DynamicResource lo}"
+                                    BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                        <ContentPresenter VerticalAlignment="Center" />
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                            <Setter TargetName="Edge" Property="Background" Value="{DynamicResource sel}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- #tabs: buttons on a strip with a light line under it; the selected tab is bold and covers the line -->
+    <Style TargetType="TabControl">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <DockPanel>
+                        <!-- 9 at the top: the strip's 8, and the tabs' "top: 1px", which also lines their bottoms up with the line -->
+                        <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource hi}" Edges="0,0,0,1" Padding="10,9,10,0">
+                            <!-- not WPF's TabPanel, which ignores the gap between tabs and rounds their widths -->
+                            <controls:SnappedRow Gap="2" IsItemsHost="True" />
+                        </controls:Bevel>
+                        <!-- the page under the tabs fills the window and never scrolls: each tab's lists and texts scroll in their own boxes -->
+                        <ContentPresenter ContentSource="SelectedContent" Margin="10" />
+                    </DockPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      The tab's colour and boldness are set on its header only: set on the TabItem itself they would also reach the page
+      it shows, which inherits from it.
+    -->
+    <Style TargetType="TabItem">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <!-- Every tab is one pixel taller than its row and covers the strip's line, as the browser's rounding makes it. -->
+        <Setter Property="Margin" Value="0,0,0,-1" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <controls:Bevel x:Name="Edge" Edges="1,1,1,0" Padding="14,5,14,6" TopLeft="{DynamicResource hi}"
+                                    BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}">
+                        <ContentPresenter x:Name="Header" ContentSource="Header" HorizontalAlignment="Center" RecognizesAccessKey="False"
+                                          TextElement.Foreground="{DynamicResource muted}" />
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource ink}" />
+                            <Setter TargetName="Header" Property="TextElement.FontWeight" Value="Bold" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- input[type=text]: a sunken box in the box colour -->
+    <!--
+      A dropdown's entry with a dimmed part after it, such as a file's folder: "GDConstants.ndf (Strategic\)". The part is
+      dimmed by opacity, as the HTML app's .pdim, so it suits the theme and the entry's state alike. Entries are ChoiceOption.
+    -->
+    <DataTemplate x:Key="DimmedChoice">
+        <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding Label}" />
+            <TextBlock Text="{Binding DimText}" Opacity="0.6" />
+        </StackPanel>
+    </DataTemplate>
+
+    <!-- ::placeholder: the browser's own grey, the same in every theme -->
+    <SolidColorBrush x:Key="PlaceholderGrey" Color="#757575" />
+
+    <Style TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource ink}" />
+        <Setter Property="SelectionBrush" Value="{DynamicResource accent}" />
+        <Setter Property="Padding" Value="5,3" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                        <Grid>
+                            <!-- the placeholder, shown while the box is empty -->
+                            <TextBlock x:Name="Placeholder" Text="{TemplateBinding Tag}" Foreground="{StaticResource PlaceholderGrey}" Visibility="Collapsed"
+                                       Margin="{TemplateBinding Padding}" />
+                            <!--
+                              The text: WPF puts the box's padding around it itself, inside this part, and the text 2 pixels
+                              further in, which the margin takes back. The line is as tall as the box's line height.
+                            -->
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="-2,0" VerticalAlignment="Center" />
+                        </Grid>
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      The rows of a long table (Controls/LongTable.cs): only those in sight are made; each takes the selection colour
+      under the mouse, as Details' edit list does (tr.detl:hover)
+    -->
+    <Style x:Key="LongTableLines" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+        <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ItemContainerStyle">
+            <Setter.Value>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Focusable" Value="False" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="Row" Background="Transparent">
+                                    <ContentPresenter />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource sel}" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <ScrollViewer x:Name="Scroller" Focusable="False" CanContentScroll="True">
+                        <ItemsPresenter />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      The suggestions under a word being typed (Controls/Suggestions.cs): a line per word, the one under the mouse in the
+      hover colour, the chosen one on the selection colour with an accent mark, as the Fonts window's lists
+    -->
+    <Style x:Key="SuggestionList" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ItemContainerStyle">
+            <Setter.Value>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Cursor" Value="Hand" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Grid x:Name="Row" Background="Transparent" Height="20">
+                                    <Border x:Name="Mark" Width="2" HorizontalAlignment="Left" Background="{DynamicResource accent}" Visibility="Collapsed" />
+                                    <ContentPresenter Margin="8,0" VerticalAlignment="Center" />
+                                </Grid>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource hover}" />
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource sel}" />
+                                        <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <ScrollViewer Focusable="False" CanContentScroll="False">
+                        <ItemsPresenter />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- input.mono: a text box in the code font, 12 pixels, in a line of 1.45 times that (as a web page rounds it) -->
+    <Style x:Key="MonoBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Setter Property="FontFamily" Value="{DynamicResource mono}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextBlock.LineHeight" Value="17.390625" />
+    </Style>
+
+    <!-- textarea.mono: several lines in the code font, 4 by 6 pixels in, never wrapped; it scrolls both ways -->
+    <Style x:Key="TextArea" TargetType="TextBox" BasedOn="{StaticResource MonoBox}">
+        <!-- 6 by 4 pixels in: WPF puts the text 2 pixels further in than its padding -->
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="AcceptsReturn" Value="True" />
+        <Setter Property="AcceptsTab" Value="True" />
+        <Setter Property="TextWrapping" Value="NoWrap" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                        <Grid>
+                            <TextBlock x:Name="Placeholder" Text="{TemplateBinding Tag}" Foreground="{StaticResource PlaceholderGrey}" Visibility="Collapsed"
+                                       Margin="6,4" />
+                            <ScrollViewer x:Name="PART_ContentHost" />
+                            <!-- resize:vertical: the corner that makes the box taller or shorter -->
+                            <controls:ResizeCorner />
+                        </Grid>
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="Placeholder" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      #valPop: the larger box for long text, over the text box it belongs to: the code font at 12 pixels in lines of 1.45
+      times that, wrapped, in an accent-coloured edge (its shadow is set in Controls/LongText.cs)
+    -->
+    <Style x:Key="LongTextBox" TargetType="TextBox" BasedOn="{StaticResource MonoBox}">
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <controls:Bevel TopLeft="{DynamicResource accent}" BottomRight="{DynamicResource accent}" Background="{DynamicResource well}">
+                        <ScrollViewer x:Name="PART_ContentHost" />
+                    </controls:Bevel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      select: a sunken box whose arrow sits in a wide right edge, with a thin light line at the far right standing for the
+      edge itself, as the HTML app draws it. The list that opens is a raised box; the item under the mouse is highlighted.
+    -->
+    <Style TargetType="ComboBox">
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <ToggleButton IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Focusable="False">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}"
+                                                    Edges="1,1,0,1">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="19" />
+                                            </Grid.ColumnDefinitions>
+                                            <!-- the arrow: 10 pixels wide and 5 tall, 5 pixels from the far right -->
+                                            <controls:DropArrow Grid.Column="1" Margin="4,0,0,0" Fill="{DynamicResource ink}" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                                            <controls:Bevel Grid.Column="1" Width="1" HorizontalAlignment="Right" Edges="0" Background="{DynamicResource hi}" />
+                                        </Grid>
+                                    </controls:Bevel>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                        <ContentPresenter Margin="6,4,22,4" IsHitTestVisible="False" VerticalAlignment="Center"
+                                          Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+                        <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" VerticalOffset="1" AllowsTransparency="True" Focusable="False">
+                            <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource well}" Padding="2"
+                                            MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto">
+                                    <ItemsPresenter />
+                                </ScrollViewer>
+                            </controls:Bevel>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ComboBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Padding" Value="8,3" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Row" Background="Transparent" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Row" Property="Background" Value="{DynamicResource hover}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="FontWeight" Value="Bold" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      input.tog: a toggle for settings that take effect at once. A sunken track; a raised knob with a grip groove, which
+      slides right when on, while the track fills with the toggle colour. Its label sits 4 pixels to the right, dimmed.
+    -->
+    <Style x:Key="Toggle" TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Grid Width="32" Height="16" VerticalAlignment="Center">
+                            <controls:Bevel x:Name="Track" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" />
+                            <Grid x:Name="Knob" Width="12" Height="12" Margin="2,2,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}" />
+                                <controls:Bevel Width="1" Margin="5,1,0,1" HorizontalAlignment="Left" Edges="0" Background="{DynamicResource lo}" />
+                                <controls:Bevel Width="1" Margin="6,1,0,1" HorizontalAlignment="Left" Edges="0" Background="{DynamicResource hi}" />
+                            </Grid>
+                        </Grid>
+                        <ContentPresenter x:Name="Label" Margin="4,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <!-- a switch without words, such as a rule's in the rule list, takes no room for them -->
+                        <Trigger Property="HasContent" Value="False">
+                            <Setter TargetName="Label" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource toggle}" />
+                            <Setter TargetName="Knob" Property="Margin" Value="18,2,0,0" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="TopLeft" Value="{DynamicResource accent}" />
+                            <Setter TargetName="Track" Property="BottomRight" Value="{DynamicResource accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- button.icon: a small square button, such as "?" -->
+    <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Padding" Value="6,1" />
+        <Setter Property="MinWidth" Value="22" />
+    </Style>
+
+    <!-- button.qhelp: the "?" that opens the help for a tab -->
+    <Style x:Key="HelpButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Content" Value="?" />
+        <Setter Property="ToolTip" Value="Help for this tab" />
+    </Style>
+
+    <!--
+      #wkList button: a page in the Help tab's list. Under the mouse it takes the hover colour; the page shown is on the
+      selection colour, in accent, with a 2-pixel accent line on its left.
+    -->
+    <Style x:Key="WikiNavItem" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid x:Name="Back" Background="Transparent">
+                        <ContentPresenter Margin="12,3,8,3" />
+                        <Rectangle x:Name="Stripe" Width="2" HorizontalAlignment="Left" Fill="{DynamicResource accent}" Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Back" Property="Background" Value="{DynamicResource hover}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Back" Property="Background" Value="{DynamicResource sel}" />
+                            <Setter TargetName="Stripe" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- .wkpl: "Previous:" or "Next:" in a Help page's pager, dim unless the button is under the mouse -->
+    <Style x:Key="PagerLabel" TargetType="Run">
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Button}}" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource ink}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- #wkCrumb: a Help page's group above its title, a dim link that turns accent under the mouse -->
+    <Style x:Key="CrumbLink" TargetType="Hyperlink">
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource accent}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- .bar .sep: a thin upright line between groups of buttons -->
+    <Style x:Key="BarSeparator" TargetType="controls:Bevel">
+        <Setter Property="Width" Value="1" />
+        <Setter Property="Edges" Value="0" />
+        <Setter Property="Background" Value="{DynamicResource line}" />
+        <Setter Property="Margin" Value="3,0" />
+    </Style>
+
+    <!-- h2: a section heading in the accent colour, with a line under it -->
+    <Style x:Key="Heading" TargetType="controls:Bevel">
+        <Setter Property="BottomRight" Value="{DynamicResource line}" />
+        <Setter Property="Edges" Value="0,0,0,1" />
+        <Setter Property="Padding" Value="0,0,0,3" />
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource accent}" />
+        <Setter Property="TextElement.FontWeight" Value="Bold" />
+    </Style>
+
+    <!-- .fhb: a heading that is also a button: it folds its section away -->
+    <Style x:Key="FoldHeading" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource accent}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <ContentPresenter Margin="0" />
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource ink}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- thead th: a column heading, dim, with a line at its right (the dark line under the row is drawn over the row) -->
+    <Style x:Key="ColumnHeading" TargetType="controls:Bevel">
+        <Setter Property="Background" Value="{DynamicResource panel}" />
+        <Setter Property="BottomRight" Value="{DynamicResource line}" />
+        <Setter Property="Edges" Value="0,0,1,0" />
+        <Setter Property="Padding" Value="7,3" />
+        <Setter Property="TextElement.Foreground" Value="{DynamicResource muted}" />
+    </Style>
+
+    <!--
+      input[type=checkbox]: a sunken box, 14 pixels square, with a tick in the accent colour when checked; its edge turns
+      accent under the mouse. Given content, it is the HTML app's label.chk: the box with its text.
+    -->
+    <Style x:Key="Tick" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <!-- label.chk: the box, then its text 4 pixels on, in the dim colour, centred top to bottom -->
+                    <StackPanel Orientation="Horizontal" Background="{TemplateBinding Background}">
+                        <Grid x:Name="BoxArea" Width="14" Height="14" VerticalAlignment="Center">
+                            <controls:Bevel x:Name="Box" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" />
+                            <!-- the tick: the HTML app's clip-path polygon on an 8 pixel square in the middle -->
+                            <Path x:Name="Mark" Width="8" Height="8" Fill="{DynamicResource accent}" Visibility="Collapsed"
+                                  Data="M 0.96,3.68 L 0,4.96 L 3.2,8 L 8,1.44 L 6.88,0.32 L 3.04,5.44 Z" />
+                        </Grid>
+                        <ContentPresenter x:Name="Label" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="HasContent" Value="False">
+                            <Setter TargetName="Label" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger SourceName="BoxArea" Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="TopLeft" Value="{DynamicResource accent}" />
+                            <Setter TargetName="Box" Property="BottomRight" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <!-- :disabled: the box faded to 45%, its text as it was -->
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="BoxArea" Property="Opacity" Value="0.45" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- th .arrow: the accent arrow after the heading the list is sorted by -->
+    <Style x:Key="SortArrow" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource accent}" />
+        <Setter Property="Margin" Value="5,0,0,0" />
+    </Style>
+
+    <!-- td: a cell of the file list, padded 3 by 7 and centred top to bottom -->
+    <Style x:Key="Cell" TargetType="TextBlock">
+        <Setter Property="Margin" Value="7,3" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- .sub: the faint second line under a file name, 11 pixels, 1 pixel below the name, kept on one line -->
+    <Style x:Key="SubLine" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource ui-font}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="LineHeight" Value="14.3" />
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="Margin" Value="0,1,0,0" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- .note: dim help text under a control -->
+    <Style x:Key="Note" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+
+    <!--
+      Scrollbars in the theme's colours, 14 pixels thick, without arrow buttons. Plain (most themes): a flat bar of the
+      light edge colour, 3 pixels in from the edges of a track in the box colour; the dim text colour under the mouse.
+      ThemeManager picks Plain or Tread for the theme (Theming/ThemeManager.cs).
+    -->
+    <Style x:Key="PlainScrollThumb" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <controls:Bevel x:Name="Bar" Margin="3" Edges="0" Background="{DynamicResource hi}" />
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bar" Property="Background" Value="{DynamicResource muted}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      Tread (Olivine): a raised thumb in the panel colour with three short grip lines, in a track a little darker than the
+      box with a dark line along its top and left, so it reads as sunken. The thumb takes the selection colour under the
+      mouse, and looks pressed while dragged.
+    -->
+    <Style x:Key="TreadScrollThumb" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <controls:Bevel x:Name="Bar" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}">
+                        <Grid x:Name="Grip" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <controls:Bevel x:Name="Line1" Edges="0" Background="{DynamicResource muted}" />
+                            <controls:Bevel x:Name="Line2" Edges="0" Background="{DynamicResource muted}" />
+                            <controls:Bevel x:Name="Line3" Edges="0" Background="{DynamicResource muted}" />
+                        </Grid>
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <!-- across a vertical bar the lines are 6 by 1, 3 pixels apart; along a horizontal one, 1 by 6 -->
+                        <DataTrigger Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="Vertical">
+                            <Setter TargetName="Grip" Property="Width" Value="6" />
+                            <Setter TargetName="Grip" Property="Height" Value="7" />
+                            <Setter TargetName="Line1" Property="Height" Value="1" />
+                            <Setter TargetName="Line1" Property="VerticalAlignment" Value="Top" />
+                            <Setter TargetName="Line2" Property="Height" Value="1" />
+                            <Setter TargetName="Line3" Property="Height" Value="1" />
+                            <Setter TargetName="Line3" Property="VerticalAlignment" Value="Bottom" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Orientation, RelativeSource={RelativeSource AncestorType=ScrollBar}}" Value="Horizontal">
+                            <Setter TargetName="Grip" Property="Width" Value="7" />
+                            <Setter TargetName="Grip" Property="Height" Value="6" />
+                            <Setter TargetName="Line1" Property="Width" Value="1" />
+                            <Setter TargetName="Line1" Property="HorizontalAlignment" Value="Left" />
+                            <Setter TargetName="Line2" Property="Width" Value="1" />
+                            <Setter TargetName="Line3" Property="Width" Value="1" />
+                            <Setter TargetName="Line3" Property="HorizontalAlignment" Value="Right" />
+                        </DataTrigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bar" Property="Background" Value="{DynamicResource sel}" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Bar" Property="TopLeft" Value="{DynamicResource lo}" />
+                            <Setter TargetName="Bar" Property="BottomRight" Value="{DynamicResource hi}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- the track a page of the bar moves along; a click on it moves by a page, as in a browser -->
+    <Style x:Key="ScrollPage" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="Transparent" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="PlainScrollBar" TargetType="ScrollBar">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="MinWidth" Value="14" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <controls:Bevel Edges="0" Background="{DynamicResource well}">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <!-- a thumb long enough to grab, however long the content (Controls/ThumbViewport.cs) -->
+                                <Track.ViewportSize>
+                                    <MultiBinding Converter="{x:Static controls:ThumbViewport.Instance}">
+                                        <Binding Path="ViewportSize" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="Minimum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="Maximum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="ActualHeight" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                </Track.ViewportSize>
+                            <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageUpCommand" /></Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageDownCommand" /></Track.IncreaseRepeatButton>
+                            <Track.Thumb><Thumb Style="{StaticResource PlainScrollThumb}" /></Track.Thumb>
+                        </Track>
+                    </controls:Bevel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Height" Value="14" />
+                <Setter Property="MinHeight" Value="14" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <controls:Bevel Edges="0" Background="{DynamicResource well}">
+                                <Track x:Name="PART_Track">
+                                <!-- a thumb long enough to grab, however long the content (Controls/ThumbViewport.cs) -->
+                                <Track.ViewportSize>
+                                    <MultiBinding Converter="{x:Static controls:ThumbViewport.Instance}">
+                                        <Binding Path="ViewportSize" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="Minimum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="Maximum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                </Track.ViewportSize>
+                                    <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageLeftCommand" /></Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageRightCommand" /></Track.IncreaseRepeatButton>
+                                    <Track.Thumb><Thumb Style="{StaticResource PlainScrollThumb}" /></Track.Thumb>
+                                </Track>
+                            </controls:Bevel>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="TreadScrollBar" TargetType="ScrollBar">
+        <Setter Property="Width" Value="14" />
+        <Setter Property="MinWidth" Value="14" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <controls:Bevel TopLeft="{DynamicResource lo}" Edges="1,1,0,0" Background="{DynamicResource scroll-track}">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True" Margin="-1,-1,0,0">
+                                <!-- a thumb long enough to grab, however long the content (Controls/ThumbViewport.cs) -->
+                                <Track.ViewportSize>
+                                    <MultiBinding Converter="{x:Static controls:ThumbViewport.Instance}">
+                                        <Binding Path="ViewportSize" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="Minimum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="Maximum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="ActualHeight" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                </Track.ViewportSize>
+                            <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageUpCommand" /></Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageDownCommand" /></Track.IncreaseRepeatButton>
+                            <Track.Thumb><Thumb Style="{StaticResource TreadScrollThumb}" /></Track.Thumb>
+                        </Track>
+                    </controls:Bevel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="Height" Value="14" />
+                <Setter Property="MinHeight" Value="14" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <controls:Bevel TopLeft="{DynamicResource lo}" Edges="1,1,0,0" Background="{DynamicResource scroll-track}">
+                                <Track x:Name="PART_Track" Margin="-1,-1,0,0">
+                                <!-- a thumb long enough to grab, however long the content (Controls/ThumbViewport.cs) -->
+                                <Track.ViewportSize>
+                                    <MultiBinding Converter="{x:Static controls:ThumbViewport.Instance}">
+                                        <Binding Path="ViewportSize" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="Minimum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="Maximum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                        <Binding Path="ActualWidth" RelativeSource="{RelativeSource Self}" />
+                                    </MultiBinding>
+                                </Track.ViewportSize>
+                                    <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageLeftCommand" /></Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPage}" Command="ScrollBar.PageRightCommand" /></Track.IncreaseRepeatButton>
+                                    <Track.Thumb><Thumb Style="{StaticResource TreadScrollThumb}" /></Track.Thumb>
+                                </Track>
+                            </controls:Bevel>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+
+    <!-- #colPop label: a choice in a popup, across its whole width, on the hover colour under the mouse -->
+    <Style x:Key="PopupChoice" TargetType="CheckBox" BasedOn="{StaticResource Tick}">
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource hover}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--
+      #ctx: the right-click menu. A raised box on the panel colour with 3 pixels of padding, 12rem to 24rem wide; each
+      item 4 by 14 pixels in, on the hover colour under the mouse; disabled items dim; a faint line between groups.
+    -->
+    <!--
+      Tooltips in the theme: on the panel colour with a raised edge, in the app's text, like the menus. A long tooltip
+      wraps at 24rem. A tooltip opens in a window of its own, so it takes the text settings here, as a menu does.
+    -->
+    <Style TargetType="ToolTip">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="HasDropShadow" Value="False" />
+        <Setter Property="FontFamily" Value="{DynamicResource ui-font}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextBlock.LineHeight" Value="17" />
+        <Setter Property="TextBlock.LineStackingStrategy" Value="BlockLineHeight" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+        <Setter Property="UseLayoutRounding" Value="False" />
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                                    Padding="7,4" MaxWidth="384">
+                        <ContentPresenter>
+                            <ContentPresenter.Resources>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap" />
+                                </Style>
+                            </ContentPresenter.Resources>
+                        </ContentPresenter>
+                    </controls:Bevel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ContextMenu">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <!-- a menu opens in a window of its own, so it takes the main view's text settings here (see MainView.xaml) -->
+        <Setter Property="FontFamily" Value="{DynamicResource ui-font}" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="TextBlock.LineHeight" Value="18.125" />
+        <Setter Property="TextBlock.LineStackingStrategy" Value="BlockLineHeight" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
+        <Setter Property="UseLayoutRounding" Value="False" />
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                                    Padding="3" MinWidth="192" MaxWidth="384">
+                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                    </controls:Bevel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="MenuItem">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Item" Background="Transparent" Padding="14,4">
+                        <DockPanel>
+                            <!-- #ctx .mk: the item's key, floated right, 2.5em after the label -->
+                            <TextBlock x:Name="Key" DockPanel.Dock="Right" Margin="31.25,0,0,0" Text="{TemplateBinding InputGestureText}" Foreground="{DynamicResource muted}" />
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="False" />
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="InputGestureText" Value="">
+                            <Setter TargetName="Key" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Item" Property="Background" Value="{DynamicResource hover}" />
+                        </Trigger>
+                        <!-- button:disabled: dim, at 60% -->
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource muted}" />
+                            <Setter TargetName="Item" Property="Opacity" Value="0.6" />
+                            <Setter TargetName="Item" Property="Background" Value="Transparent" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- #ctx hr: a faint line, 3 pixels above and below. Menus look their lines' style up under this key. -->
+    <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <controls:Bevel Height="1" Margin="0,3" Edges="0" Background="{DynamicResource line}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      A list's scrolling frame (#jobBox): its headings, given as the Tag, sit above the rows and move sideways with them,
+      and the vertical scrollbar runs the whole height of the box, beside the headings too, as on a web page.
+    -->
+    <Style x:Key="ListScroller" TargetType="ScrollViewer">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollViewer">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <!-- clips the headings at the sides while they scroll; FilesPage.xaml.cs sets the clip -->
+                        <Border x:Name="HeadingsClip" Grid.Row="0" Grid.Column="0">
+                            <ContentPresenter Content="{TemplateBinding Tag}" />
+                        </Border>
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Grid.Row="1" Grid.Column="0" CanContentScroll="{TemplateBinding CanContentScroll}" />
+                        <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Orientation="Vertical"
+                                   Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
+                                   Value="{TemplateBinding VerticalOffset}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                        <ScrollBar x:Name="PART_HorizontalScrollBar" Grid.Row="2" Grid.Column="0" Orientation="Horizontal"
+                                   Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}"
+                                   Value="{TemplateBinding HorizontalOffset}" Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
+                        <!-- the corner where the two bars meet -->
+                        <controls:Bevel Grid.Row="2" Grid.Column="1" Edges="0" Background="{DynamicResource well}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      Every other scrolling box: WPF's own layout, with the corner where the two bars meet in the box colour rather than
+      Windows' grey (the browser draws it dark).
+    -->
+    <Style TargetType="ScrollViewer">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollViewer">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}"
+                                                CanContentScroll="{TemplateBinding CanContentScroll}" />
+                        <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical"
+                                   Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
+                                   Value="{TemplateBinding VerticalOffset}"
+                                   Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" Cursor="Arrow" />
+                        <ScrollBar x:Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal"
+                                   Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}"
+                                   Value="{TemplateBinding HorizontalOffset}"
+                                   Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" Cursor="Arrow" />
+                        <controls:Bevel Grid.Row="1" Grid.Column="1" Edges="0" Background="{DynamicResource well}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Olivine's Tread until a theme is applied, so the designer shows it; the app puts the theme's own in its place -->
+    <Style TargetType="ScrollBar" BasedOn="{StaticResource TreadScrollBar}" />
+
+</ResourceDictionary>

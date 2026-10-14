@@ -1,0 +1,41 @@
+<!--
+  The condition or action window (the HTML app's #subDlg): one row of the open rule, beside the rule window, which moves
+  to the left while it is open. Changes are saved as they are made. It has no backdrop of its own: the rule window's
+  dims the app, and the rule window stays usable beside it.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.RowWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             Visibility="Collapsed">
+    <!-- .box.raised: 30rem wide, at most 92% of the app tall; 10 pixels in at the top, 12 elsewhere -->
+    <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                    Padding="12,10,12,12" Width="480" HorizontalAlignment="Right" VerticalAlignment="Center">
+        <DockPanel>
+            <!-- .bar: the title; at the right, which row of how many, ‹ ›, ? and × -->
+            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
+                    <TextBlock x:Name="Position" Style="{StaticResource Note}" TextWrapping="NoWrap" Margin="0,0,4,0" VerticalAlignment="Center" />
+                    <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2039;" ToolTip="Previous row" Click="PreviousClicked" />
+                    <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x203A;" ToolTip="Next row" Click="NextClicked" />
+                    <Button x:Name="HelpButton" Style="{StaticResource HelpButton}" ToolTip="About this window" controls:QuickHelp.Page="conditions" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="Close (Escape)" Click="CloseClicked" />
+                </controls:SnappedRow>
+                <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="Condition" />
+            </DockPanel>
+
+            <!-- .bar: the note, and Done at the right -->
+            <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                <Button DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="Done" ToolTip="Close (Enter). Changes are saved as you make them" Click="CloseClicked" />
+                <TextBlock Style="{StaticResource Note}" Margin="0" VerticalAlignment="Center" Text="Changes are saved as you make them." />
+            </DockPanel>
+
+            <!-- #subForm: sunken, in the panel colour, 10 by 12 pixels in; it scrolls when the row does not fit -->
+            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource panel}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <StackPanel x:Name="Form" Margin="12,10" />
+                </ScrollViewer>
+            </controls:Bevel>
+        </DockPanel>
+    </controls:Bevel>
+</UserControl>

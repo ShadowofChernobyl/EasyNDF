@@ -1,0 +1,110 @@
+<!--
+  Everything inside the main window, laid out like the HTML app's page: a raised panel on the page background, with the
+  title row (#title), the tabs (#tabs) and one page per tab. It is a control of its own so that it can be drawn
+  at any size without a window around it.
+-->
+<!--
+  Layout is worked out to fractions of a pixel, as a browser does, and only the drawn edges are put on whole pixels, by
+  the controls that draw them (see Controls/PixelSnapping.cs). WPF's own snapping is off: it would move them again. WPF's usual rounding of every size would drift a pixel away from the HTML
+  app wherever several fractional sizes add up.
+-->
+<!--
+  d:DesignWidth and d:DesignHeight give Visual Studio's designer a fixed size to draw in. Without them it sizes the view
+  to its content, and the rows that wrap to fit the width keep changing that width, so the view shook from side to side.
+-->
+<UserControl x:Class="EasyNdf.App.MainView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             xmlns:pages="clr-namespace:EasyNdf.App.Pages"
+             xmlns:dialogs="clr-namespace:EasyNdf.App.Dialogs"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+             Background="{DynamicResource panel}" Foreground="{DynamicResource ink}"
+             FontFamily="{DynamicResource ui-font}" FontSize="12.5"
+             TextBlock.LineHeight="18.125" TextBlock.LineStackingStrategy="BlockLineHeight"
+             UseLayoutRounding="False" SnapsToDevicePixels="False"
+             TextOptions.TextFormattingMode="Ideal"
+             AllowDrop="True" DragEnter="FilesDraggedOver" DragOver="FilesDraggedOver" DragLeave="FilesDragLeft" Drop="FilesDropped">
+
+    <!--
+      The HTML app sits on its page with a 10-pixel border of the page colour around it. The desktop app leaves that out
+      and fills the window: while a window is being resized, WPF draws its inside a moment after the window's edge moves,
+      and the panel would visibly slide against such a border. Drawn without a window, the border is drawn back in,
+      so the view still matches the HTML app's page.
+    -->
+    <Grid x:Name="Page">
+        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}">
+            <DockPanel>
+
+                <!-- #title: the name, the version, a short description, and the window's buttons -->
+                <controls:Bevel x:Name="TitleRow" DockPanel.Dock="Top" BottomRight="{DynamicResource lo}" Edges="0,0,0,1" Padding="10,6">
+                    <DockPanel>
+                        <StackPanel x:Name="CaptionButtons" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}" Content="&#xE921;"
+                                    ToolTip="Minimize" Click="Minimize_Click" />
+                            <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Content="&#xE922;"
+                                    ToolTip="Maximize" Click="Maximize_Click" />
+                            <Button x:Name="CloseButton" Style="{StaticResource CaptionButton}" Content="&#xE8BB;"
+                                    ToolTip="Close" Click="Close_Click" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}">
+                                <StackPanel Orientation="Horizontal">
+                                    <controls:SpacedText Text="EasyNDF" Spacing="0.04" TextElement.FontWeight="Bold" TextElement.FontSize="13" Margin="6,0" VerticalAlignment="Center" />
+                                    <Button x:Name="VersionTag" Style="{StaticResource VersionTag}"
+                                            ToolTip="What's new" />
+                                </StackPanel>
+                            </controls:Bevel>
+                            <TextBlock Text="rule-based .ndf editing" Foreground="{DynamicResource muted}" Margin="9.6,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </DockPanel>
+                </controls:Bevel>
+
+                <!-- #tabs and the pages. Each page is built in its own stage of the port. -->
+                <TabControl x:Name="Tabs">
+                    <TabItem Header="Files" ToolTip="Add files, assign presets, export">
+                        <pages:FilesPage x:Name="FilesTab" />
+                    </TabItem>
+                    <TabItem Header="Rules" ToolTip="Mods, presets and rules">
+                        <pages:RulesPage x:Name="RulesTab" />
+                    </TabItem>
+                    <TabItem Header="Editor" ToolTip="View and edit a file">
+                        <pages:EditorPage x:Name="EditorTab" />
+                    </TabItem>
+                    <TabItem Header="Settings" ToolTip="Options, themes and data">
+                        <pages:SettingsPage x:Name="SettingsTab" />
+                    </TabItem>
+                    <TabItem Header="Help" ToolTip="How it works">
+                        <pages:HelpPage x:Name="HelpTab" />
+                    </TabItem>
+                    <TabItem Header="About" ToolTip="About and links">
+                        <pages:AboutPage x:Name="AboutTab" />
+                    </TabItem>
+                </TabControl>
+
+            </DockPanel>
+        </controls:Bevel>
+        <!-- the rule window, over the tabs while it is open -->
+        <dialogs:RuleWindow x:Name="RuleWindow" />
+        <!-- the condition or action window, beside the rule window -->
+        <dialogs:RowWindow x:Name="RowWindow" />
+        <!-- the Watermark window -->
+        <dialogs:WatermarkWindow x:Name="Watermark" />
+        <!-- the Filter Descriptors window of the Editor tab's descriptor viewer -->
+        <dialogs:FilterWindow x:Name="Filters" />
+        <!-- the License and the change log -->
+        <dialogs:TextWindow x:Name="TextWindow" />
+        <!-- the Theme Designer's colour window -->
+        <dialogs:ColourWindow x:Name="ColourWindow" />
+        <!-- the Fonts window of Settings, Appearance -->
+        <dialogs:FontWindow x:Name="FontWindow" />
+        <!-- the welcome window, the first time the app starts -->
+        <dialogs:WelcomeWindow x:Name="Welcome" />
+        <!-- the message window, over everything else while it is open -->
+        <dialogs:MessageOverlay x:Name="Messages" />
+        <!-- the popup of the ? buttons, over the windows too -->
+        <dialogs:HelpPopup x:Name="HelpPopup" />
+    </Grid>
+</UserControl>

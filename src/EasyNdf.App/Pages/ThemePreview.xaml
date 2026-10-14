@@ -1,0 +1,76 @@
+<!--
+  The Theme Designer's preview (the HTML app's #thPrev): a small sample of the app in the theme in use, with a heading,
+  text, the usual controls, a list with a Columns popup, an editable sample of NDF text and a sample of "Changes only".
+  Every part refers to the theme's colours, so it follows each change at once. ThemePreview.xaml.cs fills the samples.
+-->
+<UserControl x:Class="EasyNdf.App.Pages.ThemePreview"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls">
+    <controls:Bevel Style="{StaticResource ThemeBox}">
+        <StackPanel>
+            <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="Preview" /></controls:Bevel>
+            <!-- .pv-bg: the page's background around a raised panel, .pv-app -->
+            <Border Background="{DynamicResource bg}" Padding="14">
+                <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}" Padding="12,10">
+                    <StackPanel>
+                        <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="A Heading in the Accent Color" /></controls:Bevel>
+                        <TextBlock Margin="0,0,0,6" TextWrapping="Wrap" Foreground="{DynamicResource ink}">
+                            <Run Text="Normal text beside" />
+                            <Run Text="dim text for notes" Foreground="{DynamicResource muted}" />
+                            <Run Text="and" />
+                            <Hyperlink x:Name="SampleLink" Foreground="{DynamicResource accent}" NavigateUri="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                                       RequestNavigate="LinkClicked" ToolTip="A sample link"><Run Text="a link" /></Hyperlink><Run Text="." />
+                        </TextBlock>
+                        <controls:WrapRow Gap="6" Margin="0,0,0,8">
+                            <Button Content="Button" Focusable="False" />
+                            <Button Content="Run export" Style="{StaticResource GoButton}" Focusable="False" />
+                            <Button Content="Switched off" IsEnabled="False" />
+                            <TextBox Text="Text box" Width="112" IsReadOnly="True" Focusable="False" ToolTip="A sample text box" />
+                            <!-- as wide as the browser makes it: as its longest choice -->
+                            <ComboBox SelectedIndex="0" Width="176" ToolTip="A sample dropdown">
+                                <ComboBoxItem Content="Dropdown" />
+                                <ComboBoxItem Content="Every .ndf file in it" />
+                                <ComboBoxItem Content="Only files the rules changed" />
+                                <ComboBoxItem Content="Bundle into one zip" />
+                                <ComboBoxItem Content="Ask each time" />
+                                <ComboBoxItem Content="A much longer choice, to show how a wide entry looks" />
+                            </ComboBox>
+                            <CheckBox Style="{StaticResource Tick}" Content="Checkbox" IsChecked="True" Focusable="False" VerticalAlignment="Center" />
+                            <CheckBox Style="{StaticResource Toggle}" Content="Toggle slider" IsChecked="True" Focusable="False" VerticalAlignment="Center" />
+                        </controls:WrapRow>
+
+                        <!-- the sample list, with its own Columns popup -->
+                        <StackPanel Orientation="Horizontal">
+                            <Grid>
+                                <Button x:Name="ColumnsButton" Content="Columns" ToolTip="Show or hide columns" Click="ColumnsClicked" />
+                                <Popup x:Name="ColumnsPopup" PlacementTarget="{Binding ElementName=ColumnsButton}" Placement="Bottom" VerticalOffset="2"
+                                       StaysOpen="False" AllowsTransparency="True">
+                                    <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                                                    Padding="10,8" MinWidth="192" TextElement.FontFamily="{DynamicResource ui-font}" TextElement.FontSize="12.5"
+                                                    TextBlock.LineHeight="18.125" TextBlock.LineStackingStrategy="BlockLineHeight" TextOptions.TextFormattingMode="Ideal"
+                                                    UseLayoutRounding="False">
+                                        <StackPanel x:Name="ColumnChoices" />
+                                    </controls:Bevel>
+                                </Popup>
+                            </Grid>
+                            <TextBlock Text="Sample list" Foreground="{DynamicResource muted}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <controls:Bevel x:Name="SampleList" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Margin="0,8" />
+
+                        <!-- the sample editor, and its Reset text -->
+                        <DockPanel Margin="0,0,0,4">
+                            <Button DockPanel.Dock="Right" Content="Reset text" ToolTip="Restore the sample text" Click="ResetTextClicked" />
+                            <TextBlock Text="Sample editor" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <!-- 17 lines of 17 pixels, and the box's edges -->
+                        <ContentControl x:Name="SampleEditor" Height="291" Focusable="False" />
+
+                        <TextBlock Text="Sample of Changes only" Foreground="{DynamicResource muted}" Margin="0,8,0,4" />
+                        <ContentControl x:Name="SampleChanges" Focusable="False" />
+                    </StackPanel>
+                </controls:Bevel>
+            </Border>
+        </StackPanel>
+    </controls:Bevel>
+</UserControl>

@@ -1,0 +1,45 @@
+<!--
+  The colours and fonts the app starts with: Olivine, the theme a new user sees. Theming/ThemeManager.cs replaces them with
+  the chosen theme as the app starts, so they matter only until then, and in the Visual Studio designer, which shows the
+  app as a new user first sees it.
+
+  Keep these the same as Olivine in EasyNdf.Data/Themes/BuiltInThemes.cs; a test (DefaultThemeTests) checks that they are.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="bg" Color="#141815" />
+    <SolidColorBrush x:Key="panel" Color="#1c221e" />
+    <SolidColorBrush x:Key="well" Color="#141815" />
+    <SolidColorBrush x:Key="ink" Color="#e3e8e2" />
+    <SolidColorBrush x:Key="muted" Color="#98a39b" />
+    <SolidColorBrush x:Key="line" Color="#333c35" />
+    <SolidColorBrush x:Key="accent" Color="#7fb88a" />
+    <SolidColorBrush x:Key="ok" Color="#7fb88a" />
+    <SolidColorBrush x:Key="warn" Color="#f0957a" />
+    <SolidColorBrush x:Key="caution" Color="#bfac5f" />
+    <SolidColorBrush x:Key="sel" Color="#27322a" />
+    <SolidColorBrush x:Key="hover" Color="#42594a" />
+    <SolidColorBrush x:Key="toggle" Color="#364f3b" />
+    <SolidColorBrush x:Key="hi" Color="#3f4a42" />
+    <SolidColorBrush x:Key="lo" Color="#090b0a" />
+    <SolidColorBrush x:Key="s-comment" Color="#6f7b71" />
+    <SolidColorBrush x:Key="s-string" Color="#d2b773" />
+    <SolidColorBrush x:Key="s-number" Color="#d99a6c" />
+    <SolidColorBrush x:Key="s-keyword" Color="#9ec3d6" />
+    <SolidColorBrush x:Key="s-type" Color="#7fb88a" />
+    <SolidColorBrush x:Key="s-func" Color="#c9d68a" />
+    <SolidColorBrush x:Key="s-const" Color="#c79ad6" />
+    <SolidColorBrush x:Key="s-ref" Color="#8fb0a0" />
+    <SolidColorBrush x:Key="s-param" Color="#d68a9a" />
+    <SolidColorBrush x:Key="s-name" Color="#e3e8e2" />
+    <SolidColorBrush x:Key="s-field" Color="#b9c7bc" />
+    <SolidColorBrush x:Key="d-add" Color="#7fb88a" />
+    <!-- the Tread scrollbars' track, worked out from "well" and "lo" (see ThemeColors.ScrollTrack) -->
+    <SolidColorBrush x:Key="scroll-track" Color="#101311" />
+    <SolidColorBrush x:Key="d-del" Color="#f0957a" />
+
+    <FontFamily x:Key="ui-font">Tahoma, Verdana, Segoe UI</FontFamily>
+    <FontFamily x:Key="mono">Cascadia Mono, Consolas, Lucida Console</FontFamily>
+
+</ResourceDictionary>

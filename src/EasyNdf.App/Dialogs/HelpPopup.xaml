@@ -1,0 +1,30 @@
+<!--
+  The popup of the ? buttons (the HTML app's #qPop): the Help page about the tab or window, beside the button, with
+  "See more" to open it on the Help tab. 27rem wide, at most 70% of the window's height (34rem at most); it scrolls.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.HelpPopup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Visibility="Collapsed">
+    <!-- only the box takes the mouse; a click anywhere else goes through and closes the popup (MainView.xaml.cs) -->
+    <Canvas x:Name="Layer" IsHitTestVisible="True" Background="{x:Null}">
+        <!-- a 1-pixel accent outline and a soft shadow -->
+        <Border x:Name="Box" Width="432" Background="{DynamicResource panel}" BorderBrush="{DynamicResource accent}" BorderThickness="1"
+                KeyDown="KeyPressed">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.5" Color="Black" />
+            </Border.Effect>
+            <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <StackPanel Margin="11,7,11,9">
+                    <DockPanel Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="Close (Escape)" Click="CloseClicked" />
+                        <TextBlock x:Name="Title" FontSize="13.5" Foreground="{DynamicResource accent}" VerticalAlignment="Center"
+                                   TextWrapping="Wrap" />
+                    </DockPanel>
+                    <ContentControl x:Name="Body" Focusable="False" />
+                    <Button x:Name="MoreButton" Content="See more" HorizontalAlignment="Right" ToolTip="Open this page on the Help tab" Click="MoreClicked" />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Canvas>
+</UserControl>
