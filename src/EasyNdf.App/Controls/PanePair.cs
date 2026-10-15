@@ -84,9 +84,19 @@ public sealed class PanePair : Grid
     /// <summary>The second pane's heading.</summary>
     public string SecondTitle
     {
-        get => title.Text;
-        set => title.Text = value;
+        get => secondTitle;
+        set { secondTitle = value; ShowTitle(); }
     }
+    private string secondTitle = "";
+
+    /// <summary>
+    /// The heading while the second pane is folded, when it should be shorter than <see cref="SecondTitle"/>: Details
+    /// is just "Details" then, not the file and preset it shows. Null keeps the same heading folded or not.
+    /// </summary>
+    public string? FoldedTitle { get; set; }
+
+    /// <summary>Shows the heading for the pane as it is now, folded or not.</summary>
+    private void ShowTitle() => title.Text = isFolded && FoldedTitle is not null ? FoldedTitle : secondTitle;
 
     /// <summary>Whether the second pane is folded away, with only its heading showing.</summary>
     public bool IsFolded => isFolded;
@@ -202,13 +212,16 @@ public sealed class PanePair : Grid
         Put(main, 0, beside);
         bar.LiesFlat = !beside;
         bar.ToolTip = "Drag to resize. Double-click to reset.";
-        bar.Visibility = isFolded ? Visibility.Collapsed : Visibility.Visible;
+        // folded, the bar cannot be dragged but keeps its room, so the heading keeps the same gap from the main pane
+        // as when the pane is open, rather than touching it
+        bar.Visibility = isFolded ? Visibility.Hidden : Visibility.Visible;
         Put(bar, 1, beside);
         Put(second, 2, beside);
         body.Visibility = isFolded ? Visibility.Collapsed : Visibility.Visible;
         // folded beside, the heading stands on its side down the window's edge
         heading.LayoutTransform = isFolded && beside ? new RotateTransform(90) : Transform.Identity;
         arrow.Text = isFolded ? (beside ? "◂" : "▸") : "▾";
+        ShowTitle();
         // pressed only while chosen by hand; while the window's size decides, neither is
         bool byHand = !PaneArrangement.IsAutomatic;
         besideButton.IsChecked = byHand && beside;
