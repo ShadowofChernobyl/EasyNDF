@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.Json.Nodes;
 using EasyNdf.Data;
 using EasyNdf.Engine.Mods;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Rules;
 
@@ -65,18 +66,18 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     public string Note { get; private set; } = "";
 
     /// <summary>"Presets in WARNO Tactical Overhaul".</summary>
-    public string PresetsTitle => "Presets in " + OpenMod.Name;
+    public string PresetsTitle => Texts.Get("Rules.PresetsIn", ("mod", OpenMod.Name));
 
     /// <summary>"Rules in WTO (Ammunition.ndf)", or "Rules" with no preset open.</summary>
-    public string RulesTitle => OpenPreset is null ? "Rules" : "Rules in " + OpenPreset.Name;
+    public string RulesTitle => OpenPreset is null ? Texts.Get("Rules.Rules") : Texts.Get("Rules.RulesIn", ("preset", OpenPreset.Name));
 
     /// <summary>What the rule list says when it has no rules.</summary>
     public string NoRulesText => OpenPreset is not null
-        ? "No rules yet. Click \"New rule\" to add one, or paste rules with Ctrl+V."
-        : "No rules yet. Click \"New rule\" to add one; it also creates a preset to hold it.";
+        ? Texts.Get("Rules.NoRules")
+        : Texts.Get("Rules.NoRulesNoPreset");
 
     /// <summary>What the preset list says when the mod has no presets.</summary>
-    public const string NoPresetsText = "No presets in this mod.";
+    public static string NoPresetsText => Texts.Get("Rules.NoPresetsInThis");
 
     /// <summary>Raised with each message, so the rule window can show it too while it is open.</summary>
     public event Action<string>? Said;
@@ -130,7 +131,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         Mod from = OpenMod;
         var copy = new Mod
         {
-            Name = Data.ModStore.FreeName(from.Name + " (Copy)"),
+            Name = Data.ModStore.FreeName(Texts.Get("Rules.Mod.CopyName", ("mod", from.Name))),
             Watermark = from.Watermark,
             Presets = [.. from.Presets.Select(p => new ModPreset { Name = p.Name, Rules = (JsonArray)p.Rules.DeepClone() })],
         };
@@ -138,7 +139,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         Data.Open(copy);
         OpenPreset = null;
         Refresh();
-        Say("Copied \"" + from.Name + "\" to \"" + copy.Name + "\": " + Count(copy.Presets.Count) + ".");
+        Say(Texts.Get("Rules.Mod.Copied", ("from", from.Name), ("copy", copy.Name), ("presets", Count(copy.Presets.Count))));
     }
 
     /// <summary>"Delete": the open mod goes, with its presets; the first mod left opens.</summary>
@@ -240,7 +241,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         CurrentRule = 0;
         Data.Save(OpenMod);
         Refresh();
-        Say("Deleted " + Count(gone.Count) + ".");
+        Say(Texts.Get("Rules.Deleted", ("what", Count(gone.Count))));
     }
 
     /// <summary>Selects and opens presets just made.</summary>
@@ -255,7 +256,10 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     }
 
     /// <summary>"3 presets", "1 preset".</summary>
-    public static string Count(int presets) => presets + (presets == 1 ? " preset" : " presets");
+    public static string Count(int presets) => Texts.Count("Rules.PresetCount", presets);
+
+    /// <summary>"1 rule", "3 rules".</summary>
+    public static string CountRules(int rules) => Texts.Count("Rules.RuleCount", rules);
 
     // ---- pasting ----
 
@@ -266,7 +270,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// </summary>
     public bool PasteText(string text)
     {
-        const string nothing = "The clipboard holds no EasyNDF preset, rule, condition or action.";
+        string nothing = Texts.Get("Rules.Paste.Nothing");
         JsonNode? parsed;
         try { parsed = JsonNode.Parse(text); }
         catch (System.Text.Json.JsonException) { Say(nothing); return false; }
@@ -292,12 +296,12 @@ public sealed partial class RulesModel : INotifyPropertyChanged
 
         bool madePreset = ruleItems.Count > 0 && OpenPreset is null;
         if (madePreset) MakePresetForRules();
-        if (OpenPreset is null) { Say("Select a rule before pasting conditions or actions."); return presetItems.Count > 0; }
+        if (OpenPreset is null) { Say(Texts.Get("Rules.Paste.SelectRule")); return presetItems.Count > 0; }
         var done = new List<string>();
         if (ruleItems.Count > 0)
         {
             int count = PasteRules(ruleItems);
-            done.Add(count + (count == 1 ? " rule" : " rules"));
+            done.Add(CountRules(count));
         }
         if (conditionItems.Count > 0 || actionItems.Count > 0)
         {
@@ -310,17 +314,17 @@ public sealed partial class RulesModel : INotifyPropertyChanged
             done.AddRange(rows);
         }
         SaveRules();
-        Say("Pasted " + string.Join(" and ", done) + " from the clipboard." + (madePreset ? " " + MadePresetNote : ""));
+        Say(Texts.Get("Rules.Paste.Done", ("what", string.Join(" " + Texts.Get("Rules.Paste.And") + " ", done))) + (madePreset ? " " + MadePresetNote : ""));
         return presetItems.Count > 0;
     }
 
     /// <summary>What "New rule" and Paste say when they had to make a preset to hold the rules.</summary>
-    private const string MadePresetNote = "Created the preset \"New preset\" for it. Rename it after its file, such as \"My mod (Ammunition.ndf)\", and files of that name get it by themselves.";
+    private static string MadePresetNote => Texts.Get("Rules.Paste.MadePreset", ("preset", Texts.Get("Rules.NewPresetName")));
 
     /// <summary>Makes the preset "New preset" in the open mod, opened, to hold rules made with no preset open.</summary>
     private void MakePresetForRules()
     {
-        var preset = new ModPreset { Name = OpenMod.FreePresetName("New preset") };
+        var preset = new ModPreset { Name = OpenMod.FreePresetName(Texts.Get("Rules.NewPresetName")) };
         OpenMod.Presets.Add(preset);
         ShowPresets([preset]);
     }
@@ -339,13 +343,13 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         foreach (JsonObject item in pasted)
         {
             string name = ((string?)item["PresetName"] ?? "").Trim();
-            var preset = new ModPreset { Name = OpenMod.FreePresetName(name == "" ? "Preset" : name), Rules = RuleLoading.LoadRules(item["Rules"]) };
+            var preset = new ModPreset { Name = OpenMod.FreePresetName(name == "" ? Texts.Get("Rules.PresetName") : name), Rules = RuleLoading.LoadRules(item["Rules"]) };
             OpenMod.Presets.Add(preset);
             made.Add(preset);
         }
         ShowPresets(made);
         Data.Save(OpenMod);
-        Say("Pasted " + Count(made.Count) + " into \"" + OpenMod.Name + "\" from the clipboard.");
+        Say(Texts.Get("Rules.Paste.PresetsDone", ("presets", Count(made.Count)), ("mod", OpenMod.Name)));
     }
 
     /// <summary>Rules go in after the last selected rule, and become the selection. Returns how many.</summary>
@@ -566,13 +570,13 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     public void DeleteRules(IReadOnlyList<int> places)
     {
         if (places.Count == 0) return;
-        string label = places.Count == 1 ? "rule \"" + RuleName(places[0]) + "\"" : places.Count + " rules";
+        string label = places.Count == 1 ? Texts.Get("Rules.Rule.Named", ("rule", RuleName(places[0]))) : CountRules(places.Count);
         int first = places.Min();
         foreach (int place in places.OrderDescending()) Rules.RemoveAt(place);
         SelectOnly(Math.Max(0, Math.Min(first, Rules.Count - 1)));
         if (Rules.Count == 0) selectedRules.Clear();
         SaveRules();
-        Say("Deleted " + label + ".");
+        Say(Texts.Get("Rules.Deleted", ("what", label)));
     }
 
     /// <summary>"New rule": a new rule of a type after the selected one, selected. With no preset, one is made to hold it.</summary>
@@ -589,7 +593,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     }
 
     /// <summary>A rule's name, or "(unnamed)".</summary>
-    public string RuleName(int index) => (string?)Rules[index]?["Name"] is { Length: > 0 } name ? name : "(unnamed)";
+    public string RuleName(int index) => (string?)Rules[index]?["Name"] is { Length: > 0 } name ? name : Texts.Get("Rules.Rule.Unnamed");
 
     /// <summary>Whether a rule is a Group's heading.</summary>
     public bool IsGroupHeading(int index) => (string?)Rules[index]?["Kind"] == "Group";

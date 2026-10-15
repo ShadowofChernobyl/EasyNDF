@@ -11,6 +11,7 @@ using EasyNdf.App.Theming;
 using EasyNdf.Data;
 using EasyNdf.Data.Themes;
 using Microsoft.Win32;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -54,8 +55,8 @@ public partial class ThemeDesigner : UserControl
         CustomTheme? theme = EditedTheme;
         RenameButton.IsEnabled = DeleteButton.IsEnabled = ResetButton.IsEnabled = ExportButton.IsEnabled = theme is not null;
         ShowNote(theme is null
-            ? "Built-in themes cannot be edited. \"New from this theme\" makes an editable copy."
-            : "Editing \"" + NameOf(theme) + "\". Changes apply and save at once.");
+            ? Texts.Get("Settings.Designer.BuiltInNote")
+            : Texts.Get("Settings.Designer.EditingNote", ("name", NameOf(theme))));
         Colours.Visibility = theme is null ? Visibility.Collapsed : Visibility.Visible;
         if (theme is not null) ShowRows(theme);
         ArrangeColumns();
@@ -67,7 +68,7 @@ public partial class ThemeDesigner : UserControl
         Note.SetResourceReference(TextBlock.ForegroundProperty, isWarning ? "warn" : "muted");
     }
 
-    private static string NameOf(CustomTheme theme) => theme.Name != "" ? theme.Name : "Untitled";
+    private static string NameOf(CustomTheme theme) => theme.Name != "" ? theme.Name : Texts.Get("Settings.Designer.Untitled");
 
     // ---- the rows ----
 
@@ -80,25 +81,18 @@ public partial class ThemeDesigner : UserControl
         Dictionary<string, string> colours = ThemeColors.For(ThemeManager.CustomThemeFor(ThemeManager.CustomKey(theme))!, bevelSetting: null);
         var interfaceRows = new RowGrid(InterfaceRows);
         var editorRows = new RowGrid(EditorRows);
-        foreach ((string key, string label) in BuiltInThemes.Keys)
+        foreach ((string key, _) in BuiltInThemes.Keys)
         {
             bool isEditorColour = key.StartsWith("s-", StringComparison.Ordinal) || key.StartsWith("d-", StringComparison.Ordinal);
-            (isEditorColour ? editorRows : interfaceRows).AddColour(LabelOf(label), ColourRow(theme, key, label, colours[key]));
+            (isEditorColour ? editorRows : interfaceRows).AddColour(ThemeColourNames.Row(key), ColourRow(theme, key, ThemeColourNames.Of(key), colours[key]));
         }
-        interfaceRows.AddOwnRow("Scrollbar style", ScrollbarChoice(theme));
-    }
-
-    /// <summary>A key's label as its row shows it: without "Editor: ", and with a capital first letter.</summary>
-    private static string LabelOf(string label)
-    {
-        string shown = label.StartsWith("Editor: ", StringComparison.Ordinal) ? label["Editor: ".Length..] : label;
-        return char.ToUpperInvariant(shown[0]) + shown[1..];
+        interfaceRows.AddOwnRow(Texts.Get("Settings.Designer.ScrollbarStyle"), ScrollbarChoice(theme));
     }
 
     /// <summary>A colour's swatch, which opens the colour window, and its hex text box.</summary>
     private (FrameworkElement Swatch, TextBox Hex) ColourRow(CustomTheme theme, string key, string label, string colour)
     {
-        var hex = new TextBox { Text = colour, MaxLength = 7, Style = (Style)FindResource("MonoBox"), ToolTip = label + ", as a hex color" };
+        var hex = new TextBox { Text = colour, MaxLength = 7, Style = (Style)FindResource("MonoBox"), ToolTip = Texts.Get("Settings.Designer.Hex.Tip", ("colour", label)) };
         hex.LostKeyboardFocus += (_, _) => TakeHex(theme, key, hex);
         hex.KeyDown += (_, e) =>
         {
@@ -121,7 +115,7 @@ public partial class ThemeDesigner : UserControl
         {
             string before = theme.Colors.GetValueOrDefault(key, hex.Text);
             // the theme follows the window as the colour changes, without saving; OK saves it, Cancel puts it back
-            string? picked = await View.ColourWindow.Pick(LabelOf(label), before, shown => PreviewColour(theme, key, shown), BesideThePreview(swatch));
+            string? picked = await View.ColourWindow.Pick(ThemeColourNames.Row(key), before, shown => PreviewColour(theme, key, shown), BesideThePreview(swatch));
             if (picked is not null) SetColour(theme, key, picked);
         };
         return (swatch, hex);
@@ -142,7 +136,7 @@ public partial class ThemeDesigner : UserControl
         if (valid == "")
         {
             hex.Text = current;
-            ShowNote("That is not a color. Use six hex digits after a #, like #1c221e.", isWarning: true);
+            ShowNote(Texts.Get("Settings.Designer.NotAColour"), isWarning: true);
             return;
         }
         SetColour(theme, key, valid);
@@ -180,9 +174,9 @@ public partial class ThemeDesigner : UserControl
 
     private ComboBox ScrollbarChoice(CustomTheme theme)
     {
-        var choice = new ComboBox { ToolTip = "Scrollbar style" };
-        choice.Items.Add(new ComboBoxItem { Content = "Plain: a flat bar", Tag = "plain" });
-        choice.Items.Add(new ComboBoxItem { Content = "Tread: a raised thumb with a grip, in a sunken track", Tag = "tread" });
+        var choice = new ComboBox { ToolTip = Texts.Get("Settings.Designer.ScrollbarStyle") };
+        choice.Items.Add(new ComboBoxItem { Content = Texts.Get("Settings.Designer.Scrollbar.Plain"), Tag = "plain" });
+        choice.Items.Add(new ComboBoxItem { Content = Texts.Get("Settings.Designer.Scrollbar.Tread"), Tag = "tread" });
         choice.SelectedIndex = theme.Scrollbars == "tread" ? 1 : 0;
         choice.SelectionChanged += (_, _) =>
         {
@@ -198,7 +192,7 @@ public partial class ThemeDesigner : UserControl
         try { AppData.Current.Themes.Save(theme); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell("The theme could not be saved. " + error.Message);
+            _ = View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)));
         }
         ThemeManager.ApplySaved();
     }
@@ -208,7 +202,7 @@ public partial class ThemeDesigner : UserControl
     /// <summary>"New from this theme": an editable copy of the theme in use, named by the user.</summary>
     private async void NewClicked(object sender, RoutedEventArgs e)
     {
-        DialogAnswer answer = await View.Messages.Ask("Name for your theme:", new DialogOptions { Input = FreeName("My " + ThemeManager.Current.Name) });
+        DialogAnswer answer = await View.Messages.Ask(Texts.Get("Settings.Designer.NameAsk"), new DialogOptions { Input = FreeName(Texts.Get("Settings.Designer.MyTheme", ("theme", ThemeManager.Current.Name))) });
         string name = answer.Choice == DialogChoice.Ok ? answer.Text.Trim() : "";
         if (name != "") AddCopyOfThemeInUse(name);
     }
@@ -237,7 +231,7 @@ public partial class ThemeDesigner : UserControl
     private async void RenameClicked(object sender, RoutedEventArgs e)
     {
         if (EditedTheme is not CustomTheme theme) return;
-        DialogAnswer answer = await View.Messages.Ask("New name for the theme:", new DialogOptions { Input = theme.Name });
+        DialogAnswer answer = await View.Messages.Ask(Texts.Get("Settings.Designer.RenameAsk"), new DialogOptions { Input = theme.Name });
         string name = answer.Choice == DialogChoice.Ok ? answer.Text.Trim() : "";
         if (name == "" || name == theme.Name) return;
         theme.Name = FreeName(ClipName(name));
@@ -252,11 +246,11 @@ public partial class ThemeDesigner : UserControl
     {
         if (EditedTheme is not CustomTheme theme) return;
         string olivine = BuiltInThemes.ById[BuiltInThemes.DefaultId].Name;
-        if (!await View.Messages.Confirm("Delete your theme \"" + theme.Name + "\"? The app goes back to " + olivine + ".", "Delete")) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.DeleteAsk", ("name", theme.Name), ("theme", olivine)), Texts.Get("Settings.Designer.Delete"))) return;
         try { AppData.Current.Themes.Delete(theme); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await View.Messages.Tell("The theme could not be deleted. " + error.Message);
+            await View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotDelete", ("problem", error.Message)));
             return;
         }
         Settings["theme"] = BuiltInThemes.DefaultId;
@@ -270,7 +264,7 @@ public partial class ThemeDesigner : UserControl
     {
         if (EditedTheme is not CustomTheme theme) return;
         Theme from = BuiltInThemes.ById.GetValueOrDefault(theme.BaseId) ?? BuiltInThemes.ById[BuiltInThemes.DefaultId];
-        if (!await View.Messages.Confirm("Put every color of \"" + theme.Name + "\" back to those of " + from.Name + "?", "Reset colors")) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.ResetAsk", ("name", theme.Name), ("theme", from.Name)), Texts.Get("Settings.Designer.ResetColors"))) return;
         theme.Colors = new Dictionary<string, string>(from.Colors);
         theme.Scheme = from.Scheme;
         theme.Scrollbars = from.Scrollbars == "tread" ? "tread" : "plain";
@@ -283,29 +277,29 @@ public partial class ThemeDesigner : UserControl
     private void ExportClicked(object sender, RoutedEventArgs e)
     {
         if (EditedTheme is not CustomTheme theme) return;
-        var dialog = new SaveFileDialog { Title = "Export theme", FileName = FileNames.ForName(theme.Name) + ".theme.json", Filter = "Theme files (*.theme.json)|*.theme.json" };
+        var dialog = new SaveFileDialog { Title = Texts.Get("Settings.Designer.ExportTheme"), FileName = FileNames.ForName(theme.Name) + ".theme.json", Filter = Texts.Get("Settings.Designer.ThemeFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try { File.WriteAllText(dialog.FileName, ThemeStore.ExportText(theme)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell("The theme could not be saved. " + error.Message);
+            _ = View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)));
         }
     }
 
     /// <summary>"Import theme...": a theme file becomes one of the user's themes; colours it lacks are Olivine's.</summary>
     private async void ImportClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = "Import theme", Filter = "Theme files (*.json)|*.json" };
+        var dialog = new OpenFileDialog { Title = Texts.Get("Settings.Designer.ImportTitle"), Filter = Texts.Get("Settings.Designer.AnyThemeFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         CustomTheme imported;
         try { imported = ReadThemeFile(dialog.FileName); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         {
-            await View.Messages.Tell("Could not import that theme. " + error.Message);
+            await View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotImport", ("problem", error.Message)));
             return;
         }
         AddTheme(imported);
-        ShowNote("Imported. Missing colors were taken from " + BuiltInThemes.ById[BuiltInThemes.DefaultId].Name + ".");
+        ShowNote(Texts.Get("Settings.Designer.Imported", ("theme", BuiltInThemes.ById[BuiltInThemes.DefaultId].Name)));
     }
 
     /// <summary>Reads a theme file as "Import theme..." takes it; throws when it has no colour the app knows.</summary>
@@ -314,7 +308,7 @@ public partial class ThemeDesigner : UserControl
         string text = File.ReadAllText(path).TrimStart('﻿');
         if (JsonNode.Parse(text) is not JsonObject json || ThemeStore.Read(json) is not CustomTheme read
             || !BuiltInThemes.Keys.Any(key => ThemeColors.ValidColor(read.Colors.GetValueOrDefault(key.Key)) != ""))
-            throw new InvalidDataException("no colors found");
+            throw new InvalidDataException(Texts.Get("Settings.Designer.NoColours"));
         string fileName = Path.GetFileName(path);
         string nameFromFile = fileName.EndsWith(".theme.json", StringComparison.OrdinalIgnoreCase) ? fileName[..^".theme.json".Length]
             : fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? fileName[..^".json".Length] : fileName;
@@ -329,7 +323,7 @@ public partial class ThemeDesigner : UserControl
     /// <summary>Adds a theme, and chooses it.</summary>
     private void AddTheme(CustomTheme theme)
     {
-        theme.Name = ClipName(theme.Name != "" ? theme.Name : "My theme");
+        theme.Name = ClipName(theme.Name != "" ? theme.Name : Texts.Get("Settings.Designer.DefaultName"));
         Settings["theme"] = ThemeManager.CustomKey(theme);
         AppData.Current.SaveSettings();
         SaveAndApply(theme);

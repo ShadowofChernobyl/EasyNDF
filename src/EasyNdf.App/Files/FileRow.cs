@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using EasyNdf.Data;
 using EasyNdf.Data.FileList;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Files;
 
@@ -45,7 +46,7 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
     }
 
     /// <summary>The Source file column: the name, and " (not loaded)" when the file is not loaded.</summary>
-    public string NameText => Entry.Name + (Entry.Source is not null ? "" : " (not loaded)");
+    public string NameText => Entry.Source is not null ? Entry.Name : Texts.Get("Files.Row.NotLoaded", ("file", Entry.Name));
 
     /// <summary>How many rows, this one included, hold a file of the same folder and name.</summary>
     public int SameFileCount { get; set; } = 1;
@@ -88,7 +89,7 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
             if (Entry.Source is null || SameFileCount < 2) return "";
             var parts = new List<string>();
             if (Entry.Size is long size) parts.Add(FileStatus.Size(size));
-            if (Entry.Modified is DateTime modified) parts.Add("modified " + FileStatus.Date(modified));
+            if (Entry.Modified is DateTime modified) parts.Add(Texts.Get("Files.Row.Modified", ("date", FileStatus.Date(modified))));
             return string.Join(", ", parts);
         }
     }
@@ -106,7 +107,7 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
     public string ExportFolderText => Entry.ExportFolder is string folder ? FileListView.FolderName(folder) : ColumnFit.NoExportFolderText;
 
     /// <summary>The Export folder column's tooltip: the whole path, or what happens without one.</summary>
-    public string ExportFolderTip => Entry.ExportFolder ?? "Run export asks for a folder";
+    public string ExportFolderTip => Entry.ExportFolder ?? Texts.Get("Files.Row.NoExportFolder.Tip");
 
     /// <summary>Whether the file has an export folder (then it can be cleared).</summary>
     public bool HasExportFolder => Entry.ExportFolder is not null;
@@ -174,7 +175,7 @@ public sealed record PresetChoice(ModPreset? Preset, string? OtherModName = null
     public static readonly PresetChoice None = new((ModPreset?)null);
 
     /// <summary>What the dropdown shows.</summary>
-    public override string ToString() => Preset is null ? "(none)" : OtherModName is null ? Preset.Name : OtherModName + ": " + Preset.Name;
+    public override string ToString() => Preset is null ? Texts.Get("Files.Row.NoPreset") : OtherModName is null ? Preset.Name : OtherModName + ": " + Preset.Name;
 
     /// <summary>Two choices are the same when they name the same preset.</summary>
     public bool Equals(PresetChoice? other) => other is not null && ReferenceEquals(Preset, other.Preset);
@@ -208,7 +209,7 @@ public sealed class FolderRow(string path, IReadOnlyList<FileRow> rows, bool isO
     public void Refresh() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
 
     /// <summary>The path as shown.</summary>
-    public string Label => Path != "" ? Path : "(files added on their own)";
+    public string Label => Path != "" ? Path : Texts.Get("Files.Folder.OnTheirOwn");
 
     /// <summary>"3 files", and how many are selected.</summary>
     public string CountText
@@ -216,7 +217,8 @@ public sealed class FolderRow(string path, IReadOnlyList<FileRow> rows, bool isO
         get
         {
             int picked = Rows.Count(r => r.IsSelected);
-            return FileStatus.Count(Rows.Count) + (Rows.Count == 1 ? " file" : " files") + (picked > 0 ? ", " + picked + " selected" : "");
+            string files = FileListModel.Files(Rows.Count);
+            return picked > 0 ? Texts.Get("Files.Folder.CountSelected", ("files", files), ("selected", picked)) : files;
         }
     }
 

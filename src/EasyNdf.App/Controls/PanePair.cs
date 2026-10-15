@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Controls;
 
@@ -44,7 +45,7 @@ public sealed class PanePair : Grid
     {
         besideButton = PlaceButton("beside");
         belowButton = PlaceButton("below");
-        var fold = new Button { Style = (Style)Application.Current.FindResource("FoldHeading"), ToolTip = "Collapse or expand", Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { arrow, title } } };
+        var fold = new Button { Style = (Style)Application.Current.FindResource("FoldHeading"), ToolTip = Texts.Get("Common.Pane.Fold.Tip"), Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { arrow, title } } };
         fold.Click += (_, _) => Fold(!isFolded);
         // 3 pixels kept under the buttons, so they do not sit on the heading's line
         var tools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3), Children = { besideButton, belowButton } };
@@ -218,7 +219,7 @@ public sealed class PanePair : Grid
         }
         Put(main, 0, beside);
         bar.LiesFlat = !beside;
-        bar.ToolTip = "Drag to resize. Double-click to reset.";
+        bar.ToolTip = Texts.Get("Common.ResizeGrip.Tip");
         // folded, the bar cannot be dragged but keeps its room, so the heading keeps the same gap from the main pane
         // as when the pane is open, rather than touching it
         bar.Visibility = isFolded ? Visibility.Hidden : Visibility.Visible;
@@ -274,7 +275,7 @@ public sealed class PanePair : Grid
             Content = new PaneIcon(place == "beside"),
             Padding = new Thickness(6, 3, 6, 3),
             Margin = new Thickness(4, 0, 0, 0),
-            ToolTip = place == "beside" ? "Put this pane beside. Click again to arrange automatically" : "Put this pane below. Click again to arrange automatically",
+            ToolTip = place == "beside" ? Texts.Get("Common.Pane.Beside.Tip") : Texts.Get("Common.Pane.Below.Tip"),
         };
         button.Click += (_, _) =>
         {

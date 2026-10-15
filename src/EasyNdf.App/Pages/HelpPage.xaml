@@ -6,6 +6,7 @@
 <UserControl x:Class="EasyNdf.App.Pages.HelpPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls">
     <!-- #wiki: at most 72rem wide, in the middle of the tab -->
     <Grid x:Name="Wiki" MaxWidth="1152" HorizontalAlignment="Stretch">
@@ -19,7 +20,7 @@
         <controls:Bevel x:Name="Nav" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
             <ScrollViewer x:Name="NavScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                 <StackPanel Margin="8">
-                    <TextBox x:Name="Find" Margin="0,0,0,8" Tag="Search help" ToolTip="Search help"
+                    <TextBox x:Name="Find" Margin="0,0,0,8" Tag="{t:Text Help.Find.Hint}" ToolTip="{t:Text Help.Find.Tip}"
                              TextChanged="FindChanged" KeyDown="FindKeyDown" />
                     <StackPanel x:Name="PageList" />
                 </StackPanel>
@@ -29,15 +30,15 @@
         <!-- #wkPage: Back, Forward and Welcome window stay put; the page under them scrolls -->
         <DockPanel Grid.Column="2">
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-                <Button x:Name="BackButton" Style="{StaticResource IconButton}" Content="‹" ToolTip="Back" Click="BackClicked" VerticalAlignment="Center" />
-                <Button x:Name="ForwardButton" Style="{StaticResource IconButton}" Content="›" ToolTip="Forward" Click="ForwardClicked" Margin="6,0,0,0" VerticalAlignment="Center" />
-                <Button DockPanel.Dock="Right" Content="Welcome window" ToolTip="Open the welcome window" HorizontalAlignment="Right" Click="WelcomeClicked" />
+                <Button x:Name="BackButton" Style="{StaticResource IconButton}" Content="‹" ToolTip="{t:Text Help.Back.Tip}" Click="BackClicked" VerticalAlignment="Center" />
+                <Button x:Name="ForwardButton" Style="{StaticResource IconButton}" Content="›" ToolTip="{t:Text Help.Forward.Tip}" Click="ForwardClicked" Margin="6,0,0,0" VerticalAlignment="Center" />
+                <Button DockPanel.Dock="Right" Content="{t:Text Help.WelcomeWindow}" ToolTip="{t:Text Help.WelcomeWindow.Tip}" HorizontalAlignment="Right" Click="WelcomeClicked" />
             </DockPanel>
             <ScrollViewer x:Name="PageScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                 <StackPanel>
                     <!-- #wkCrumb: the page's group, a link to its first page -->
                     <TextBlock HorizontalAlignment="Left" Margin="0,2,0,2" FontSize="11.5" LineHeight="16.675" LineStackingStrategy="BlockLineHeight">
-                        <Hyperlink x:Name="Crumb" Style="{StaticResource CrumbLink}" Click="CrumbClicked" ToolTip="The first page of this group"><Run x:Name="CrumbText" /></Hyperlink>
+                        <Hyperlink x:Name="Crumb" Style="{StaticResource CrumbLink}" Click="CrumbClicked" ToolTip="{t:Text Help.Crumb.Tip}"><Run x:Name="CrumbText" /></Hyperlink>
                     </TextBlock>
                     <TextBlock x:Name="PageTitle" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource ink}" TextWrapping="Wrap"
                                LineHeight="24.65" LineStackingStrategy="BlockLineHeight" />
@@ -51,8 +52,8 @@
                             <ContentControl x:Name="Body" Focusable="False" />
                             <!-- .wkpager: Previous and Next -->
                             <DockPanel x:Name="Pager" LastChildFill="False">
-                                <Button x:Name="PreviousButton" ToolTip="Previous page" Click="PagerClicked" />
-                                <Button x:Name="NextButton" ToolTip="Next page" DockPanel.Dock="Right" Click="PagerClicked" />
+                                <Button x:Name="PreviousButton" ToolTip="{t:Text Help.Previous.Tip}" Click="PagerClicked" />
+                                <Button x:Name="NextButton" ToolTip="{t:Text Help.Next.Tip}" DockPanel.Dock="Right" Click="PagerClicked" />
                             </DockPanel>
                         </StackPanel>
                     </Grid>

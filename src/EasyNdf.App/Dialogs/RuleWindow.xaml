@@ -6,6 +6,7 @@
 <UserControl x:Class="EasyNdf.App.Dialogs.RuleWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              Visibility="Collapsed">
     <!-- the dimmed backdrop; a click on it closes the window -->
@@ -18,19 +19,19 @@
                 <!-- .bar: the title, then ? and × at the right -->
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                     <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
-                        <Button Style="{StaticResource HelpButton}" ToolTip="About rules" controls:QuickHelp.Page="rules" />
-                        <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="Close (Escape)" Click="CloseClicked" />
+                        <Button Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.RuleWindow.AboutRules.Tip}" controls:QuickHelp.Page="rules" />
+                        <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.RuleWindow.CloseEscape.Tip}" Click="CloseClicked" />
                     </controls:SnappedRow>
-                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="Rule" />
+                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="{t:Text Rules.RuleWindow.Rule}" />
                 </DockPanel>
 
                 <!-- #ruleFoot: the property scan, Done, and the notes under them -->
                 <controls:FlexRow DockPanel.Dock="Bottom" Gap="8" LineGap="6" Margin="0,8,0,0">
-                    <TextBlock Text="Property scan" Foreground="{DynamicResource accent}" FontWeight="Bold" />
+                    <TextBlock Text="{t:Text Rules.RuleWindow.PropertyScan}" Foreground="{DynamicResource accent}" FontWeight="Bold" />
                     <!-- the dropdown takes the room left, up to 22rem -->
-                    <ComboBox x:Name="ScanChoice" controls:FlexRow.Grow="1" MaxWidth="352" ToolTip="File whose property names fill the dropdowns" />
-                    <Button Content="..." ToolTip="Scan a file without adding it to the Files tab" Click="ScanFileClicked" />
-                    <Button Style="{StaticResource GoButton}" Content="Done" ToolTip="Close the rule. Changes are saved as you make them" Click="CloseClicked" />
+                    <ComboBox x:Name="ScanChoice" controls:FlexRow.Grow="1" MaxWidth="352" ToolTip="{t:Text Rules.RuleWindow.ScanChoice.Tip}" />
+                    <Button Content="..." ToolTip="{t:Text Rules.RuleWindow.ScanAFileWithout.Tip}" Click="ScanFileClicked" />
+                    <Button Style="{StaticResource GoButton}" Content="{t:Text Rules.RuleWindow.Done}" ToolTip="{t:Text Rules.RuleWindow.Done.Tip}" Click="CloseClicked" />
                     <TextBlock x:Name="ScanNote" Style="{StaticResource Note}" Margin="0" controls:FlexRow.Basis="Infinity" />
                     <TextBlock x:Name="RuleMessage" Style="{StaticResource Note}" Margin="0" controls:FlexRow.Basis="Infinity" />
                 </controls:FlexRow>

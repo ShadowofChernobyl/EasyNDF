@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using EasyNdf.Data;
 using EasyNdf.Engine.Mods;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Rules;
 
@@ -25,7 +26,7 @@ public sealed partial class RulesModel
     public static readonly IReadOnlySet<string> KindsWithActions = new HashSet<string> { "Edit", "Clone", "Lookup" };
 
     /// <summary>What the lists say when the user acts on a selection they have not made.</summary>
-    private const string SelectRowsFirst = "Select one or more rows first.";
+    private static string SelectRowsFirst => Texts.Get("Rules.Rows.SelectFirst");
 
     private readonly Dictionary<string, HashSet<int>> selectedRows = new() { [Conditions] = [], [SourceConditions] = [], [Actions] = [] };
     private readonly Dictionary<string, int> rowAnchor = new() { [Conditions] = -1, [SourceConditions] = -1, [Actions] = -1 };
@@ -62,7 +63,7 @@ public sealed partial class RulesModel
     public static string RowType(string list) => list == Actions ? "Action" : "Condition";
 
     /// <summary>"3 conditions", "1 action".</summary>
-    public static string CountRows(string list, int count) => count + " " + RowType(list).ToLowerInvariant() + (count == 1 ? "" : "s");
+    public static string CountRows(string list, int count) => list == Actions ? Texts.Count("Rules.Rows.ActionCount", count) : Texts.Count("Rules.Rows.ConditionCount", count);
 
     /// <summary>Forgets the row selections when another rule is open (the HTML app's <c>lastR</c>).</summary>
     private void KeepRowSelectionsFor(JsonNode? rule)
@@ -208,7 +209,7 @@ public sealed partial class RulesModel
         selectedRows[list].Clear();
         rowAnchor[list] = -1;
         SaveRules();
-        Say("Deleted " + CountRows(list, picked.Count) + ".");
+        Say(Texts.Get("Rules.Deleted", ("what", CountRows(list, picked.Count))));
     }
 
     /// <summary>"Duplicate" in a list's menu: copies of the selected rows below the last of them, selected.</summary>
@@ -250,11 +251,11 @@ public sealed partial class RulesModel
     private List<string>? PasteRows(List<JsonObject> conditions, List<JsonObject> actions)
     {
         var done = new List<string>();
-        if (OpenRule is not JsonObject rule) { Say("Select a rule before pasting conditions or actions."); return null; }
+        if (OpenRule is not JsonObject rule) { Say(Texts.Get("Rules.Paste.SelectRule")); return null; }
         string kind = (string?)rule["Kind"] ?? "Edit";
         if ((conditions.Count > 0 && !KindsWithConditions.Contains(kind)) || (actions.Count > 0 && !KindsWithActions.Contains(kind)))
         {
-            Say("The selected rule is a type that does not take " + (conditions.Count > 0 && !KindsWithConditions.Contains(kind) ? "conditions" : "actions") + ".");
+            Say(conditions.Count > 0 && !KindsWithConditions.Contains(kind) ? Texts.Get("Rules.Paste.NoConditionsHere") : Texts.Get("Rules.Paste.NoActionsHere"));
             return null;
         }
         if (conditions.Count > 0)
@@ -297,7 +298,7 @@ public sealed partial class RulesModel
         string value = JsonValues.AsText(row["Value"]).Replace("\r\n", " ↵ ").Replace("\n", " ↵ ");
         string operatorName = JsonValues.AsText(row["Operator"]);
         if (isAction && ShortOperators.TryGetValue(operatorName, out string? shortName)) operatorName = shortName;
-        string text = subject != "" ? subject : isAction ? "(no target)" : "(no operand)";
+        string text = subject != "" ? subject : isAction ? Texts.Get("Rules.Rows.NoTarget") : Texts.Get("Rules.Rows.NoOperand");
         if (operatorName != "") text += " " + operatorName;
         if (value != "") text += " " + (isAction ? value : "\"" + value + "\"");
         return text;

@@ -13,6 +13,7 @@ using EasyNdf.Data;
 using EasyNdf.Data.FileList;
 using EasyNdf.Engine;
 using Microsoft.Win32;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -91,7 +92,7 @@ public partial class FilesPage : UserControl
         if (found.Count == 0) return;
         IReadOnlyList<FileEntry> rows = await Model.AddFiles([.. found.Select(f => f.File)], fromFolder: false, (_, _) => Task.FromResult(new DuplicateAnswer(DuplicateChoice.KeepBoth, false)));
         for (int i = 0; i < rows.Count && i < found.Count; i++) Model.Restore(rows[i], found[i].Row);
-        if (found.Count < kept.Count) Model.Say(FileListModel.Files(kept.Count - found.Count) + " from last time could not be found and were left out.");
+        if (found.Count < kept.Count) Model.Say(Texts.Get("Files.Restore.Missing", ("files", FileListModel.Files(kept.Count - found.Count))));
         foreach (FileEntry entry in rows) await ReadInBackground(entry);
         if (rows.Count > 0) Memory.GiveBack();
     }
@@ -131,14 +132,14 @@ public partial class FilesPage : UserControl
         var comparison = new FileComparison(listed, picked);
         string shown = (picked.Folder != "" ? picked.Folder + "/" : "") + picked.Name;
         DialogAnswer answer = await Messages.Ask(
-            "\"" + shown + "\" is already in the list. " + comparison.Verdict + " Replace the listed file, keep both, or skip this one?",
+            Texts.Get("Files.Duplicate.Ask", ("file", shown), ("verdict", comparison.Verdict)),
             new DialogOptions
             {
                 Extra = new ComparisonTable(comparison),
-                Ok = "Replace",
-                Alternative = "Keep both",
-                Cancel = "Skip",
-                CheckText = several ? "Do the same for any other duplicates in this batch" : null,
+                Ok = Texts.Get("Files.Duplicate.Replace"),
+                Alternative = Texts.Get("Files.Duplicate.KeepBoth"),
+                Cancel = Texts.Get("Files.Duplicate.Skip"),
+                CheckText = several ? Texts.Get("Files.Duplicate.SameForOthers") : null,
             });
         DuplicateChoice choice = answer.Choice switch
         {
@@ -168,8 +169,8 @@ public partial class FilesPage : UserControl
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Add files",
-            Filter = "NDF files and archives (*.ndf, *.zip, *.rar)|*.ndf;*.zip;*.rar",
+            Title = Texts.Get("Files.AddFiles.Title"),
+            Filter = Texts.Get("Files.AddFiles.Filter"),
             Multiselect = true,
         };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
@@ -178,7 +179,7 @@ public partial class FilesPage : UserControl
 
     private async void AddFolderClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Add folder" };
+        var dialog = new OpenFolderDialog { Title = Texts.Get("Files.AddFolder.Title") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         await AddFolderFiles(NdfFilesIn(dialog.FolderName));
     }
@@ -189,14 +190,14 @@ public partial class FilesPage : UserControl
     /// </summary>
     private async Task AddFolderFiles(List<FileToAdd> found)
     {
-        if (found.Count == 0) { Model.Say("No .ndf files were found in that folder."); return; }
+        if (found.Count == 0) { Model.Say(Texts.Get("Files.AddFolder.NoneFound")); return; }
         // the "Adding a folder" setting: every file (asking first for a big folder), or only those with a preset
         bool onlyWithPreset = (string?)AppData.Current.Settings["folderMode"] == "matched";
         if (!onlyWithPreset && found.Count > 150)
         {
             DialogAnswer answer = await Messages.Ask(
-                "That folder holds " + FileStatus.Count(found.Count) + " .ndf files. Add them all, or only the ones that have a preset in the open mod?",
-                new DialogOptions { Ok = "Add all", Alternative = "Only those with a preset", Cancel = "Cancel" });
+                Texts.Get("Files.AddFolder.BigAsk", ("count", FileStatus.Count(found.Count))),
+                new DialogOptions { Ok = Texts.Get("Files.AddFolder.AddAll"), Alternative = Texts.Get("Files.AddFolder.OnlyWithPreset"), Cancel = Texts.Get("Common.Cancel") });
             if (answer.Choice == DialogChoice.Cancel) return;
             onlyWithPreset = answer.Choice == DialogChoice.Alternative;
         }
@@ -206,7 +207,7 @@ public partial class FilesPage : UserControl
             found = found.Where(file => PresetMatching.Match(file.Name, "", Model.OpenModPresets) is not null).ToList();
             if (found.Count == 0)
             {
-                Model.Say("None of the " + FileStatus.Count(all) + " .ndf files in that folder has a preset in the open mod, so nothing was added.");
+                Model.Say(Texts.Get("Files.AddFolder.NoneWithPreset", ("count", FileStatus.Count(all))));
                 return;
             }
         }
@@ -274,12 +275,12 @@ public partial class FilesPage : UserControl
             }
             catch (Exception error) when (error is ArchiveProblem or IOException or UnauthorizedAccessException)
             {
-                problems.Add("\"" + name + "\" could not be opened: " + error.Message + ".");
+                problems.Add(Texts.Get("Files.Archive.NotOpened", ("file", name), ("reason", error.Message)));
             }
         }
         Model.Say("");
         if (empty.Count > 0)
-            problems.Add((empty.Count == 1 ? "\"" + empty[0] + "\" holds" : string.Join(", ", empty.Select(n => "\"" + n + "\"")) + " hold") + " no .ndf files.");
+            problems.Add(Texts.Count("Files.Archive.Empty", empty.Count, ("files", string.Join(", ", empty.Select(n => "\"" + n + "\"")))));
         if (problems.Count > 0) await Messages.Tell(string.Join(" ", problems));
         return found;
     }
@@ -290,9 +291,9 @@ public partial class FilesPage : UserControl
     private static string NotLoadedMessage(IReadOnlyList<string> names)
     {
         string named = string.Join(", ", names.Take(5).Select(name => "\"" + name + "\""));
-        if (names.Count == 1) return named + " was not loaded. EasyNDF only reads .ndf files.";
-        return FileStatus.Count(names.Count) + " files were not loaded: " + named
-            + (names.Count > 5 ? " and " + FileStatus.Count(names.Count - 5) + " more" : "") + ". EasyNDF only reads .ndf files.";
+        if (names.Count == 1) return Texts.Get("Files.NotNdf.One", ("file", named));
+        if (names.Count > 5) named = Texts.Get("Files.NotNdf.AndMore", ("files", named), ("more", FileStatus.Count(names.Count - 5)));
+        return Texts.Get("Files.NotNdf.Several", ("count", FileStatus.Count(names.Count)), ("files", named));
     }
 
     private static bool IsNdf(string path) => path.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase);
@@ -399,9 +400,9 @@ public partial class FilesPage : UserControl
         if (files.Count == 0) return true;
         int folders = files.Select(e => e.ExportFolder ?? "").Distinct().Count();
         bool someHaveNone = files.Any(e => e.ExportFolder is null);
-        string question = "Export " + files.Count + (files.Count == 1 ? " file" : " files") + " to " + folders + (folders == 1 ? " folder" : " folders") + "?"
-            + (someHaveNone ? " You will be asked for the folder of the files that have none." : "");
-        return await Messages.Confirm(question, "Export");
+        string question = Texts.Get("Files.ConfirmExport.Ask", ("files", FileListModel.Files(files.Count)), ("folders", Texts.Count("Files.ConfirmExport.Folders", folders)));
+        if (someHaveNone) question += " " + Texts.Get("Files.ConfirmExport.SomeHaveNone");
+        return await Messages.Confirm(question, Texts.Get("Files.ConfirmExport.Export"));
     }
 
     /// <summary>"Open the folder after export": the folder the most files were exported to opens in File Explorer.</summary>
@@ -433,7 +434,7 @@ public partial class FilesPage : UserControl
     /// <summary>Asks for the folder the files that have none are exported to; null when cancelled.</summary>
     private Task<string?> ChooseExportFolder()
     {
-        var dialog = new OpenFolderDialog { Title = "Choose the export folder" };
+        var dialog = new OpenFolderDialog { Title = Texts.Get("Files.ExportFolder.Title") };
         return Task.FromResult(dialog.ShowDialog(Window.GetWindow(this)) == true ? dialog.FolderName : null);
     }
 
@@ -448,10 +449,10 @@ public partial class FilesPage : UserControl
     private void SaveAnyway(FileRow row)
     {
         if (row.Entry.HeldOutput is not string text) return;
-        var dialog = new SaveFileDialog { Title = "Save anyway", FileName = row.Entry.Name, Filter = "NDF files (*.ndf)|*.ndf" };
+        var dialog = new SaveFileDialog { Title = Texts.Get("Files.SaveAnyway"), FileName = row.Entry.Name, Filter = Texts.Get("Files.NdfFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try { File.WriteAllText(dialog.FileName, text); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { _ = Messages.Tell("The file could not be saved. " + error.Message); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { _ = Messages.Tell(Texts.Get("Files.SaveAnyway.Failed", ("reason", error.Message))); }
     }
 
     /// <summary>"Save as zip...": packs the files the last Run export wrote into one .zip, keeping their folders.</summary>
@@ -459,16 +460,16 @@ public partial class FilesPage : UserControl
     {
         List<FileEntry> written = Model.Entries.Where(entry => entry.Done && entry.ExportedPath is not null).ToList();
         if (written.Count == 0) return;
-        var dialog = new SaveFileDialog { Title = "Save as zip", FileName = "EasyNDF export.zip", Filter = "Zip files (*.zip)|*.zip" };
+        var dialog = new SaveFileDialog { Title = Texts.Get("Files.SaveZip.Title"), FileName = "EasyNDF export.zip", Filter = Texts.Get("Files.ZipFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try
         {
             await Task.Run(() => ExportZip.Write(dialog.FileName, written));
-            Model.Say(FileListModel.Files(written.Count) + " saved in \"" + Path.GetFileName(dialog.FileName) + "\".");
+            Model.Say(Texts.Get("Files.SaveZip.Done", ("files", FileListModel.Files(written.Count)), ("zip", Path.GetFileName(dialog.FileName))));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await Messages.Tell("The zip could not be saved. " + error.Message);
+            await Messages.Tell(Texts.Get("Files.SaveZip.Failed", ("reason", error.Message)));
         }
     }
 
@@ -483,18 +484,17 @@ public partial class FilesPage : UserControl
     internal Task<bool> AskToRemoveSelected()
     {
         int count = Model.SelectedCount;
-        return Messages.Confirm("You are about to remove " + FileListModel.Files(count) + " from the list. The "
-            + (count == 1 ? "file" : "files") + " on disk will not be touched.", "Remove");
+        return Messages.Confirm(Texts.Count("Files.Remove.Ask", count, ("files", FileListModel.Files(count))), Texts.Get("Files.Remove"));
     }
 
     private async void RemoveAllClicked(object sender, RoutedEventArgs e)
     {
         if (!Model.HasFiles) return;
         int hidden = Model.HiddenCount;
-        string message = "You are about to remove all " + FileListModel.Files(Model.Entries.Count) + " from the list."
-            + (hidden > 0 ? " That includes the " + FileStatus.Count(hidden) + " the search or filter is hiding." : "")
-            + " The files on disk will not be touched.";
-        if (await Messages.Confirm(message, "Remove all")) Model.RemoveAll();
+        string message = hidden > 0
+            ? Texts.Get("Files.RemoveAll.AskWithHidden", ("files", FileListModel.Files(Model.Entries.Count)), ("hidden", FileStatus.Count(hidden)))
+            : Texts.Get("Files.RemoveAll.Ask", ("files", FileListModel.Files(Model.Entries.Count)));
+        if (await Messages.Confirm(message, Texts.Get("Files.RemoveAll"))) Model.RemoveAll();
     }
 
     /// <summary>
@@ -631,7 +631,7 @@ public partial class FilesPage : UserControl
         if (inside <= 0) return;
         // "Save anyway": its text, 10 pixels of padding and an edge each side, then a space before the ×.
         double gap = TextWidthExact(" ");
-        double saveAnyway = TextWidthExact("Save anyway") + 22 + gap;
+        double saveAnyway = TextWidthExact(Texts.Get("Files.SaveAnyway")) + 22 + gap;
         Model.FitColumns(inside, TextWidth, saveAnyway, gap);
 
         // Columns sized by hand can be wider than the list: then it scrolls sideways, as the HTML app's table does.

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App;
 
@@ -207,7 +208,7 @@ public partial class MainView : UserControl
     {
         bool maximized = state == WindowState.Maximized;
         MaximizeButton.Content = maximized ? "" : "";
-        MaximizeButton.ToolTip = maximized ? "Restore" : "Maximize";
+        MaximizeButton.ToolTip = maximized ? Texts.Get("Main.Restore.Tip") : Texts.Get("Main.Maximize.Tip");
     }
 
     /// <summary>

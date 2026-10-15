@@ -1,5 +1,6 @@
 using System.IO;
 using EasyNdf.Data.FileList;
+using EasyNdf.App.Text;
 
 
 namespace EasyNdf.App.Files;
@@ -28,14 +29,14 @@ public sealed class FileComparison
     {
         string? listedText = ReadOrNull(() => FileContent.Text(listed)), pickedText = ReadOrNull(() => FileContent.Text(picked));
         Verdict = listedText is null || pickedText is null
-            ? "One of the two files could not be read, so their contents could not be compared."
-            : listedText == pickedText ? "The two files have identical contents." : "The two files have different contents.";
+            ? Texts.Get("Files.Compare.Unreadable")
+            : listedText == pickedText ? Texts.Get("Files.Compare.Identical") : Texts.Get("Files.Compare.Different");
         Lines =
         [
-            new Line("Size", SizeText(() => FileContent.Bytes(listed).LongLength), SizeText(() => picked.Size)),
-            new Line("Modified", DateText(() => listed.ArchivedContent is null ? File.GetLastWriteTime(listed.Source!) : listed.Modified ?? DateTime.MinValue),
+            new Line(Texts.Get("Files.Compare.Size"), SizeText(() => FileContent.Bytes(listed).LongLength), SizeText(() => picked.Size)),
+            new Line(Texts.Get("Files.Compare.Modified"), DateText(() => listed.ArchivedContent is null ? File.GetLastWriteTime(listed.Source!) : listed.Modified ?? DateTime.MinValue),
                 DateText(() => picked.Modified)),
-            new Line("Lines", LineCount(listedText), LineCount(pickedText)),
+            new Line(Texts.Get("Files.Compare.Lines"), LineCount(listedText), LineCount(pickedText)),
         ];
     }
 
@@ -48,20 +49,20 @@ public sealed class FileComparison
     // Size and date as they are now: the listed file may have changed on disk since it was added.
     private static string SizeText(Func<long> size)
     {
-        try { return FileStatus.Count(size()) + " bytes"; }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return "unknown"; }
+        try { return Texts.Get("Files.Compare.Bytes", ("count", FileStatus.Count(size()))); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return Texts.Get("Files.Compare.Unknown"); }
     }
 
     private static string DateText(Func<DateTime> date)
     {
         try { return date().ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return "unknown"; }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return Texts.Get("Files.Compare.Unknown"); }
     }
 
     /// <summary>Lines as the HTML app counts them: one more than the line breaks, or none for an empty file.</summary>
     private static string LineCount(string? text)
     {
-        if (text is null) return "could not be read";
+        if (text is null) return Texts.Get("Files.Compare.CouldNotRead");
         int count = text.Length > 0 ? 1 : 0;
         foreach (char character in text)
             if (character == '\n') count++;

@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using EasyNdf.App.Controls;
 using EasyNdf.Data;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Rules;
 
@@ -67,9 +68,9 @@ public sealed class RowListView : Grid
             gate.Margin = new Thickness(0, 0, 6, 0);
             heading.Children.Add(gate);
         }
-        heading.Children.Add(IconButton("↑", "Move the selected rows up (Ctrl+Up)", () => model.MoveRows(list, -1), 6));
-        heading.Children.Add(IconButton("↓", "Move the selected rows down (Ctrl+Down)", () => model.MoveRows(list, +1), 6));
-        heading.Children.Add(IconButton("+", "Add " + what, AddRow, 0));
+        heading.Children.Add(IconButton("↑", Texts.Get("Rules.Rows.MoveUp.Tip"), () => model.MoveRows(list, -1), 6));
+        heading.Children.Add(IconButton("↓", Texts.Get("Rules.Rows.MoveDown.Tip"), () => model.MoveRows(list, +1), 6));
+        heading.Children.Add(IconButton("+", Texts.Get("Rules.Rows.Add.Tip", ("what", what)), AddRow, 0));
         Children.Add(heading);
 
         // .lv.sunken: the rows, 2 pixels in; the accent edge shows while the keys act on this list

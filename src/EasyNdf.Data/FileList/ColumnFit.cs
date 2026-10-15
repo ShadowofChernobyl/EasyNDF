@@ -1,3 +1,5 @@
+using EasyNdf.Data.Languages;
+
 namespace EasyNdf.Data.FileList;
 
 /// <summary>
@@ -24,9 +26,10 @@ public static class ColumnFit
     /// <summary>A column's heading, as shown.</summary>
     public static string Heading(FileColumn column) => column switch
     {
-        FileColumn.On => "On", FileColumn.Number => "#", FileColumn.File => "Source file", FileColumn.Size => "Size",
-        FileColumn.Lines => "Lines", FileColumn.Modified => "Date modified", FileColumn.Preset => "Preset",
-        FileColumn.ExportFolder => "Export folder", _ => "Status",
+        FileColumn.On => DataTexts.Get("Files.Column.On"), FileColumn.Number => "#", FileColumn.File => DataTexts.Get("Files.Column.File"),
+        FileColumn.Size => DataTexts.Get("Files.Column.Size"), FileColumn.Lines => DataTexts.Get("Files.Column.Lines"),
+        FileColumn.Modified => DataTexts.Get("Files.Column.Modified"), FileColumn.Preset => DataTexts.Get("Files.Column.Preset"),
+        FileColumn.ExportFolder => DataTexts.Get("Files.Column.ExportFolder"), _ => DataTexts.Get("Files.Column.Status"),
     };
 
     /// <summary>
@@ -40,20 +43,20 @@ public static class ColumnFit
     /// <param name="width">Measures text.</param>
     /// <param name="noExportFolderText">What a row without an export folder says (the tests give the HTML app's words).</param>
     public static Dictionary<FileColumn, int> Widths(IReadOnlyList<FileColumn> shown, IReadOnlyList<FileEntry> rows,
-        IEnumerable<string> presetNames, bool groupedByFolder, int available, TextWidth width, string noExportFolderText = NoExportFolderText)
+        IEnumerable<string> presetNames, bool groupedByFolder, int available, TextWidth width, string? noExportFolderText = null)
     {
         // The longest texts of each kind, by number of characters, as the HTML app picks them.
-        string name = "", folder = "", status = "", exportFolder = noExportFolderText, lines = "";
+        string name = "", folder = "", status = "", exportFolder = noExportFolderText ?? NoExportFolderText, lines = "";
         bool anyFolder = false, anyExportFolder = false;
         foreach (FileEntry row in rows)
         {
-            name = Longest(name, row.Name + (row.Source is not null ? "" : " (not loaded)"));
+            name = Longest(name, row.Source is not null ? row.Name : DataTexts.Get("Files.Row.NotLoaded", ("file", row.Name)));
             if (row.Folder != "") { anyFolder = true; folder = Longest(folder, row.Folder); }
             status = Longest(status, FileStatus.Of(row).Text);
             if (row.ExportFolder is not null) { anyExportFolder = true; exportFolder = Longest(exportFolder, FileListView.FolderName(row.ExportFolder)); }
             if (row.Lines is int count) lines = Longest(lines, FileStatus.Count(count));
         }
-        string preset = "(none)";
+        string preset = DataTexts.Get("Files.Row.NoPreset");
         foreach (string presetName in presetNames) preset = Longest(preset, presetName);
 
         // Rows that already have a second line (their folder) can let Status wrap onto two lines at no cost.
@@ -96,7 +99,7 @@ public static class ColumnFit
     /// What the Export folder column says for a row without one. The HTML app says "Browser download", as its exports
     /// download; the desktop app's Run export asks for a folder instead (chosen on purpose).
     /// </summary>
-    public const string NoExportFolderText = "Not set";
+    public static string NoExportFolderText => DataTexts.Get("Files.Row.NotSet");
 
     /// <summary>The longer of two texts by number of characters; the first when they are as long.</summary>
     private static string Longest(string a, string b) => b.Length > a.Length ? b : a;

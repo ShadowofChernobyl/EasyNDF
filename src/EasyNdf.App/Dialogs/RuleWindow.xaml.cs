@@ -7,6 +7,7 @@ using EasyNdf.App.Files;
 using EasyNdf.App.Rules;
 using EasyNdf.Data;
 using EasyNdf.Data.FileList;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Dialogs;
 
@@ -209,21 +210,21 @@ public partial class RuleWindow : UserControl
         PropertyScans scans = Scans();
         string current = CurrentScanFile(scans);
         var options = new List<ChoiceOption>();
-        if (scans.Keys.Count == 0 && scans.Unread.Count == 0) options.Add(new ChoiceOption("", "(no file scanned)"));
+        if (scans.Keys.Count == 0 && scans.Unread.Count == 0) options.Add(new ChoiceOption("", Texts.Get("Rules.Scan.NoFile")));
         else
         {
-            if (current == "") options.Add(new ChoiceOption("", "(choose a file)"));
+            if (current == "") options.Add(new ChoiceOption("", Texts.Get("Rules.Editor.Lookup.ChooseFile")));
             options.AddRange(scans.Keys.Select(key => new ChoiceOption(key, PropertyScans.BaseName(key), DimFolder(scans, key))));
             options.AddRange(scans.Unread.Select(key => new ChoiceOption(key, PropertyScans.BaseName(key),
-                (DimFolder(scans, key) is { Length: > 0 } folder ? folder + " " : "") + "not read yet")));
+                (DimFolder(scans, key) is { Length: > 0 } folder ? folder + " " : "") + Texts.Get("Files.Status.NotReadYet"))));
         }
         showingScan = true;
         ScanChoice.ItemsSource = options;
         ScanChoice.SelectedItem = options.FirstOrDefault(o => o.Value == current) ?? options[0];
         showingScan = false;
         ScanNote.Text = current != ""
-            ? scans.Of(current).Names.Count.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " properties from " + scans.Label(current) + "."
-            : "Scan a file to fill the dropdowns. Files on the Files tab are scanned automatically.";
+            ? Texts.Get("Rules.Scan.Properties", ("count", scans.Of(current).Names.Count.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)), ("file", scans.Label(current)))
+            : Texts.Get("Rules.Scan.Hint");
     }
 
     private static string DimFolder(PropertyScans scans, string key) => scans.Folder(key) is { Length: > 0 } folder ? PropertyScans.FolderTag(folder) : "";
@@ -244,7 +245,7 @@ public partial class RuleWindow : UserControl
             if (!AppData.Current.Scans.Scans.ContainsKey(file))
             {
                 ShowScan();
-                await MainView.Of(this).Messages.Tell("Could not read " + entry.Name + ". " + entry.Message);
+                await MainView.Of(this).Messages.Tell(Texts.Get("Rules.Scan.CouldNotRead", ("file", entry.Name), ("reason", entry.Message)));
                 return;
             }
         }
@@ -255,7 +256,7 @@ public partial class RuleWindow : UserControl
     /// <summary>"...": scans a file without adding it to the Files tab; it fills this preset's dropdowns.</summary>
     private async void ScanFileClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Scan file", Filter = "NDF files (*.ndf)|*.ndf" };
+        var dialog = new Microsoft.Win32.OpenFileDialog { Title = Texts.Get("Rules.Scan.Title"), Filter = Texts.Get("Files.NdfFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true || model is null) return;
         string name = System.IO.Path.GetFileName(dialog.FileName);
         ScanNote.Text = "Scanning " + name + "...";
@@ -269,7 +270,7 @@ public partial class RuleWindow : UserControl
         catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or EasyNdf.Engine.Ndf.NdfParseException)
         {
             ShowScan();
-            await MainView.Of(this).Messages.Tell("Could not scan " + name + ". " + error.Message);
+            await MainView.Of(this).Messages.Tell(Texts.Get("Rules.Scan.Failed", ("file", name), ("reason", error.Message)));
         }
     }
 
@@ -335,7 +336,7 @@ public partial class RuleWindow : UserControl
     {
         if (model?.RowsAsClipboardText(list) is not string text) return;
         Clipboard.SetText(text);
-        model.Say("Copied " + RulesModel.CountRows(list, model.SelectedRowsOf(list).Count) + " to the clipboard.");
+        model.Say(Texts.Get("Rules.Copied", ("what", RulesModel.CountRows(list, model.SelectedRowsOf(list).Count))));
     }
 
     /// <summary>Ctrl+X: copies the selected rows, then deletes them.</summary>
@@ -345,7 +346,7 @@ public partial class RuleWindow : UserControl
         int count = model.SelectedRowsOf(list).Count;
         Clipboard.SetText(text);
         model.DeleteRows(list);
-        model.Say("Cut " + RulesModel.CountRows(list, count) + " to the clipboard.");
+        model.Say(Texts.Get("Rules.Cut", ("what", RulesModel.CountRows(list, count))));
     }
 
     /// <summary>A list's right-click menu: for the row under the mouse, or for the list.</summary>
@@ -353,24 +354,24 @@ public partial class RuleWindow : UserControl
     {
         if (model is null) return;
         string list = view.List;
-        string what = list == RulesModel.Actions ? "Action" : "Condition";
+        string create = list == RulesModel.Actions ? Texts.Get("Rules.Rows.NewAction") : Texts.Get("Rules.Rows.NewCondition");
         IEnumerable<Controls.MenuChoice?> tail =
         [
-            new Controls.MenuChoice("Create New " + what, () => OpenRow(list, model.AddRow(list))),
-            new Controls.MenuChoice("Paste", () => MainView.Of(this).PasteFromClipboard(), Key: "Ctrl+V"),
+            new Controls.MenuChoice(create, () => OpenRow(list, model.AddRow(list))),
+            new Controls.MenuChoice(Texts.Get("Common.Menu.Paste"), () => MainView.Of(this).PasteFromClipboard(), Key: "Ctrl+V"),
         ];
         if (index < 0) { Controls.Menus.Show(view, tail); return; }
         int count = model.SelectedRowsOf(list).Count;
-        string several = list == RulesModel.Actions ? "actions" : "conditions";
+        string several = RulesModel.CountRows(list, count);
         Controls.Menus.Show(view,
         [
-            new Controls.MenuChoice("Configure", () => OpenRow(list, index), IsEnabled: count == 1, Key: "Enter"),
-            new Controls.MenuChoice("Duplicate", () => model.DuplicateRows(list)),
-            new Controls.MenuChoice("Move Up", () => model.MoveRows(list, -1), Key: "Ctrl+Up"),
-            new Controls.MenuChoice("Move Down", () => model.MoveRows(list, +1), Key: "Ctrl+Down"),
-            new Controls.MenuChoice(count > 1 ? "Cut " + count + " " + several : "Cut", () => CutRows(list), Key: "Ctrl+X"),
-            new Controls.MenuChoice(count > 1 ? "Copy " + count + " " + several : "Copy", () => CopyRows(list), Key: "Ctrl+C"),
-            new Controls.MenuChoice(count > 1 ? "Delete " + count + " " + several : "Delete", () => model.DeleteRows(list), Key: "Delete"),
+            new Controls.MenuChoice(Texts.Get("Common.Menu.Configure"), () => OpenRow(list, index), IsEnabled: count == 1, Key: "Enter"),
+            new Controls.MenuChoice(Texts.Get("Common.Menu.Duplicate"), () => model.DuplicateRows(list)),
+            new Controls.MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => model.MoveRows(list, -1), Key: "Ctrl+Up"),
+            new Controls.MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => model.MoveRows(list, +1), Key: "Ctrl+Down"),
+            new Controls.MenuChoice(count > 1 ? Texts.Get("Common.Menu.CutSeveral", ("what", several)) : Texts.Get("Common.Menu.Cut"), () => CutRows(list), Key: "Ctrl+X"),
+            new Controls.MenuChoice(count > 1 ? Texts.Get("Common.Menu.CopySeveral", ("what", several)) : Texts.Get("Common.Menu.Copy"), () => CopyRows(list), Key: "Ctrl+C"),
+            new Controls.MenuChoice(count > 1 ? Texts.Get("Common.Menu.DeleteSeveral", ("what", several)) : Texts.Get("Common.Menu.Delete"), () => model.DeleteRows(list), Key: "Delete"),
             Controls.Menus.Line,
             .. tail,
         ]);

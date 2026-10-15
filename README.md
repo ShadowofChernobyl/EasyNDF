@@ -21,6 +21,18 @@ You need **Visual Studio 2026** (Community is free) with the **.NET desktop deve
 | `src/EasyNdf.Data` | Where the app keeps its data (Local AppData or portable), and the mod, theme, filter and language pack files. See its [README](src/EasyNdf.Data/README.md). |
 | `src/EasyNdf.App` | The WPF app itself. |
 
+## The app's texts and languages
+
+Every text the app shows has a fixed name, such as `Files.AddFolder`, and its English is in `src/EasyNdf.App/Languages/en`, one file per part of the app (`files.json`, `rules.json`, `settings.json`...).
+
+- **In a screen (XAML):** `Content="{t:Text Files.AddFolder}"`, with `xmlns:t="clr-namespace:EasyNdf.App.Text"` at the top of the file.
+- **In code:** `Texts.Get("Files.AddFolder")`. A text with blanks: `"Delete \"{name}\"?"` and `Texts.Get("Rules.DeleteAsk", ("name", rule.Name))`. A text that depends on a number lists its forms with `|`: `"{count} edit|{count} edits"` and `Texts.Count("Files.Edits", 5)`.
+- **Bold or code inside a sentence:** `**bold**` and `` `code` ``, shown with `t:RichText.Markup="{t:Text Welcome.Intro}"` on a TextBlock.
+- **To add a text:** add its name and English to the right file, then use the name. Rewording the English later never loses a translation: packs remember which English they were made from, and count the text as "to check".
+- **The Help wiki and the About tab** stay as HTML (`src/EasyNdf.App/Help/wiki.json` and `about.html`); each page's title and HTML, and each group, are texts too (`Help.Page.start.Title`, `Help.Page.start.Html`, `Help.Group.GettingStarted`, `About.Page.Html`), so packs translate them like the rest.
+- **Numbers:** `Texts.Number(1234)` writes "1,234" with the language's separators; `Texts.CountWide` is `Texts.Count` with the number written that way.
+- Other languages are packs imported on the Settings tab (Language card). **Export** gives a file with every text to translate; whatever a pack lacks shows in English.
+
 ## Mods made in other versions
 
 Mod files keep the HTML app's format (`FormatVersion: 1`), so mods made in the HTML app open here unchanged. Plain Edit rules are also the format of the WinForms app.

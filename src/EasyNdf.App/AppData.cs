@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json.Nodes;
 using EasyNdf.App.Mods;
 using EasyNdf.Data;
+using EasyNdf.Data.Languages;
 
 namespace EasyNdf.App;
 
@@ -105,11 +106,15 @@ public sealed class AppData
         }
         data.Folders = folders;
         data.Themes = new ThemeStore(folders.Themes);
+        data.Languages = new LanguageStore(folders.Languages);
         Current = data;
     }
 
     /// <summary>The user's own themes; in memory only for data in memory only.</summary>
     public ThemeStore Themes { get; private set; } = new();
+
+    /// <summary>The language packs the user has imported; in memory only for data in memory only.</summary>
+    public LanguageStore Languages { get; private set; } = new();
 
     /// <summary>Whether Clear all data has deleted everything; nothing is saved after it.</summary>
     private bool isCleared;

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using EasyNdf.App.Controls;
 using ICSharpCode.AvalonEdit;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Editor;
 
@@ -14,7 +15,7 @@ public sealed class StatusStrip : Border
 {
     private readonly TextEditor editor;
     private readonly TextBlock caretPlace = new() { VerticalAlignment = VerticalAlignment.Center };
-    private readonly ComboBox sizeChoice = new() { MinWidth = 72, FontSize = 12, ToolTip = "Text size (Ctrl+scroll, Ctrl+plus, Ctrl+minus; Ctrl+0 for 100%)" };
+    private readonly ComboBox sizeChoice = new() { MinWidth = 72, FontSize = 12, ToolTip = Texts.Get("Editor.TextSize.Tip") };
     private bool showing;
 
     /// <summary>A size in the dropdown: its pixels, shown as a percentage.</summary>
@@ -55,7 +56,7 @@ public sealed class StatusStrip : Border
     private void ShowCaretPlace()
     {
         var caret = editor.TextArea.Caret;
-        caretPlace.Text = "Ln " + caret.Line + ", Col " + caret.Column;
+        caretPlace.Text = Texts.Get("Editor.CaretPlace", ("line", caret.Line), ("column", caret.Column));
     }
 
     /// <summary>Fills the dropdown with the offered sizes, and the size in use among them if it is not one, chosen.</summary>

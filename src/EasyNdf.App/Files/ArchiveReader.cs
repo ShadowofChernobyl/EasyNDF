@@ -2,6 +2,7 @@ using System.IO;
 using System.IO.Compression;
 using SharpCompress.Archives.Rar;
 using SharpCompress.Common;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Files;
 
@@ -43,15 +44,15 @@ public static class ArchiveReader
                 found.Add(Item(archivePath, entry.FullName, bytes, entry.LastWriteTime.LocalDateTime));
             }
         }
-        catch (InvalidDataException) { throw new ArchiveProblem("it is not a zip file, or it is damaged"); }
-        if (found.Count == 0 && locked > 0) throw new ArchiveProblem("its files are password-protected");
-        if (found.Count == 0 && unreadable > 0) throw new ArchiveProblem("it is packed in a way EasyNDF cannot read. Extract it and add the folder");
+        catch (InvalidDataException) { throw new ArchiveProblem(Texts.Get("Files.Archive.NotZip")); }
+        if (found.Count == 0 && locked > 0) throw new ArchiveProblem(Texts.Get("Files.Archive.FilesLocked"));
+        if (found.Count == 0 && unreadable > 0) throw new ArchiveProblem(Texts.Get("Files.Archive.Unreadable"));
         return found;
     }
 
     private static List<FileToAdd> FromRar(string archivePath)
     {
-        if (new FileInfo(archivePath).Length > 1.5e9) throw new ArchiveProblem("it is over 1.5 GB, too large to open here. Extract it and add the folder");
+        if (new FileInfo(archivePath).Length > 1.5e9) throw new ArchiveProblem(Texts.Get("Files.Archive.TooLarge"));
         var found = new List<FileToAdd>();
         try
         {
@@ -59,7 +60,7 @@ public static class ArchiveReader
             foreach (RarArchiveEntry entry in rar.Entries)
             {
                 if (entry.IsDirectory || entry.Key is not string name || !IsWanted(name)) continue;
-                if (entry.IsEncrypted) throw new ArchiveProblem("it is password-protected");
+                if (entry.IsEncrypted) throw new ArchiveProblem(Texts.Get("Files.Archive.Locked"));
                 using Stream stream = entry.OpenEntryStream();
                 using var memory = new MemoryStream();
                 stream.CopyTo(memory);
@@ -68,9 +69,9 @@ public static class ArchiveReader
         }
         catch (Exception error) when (error is InvalidFormatException or ArchiveException or ArchiveOperationException or IncompleteArchiveException or InvalidDataException or EndOfStreamException)
         {
-            throw new ArchiveProblem("it is damaged, or not a .rar file");
+            throw new ArchiveProblem(Texts.Get("Files.Archive.NotRar"));
         }
-        catch (CryptographicException) { throw new ArchiveProblem("it is password-protected"); }
+        catch (CryptographicException) { throw new ArchiveProblem(Texts.Get("Files.Archive.Locked")); }
         return found;
     }
 

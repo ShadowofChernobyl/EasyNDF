@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Controls.Primitives;
 using EasyNdf.App.Controls;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Help;
 
@@ -584,7 +585,7 @@ public sealed class WikiRenderer(PageLook look)
 
     private InlineUIContainer WelcomeButton(WikiElement element)
     {
-        var button = new Button { Content = TextOf(element), ToolTip = "Open the welcome window" };
+        var button = new Button { Content = TextOf(element), ToolTip = Texts.Get("Help.OpenWelcome.Tip") };
         button.Click += (_, _) => WelcomeClicked?.Invoke();
         return new InlineUIContainer(button) { BaselineAlignment = BaselineAlignment.Center };
     }

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using EasyNdf.App.Controls;
 using EasyNdf.Data;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Rules;
 
@@ -48,7 +49,7 @@ public sealed class RuleEditor
 
     /// <summary>The window's title for a rule type: "Rule" for Edit, otherwise the type's name in title case.</summary>
     public static string TitleOf(string kind) =>
-        kind == "Edit" ? "Rule" : Text.TitleCase.Of(EasyNdf.Engine.Mods.RuleLoading.Kinds.GetValueOrDefault(kind, "Edit rule"));
+        kind == "Edit" ? Texts.Get("Rules.Editor.Title") : Text.TitleCase.Of(RuleKindNames.Of(kind));
 
     /// <summary>A rule's type, or Edit for one this app does not know.</summary>
     public static string KindOf(JsonObject rule) =>
@@ -86,139 +87,136 @@ public sealed class RuleEditor
 
     // ---- one method per rule type ----
 
-    private const string EveryDescriptor = "No conditions: every descriptor.";
+    private static string EveryDescriptor => Texts.Get("Rules.Editor.EveryDescriptor");
 
     private void BuildEdit()
     {
-        AddConditions("Conditions", EveryDescriptor);
-        AddActions("Actions");
+        AddConditions(Texts.Get("Rules.Editor.Conditions"), EveryDescriptor);
+        AddActions(Texts.Get("Rules.Editor.Actions"));
     }
 
     private void BuildGroup()
     {
-        AddNote(Plain("Holds the rules below it, up to the next group. They only touch descriptors that also meet these conditions, and disabling the group disables them. With no conditions it is just a heading."));
-        AddConditions("Shared conditions", null);
+        AddNote(Note("Rules.Editor.Group.Note"));
+        AddConditions(Texts.Get("Rules.Editor.SharedConditions"), null);
     }
 
     private void BuildVariable()
     {
-        AddRow("Name", TextField("VarName", "For example RangeMultiplier", mono: true));
-        AddRow("Value", TextField("Value", "For example 2", mono: true));
+        AddRow(Texts.Get("Rules.Editor.Name"), TextField("VarName", Texts.Get("Rules.Editor.VarNameHint.ForExampleRangeMultiplier"), mono: true));
+        AddRow(Texts.Get("Rules.Editor.Value"), TextField("Value", Texts.Get("Rules.Editor.ValueHint.ForExample2"), mono: true));
         string name = JsonValues.AsText(parameters["VarName"]);
-        AddNote(Plain("Write "), Mono("{" + (name != "" ? name : "Name") + "}"),
-            Plain(" in any value, condition, table cell or formula. Formulas also take the bare name. Applies to the whole preset, wherever it sits, unless its group is switched off."));
+        AddNote(Note("Rules.Editor.Variable.Note", ("variable", "{" + (name != "" ? name : Texts.Get("Rules.Editor.Name")) + "}")));
     }
 
     private void BuildAdd()
     {
-        AddRow("Descriptor name", TextField("Name", "Name of the new descriptor", mono: true));
-        var where = new List<FrameworkElement?> { Choice("Position", [("end", "At the end of the file"), ("after", "After a descriptor")], rebuildAfter: true) };
+        AddRow(Texts.Get("Rules.Editor.DescriptorName"), TextField("Name", Texts.Get("Rules.Editor.NameHint.NameOfThe"), mono: true));
+        var where = new List<FrameworkElement?> { Choice("Position", [("end", Texts.Get("Rules.Editor.Choice.End.AtTheEnd")), ("after", Texts.Get("Rules.Editor.Choice.After.AfterADescriptor"))], rebuildAfter: true) };
         if (JsonValues.AsText(parameters["Position"]) == "after")
         {
-            where.Add(TextField("After", "Descriptor to add it after", mono: true));
+            where.Add(TextField("After", Texts.Get("Rules.Editor.AfterHint.DescriptorToAdd"), mono: true));
             where.Add(Fill("After", scan.Titles));
         }
-        AddRow("Where", [.. where]);
+        AddRow(Texts.Get("Rules.Editor.Where"), [.. where]);
         // .rcm: the descriptor's text, in the File Editor's editor, 12rem tall at least and taking the room left
         var text = new Editor.NdfTextBox(JsonValues.AsText(parameters["Text"]), parameters)
         {
-            ToolTip = "Paste the whole descriptor, from its comment or export line. Ctrl+scroll changes the text size.",
+            ToolTip = Texts.Get("Rules.Editor.Add.Text.Tip"),
             MinHeight = 192,
         };
         text.TextChanged += typed => { parameters["Text"] = typed; saved(TypingKey("p", "Text")); };
         FlexColumn.SetGrowBasis(text, 192);
         parts.Add(text);
-        AddNote(Plain("Runs once per file. Skipped if the name is already in the file or the text is not valid NDF. Written as typed; later rules do not edit it."));
+        AddNote(Note("Rules.Editor.Add.Note"));
     }
 
     private void BuildClone()
     {
-        AddRow("Descriptor to copy", TextField("Source", "Existing descriptor name", mono: true), Fill("Source", scan.Titles));
-        AddRow("Name of the copy", TextField("NewName", "New descriptor name", mono: true));
-        AddRow("IDs", Tick("NewIds", "Give the copy its own GUIDs"));
-        AddActions("Actions applied to the copy");
-        AddNote(Plain("Copies the descriptor as it is when this rule runs and places the copy after it. Later rules can edit the copy. Skipped if the new name exists. New GUIDs come from the new name, so they are the same on every export."));
+        AddRow(Texts.Get("Rules.Editor.DescriptorToCopy"), TextField("Source", Texts.Get("Rules.Editor.SourceHint.ExistingDescriptorName"), mono: true), Fill("Source", scan.Titles));
+        AddRow(Texts.Get("Rules.Editor.NameOfTheCopy"), TextField("NewName", Texts.Get("Rules.Editor.NewNameHint.NewDescriptorName"), mono: true));
+        AddRow(Texts.Get("Rules.Editor.IDs"), Tick("NewIds", Texts.Get("Rules.Editor.NewIds")));
+        AddActions(Texts.Get("Rules.Editor.ActionsAppliedToThe"));
+        AddNote(Note("Rules.Editor.Clone.Note"));
     }
 
     private void BuildRemove()
     {
-        AddNote(Caution("Deletes every descriptor that meets the conditions."), Plain(" Needs at least one condition."));
-        AddConditions("Conditions", null);
+        AddNote(Note("Rules.Editor.Remove.Note"));
+        AddConditions(Texts.Get("Rules.Editor.Conditions"), null);
     }
 
     private void BuildReplace()
     {
-        AddRow("Find", TextField("Find", "Value to look for", mono: true));
-        AddRow("Replace with", TextField("Replace", "New value", mono: true));
-        AddRow("Match", Choice("Mode", [("whole", "Whole value only"), ("part", "Any part of a value")]));
+        AddRow(Texts.Get("Rules.Editor.Find"), TextField("Find", Texts.Get("Rules.Editor.FindHint.ValueToLook"), mono: true));
+        AddRow(Texts.Get("Rules.Editor.ReplaceWith"), TextField("Replace", Texts.Get("Rules.Editor.ReplaceHint.NewValue"), mono: true));
+        AddRow(Texts.Get("Rules.Editor.Match"), Choice("Mode", [("whole", Texts.Get("Rules.Editor.Choice.Whole.WholeValueOnly")), ("part", Texts.Get("Rules.Editor.Choice.Part.AnyPartOf"))]));
         AddCommentRow();
-        AddNote(Plain("Checks every value in the descriptor. Property names and the descriptor's name are not changed."));
-        AddConditions("Conditions (optional)", EveryDescriptor);
+        AddNote(Note("Rules.Editor.Replace.Note"));
+        AddConditions(Texts.Get("Rules.Editor.ConditionsOptional"), EveryDescriptor);
     }
 
     private void BuildScale()
     {
-        AddRow("Target", Coloured(TextField("Target", "Property name or pair key", mono: true), RuleTextKind.Path), Fill("Target", scan.Names));
-        AddRow("Operation",
-            Choice("Op", [("Multiply", "Multiply by"), ("Add", "Add"), ("Subtract", "Subtract"), ("Divide", "Divide by"), ("None", "None (only round and limit)")]),
-            TextField("Value", "Number", mono: true));
-        AddRow("Round to a step of", TextField("Step", "For example 5; empty for none", mono: true),
-            Choice("RoundMode", [("nearest", "Nearest"), ("down", "Down"), ("up", "Up")]));
-        AddRow("Limits", TextField("Min", "Minimum; empty for none", mono: true), TextField("Max", "Maximum; empty for none", mono: true));
+        AddRow(Texts.Get("Rules.Editor.Target"), Coloured(TextField("Target", Texts.Get("Rules.Editor.TargetHint.PropertyNameOr"), mono: true), RuleTextKind.Path), Fill("Target", scan.Names));
+        AddRow(Texts.Get("Rules.Editor.Operation"),
+            Choice("Op", [("Multiply", Texts.Get("Rules.Editor.Choice.Multiply.MultiplyBy")), ("Add", Texts.Get("Rules.Editor.Choice.Add.Add")), ("Subtract", Texts.Get("Rules.Editor.Choice.Subtract.Subtract")), ("Divide", Texts.Get("Rules.Editor.Choice.Divide.DivideBy")), ("None", Texts.Get("Rules.Editor.Choice.None.NoneOnlyRound"))]),
+            TextField("Value", Texts.Get("Rules.Editor.ValueHint.Number"), mono: true));
+        AddRow(Texts.Get("Rules.Editor.RoundToAStep"), TextField("Step", Texts.Get("Rules.Editor.StepHint.ForExample5"), mono: true),
+            Choice("RoundMode", [("nearest", Texts.Get("Rules.Editor.Choice.Nearest.Nearest")), ("down", Texts.Get("Rules.Editor.Choice.Down.Down")), ("up", Texts.Get("Rules.Editor.Choice.Up.Up"))]));
+        AddRow(Texts.Get("Rules.Editor.Limits"), TextField("Min", Texts.Get("Rules.Editor.MinHint.MinimumEmptyFor"), mono: true), TextField("Max", Texts.Get("Rules.Editor.MaxHint.MaximumEmptyFor"), mono: true));
         AddCommentRow();
-        AddConditions("Conditions (optional)", EveryDescriptor);
+        AddConditions(Texts.Get("Rules.Editor.ConditionsOptional"), EveryDescriptor);
     }
 
     private void BuildFormula()
     {
-        AddRow("Target", Coloured(TextField("Target", "Property name or pair key", mono: true), RuleTextKind.Path), Fill("Target", scan.Names));
+        AddRow(Texts.Get("Rules.Editor.Target"), Coloured(TextField("Target", Texts.Get("Rules.Editor.TargetHint.PropertyNameOr"), mono: true), RuleTextKind.Path), Fill("Target", scan.Names));
         TextBox formula = Coloured(TextField("Expression", "For example round(0.8 * MaximumRangeGRU, 25)", mono: true), RuleTextKind.Formula);
         Suggestions.Attach(formula, RuleSuggestions.Formula(scan.Names, () => RuleSuggestions.VariablesOf(model)));
-        AddRow("Formula", formula);
+        AddRow(Texts.Get("Rules.Editor.Formula"), formula);
         AddCommentRow();
-        AddNote(Plain("Takes property names from the same descriptor, numbers, + - * / and brackets. "), Mono("value"),
-            Plain(" is the target's current value. A name with a slash goes in square brackets: "), Mono("[EVisionRange/Standard]"),
-            Plain(". Functions: min, max, abs, floor, ceil, round(x), round(x, step). A descriptor is skipped if a property is missing or not a number."));
-        AddConditions("Conditions (optional)", EveryDescriptor);
+AddNote(Note("Rules.Editor.Formula.Note"));
+        AddConditions(Texts.Get("Rules.Editor.ConditionsOptional"), EveryDescriptor);
     }
 
     private void BuildTable()
     {
-        AddRow("Each value is", Choice("Op", [("Set To", "Set as the new value"), ("Multiply", "Multiplied into the current value"), ("Add", "Added to the current value")]));
+        AddRow(Texts.Get("Rules.Editor.EachValueIs"), Choice("Op", [("Set To", Texts.Get("Rules.Editor.Choice.SetTo.SetAsThe")), ("Multiply", Texts.Get("Rules.Editor.Choice.Multiply.MultipliedIntoThe")), ("Add", Texts.Get("Rules.Editor.Choice.Add.AddedToThe"))]));
         AddCommentRow();
         // textarea rows="12": twelve lines of the code font, 4 pixels in at the top and bottom
         var table = TextArea("Text", "Name,MaxSpeedInKmph,FuelCapacity\nDescriptor_Unit_A,70,500\nDescriptor_Unit_B,,650");
         table.Height = 12 * 17.390625 + 8 + 2;
         parts.Add(table);
-        AddNote(Plain("Paste from a spreadsheet, or type text separated by commas, semicolons or tabs. First row: property names. First column: descriptor names. Empty cells are skipped. Rows for descriptors not in the file are listed under Skipped."));
+        AddNote(Note("Rules.Editor.Table.Note"));
     }
 
     private void BuildLookup()
     {
         // the scanned files, each stored by the shortest name no other answers to; the one the rule names keeps its name
         string sourceFile = JsonValues.AsText(parameters["SourceFile"]);
-        var files = new List<ChoiceOption> { new("", "(choose a file)") };
+        var files = new List<ChoiceOption> { new("", Texts.Get("Rules.Editor.Lookup.ChooseFile")) };
         files.AddRange(scan.SourceFiles);
-        if (sourceFile != "" && !scan.SourceFileIsScanned) files.Add(new(sourceFile, sourceFile + " (not scanned)"));
-        AddNote(Plain("Edits descriptors in this file from a list read in another file. The other file must be on the Files tab; it is read as loaded, before its own rules."));
-        AddRow("Other file", Choice("SourceFile", files, rebuildAfter: true));
-        AddList(RulesModel.SourceConditions, "Descriptors to read in the other file", Gate("SourceGate", inParams: true), "a condition", "No conditions. Press + to add one.");
-        AddRow("Collect from each", TextField("Collect", "Descriptor Title, or a property name", mono: true), Fill("Collect", ["Descriptor Title", .. scan.SourceNames]));
-        parts.Add(new TextBlock { Text = "Descriptors to edit in this file", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 6, 0, 0) }.Themed(TextBlock.ForegroundProperty, "accent"));
-        AddRow("Where this matches a collected value", TextField("MatchOn", "Descriptor Title, or a property name", mono: true), Fill("MatchOn", ["Descriptor Title", .. scan.Names]));
-        AddNote(Plain("A reference matches by its last part: "), Mono("$/GFX/Weapon/WeaponDescriptor_X"), Plain(" matches "), Mono("WeaponDescriptor_X"), Plain("."));
-        AddConditions("Extra conditions in this file (optional)", null);
-        AddActions("Actions");
+        if (sourceFile != "" && !scan.SourceFileIsScanned) files.Add(new(sourceFile, Texts.Get("Rules.Editor.Lookup.NotScanned", ("file", sourceFile))));
+        AddNote(Note("Rules.Editor.Lookup.Note"));
+        AddRow(Texts.Get("Rules.Editor.OtherFile"), Choice("SourceFile", files, rebuildAfter: true));
+        AddList(RulesModel.SourceConditions, Texts.Get("Rules.Editor.Lookup.SourceConditions"), Gate("SourceGate", inParams: true), Texts.Get("Rules.Editor.ACondition"), Texts.Get("Rules.Editor.NoConditions") + " " + Texts.Get("Rules.Editor.PressPlus"));
+        AddRow(Texts.Get("Rules.Editor.CollectFromEach"), TextField("Collect", Texts.Get("Rules.Editor.CollectHint.DescriptorTitleOr"), mono: true), Fill("Collect", ["Descriptor Title", .. scan.SourceNames]));
+        parts.Add(new TextBlock { Text = Texts.Get("Rules.Editor.Lookup.ToEdit"), FontWeight = FontWeights.Bold, Margin = new Thickness(0, 6, 0, 0) }.Themed(TextBlock.ForegroundProperty, "accent"));
+        AddRow(Texts.Get("Rules.Editor.WhereThisMatchesA"), TextField("MatchOn", Texts.Get("Rules.Editor.CollectHint.DescriptorTitleOr"), mono: true), Fill("MatchOn", ["Descriptor Title", .. scan.Names]));
+        AddNote(Note("Rules.Editor.Lookup.ReferenceNote"));
+        AddConditions(Texts.Get("Rules.Editor.ExtraConditionsInThis"), null);
+        AddActions(Texts.Get("Rules.Editor.Actions"));
     }
 
     private void BuildCheck()
     {
-        AddNote(Plain("Changes nothing. Counts the descriptors that meet the conditions and warns on the Files tab when the count is not as expected, such as after a game update renamed something."));
-        var expect = new List<FrameworkElement?> { Choice("Expect", [("atLeast", "At least this many"), ("exactly", "Exactly this many"), ("atMost", "At most this many"), ("none", "None at all")], rebuildAfter: true) };
-        if (JsonValues.AsText(parameters["Expect"]) != "none") expect.Add(TextField("Count", "Number", mono: true));
-        AddRow("Expect", [.. expect]);
-        AddRow("Message when it fails", TextField("Message", "Optional note to yourself", mono: false));
-        AddConditions("Conditions (optional)", "No conditions: every descriptor.");
+        AddNote(Note("Rules.Editor.Check.Note"));
+        var expect = new List<FrameworkElement?> { Choice("Expect", [("atLeast", Texts.Get("Rules.Editor.Choice.AtLeast.AtLeastThis")), ("exactly", Texts.Get("Rules.Editor.Choice.Exactly.ExactlyThisMany")), ("atMost", Texts.Get("Rules.Editor.Choice.AtMost.AtMostThis")), ("none", Texts.Get("Rules.Editor.Choice.None.NoneAtAll"))], rebuildAfter: true) };
+        if (JsonValues.AsText(parameters["Expect"]) != "none") expect.Add(TextField("Count", Texts.Get("Rules.Editor.ValueHint.Number"), mono: true));
+        AddRow(Texts.Get("Rules.Editor.Expect"), [.. expect]);
+        AddRow(Texts.Get("Rules.Editor.MessageWhenItFails"), TextField("Message", Texts.Get("Rules.Editor.MessageHint.OptionalNoteTo"), mono: false));
+        AddConditions(Texts.Get("Rules.Editor.ConditionsOptional"), "No conditions: every descriptor.");
     }
 
     // ---- the parts every rule has ----
@@ -226,15 +224,15 @@ public sealed class RuleEditor
     /// <summary>.rhead: "Name:" with the Enabled switch at the right, and the name under them.</summary>
     private void AddHeader()
     {
-        var enabled = new CheckBox { Content = "Enabled", IsChecked = !JsonValues.IsFalse(rule["Enabled"]), ToolTip = "Off: the rule stays in the list and does not run" };
+        var enabled = new CheckBox { Content = Texts.Get("Rules.Editor.Enabled"), IsChecked = !JsonValues.IsFalse(rule["Enabled"]), ToolTip = Texts.Get("Rules.Editor.Enabled.Tip") };
         enabled.SetResourceReference(FrameworkElement.StyleProperty, "Toggle");
         enabled.Click += (_, _) => { rule["Enabled"] = enabled.IsChecked == true; saved(""); };
         var label = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
         DockPanel.SetDock(enabled, Dock.Right);
         label.Children.Add(enabled);
-        label.Children.Add(Label("Name"));
+        label.Children.Add(Label(Texts.Get("Rules.Editor.Name")));
 
-        var name = new TextBox { Text = JsonValues.AsText(rule["Name"]), Tag = "Rule name", ToolTip = null };
+        var name = new TextBox { Text = JsonValues.AsText(rule["Name"]), Tag = Texts.Get("Rules.Editor.RuleName.Hint"), ToolTip = null };
         name.TextChanged += (_, _) => { rule["Name"] = name.Text; saved(TypingKey("", "Name")); };
         var header = new StackPanel();
         header.Children.Add(label);
@@ -248,32 +246,32 @@ public sealed class RuleEditor
         string scope = JsonValues.AsText(parameters["Scope"]);
         if (scope is not ("constants" or "type")) scope = "";
         var row = new FlexRow { Gap = 8, LineGap = 4 };
-        row.Children.Add(new TextBlock { Text = "Applies to" }.Themed(TextBlock.ForegroundProperty, "muted"));
-        ComboBox choice = Choice("Scope", [("", "Each descriptor"), ("type", "Each object of one type"), ("constants", "Top-level constants")], rebuildAfter: true);
+        row.Children.Add(new TextBlock { Text = Texts.Get("Rules.Editor.AppliesTo") }.Themed(TextBlock.ForegroundProperty, "muted"));
+        ComboBox choice = Choice("Scope", [("", Texts.Get("Rules.Editor.Choice.None.EachDescriptor")), ("type", Texts.Get("Rules.Editor.Choice.Type.EachObjectOf")), ("constants", Texts.Get("Rules.Editor.Choice.Constants.TopLevelConstants"))], rebuildAfter: true);
         FlexRow.SetGrow(choice, 1);
         row.Children.Add(choice);
         if (scope == "type")
         {
-            TextBox type = TextField("ScopeType", "Object type, for example TGameplayTerrain", mono: true);
+            TextBox type = TextField("ScopeType", Texts.Get("Rules.Editor.ScopeTypeHint.ObjectTypeFor"), mono: true);
             FlexRow.SetBasis(type, FlexRow.FullLine);
             row.Children.Add(type);
             if (Fill("ScopeType", scan.Types) is ComboBox fill) row.Children.Add(fill);
         }
         parts.Add(row);
         if (scope == "type")
-            AddNote(Plain("Runs on every object of this type, at any depth. Conditions and targets see only that object. Descriptor Title is the title of its descriptor; Descriptor Type is its own type."));
+            AddNote(Note("Rules.Editor.Scope.TypeNote"));
         else if (scope == "constants")
-            AddNote(Plain("Runs on top-level values written as "), Mono("Name is 5"), Plain(". Together they act as one descriptor: use a constant's name as a target or in a condition."));
+            AddNote(Note("Rules.Editor.Scope.ConstantsNote"));
     }
 
     /// <summary>"Comment on each edit": the comment's text, and whether it includes the original value.</summary>
     private void AddCommentRow() =>
-        AddRow("Comment on each edit", TextField("CommentText", "Empty for none", mono: false), Tick("CommentOriginal", "Include original value"));
+        AddRow(Texts.Get("Rules.Editor.CommentOnEachEdit"), TextField("CommentText", Texts.Get("Rules.Editor.CommentTextHint.EmptyForNone"), mono: false), Tick("CommentOriginal", Texts.Get("Rules.Editor.CommentOriginal")));
 
     private void AddConditions(string title, string? emptyHint) =>
-        AddList(RulesModel.Conditions, title, Gate("LogicGate", inParams: false), "a condition", (emptyHint ?? "No conditions.") + " Press + to add one.");
+        AddList(RulesModel.Conditions, title, Gate("LogicGate", inParams: false), Texts.Get("Rules.Editor.ACondition"), (emptyHint ?? Texts.Get("Rules.Editor.NoConditions")) + " " + Texts.Get("Rules.Editor.PressPlus"));
 
-    private void AddActions(string title) => AddList(RulesModel.Actions, title, null, "an action", "No actions. Press + to add one.");
+    private void AddActions(string title) => AddList(RulesModel.Actions, title, null, Texts.Get("Rules.Editor.AnAction"), Texts.Get("Rules.Editor.NoActions") + " " + Texts.Get("Rules.Editor.PressPlus"));
 
     private void AddList(string list, string title, FrameworkElement? gate, string what, string empty)
     {
@@ -287,9 +285,9 @@ public sealed class RuleEditor
     private ComboBox Gate(string field, bool inParams)
     {
         JsonObject owner = inParams ? parameters : rule;
-        var gate = new ComboBox { ToolTip = "Any: one condition is enough. All: every condition must match." };
-        gate.Items.Add(new ComboBoxItem { Content = "Any", Tag = "Any" });
-        gate.Items.Add(new ComboBoxItem { Content = "All", Tag = "All" });
+        var gate = new ComboBox { ToolTip = Texts.Get("Rules.Editor.Gate.Tip") };
+        gate.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Gate.Any"), Tag = "Any" });
+        gate.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Gate.All"), Tag = "All" });
         gate.SelectedIndex = JsonValues.AsText(owner[field]) == "All" ? 1 : 0;
         gate.SelectionChanged += (_, _) => { owner[field] = (string)((ComboBoxItem)gate.SelectedItem).Tag; saved(""); };
         return gate;
@@ -363,8 +361,8 @@ public sealed class RuleEditor
     private ComboBox? Fill(string key, IReadOnlyList<string> names)
     {
         if (names.Count == 0) return null;
-        var fill = new ComboBox { ToolTip = "Pick from the scanned file" };
-        fill.Items.Add(new ComboBoxItem { Content = "Pick from scan...", Tag = "" });
+        var fill = new ComboBox { ToolTip = Texts.Get("Rules.Editor.Fill.Tip") };
+        fill.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Fill"), Tag = "" });
         foreach (string name in names) fill.Items.Add(new ComboBoxItem { Content = name, Tag = name });
         fill.SelectedIndex = 0;
         fill.SelectionChanged += (_, _) =>
@@ -415,6 +413,10 @@ public sealed class RuleEditor
     }
 
     private static Run Plain(string text) => new(text);
+
+    /// <summary>A note's text by name, its `code` in the code font and its **warnings** in the caution colour.</summary>
+    private static Inline[] Note(string name, params (string Name, object? Value)[] blanks) =>
+        Text.RichText.Pieces(Texts.Get(name, blanks), bold: Caution, code: Mono, plain: Plain);
 
     /// <summary>span.mono: code, in the code font at 12 pixels.</summary>
     private static Run Mono(string text)

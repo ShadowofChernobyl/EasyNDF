@@ -23,6 +23,7 @@ public partial class App : Application
         // card, "--frame native" uses Windows' own title bar.
         if (HasSwitch(e.Args, "--render", "software")) RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
         AppData.Load();
+        Text.Texts.UseSaved();
         ThemeManager.ApplySaved();
         Controls.ListText.ApplySaved();
         int frameAt = Array.IndexOf(e.Args, "--frame");

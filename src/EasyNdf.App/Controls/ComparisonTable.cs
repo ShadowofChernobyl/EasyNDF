@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using EasyNdf.App.Files;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Controls;
 
@@ -12,13 +13,13 @@ namespace EasyNdf.App.Controls;
 /// </summary>
 public sealed class ComparisonTable : Grid
 {
-    private static readonly string[] Headings = ["", "Already listed", "File you picked"];
+    private static string[] Headings => ["", Texts.Get("Files.Compare.AlreadyListed"), Texts.Get("Files.Compare.Picked")];
 
     /// <summary>Builds the table for a comparison.</summary>
     public ComparisonTable(FileComparison comparison)
     {
         Margin = new Thickness(0, 0, 0, 10);
-        var labels = comparison.Lines.Select(line => line.Label + (line.IsSame ? "" : " (differs)")).ToList();
+        var labels = comparison.Lines.Select(line => line.IsSame ? line.Label : Texts.Get("Files.Compare.Differs", ("label", line.Label))).ToList();
 
         // A web page shares out a table's spare width in proportion to how wide each column's longest text is.
         double[] widest =

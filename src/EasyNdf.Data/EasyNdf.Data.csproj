@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- this library's English texts, such as the file list's Status column (see Languages\DataTexts.cs) -->
+    <EmbeddedResource Include="Languages\en\*.json" LogicalName="EasyNdf.Data.Languages.en.%(Filename)%(Extension)" />
     <ProjectReference Include="..\EasyNdf.Engine\EasyNdf.Engine.csproj" />
   </ItemGroup>
 

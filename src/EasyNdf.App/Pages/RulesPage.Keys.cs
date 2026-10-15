@@ -6,6 +6,7 @@ using EasyNdf.App.Controls;
 using EasyNdf.App.Dialogs;
 using EasyNdf.App.Rules;
 using EasyNdf.Data;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -142,7 +143,7 @@ public partial class RulesPage
         }
         else if (AppData.Current.Settings["confirmDelete"]?.GetValue<bool>() != false)
         {
-            string question = picked.Count == 1 ? "Delete the rule \"" + Model.RuleName(picked[0]) + "\"?" : "Delete these " + picked.Count + " rules?";
+            string question = picked.Count == 1 ? Texts.Get("Rules.Rule.DeleteAsk", ("rule", Model.RuleName(picked[0]))) : Texts.Get("Rules.Rule.DeleteAskSeveral", ("count", picked.Count));
             if (!await Messages.Confirm(question, "OK")) return false;
         }
         List<int> places = [.. rules.Select(rule => Model.Rules.IndexOf(rule)).Where(place => place >= 0).Order()];
@@ -159,9 +160,9 @@ public partial class RulesPage
     {
         if (groupHeadingsNeedNoQuestion) return true;
         string question = isDelete
-            ? "Deleting a group heading leaves its rules in the group above, or in none. Delete it?"
-            : "Moving a group heading changes which rules belong to it: the rules stay where they are and the heading moves past them. Move it?";
-        DialogAnswer answer = await Messages.Ask(question, new DialogOptions { Ok = isDelete ? "Delete" : "Move", CheckText = "Do not ask again until the app is closed" });
+            ? Texts.Get("Rules.Group.DeleteAsk")
+            : Texts.Get("Rules.Group.MoveAsk");
+        DialogAnswer answer = await Messages.Ask(question, new DialogOptions { Ok = isDelete ? Texts.Get("Common.Menu.Delete") : Texts.Get("Rules.Group.Move"), CheckText = Texts.Get("Rules.Group.DoNotAskAgain") });
         if (answer.Choice != DialogChoice.Ok) return false;
         if (answer.IsChecked) groupHeadingsNeedNoQuestion = true;
         return true;
@@ -171,10 +172,10 @@ public partial class RulesPage
     private async Task CutRules()
     {
         IReadOnlyList<int> picked = Model.SelectedRules;
-        if (picked.Count == 0) { Model.Say("Select a rule to cut."); return; }
+        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Rule.SelectToCut")); return; }
         int count = picked.Count;
         CopyRules();
-        if (await DeleteSelectedRules()) Model.Say("Cut " + count + (count == 1 ? " rule" : " rules") + " to the clipboard.");
+        if (await DeleteSelectedRules()) Model.Say(Texts.Get("Rules.Cut", ("what", RulesModel.CountRules(count))));
     }
 
     /// <summary>
@@ -186,7 +187,7 @@ public partial class RulesPage
         int count = Model.SelectedPresets.Count;
         if (count == 0) return;
         CopyPresets();
-        if (await DeleteSelectedPresets()) Model.Say("Cut " + RulesModel.Count(count) + " to the clipboard.");
+        if (await DeleteSelectedPresets()) Model.Say(Texts.Get("Rules.Cut", ("what", RulesModel.Count(count))));
     }
 
     // ---- right-click menus ----
@@ -207,7 +208,7 @@ public partial class RulesPage
         IEnumerable<MenuChoice?> tail =
         [
             new MenuChoice("Create New Rule", () => Menus.Show(RuleBox, NewRuleChoices())),
-            new MenuChoice("Paste", () => PasteClicked(this, new RoutedEventArgs()), Key: "Ctrl+V"),
+            new MenuChoice(Texts.Get("Common.Menu.Paste"), () => PasteClicked(this, new RoutedEventArgs()), Key: "Ctrl+V"),
             .. FoldChoices(),
             .. UndoChoices(),
         ];
@@ -224,14 +225,14 @@ public partial class RulesPage
         bool isOn = row.IsOn;
         return
         [
-            new MenuChoice("Configure", () => { Model.SelectOnly(row.Index); OpenRuleWindow(); }, IsEnabled: count == 1, Key: "Enter"),
-            new MenuChoice("Duplicate", Model.DuplicateSelectedRules),
+            new MenuChoice(Texts.Get("Common.Menu.Configure"), () => { Model.SelectOnly(row.Index); OpenRuleWindow(); }, IsEnabled: count == 1, Key: "Enter"),
+            new MenuChoice(Texts.Get("Common.Menu.Duplicate"), Model.DuplicateSelectedRules),
             new MenuChoice("Move Up", () => _ = MoveSelectedRules(-1), Key: "Ctrl+Up"),
             new MenuChoice("Move Down", () => _ = MoveSelectedRules(+1), Key: "Ctrl+Down"),
-            new MenuChoice(count > 1 ? "Cut " + count + " rules" : "Cut", () => _ = CutRules(), Key: "Ctrl+X"),
-            new MenuChoice(count > 1 ? "Copy " + count + " rules" : "Copy", CopyRules, Key: "Ctrl+C"),
-            new MenuChoice(isOn ? "Disable" : "Enable", () => Model.SetSelectedRulesOn(!isOn)),
-            new MenuChoice(count > 1 ? "Delete " + count + " rules" : "Delete", () => _ = DeleteSelectedRules(), Key: "Delete"),
+            new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CutSeveral", ("what", RulesModel.CountRules(count))) : Texts.Get("Common.Menu.Cut"), () => _ = CutRules(), Key: "Ctrl+X"),
+            new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CopySeveral", ("what", RulesModel.CountRules(count))) : Texts.Get("Common.Menu.Copy"), CopyRules, Key: "Ctrl+C"),
+            new MenuChoice(isOn ? Texts.Get("Common.Menu.Disable") : Texts.Get("Common.Menu.Enable"), () => Model.SetSelectedRulesOn(!isOn)),
+            new MenuChoice(count > 1 ? Texts.Get("Common.Menu.DeleteSeveral", ("what", RulesModel.CountRules(count))) : Texts.Get("Common.Menu.Delete"), () => _ = DeleteSelectedRules(), Key: "Delete"),
             Menus.Line,
             .. tail,
         ];
@@ -246,21 +247,21 @@ public partial class RulesPage
         IEnumerable<MenuChoice?> tail =
         [
             new MenuChoice("Create New Preset", () => NewPresetClicked(this, e)),
-            new MenuChoice("Paste", () => PasteClicked(this, e), Key: "Ctrl+V"),
+            new MenuChoice(Texts.Get("Common.Menu.Paste"), () => PasteClicked(this, e), Key: "Ctrl+V"),
             .. UndoChoices(),
         ];
         if (LineUnder(e.OriginalSource) is not PresetLine line) { Menus.Show(owner, tail); return; }
 
         if (!Model.IsSelected(line.Preset)) Model.ClickPreset(line.Preset, control: false, shift: false);
         int count = Model.SelectedPresets.Count;
-        string several = count > 1 ? " " + count + " presets" : "";
+        string several = RulesModel.Count(count);
         Menus.Show(owner,
         [
-            new MenuChoice("Rename", () => RenamePresetClicked(this, e), IsEnabled: count == 1),
-            new MenuChoice("Duplicate" + several, Model.DuplicatePresets),
-            new MenuChoice("Copy" + several, CopyPresets, Key: "Ctrl+C"),
-            new MenuChoice("Cut" + several, () => _ = CutPresets(), Key: "Ctrl+X"),
-            new MenuChoice("Delete" + several, () => DeletePresetClicked(this, e), Key: "Delete"),
+            new MenuChoice(Texts.Get("Common.Menu.Rename"), () => RenamePresetClicked(this, e), IsEnabled: count == 1),
+            new MenuChoice(count > 1 ? Texts.Get("Common.Menu.DuplicateSeveral", ("what", several)) : Texts.Get("Common.Menu.Duplicate"), Model.DuplicatePresets),
+            new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CopySeveral", ("what", several)) : Texts.Get("Common.Menu.Copy"), CopyPresets, Key: "Ctrl+C"),
+            new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CutSeveral", ("what", several)) : Texts.Get("Common.Menu.Cut"), () => _ = CutPresets(), Key: "Ctrl+X"),
+            new MenuChoice(count > 1 ? Texts.Get("Common.Menu.DeleteSeveral", ("what", several)) : Texts.Get("Common.Menu.Delete"), () => DeletePresetClicked(this, e), Key: "Delete"),
             Menus.Line,
             .. tail,
         ]);
@@ -280,8 +281,8 @@ public partial class RulesPage
         if (Model.OpenPreset is null || !Model.HasGroups) return [];
         return
         [
-            new MenuChoice("Expand all", () => Model.FoldAllGroups(collapsed: false), Key: "Ctrl+Shift+]"),
-            new MenuChoice("Collapse all", () => Model.FoldAllGroups(collapsed: true), Key: "Ctrl+Shift+["),
+            new MenuChoice(Texts.Get("Files.ExpandAll"), () => Model.FoldAllGroups(collapsed: false), Key: "Ctrl+Shift+]"),
+            new MenuChoice(Texts.Get("Files.CollapseAll"), () => Model.FoldAllGroups(collapsed: true), Key: "Ctrl+Shift+["),
         ];
     }
 
@@ -289,8 +290,8 @@ public partial class RulesPage
     private IEnumerable<MenuChoice?> UndoChoices() =>
     [
         Menus.Line,
-        new MenuChoice("Undo", () => MainView.Of(this).Undo(), History?.CanUndo == true, "Ctrl+Z"),
-        new MenuChoice("Redo", () => MainView.Of(this).Redo(), History?.CanRedo == true, "Ctrl+Y"),
+        new MenuChoice(Texts.Get("Common.Menu.Undo"), () => MainView.Of(this).Undo(), History?.CanUndo == true, "Ctrl+Z"),
+        new MenuChoice(Texts.Get("Common.Menu.Redo"), () => MainView.Of(this).Redo(), History?.CanRedo == true, "Ctrl+Y"),
     ];
 
     /// <summary>A right-click on the Mod box.</summary>
@@ -299,14 +300,14 @@ public partial class RulesPage
         e.Handled = true;
         Menus.Show((FrameworkElement)sender,
         [
-            new MenuChoice("Rename", () => RenameModClicked(this, e)),
+            new MenuChoice(Texts.Get("Common.Menu.Rename"), () => RenameModClicked(this, e)),
             new MenuChoice("Make Copy", () => CopyModClicked(this, e)),
-            new MenuChoice("Export mod", () => ExportModClicked(this, e)),
-            new MenuChoice("Watermark...", () => WatermarkClicked(this, e)),
+            new MenuChoice(Texts.Get("Rules.ExportMod"), () => ExportModClicked(this, e)),
+            new MenuChoice(Texts.Get("Rules.Watermark"), () => WatermarkClicked(this, e)),
             new MenuChoice("Delete Mod", () => DeleteModClicked(this, e)),
             Menus.Line,
             new MenuChoice("Create New Mod", () => NewModClicked(this, e)),
-            new MenuChoice("Import mod...", () => ImportModClicked(this, e)),
+            new MenuChoice(Texts.Get("Rules.ImportMod"), () => ImportModClicked(this, e)),
         ]);
     }
 

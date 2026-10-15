@@ -7,6 +7,7 @@ using EasyNdf.Data.FileList;
 using EasyNdf.Engine;
 using EasyNdf.Engine.Export;
 using EasyNdf.Engine.Ndf;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Files;
 
@@ -253,8 +254,8 @@ public sealed class FileListModel : INotifyPropertyChanged
 
     /// <summary>What the list says when it has no rows to show.</summary>
     public string EmptyText => entries.Count == 0
-        ? "No files yet. Add .ndf files or a folder, or drop them here. A .zip or .rar works too."
-        : "No files match the search and filter.";
+        ? Texts.Get("Files.List.Empty")
+        : Texts.Get("Files.List.NoMatch");
 
     /// <summary>Whether the list has no rows to show: then it says <see cref="EmptyText"/>.</summary>
     public bool ShowsEmptyText => ListItems.Count == 1 && ListItems[0] is EmptyListItem;
@@ -294,7 +295,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         get
         {
             if (caution != "") return caution;
-            string selection = entries.Count == 0 ? "" : SelectedCount == 0 ? "Ctrl-click or Shift-click selects several." : SelectedCount + " selected.";
+            string selection = entries.Count == 0 ? "" : SelectedCount == 0 ? Texts.Get("Files.List.SelectHint") : Texts.Get("Files.List.Selected", ("count", SelectedCount));
             return string.Join(" ", new[] { flash, selection }.Where(t => t != ""));
         }
     }
@@ -367,7 +368,7 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// </summary>
     public string ShownCount =>
         (ShowOnly != ShowOnly.All || Search != "") && entries.Count > 0
-            ? "Showing " + FileStatus.Count(matching.Count) + " of " + FileStatus.Count(entries.Count) + ". Runs still use every file that is on."
+            ? Texts.Get("Files.List.Showing", ("shown", FileStatus.Count(matching.Count)), ("total", FileStatus.Count(entries.Count)))
             : "";
 
     /// <summary>Whether the note above the list has anything to say (it takes no room when it does not).</summary>
@@ -446,11 +447,11 @@ public sealed class FileListModel : INotifyPropertyChanged
 
         int waiting = fromFolder ? fresh.Count(e => e.Preset is null) : 0;
         var said = new List<string>();
-        if (fromFolder && added > 0) said.Add(FileStatus.Count(added) + " file(s) added from the folder");
-        if (replaced > 0) said.Add(replaced + " listed file(s) replaced");
-        if (skipped > 0) said.Add(skipped + " duplicate(s) skipped");
+        if (fromFolder && added > 0) said.Add(Texts.Count("Files.Added.FromFolder", added, ("count", FileStatus.Count(added))));
+        if (replaced > 0) said.Add(Texts.Count("Files.Added.Replaced", replaced));
+        if (skipped > 0) said.Add(Texts.Count("Files.Added.Skipped", skipped));
         if (said.Count > 0)
-            flash = string.Join(", ", said) + "." + (waiting > 0 ? " The " + FileStatus.Count(waiting) + " without a preset are read when they are first needed." : "");
+            flash = string.Join(", ", said) + "." + (waiting > 0 ? " " + Texts.Get("Files.Added.Waiting", ("count", FileStatus.Count(waiting))) : "");
         Refilter();
         return fromFolder ? fresh.Where(e => e.Preset is not null).ToList() : fresh;
     }
@@ -517,7 +518,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or NdfParseException)
         {
-            entry.Message = "Could not read or parse this file. " + error.Message;
+            entry.Message = Texts.Get("Files.ReadFailed", ("reason", error.Message));
             entry.IsError = true;
             return null;
         }
@@ -529,7 +530,7 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// <summary>Marks a row as being read, as its Status column says until it is done.</summary>
     public void StartReading(FileEntry entry)
     {
-        entry.Message = "Reading...";
+        entry.Message = Texts.Get("Files.Reading");
         entry.IsError = false;
         RowChanged(entry);
     }
@@ -589,7 +590,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         var selected = SelectedEntries.ToHashSet();
         if (selected.Count == 0) return;
         entries.RemoveAll(selected.Contains);
-        flash = Files(selected.Count) + " removed from the list.";
+        flash = Texts.Get("Files.Removed", ("files", Files(selected.Count)));
         Refilter();
     }
 
@@ -597,7 +598,7 @@ public sealed class FileListModel : INotifyPropertyChanged
     public void RemoveAll()
     {
         if (entries.Count == 0) return;
-        flash = Files(entries.Count) + " removed from the list.";
+        flash = Texts.Get("Files.Removed", ("files", Files(entries.Count)));
         entries.Clear();
         lastClicked = null;
         Refilter();
@@ -646,7 +647,7 @@ public sealed class FileListModel : INotifyPropertyChanged
     }
 
     /// <summary>"1 file", "3 files".</summary>
-    public static string Files(int count) => FileStatus.Count(count) + (count == 1 ? " file" : " files");
+    public static string Files(int count) => Texts.Count("Files.FileCount", count, ("count", FileStatus.Count(count)));
 
     /// <summary>The × button on a row: takes that row out of the list.</summary>
     public void Remove(FileRow row)

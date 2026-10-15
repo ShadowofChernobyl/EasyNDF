@@ -6,6 +6,7 @@
 <UserControl x:Class="EasyNdf.App.Pages.EditorPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              xmlns:avalon="http://icsharpcode.net/sharpdevelop/avalonedit"
              xmlns:editor="clr-namespace:EasyNdf.App.Editor">
@@ -173,10 +174,10 @@
         <!-- .dvuse: "Used by" and how many, with a line under it -->
         <DataTemplate DataType="{x:Type editor:UsedByItem}">
             <Border x:Name="Row" MinHeight="19" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource line}" Background="Transparent"
-                    ToolTip="Every descriptor in the read files that has this one among its values. A change made here is a change for all of them.">
+                    ToolTip="{t:Text Editor.Row.Tip}">
                 <StackPanel Orientation="Horizontal" Margin="{Binding Indent}" VerticalAlignment="Center">
                     <TextBlock x:Name="Arrow" Tag="users" Text="{Binding Arrow}" Width="12" Margin="-14,0,0,0" TextAlignment="Center" Foreground="{DynamicResource muted}" Background="Transparent" Cursor="Hand" />
-                    <TextBlock Text="Used by" Margin="6,0,0,0" Foreground="{DynamicResource s-field}" />
+                    <TextBlock Text="{t:Text Editor.UsedBy}" Margin="6,0,0,0" Foreground="{DynamicResource s-field}" />
                     <TextBlock Text="{Binding Text}" Margin="6,0,0,0" Foreground="{DynamicResource muted}" />
                 </StackPanel>
             </Border>
@@ -225,48 +226,48 @@
             <controls:FlexRow Gap="6" LineGap="6" Margin="0,0,0,8">
                 <!-- #edPick: 24rem to start, growing with the room left, from 12rem to 44rem -->
                 <ComboBox x:Name="FilePick" controls:FlexRow.Grow="1" controls:FlexRow.Basis="384" MinWidth="192" MaxWidth="704"
-                          ToolTip="Open a file from the Files tab" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
-                <Button Content="Open file..." ToolTip="Open a file without adding it to the Files tab" Click="OpenFileClicked" />
+                          ToolTip="{t:Text Editor.FilePick.Tip}" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
+                <Button Content="{t:Text Editor.OpenFile}" ToolTip="{t:Text Editor.OpenFile.Tip}" Click="OpenFileClicked" />
                 <!-- the find bar stays out of the way until it is asked for, as in Sublime Text -->
-                <ToggleButton x:Name="FindToggle" Style="{StaticResource PressedToggle}" Content="Find" Click="FindToggleClicked"
-                              ToolTip="Find, replace, go to line and search all files (Ctrl+F)" />
+                <ToggleButton x:Name="FindToggle" Style="{StaticResource PressedToggle}" Content="{t:Text Editor.Find}" Click="FindToggleClicked"
+                              ToolTip="{t:Text Editor.FindToggle.Tip}" />
                 <!-- .grow: the room left, shared with the file's dropdown -->
                 <Border controls:FlexRow.Grow="1" controls:FlexRow.Basis="0" />
-                <Button x:Name="DiscardButton" Content="Discard changes" ToolTip="Discard your edits" Click="DiscardClicked" />
+                <Button x:Name="DiscardButton" Content="{t:Text Editor.DiscardChanges}" ToolTip="{t:Text Editor.Discard.Tip}" Click="DiscardClicked" />
                 <!-- button.swap: as wide as the wider of its two texts -->
-                <Button x:Name="ExportButton" ToolTip="Toggle source and export" IsEnabled="False" Click="ExportClicked">
+                <Button x:Name="ExportButton" ToolTip="{t:Text Editor.Export.Tip}" IsEnabled="False" Click="ExportClicked">
                     <Grid>
-                        <TextBlock x:Name="ShowExportText" Text="Show export" HorizontalAlignment="Center" />
-                        <TextBlock x:Name="ShowSourceText" Text="Show source" HorizontalAlignment="Center" Visibility="Hidden" />
+                        <TextBlock x:Name="ShowExportText" Text="{t:Text Editor.ShowExport}" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="ShowSourceText" Text="{t:Text Editor.ShowSource}" HorizontalAlignment="Center" Visibility="Hidden" />
                     </Grid>
                 </Button>
-                <ToggleButton x:Name="ChangesButton" Style="{StaticResource PressedToggle}" Content="Changes only" ToolTip="Show only the lines the export changes"
+                <ToggleButton x:Name="ChangesButton" Style="{StaticResource PressedToggle}" Content="{t:Text Editor.ChangesOnly}" ToolTip="{t:Text Editor.Changes.Tip}"
                               IsEnabled="False" Click="ChangesClicked" />
-                <Button x:Name="UseButton" Content="Use in file list" ToolTip="Run the rules on the edited text" Click="UseClicked" />
-                <Button x:Name="SaveButton" Content="Save as..." ToolTip="Save the text as a file" Click="SaveClicked" />
+                <Button x:Name="UseButton" Content="{t:Text Editor.UseInFileList}" ToolTip="{t:Text Editor.Use.Tip}" Click="UseClicked" />
+                <Button x:Name="SaveButton" Content="{t:Text Editor.SaveAs}" ToolTip="{t:Text Editor.Save.Tip}" Click="SaveClicked" />
                 <Button Style="{StaticResource HelpButton}" controls:QuickHelp.Page="tab-editor" />
             </controls:FlexRow>
 
             <!-- .bar: Find, Replace, Go to line and Search all files; shown by Find or Ctrl+F, hidden by × or Escape -->
             <controls:FlexRow x:Name="FindBar" Gap="6" LineGap="6" Margin="0,0,0,8" Visibility="Collapsed">
-                <TextBox x:Name="FindBox" Width="224" Tag="Find" ToolTip="Enter: next match. Shift+Enter: previous" IsEnabled="False" KeyDown="FindKeyDown" />
-                <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2191;" ToolTip="Previous match (Shift+Enter)" IsEnabled="False" Click="PreviousClicked" />
-                <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x2193;" ToolTip="Next match (Enter)" IsEnabled="False" Click="NextClicked" />
-                <TextBox x:Name="ReplaceBox" Width="224" Tag="Replace with" ToolTip="Replacement text. Enter replaces and finds next" IsEnabled="False" KeyDown="ReplaceKeyDown" />
-                <Button x:Name="ReplaceButton" Content="Replace" ToolTip="Replace and find next" IsEnabled="False" Click="ReplaceClicked" />
-                <Button x:Name="ReplaceAllButton" Content="Replace all" ToolTip="Replace all matches" IsEnabled="False" Click="ReplaceAllClicked" />
+                <TextBox x:Name="FindBox" Width="224" Tag="{t:Text Editor.FindBox.Hint}" ToolTip="{t:Text Editor.FindBox.Tip}" IsEnabled="False" KeyDown="FindKeyDown" />
+                <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2191;" ToolTip="{t:Text Editor.Previous.Tip}" IsEnabled="False" Click="PreviousClicked" />
+                <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x2193;" ToolTip="{t:Text Editor.Next.Tip}" IsEnabled="False" Click="NextClicked" />
+                <TextBox x:Name="ReplaceBox" Width="224" Tag="{t:Text Editor.ReplaceBox.Hint}" ToolTip="{t:Text Editor.ReplaceBox.Tip}" IsEnabled="False" KeyDown="ReplaceKeyDown" />
+                <Button x:Name="ReplaceButton" Content="{t:Text Editor.Replace}" ToolTip="{t:Text Editor.Replace.Tip}" IsEnabled="False" Click="ReplaceClicked" />
+                <Button x:Name="ReplaceAllButton" Content="{t:Text Editor.ReplaceAll}" ToolTip="{t:Text Editor.ReplaceAll.Tip}" IsEnabled="False" Click="ReplaceAllClicked" />
                 <controls:Bevel Style="{StaticResource BarSeparator}" />
-                <TextBox x:Name="GoBox" Width="104" Tag="Go to line" ToolTip="Line number, then Enter" IsEnabled="False" KeyDown="GoKeyDown" />
+                <TextBox x:Name="GoBox" Width="104" Tag="{t:Text Editor.GoBox.Hint}" ToolTip="{t:Text Editor.GoBox.Tip}" IsEnabled="False" KeyDown="GoKeyDown" />
                 <controls:Bevel Style="{StaticResource BarSeparator}" />
-                <TextBox x:Name="SearchAllBox" Width="192" Tag="Search all files"
-                         ToolTip="Text to find in every file on the Files tab. Enter searches" KeyDown="SearchAllKeyDown" />
-                <Button Content="Search" ToolTip="Search every file on the Files tab" Click="SearchAllClicked" />
+                <TextBox x:Name="SearchAllBox" Width="192" Tag="{t:Text Editor.SearchAllBox.Hint}"
+                         ToolTip="{t:Text Editor.SearchAllBox.Tip}" KeyDown="SearchAllKeyDown" />
+                <Button Content="{t:Text Editor.Search}" ToolTip="{t:Text Editor.Search.Tip}" Click="SearchAllClicked" />
             </controls:FlexRow>
 
             <!-- #edAllWrap: what Search all files found: a note and ×, then the lines found, in a box that can be made taller -->
             <StackPanel x:Name="SearchResults" Visibility="Collapsed" Margin="0,0,0,6">
                 <DockPanel Margin="0,0,0,4">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="Close the results" Margin="6,0,0,0" Click="CloseResultsClicked" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Editor.CloseTheResults.Tip}" Margin="6,0,0,0" Click="CloseResultsClicked" />
                     <TextBlock x:Name="SearchNote" Style="{StaticResource Note}" Margin="0" VerticalAlignment="Center" TextWrapping="Wrap" />
                 </DockPanel>
                 <!-- #edAllBox: 13rem tall, from 2.5rem to 75% of the window; sunken; 4 by 6 pixels in -->
@@ -309,14 +310,14 @@
                     <DockPanel>
                         <!-- level with the middle of the row, which grows when the note wraps -->
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button x:Name="FoldAllButton" Style="{StaticResource IconButton}" ToolTip="Fold all" Margin="0,0,6,0" Click="FoldAllClicked">
+                            <Button x:Name="FoldAllButton" Style="{StaticResource IconButton}" ToolTip="{t:Text Editor.FoldAll.Tip}" Margin="0,0,6,0" Click="FoldAllClicked">
                                 <Path Data="{StaticResource FoldAllIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.3" Width="14" Height="14" Margin="0,2" />
                             </Button>
-                            <Button x:Name="UnfoldAllButton" Style="{StaticResource IconButton}" ToolTip="Unfold all" Click="UnfoldAllClicked">
+                            <Button x:Name="UnfoldAllButton" Style="{StaticResource IconButton}" ToolTip="{t:Text Editor.UnfoldAll.Tip}" Click="UnfoldAllClicked">
                                 <Path Data="{StaticResource UnfoldAllIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.3" Width="14" Height="14" Margin="0,2" />
                             </Button>
                         </StackPanel>
-                        <TextBlock DockPanel.Dock="Left" Text="File Editor" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
+                        <TextBlock DockPanel.Dock="Left" Text="{t:Text Editor.FileEditor}" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
                         <TextBlock x:Name="Note" Style="{StaticResource Note}" Margin="6,0,6,0" VerticalAlignment="Center" TextWrapping="Wrap" />
                     </DockPanel>
                 </controls:Bevel>
@@ -327,11 +328,11 @@
                             <!-- the status strip: the caret's line and column, and the text size; shown with the text -->
                             <ContentControl x:Name="StripHolder" DockPanel.Dock="Bottom" Focusable="False" Visibility="{Binding Visibility, ElementName=Text}" />
                             <Grid>
-                            <TextBlock x:Name="EmptyText" Foreground="{DynamicResource muted}" Margin="10" Text="Choose a file above, or double-click one on the Files tab." />
+                            <TextBlock x:Name="EmptyText" Foreground="{DynamicResource muted}" Margin="10" Text="{t:Text Editor.ChooseAFileAbove}" />
                             <avalon:TextEditor x:Name="Text" Visibility="Collapsed" FontFamily="{DynamicResource mono}" FontSize="12"
                                                Background="{DynamicResource well}" Foreground="{DynamicResource ink}"
                                                HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                                               ToolTip="File text. Tab inserts four spaces. Ctrl+scroll changes the text size" />
+                                               ToolTip="{t:Text Editor.Text.Tip}" />
                             </Grid>
                         </DockPanel>
                     </controls:Bevel>
@@ -356,36 +357,36 @@
                                 <!-- .dvbar: This file and All files, the name filter with the property filter, and Scan all -->
                                 <controls:Bevel DockPanel.Dock="Top" Edges="0,0,0,1" BottomRight="{DynamicResource line}" Padding="4,3" MinHeight="27">
                                     <controls:FlexRow Gap="4" LineGap="4" VerticalAlignment="Center">
-                                        <ToggleButton x:Name="ModeOneButton" Style="{StaticResource SmallChoice}" IsChecked="True" ToolTip="List the descriptors of the file in the editor" Click="ModeOneClicked">
-                                            <TextBlock x:Name="ModeOneText" Text="This file" />
+                                        <ToggleButton x:Name="ModeOneButton" Style="{StaticResource SmallChoice}" IsChecked="True" ToolTip="{t:Text Editor.ModeOne.Tip}" Click="ModeOneClicked">
+                                            <TextBlock x:Name="ModeOneText" Text="{t:Text Editor.ThisFile}" />
                                         </ToggleButton>
-                                        <ToggleButton x:Name="ModeAllButton" Style="{StaticResource SmallChoice}" Content="All files" ToolTip="List the chains of descriptors across the files that have been read" Click="ModeAllClicked" />
+                                        <ToggleButton x:Name="ModeAllButton" Style="{StaticResource SmallChoice}" Content="{t:Text Editor.AllFiles}" ToolTip="{t:Text Editor.ModeAll.Tip}" Click="ModeAllClicked" />
                                         <!-- .dvfg: the filter box, and the property filter's button joined to its right -->
                                         <DockPanel controls:FlexRow.Grow="1" controls:FlexRow.Basis="96" MinWidth="64">
                                             <!-- #dvFilt: the funnel, and how many conditions are on; pressed in while the filter is on -->
                                             <ToggleButton x:Name="FilterButton" DockPanel.Dock="Right" Style="{StaticResource PressedToggle}" Padding="6,0" FontSize="12"
-                                                          TextBlock.LineHeight="18" ToolTip="Filter by property" Click="FilterClicked">
+                                                          TextBlock.LineHeight="18" ToolTip="{t:Text Editor.Filter.Tip}" Click="FilterClicked">
                                                 <StackPanel Orientation="Horizontal">
                                                     <Path Data="M 1,2 H 11 L 7.2,6.6 V 10.5 L 4.8,9.3 V 6.6 Z" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
                                                           StrokeThickness="1.2" StrokeLineJoin="Round" Width="12" Height="12" Margin="0,3" />
                                                     <TextBlock x:Name="FilterBadge" FontSize="10.5" FontWeight="Bold" Margin="3,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
                                                 </StackPanel>
                                             </ToggleButton>
-                                            <TextBox x:Name="DescriptorFind" Tag="Filter by name or type" FontSize="12" Padding="5,0" TextBlock.LineHeight="18"
-                                                     ToolTip="Filter the descriptor list" TextChanged="DescriptorFindChanged" />
+                                            <TextBox x:Name="DescriptorFind" Tag="{t:Text Editor.DescriptorFind.Hint}" FontSize="12" Padding="5,0" TextBlock.LineHeight="18"
+                                                     ToolTip="{t:Text Editor.DescriptorFind.Tip}" TextChanged="DescriptorFindChanged" />
                                         </DockPanel>
-                                        <Button x:Name="ScanButton" Style="{StaticResource SmallButton}" Content="Scan all" ToolTip="Read every file on the Files tab, to follow descriptors from one file to another" Click="ScanClicked" />
+                                        <Button x:Name="ScanButton" Style="{StaticResource SmallButton}" Content="{t:Text Editor.ScanAll}" ToolTip="{t:Text Editor.Scan.Tip}" Click="ScanClicked" />
                                     </controls:FlexRow>
                                 </controls:Bevel>
                                 <!-- #dvList: the tree, 17 pixels a row; only the rows in sight are made -->
                                 <ListBox x:Name="TreeList" Style="{StaticResource DescriptorTree}"
-                                         ToolTip="Click: open or close, and list properties. Double-click or Alt+click: show in the text. Arrows move (Shift: five rows), Right opens, Left closes, Enter shows in the text."
+                                         ToolTip="{t:Text Editor.TreeList.Tip}"
                                          PreviewMouseLeftButtonDown="TreeMouseDown" PreviewKeyDown="TreeKeyDown" PreviewMouseRightButtonUp="TreeRightClicked" />
                             </DockPanel>
                         </controls:Bevel>
 
                         <!-- #dvSplit: drag to share the width; double-click shares it evenly again -->
-                        <controls:SplitBar x:Name="DescriptorSplit" Grid.Column="1" ToolTip="Drag to resize. Double-click to reset." />
+                        <controls:SplitBar x:Name="DescriptorSplit" Grid.Column="1" ToolTip="{t:Text Editor.DescriptorSplit.Tip}" />
 
                         <!-- .dvr: the chosen descriptor's properties, sunken -->
                         <controls:Bevel Grid.Column="2" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">

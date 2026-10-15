@@ -3,6 +3,7 @@ using System.Windows.Threading;
 using EasyNdf.App.Files;
 using EasyNdf.Data;
 using EasyNdf.Data.FileList;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App;
 
@@ -108,28 +109,28 @@ public sealed class UndoHistory
     /// <summary>Undo: puts back the state before the last change.</summary>
     public UndoResult Undo()
     {
-        if (files.IsBusy) return new UndoResult("Wait for the run to finish.", IsDone: false);
-        if (undoSteps.Count == 0) return new UndoResult("Nothing to undo.", IsDone: false);
+        if (files.IsBusy) return new UndoResult(Texts.Get("Main.Undo.Busy"), IsDone: false);
+        if (undoSteps.Count == 0) return new UndoResult(Texts.Get("Main.Undo.Nothing"), IsDone: false);
         UndoState was = now;
         redoSteps.Add(now);
         now = undoSteps[^1];
         undoSteps.RemoveAt(undoSteps.Count - 1);
         PutBack(now);
         // the message names where the change was, since Undo on one tab can take back a change made on the other
-        return new UndoResult(was.ModsText != now.ModsText ? "Undone: a change on the Rules tab." : "Undone: a change to the file list.", IsDone: true);
+        return new UndoResult(was.ModsText != now.ModsText ? Texts.Get("Main.Undo.Rules") : Texts.Get("Main.Undo.Files"), IsDone: true);
     }
 
     /// <summary>Redo: puts back the state an Undo took away.</summary>
     public UndoResult Redo()
     {
-        if (files.IsBusy) return new UndoResult("Wait for the run to finish.", IsDone: false);
-        if (redoSteps.Count == 0) return new UndoResult("Nothing to redo.", IsDone: false);
+        if (files.IsBusy) return new UndoResult(Texts.Get("Main.Undo.Busy"), IsDone: false);
+        if (redoSteps.Count == 0) return new UndoResult(Texts.Get("Main.Redo.Nothing"), IsDone: false);
         UndoState was = now;
         undoSteps.Add(now);
         now = redoSteps[^1];
         redoSteps.RemoveAt(redoSteps.Count - 1);
         PutBack(now);
-        return new UndoResult(was.ModsText != now.ModsText ? "Redone: a change on the Rules tab." : "Redone: a change to the file list.", IsDone: true);
+        return new UndoResult(was.ModsText != now.ModsText ? Texts.Get("Main.Redo.Rules") : Texts.Get("Main.Redo.Files"), IsDone: true);
     }
 
     /// <summary>Forgets every change, after "Clear all data": there is nothing to undo.</summary>

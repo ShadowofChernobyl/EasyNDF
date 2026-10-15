@@ -6,44 +6,45 @@
 <UserControl x:Class="EasyNdf.App.Pages.ThemePreview"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls">
     <controls:Bevel Style="{StaticResource ThemeBox}">
         <StackPanel>
-            <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="Preview" /></controls:Bevel>
+            <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Preview.Preview}" /></controls:Bevel>
             <!-- .pv-bg: the page's background around a raised panel, .pv-app -->
             <Border Background="{DynamicResource bg}" Padding="14">
                 <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}" Padding="12,10">
                     <StackPanel>
-                        <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="A Heading in the Accent Color" /></controls:Bevel>
+                        <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Settings.Preview.AHeadingInThe}" /></controls:Bevel>
                         <TextBlock Margin="0,0,0,6" TextWrapping="Wrap" Foreground="{DynamicResource ink}">
-                            <Run Text="Normal text beside" />
-                            <Run Text="dim text for notes" Foreground="{DynamicResource muted}" />
-                            <Run Text="and" />
+                            <Run Text="{t:Text Settings.Preview.NormalText}" />
+                            <Run Text="{t:Text Settings.Preview.DimText}" Foreground="{DynamicResource muted}" />
+                            <Run Text="{t:Text Settings.Preview.And}" />
                             <Hyperlink x:Name="SampleLink" Foreground="{DynamicResource accent}" NavigateUri="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                                       RequestNavigate="LinkClicked" ToolTip="A sample link"><Run Text="a link" /></Hyperlink><Run Text="." />
+                                       RequestNavigate="LinkClicked" ToolTip="{t:Text Settings.Preview.SampleLink.Tip}"><Run Text="{t:Text Settings.Preview.ALink}" /></Hyperlink><Run Text="." />
                         </TextBlock>
                         <controls:WrapRow Gap="6" Margin="0,0,0,8">
-                            <Button Content="Button" Focusable="False" />
-                            <Button Content="Run export" Style="{StaticResource GoButton}" Focusable="False" />
-                            <Button Content="Switched off" IsEnabled="False" />
-                            <TextBox Text="Text box" Width="112" IsReadOnly="True" Focusable="False" ToolTip="A sample text box" />
+                            <Button Content="{t:Text Settings.Preview.Button}" Focusable="False" />
+                            <Button Content="{t:Text Settings.Preview.RunExport}" Style="{StaticResource GoButton}" Focusable="False" />
+                            <Button Content="{t:Text Settings.Preview.SwitchedOff}" IsEnabled="False" />
+                            <TextBox Text="{t:Text Settings.Preview.TextBox}" Width="112" IsReadOnly="True" Focusable="False" ToolTip="{t:Text Settings.Preview.TextBox.Tip}" />
                             <!-- as wide as the browser makes it: as its longest choice -->
-                            <ComboBox SelectedIndex="0" Width="176" ToolTip="A sample dropdown">
-                                <ComboBoxItem Content="Dropdown" />
-                                <ComboBoxItem Content="Every .ndf file in it" />
-                                <ComboBoxItem Content="Only files the rules changed" />
-                                <ComboBoxItem Content="Bundle into one zip" />
-                                <ComboBoxItem Content="Ask each time" />
-                                <ComboBoxItem Content="A much longer choice, to show how a wide entry looks" />
+                            <ComboBox SelectedIndex="0" Width="176" ToolTip="{t:Text Settings.Preview.ASampleDropdown.Tip}">
+                                <ComboBoxItem Content="{t:Text Settings.Preview.Dropdown}" />
+                                <ComboBoxItem Content="{t:Text Settings.Preview.EveryNdfFileIn}" />
+                                <ComboBoxItem Content="{t:Text Settings.Preview.OnlyFilesTheRules}" />
+                                <ComboBoxItem Content="{t:Text Settings.Preview.BundleIntoOneZip}" />
+                                <ComboBoxItem Content="{t:Text Settings.Preview.AskEachTime}" />
+                                <ComboBoxItem Content="{t:Text Settings.Preview.AMuchLongerChoice}" />
                             </ComboBox>
-                            <CheckBox Style="{StaticResource Tick}" Content="Checkbox" IsChecked="True" Focusable="False" VerticalAlignment="Center" />
-                            <CheckBox Style="{StaticResource Toggle}" Content="Toggle slider" IsChecked="True" Focusable="False" VerticalAlignment="Center" />
+                            <CheckBox Style="{StaticResource Tick}" Content="{t:Text Settings.Preview.Checkbox}" IsChecked="True" Focusable="False" VerticalAlignment="Center" />
+                            <CheckBox Style="{StaticResource Toggle}" Content="{t:Text Settings.Preview.ToggleSlider}" IsChecked="True" Focusable="False" VerticalAlignment="Center" />
                         </controls:WrapRow>
 
                         <!-- the sample list, with its own Columns popup -->
                         <StackPanel Orientation="Horizontal">
                             <Grid>
-                                <Button x:Name="ColumnsButton" Content="Columns" ToolTip="Show or hide columns" Click="ColumnsClicked" />
+                                <Button x:Name="ColumnsButton" Content="{t:Text Settings.Preview.Columns}" ToolTip="{t:Text Settings.Preview.Columns.Tip}" Click="ColumnsClicked" />
                                 <Popup x:Name="ColumnsPopup" PlacementTarget="{Binding ElementName=ColumnsButton}" Placement="Bottom" VerticalOffset="2"
                                        StaysOpen="False" AllowsTransparency="True">
                                     <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
@@ -54,19 +55,19 @@
                                     </controls:Bevel>
                                 </Popup>
                             </Grid>
-                            <TextBlock Text="Sample list" Foreground="{DynamicResource muted}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{t:Text Settings.Preview.SampleList}" Foreground="{DynamicResource muted}" Margin="6,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                         <controls:Bevel x:Name="SampleList" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Margin="0,8" />
 
                         <!-- the sample editor, and its Reset text -->
                         <DockPanel Margin="0,0,0,4">
-                            <Button DockPanel.Dock="Right" Content="Reset text" ToolTip="Restore the sample text" Click="ResetTextClicked" />
-                            <TextBlock Text="Sample editor" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
+                            <Button DockPanel.Dock="Right" Content="{t:Text Settings.Preview.ResetText}" ToolTip="{t:Text Settings.Preview.ResetText.Tip}" Click="ResetTextClicked" />
+                            <TextBlock Text="{t:Text Settings.Preview.SampleEditor}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
                         </DockPanel>
                         <!-- 17 lines of 17 pixels, and the box's edges -->
                         <ContentControl x:Name="SampleEditor" Height="291" Focusable="False" />
 
-                        <TextBlock Text="Sample of Changes only" Foreground="{DynamicResource muted}" Margin="0,8,0,4" />
+                        <TextBlock Text="{t:Text Settings.Preview.SampleOfChangesOnly}" Foreground="{DynamicResource muted}" Margin="0,8,0,4" />
                         <ContentControl x:Name="SampleChanges" Focusable="False" />
                     </StackPanel>
                 </controls:Bevel>

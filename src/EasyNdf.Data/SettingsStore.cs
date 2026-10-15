@@ -61,6 +61,8 @@ public sealed class SettingsStore(string settingsFolder)
         ["rememberWindow"] = true,
         // how many changes Ctrl+Z can take back
         ["undoSteps"] = "60",
+        // the language of the app's texts: "en", or the code of an imported language pack
+        ["lang"] = "en",
     };
 
     /// <summary>The settings: what was saved, over the defaults (a setting added in a later version gets its default).</summary>

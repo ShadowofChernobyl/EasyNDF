@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using EasyNdf.App.Help;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -12,7 +13,14 @@ public partial class AboutPage : UserControl
     public AboutPage()
     {
         InitializeComponent();
-        (FrameworkElement body, double top, _) = new WikiRenderer(PageLook.About).Render(ReadText("about.html").Replace("{version}", MainView.AppVersion));
+        ShowPage();
+        Texts.LanguageChanged += ShowPage;
+    }
+
+    /// <summary>Draws the page in the language in use, with the app's version in it.</summary>
+    private void ShowPage()
+    {
+        (FrameworkElement body, double top, _) = new WikiRenderer(PageLook.About).Render(WikiPages.AboutHtml.Replace("{version}", MainView.AppVersion));
         // the larger of the buttons' 12 pixels and the first heading's 16
         body.Margin = new Thickness(0, Math.Max(12, top), 0, 0);
         Body.Content = body;
@@ -31,7 +39,7 @@ public partial class AboutPage : UserControl
     private void LicenseClicked(object sender, RoutedEventArgs e) => ShowLicense();
 
     /// <summary>"License": the license EasyNDF is under (LICENSE.txt).</summary>
-    public void ShowLicense() => View.TextWindow.Open("License", Dialogs.TextWindow.PlainText(ReadText("LICENSE.txt").TrimEnd()));
+    public void ShowLicense() => View.TextWindow.Open(Texts.Get("About.License"), Dialogs.TextWindow.PlainText(ReadText("LICENSE.txt").TrimEnd()));
 
     private void ChangeLogClicked(object sender, RoutedEventArgs e) => View.ShowChangeLog();
 }

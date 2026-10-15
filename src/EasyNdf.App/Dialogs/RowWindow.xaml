@@ -6,6 +6,7 @@
 <UserControl x:Class="EasyNdf.App.Dialogs.RowWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              Visibility="Collapsed">
     <!-- .box.raised: 30rem wide, at most 92% of the app tall; 10 pixels in at the top, 12 elsewhere -->
@@ -16,18 +17,18 @@
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                 <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
                     <TextBlock x:Name="Position" Style="{StaticResource Note}" TextWrapping="NoWrap" Margin="0,0,4,0" VerticalAlignment="Center" />
-                    <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2039;" ToolTip="Previous row" Click="PreviousClicked" />
-                    <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x203A;" ToolTip="Next row" Click="NextClicked" />
-                    <Button x:Name="HelpButton" Style="{StaticResource HelpButton}" ToolTip="About this window" controls:QuickHelp.Page="conditions" />
-                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="Close (Escape)" Click="CloseClicked" />
+                    <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2039;" ToolTip="{t:Text Rules.Row.Previous.Tip}" Click="PreviousClicked" />
+                    <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x203A;" ToolTip="{t:Text Rules.Row.Next.Tip}" Click="NextClicked" />
+                    <Button x:Name="HelpButton" Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.Row.Help.Tip}" controls:QuickHelp.Page="conditions" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.Row.CloseEscape.Tip}" Click="CloseClicked" />
                 </controls:SnappedRow>
-                <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="Condition" />
+                <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="{t:Text Rules.Row.Condition}" />
             </DockPanel>
 
             <!-- .bar: the note, and Done at the right -->
             <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                <Button DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="Done" ToolTip="Close (Enter). Changes are saved as you make them" Click="CloseClicked" />
-                <TextBlock Style="{StaticResource Note}" Margin="0" VerticalAlignment="Center" Text="Changes are saved as you make them." />
+                <Button DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="{t:Text Rules.Row.Done}" ToolTip="{t:Text Rules.Row.Done.Tip}" Click="CloseClicked" />
+                <TextBlock Style="{StaticResource Note}" Margin="0" VerticalAlignment="Center" Text="{t:Text Rules.Row.ChangesAreSavedAs}" />
             </DockPanel>
 
             <!-- #subForm: sunken, in the panel colour, 10 by 12 pixels in; it scrolls when the row does not fit -->

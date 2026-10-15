@@ -5,6 +5,7 @@ using System.Windows.Input;
 using EasyNdf.App.Files;
 using EasyNdf.App.Rules;
 using EasyNdf.Data.FileList;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -71,7 +72,7 @@ public partial class EditorPage
         searchedFor = wanted;
         if (files.Count == 0)
         {
-            SearchNote.Text = "No files on the Files tab to search.";
+            SearchNote.Text = Texts.Get("Editor.Search.NoFiles");
             return;
         }
 
@@ -100,11 +101,16 @@ public partial class EditorPage
 
         ResultsArea.Visibility = results.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ResultList.ItemsSource = results;
-        string notRead = unreadable > 0 ? " " + unreadable + " could not be read." : "";
-        SearchNote.Text = total > 0
-            ? Plural(total, "line") + " in " + Plural(filesWithLines, "file") + " contain \"" + wanted + "\"."
-                + (total > MostResults ? " Showing the first " + MostResults + "." : "") + notRead + " Click a line to open it."
-            : "Nothing found for \"" + wanted + "\" in " + Plural(files.Count, "file") + "." + notRead;
+        string notRead = unreadable > 0 ? " " + Texts.Get("Editor.Search.NotRead", ("count", unreadable)) : "";
+        if (total == 0)
+        {
+            SearchNote.Text = Texts.Get("Editor.Search.NothingFound", ("text", wanted), ("files", Texts.CountWide("Editor.Search.Files", files.Count))) + notRead;
+            return;
+        }
+        string foundSaid = Texts.Get("Editor.Search.Found", ("text", wanted),
+            ("lines", Texts.CountWide("Editor.Search.Lines", total)), ("files", Texts.CountWide("Editor.Search.Files", filesWithLines)));
+        string first = total > MostResults ? " " + Texts.Get("Editor.Search.ShowingFirst", ("count", MostResults)) : "";
+        SearchNote.Text = foundSaid + first + notRead + " " + Texts.Get("Editor.Search.ClickLine");
     }
 
     /// <summary>
@@ -144,12 +150,12 @@ public partial class EditorPage
         List<Controls.MenuChoice?> items = [];
         if (result is not null)
         {
-            items.Add(new Controls.MenuChoice("Open at this line", () => _ = OpenResult(result)));
-            items.Add(new Controls.MenuChoice("Copy this line", () => Copy(result.Text)));
-            items.Add(new Controls.MenuChoice("Copy file name", () => Copy(result.Entry.Name)));
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.Search.OpenAtLine"), () => _ = OpenResult(result)));
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.CopyThisLine"), () => Copy(result.Text)));
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.Search.CopyFileName"), () => Copy(result.Entry.Name)));
             items.Add(Controls.Menus.Line);
         }
-        items.Add(new Controls.MenuChoice("Close the results", () => CloseResultsClicked(this, e)));
+        items.Add(new Controls.MenuChoice(Texts.Get("Editor.Search.CloseResults"), () => CloseResultsClicked(this, e)));
         Controls.Menus.Show(ResultsBox, items);
     }
 

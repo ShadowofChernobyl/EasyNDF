@@ -7,6 +7,7 @@ using EasyNdf.Engine;
 using EasyNdf.Engine.Export;
 using EasyNdf.Engine.Mods;
 using EasyNdf.Engine.Rules;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Files;
 
@@ -31,8 +32,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         if (list.Count == 0)
         {
             model.Warn(model.Entries.Any(e => e.On && e.Source is null)
-                ? "Nothing to run. The files are not loaded: add them again and they reattach by name."
-                : "Nothing to run. A file must be on and have a preset.");
+                ? Texts.Get("Files.Run.NotLoaded")
+                : Texts.Get("Files.Run.NothingToRun"));
             return;
         }
 
@@ -61,12 +62,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             // Every row says where it is in the run: waiting, working, then what happened.
             foreach (FileEntry entry in list)
             {
-                entry.Message = "Waiting...";
+                entry.Message = Texts.Get("Files.Run.Waiting");
                 model.RowChanged(entry);
             }
             foreach (FileEntry entry in list)
             {
-                entry.Message = "Working...";
+                entry.Message = Texts.Get("Files.Run.Working");
                 model.RowChanged(entry);
                 Dictionary<string, string> otherFiles = OtherFilesFor(entry);
                 await Task.Run(() => RunOne(entry, write, everyFile, otherFiles));
@@ -89,7 +90,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             if (entry.Preset is not ModPreset preset)
             {
                 // only reached when every file is exported: it is copied as it is
-                Deliver(entry, FileContent.Bytes(entry), "unchanged copy");
+                Deliver(entry, FileContent.Bytes(entry), Texts.Get("Files.Run.UnchangedCopy"));
                 return;
             }
 
@@ -136,17 +137,17 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             // When nothing at all changed, the status already says so.
             entry.IdleRuleCount = result.Edits > 0 ? result.Stats.Count(RunRecord.IsIdle) : 0;
 
-            string edits = result.Edits == 1 ? "1 edit" : FileStatus.Count(result.Edits) + " edits";
+            string edits = Texts.Count("Files.Run.Edits", result.Edits, ("count", FileStatus.Count(result.Edits)));
             if (result.ParseError != "")
             {
                 // held back: not written to the export folder
                 entry.IsError = true;
                 if (write) entry.HeldOutput = text;
-                entry.Message = (write ? "Not exported: " : "Preview: ") + "the result is not a valid file. " + result.ParseError + ". Click the row for details.";
+                entry.Message = write ? Texts.Get("Files.Run.InvalidNotExported", ("problem", result.ParseError)) : Texts.Get("Files.Run.InvalidPreview", ("problem", result.ParseError));
             }
-            else if (!write) entry.Message = "Preview: " + edits;
-            else if (result.Edits == 0 && !everyFile) entry.Message = "No changes, not exported";
-            else if (result.Edits == 0) Deliver(entry, FileContent.Bytes(entry), "unchanged copy, no changes");
+            else if (!write) entry.Message = Texts.Get("Files.Run.Preview", ("edits", edits));
+            else if (result.Edits == 0 && !everyFile) entry.Message = Texts.Get("Files.Run.NoChanges");
+            else if (result.Edits == 0) Deliver(entry, FileContent.Bytes(entry), Texts.Get("Files.Run.UnchangedCopyNoChanges"));
             else Deliver(entry, System.Text.Encoding.UTF8.GetBytes(text!), edits);
         }
         catch (Exception error)
@@ -199,7 +200,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         string shownName = FileListView.FolderName(exportFolder);
         if (entry.ArchivedContent is null && string.Equals(Path.GetFullPath(path), Path.GetFullPath(entry.Source!), StringComparison.OrdinalIgnoreCase))
         {
-            entry.Message = "Not exported: the export folder holds the source file. Pick another folder.";
+            entry.Message = Texts.Get("Files.Run.FolderHoldsSource");
             entry.IsError = true;
             return;
         }
@@ -212,14 +213,14 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            entry.Message = "Not exported: could not write to \"" + shownName + "\". " + error.Message;
+            entry.Message = Texts.Get("Files.Run.WriteFailed", ("folder", shownName), ("reason", error.Message));
             entry.IsError = true;
             return;
         }
         if (entry.LastRun is not null) entry.LastRun.Wrote = true;
         entry.Done = true;
         entry.ExportedPath = path;
-        entry.Message = "Exported to \"" + shownName + "\": " + what;
+        entry.Message = Texts.Get("Files.Run.Exported", ("folder", shownName), ("what", what));
     }
 
     /// <summary>

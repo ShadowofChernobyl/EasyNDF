@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using EasyNdf.Data.FileList;
 using EasyNdf.Engine;
 using EasyNdf.Engine.Viewer;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Editor;
 
@@ -173,7 +174,7 @@ public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOn
             rows.Add(new TreeNode
             {
                 Parent = parent, Key = RootKey(localEntry, entry.Name, count), Kind = TreeNodeKind.Descriptor,
-                Label = entry.Name != "" ? entry.Name : "(unnamed)", Sub = type, Entry = localEntry, Name = entry.Name, Outline = entry,
+                Label = entry.Name != "" ? entry.Name : Texts.Get("Editor.Unnamed"), Sub = type, Entry = localEntry, Name = entry.Name, Outline = entry,
                 IsLeaf = !IsDeep(entry) || !OpensToSomething(localEntry, entry.Name),
             });
         }

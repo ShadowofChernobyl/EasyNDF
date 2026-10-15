@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using ICSharpCode.AvalonEdit.Document;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -41,7 +42,7 @@ public partial class EditorPage
         if (found < 0) found = direction > 0 ? text.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) : LastMatchStartingBy(text, wanted, text.Length);
         if (found < 0)
         {
-            Say("\"" + wanted + "\" was not found.", "caution");
+            Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), "caution");
             return;
         }
         // Find looks through the whole text; a match inside a folded block opens that block
@@ -70,10 +71,10 @@ public partial class EditorPage
             int index = ((start + direction * step) % count + count) % count;
             if (!document.GetText(document.GetLineByNumber(index + 1)).Contains(wanted, StringComparison.OrdinalIgnoreCase)) continue;
             PointAt(index);
-            Say(shown.Name + ": \"" + wanted + "\" found on line " + (index + 1).ToString("N0", CultureInfo.InvariantCulture) + ".");
+            Say(Texts.Get("Editor.Find.Found", ("file", shown.Name), ("text", wanted), ("line", Texts.Number(index + 1))));
             return;
         }
-        Say("\"" + wanted + "\" was not found.", "caution");
+        Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), "caution");
     }
 
     /// <summary>
@@ -108,7 +109,7 @@ public partial class EditorPage
         string typed = text.Trim();
         if (typed == "" || !typed.All(char.IsAsciiDigit) || !int.TryParse(typed, out int number) || number < 1)
         {
-            Say("Type a line number, then Enter.", "caution");
+            Say(Texts.Get("Editor.Find.TypeLine"), "caution");
             return;
         }
         PointAt(number - 1);
@@ -148,7 +149,7 @@ public partial class EditorPage
             matches.Add(at);
         if (matches.Count == 0)
         {
-            Say("\"" + wanted + "\" was not found.", "caution");
+            Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), "caution");
             return;
         }
         // from the end, so the places of the matches still to replace do not move
@@ -156,7 +157,7 @@ public partial class EditorPage
         for (int k = matches.Count - 1; k >= 0; k--) Text.Document.Replace(matches[k], wanted.Length, ReplaceBox.Text);
         Text.Document.EndUpdate();
         string count = matches.Count.ToString("N0", CultureInfo.InvariantCulture) + (matches.Count == 1 ? " match" : " matches");
-        Say(shown!.Name + ": replaced " + count + ". Ctrl+Z in the text undoes it.");
+        Say(Texts.Get("Editor.Find.Replaced", ("file", shown!.Name), ("count", count)));
     }
 
     /// <summary>Replacing needs the file itself, and the text to find.</summary>
@@ -165,7 +166,7 @@ public partial class EditorPage
         wanted = FindBox.Text;
         if (shown is not { IsFile: true }) return false;
         if (wanted != "") return true;
-        Say("Type the text to find first.", "caution");
+        Say(Texts.Get("Editor.Find.TypeFirst"), "caution");
         return false;
     }
 }

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using EasyNdf.Data;
 using EasyNdf.Engine.Export;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Dialogs;
 
@@ -48,8 +49,8 @@ public partial class WatermarkWindow : UserControl
         answer = new TaskCompletionSource<bool>();
         ModWatermark mark = WatermarkOf(openMod);
 
-        Title.Text = asking ? "Update the Watermark?" : "Watermark: " + openMod.Name;
-        Lead.Text = asking ? "Exporting with the watermark of " + openMod.Name + ". Change anything that is out of date:" : "";
+        Title.Text = asking ? Texts.Get("Rules.Watermark.UpdateTitle") : Texts.Get("Rules.Watermark.Title", ("mod", openMod.Name));
+        Lead.Text = asking ? Texts.Get("Rules.Watermark.Lead", ("mod", openMod.Name)) : "";
         Lead.Visibility = Shown(asking);
         OnSwitch.Visibility = SavedNote.Visibility = AskTick.Visibility = DoneButton.Visibility = Shown(!asking);
         NeverTick.Visibility = ExportButton.Visibility = CancelButton.Visibility = Shown(asking);

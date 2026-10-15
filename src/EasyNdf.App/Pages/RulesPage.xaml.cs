@@ -9,6 +9,7 @@ using EasyNdf.App.Rules;
 using EasyNdf.Data;
 using EasyNdf.Engine.Mods;
 using Microsoft.Win32;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -85,17 +86,17 @@ public partial class RulesPage : UserControl
 
     private async void NewModClicked(object sender, RoutedEventArgs e)
     {
-        string name = await Messages.AskName("Name for the new mod:");
+        string name = await Messages.AskName(Texts.Get("Rules.Mod.NewName"));
         if (name == "") return;
-        if (RulesModel.ModExists(name)) { await Messages.Tell("A mod with that name already exists."); return; }
+        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists")); return; }
         Model.NewMod(name);
     }
 
     private async void RenameModClicked(object sender, RoutedEventArgs e)
     {
-        string old = Model.OpenMod.Name, name = await Messages.AskName("New name for the mod:", old);
+        string old = Model.OpenMod.Name, name = await Messages.AskName(Texts.Get("Rules.Mod.Rename"), old);
         if (name == "" || name == old) return;
-        if (RulesModel.ModExists(name)) { await Messages.Tell("A mod with that name already exists."); return; }
+        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists")); return; }
         Model.RenameMod(name);
     }
 
@@ -107,14 +108,16 @@ public partial class RulesPage : UserControl
     private async void DeleteModClicked(object sender, RoutedEventArgs e)
     {
         int presets = Model.OpenMod.Presets.Count;
-        string question = "Delete the mod \"" + Model.OpenMod.Name + "\"" + (presets > 0 ? " and its " + presets + " preset(s)? Export it first if you want to keep a copy." : "?");
-        if (await Messages.Confirm(question, "OK")) Model.DeleteMod();
+        string question = presets > 0
+            ? Texts.Get("Rules.Mod.DeleteAskWithPresets", ("mod", Model.OpenMod.Name), ("presets", RulesModel.Count(presets)))
+            : Texts.Get("Rules.Mod.DeleteAsk", ("mod", Model.OpenMod.Name));
+        if (await Messages.Confirm(question, Texts.Get("Common.Ok"))) Model.DeleteMod();
     }
 
     /// <summary>"Import mod...": adds the mods in mod files or backups; a mod of a name already here asks what to do.</summary>
     private async void ImportModClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = "Import mod", Filter = "Mod files (*.json)|*.json", Multiselect = true };
+        var dialog = new OpenFileDialog { Title = Texts.Get("Rules.Mod.ImportTitle"), Filter = Texts.Get("Settings.ModFiles"), Multiselect = true };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         await ImportModFiles(dialog.FileNames);
     }
@@ -140,8 +143,8 @@ public partial class RulesPage : UserControl
             {
                 if (AppData.Current.Mods.FirstOrDefault(m => m.Name == mod.Name) is not Mod existing) continue;
                 DialogAnswer answer = await Messages.Ask(
-                    "A mod named \"" + mod.Name + "\" already exists, with " + RulesModel.Count(existing.Presets.Count) + ". The file holds " + mod.Presets.Count + ". Replace it, keep both, or skip?",
-                    new DialogOptions { Ok = "Replace", Alternative = "Keep both", Cancel = "Skip" });
+                    Texts.Get("Rules.Mod.ImportExists", ("mod", mod.Name), ("existing", RulesModel.Count(existing.Presets.Count)), ("count", mod.Presets.Count)),
+                    new DialogOptions { Ok = Texts.Get("Files.Duplicate.Replace"), Alternative = Texts.Get("Files.Duplicate.KeepBoth"), Cancel = Texts.Get("Files.Duplicate.Skip") });
                 choices[mod] = answer.Choice switch { DialogChoice.Ok => ImportChoice.Replace, DialogChoice.Alternative => ImportChoice.KeepBoth, _ => ImportChoice.Skip };
             }
             ImportResult result = AppData.Current.ModStore.Import(incoming, (_, mod) => choices[mod]);
@@ -156,17 +159,17 @@ public partial class RulesPage : UserControl
         }
         Model.Refresh();
         var parts = new List<string>();
-        if (added > 0) parts.Add(added + " added");
-        if (skipped > 0) parts.Add(skipped + " skipped");
-        if (parts.Count > 0) Model.Say("Imported presets: " + string.Join(", ", parts) + ".");
-        if (problems.Count > 0) await Messages.Tell("Could not import: " + string.Join(", ", problems));
+        if (added > 0) parts.Add(Texts.Get("Rules.Mod.ImportAdded", ("count", added)));
+        if (skipped > 0) parts.Add(Texts.Get("Rules.Mod.ImportSkipped", ("count", skipped)));
+        if (parts.Count > 0) Model.Say(Texts.Get("Rules.Mod.Imported", ("parts", string.Join(", ", parts))));
+        if (problems.Count > 0) await Messages.Tell(Texts.Get("Rules.Mod.ImportFailed", ("problems", string.Join(", ", problems))));
     }
 
     /// <summary>"Export mod": saves the open mod as a mod file, to share or keep.</summary>
     private void ExportModClicked(object sender, RoutedEventArgs e)
     {
         Mod mod = Model.OpenMod;
-        var dialog = new SaveFileDialog { Title = "Export mod", FileName = FileNames.ForName(mod.Name) + ".mod.json", Filter = "Mod files (*.mod.json)|*.mod.json" };
+        var dialog = new SaveFileDialog { Title = Texts.Get("Rules.ExportMod"), FileName = FileNames.ForName(mod.Name) + ".mod.json", Filter = Texts.Get("Rules.Mod.ExportFilter") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try
         {
@@ -175,7 +178,7 @@ public partial class RulesPage : UserControl
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = Messages.Tell("The mod could not be saved. " + error.Message);
+            _ = Messages.Tell(Texts.Get("Rules.Mod.NotSaved", ("reason", error.Message)));
         }
     }
 
@@ -190,18 +193,18 @@ public partial class RulesPage : UserControl
 
     private async void NewPresetClicked(object sender, RoutedEventArgs e)
     {
-        string name = await Messages.AskName("Name for the new preset:");
+        string name = await Messages.AskName(Texts.Get("Rules.Preset.NewName"));
         if (name == "") return;
-        if (Model.PresetExists(name)) { await Messages.Tell("This mod already has a preset with that name."); return; }
+        if (Model.PresetExists(name)) { await Messages.Tell(Texts.Get("Rules.Preset.Exists")); return; }
         Model.NewPreset(name);
     }
 
     private async void RenamePresetClicked(object sender, RoutedEventArgs e)
     {
         if (Model.OpenPreset is not ModPreset preset) return;
-        string name = await Messages.AskName("New name:", preset.Name);
+        string name = await Messages.AskName(Texts.Get("Rules.Preset.Rename"), preset.Name);
         if (name == "" || name == preset.Name) return;
-        if (Model.PresetExists(name)) { await Messages.Tell("This mod already has a preset with that name."); return; }
+        if (Model.PresetExists(name)) { await Messages.Tell(Texts.Get("Rules.Preset.Exists")); return; }
         Model.RenamePreset(name);
     }
 
@@ -215,9 +218,11 @@ public partial class RulesPage : UserControl
         IReadOnlyList<ModPreset> picked = Model.SelectedPresets;
         if (picked.Count == 0) return false;
         int used = picked.Sum(FilesUsing);
-        string question = (picked.Count == 1 ? "Delete the preset \"" + picked[0].Name + "\"?" : "Delete these " + picked.Count + " presets?")
-            + (used > 0 ? " " + used + (used == 1 ? " file uses" : " files use") + (picked.Count == 1 ? " it" : " them") + " and will have no preset." : "");
-        if (!await Messages.Confirm(question, "OK")) return false;
+        string question = picked.Count == 1
+            ? Texts.Get("Rules.Preset.DeleteAsk", ("preset", picked[0].Name))
+            : Texts.Get("Rules.Preset.DeleteAskSeveral", ("count", picked.Count));
+        if (used > 0) question += " " + Texts.Count("Rules.Preset.FilesUseIt", used);
+        if (!await Messages.Confirm(question, Texts.Get("Common.Ok"))) return false;
         Model.DeletePresets();
         return true;
     }
@@ -226,13 +231,13 @@ public partial class RulesPage : UserControl
     private void CopyPresets()
     {
         IReadOnlyList<ModPreset> picked = Model.SelectedPresets;
-        if (picked.Count == 0) { Model.Say("Select a preset to copy."); return; }
+        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Preset.SelectToCopy")); return; }
         // the presets as a mod file writes them, with every condition and action named, each marked as a preset
         var asMod = new Mod { Name = Model.OpenMod.Name, Presets = [.. picked] };
         var presets = (JsonArray)JsonNode.Parse(ModFiles.ExportText(asMod))!["Presets"]!;
         foreach (JsonNode? preset in presets) preset!["DataTypeToString"] = "Preset";
         Clipboard.SetText(presets.ToJsonString());
-        Model.Say("Copied " + RulesModel.Count(picked.Count) + " to the clipboard.");
+        Model.Say(Texts.Get("Rules.Copied", ("what", RulesModel.Count(picked.Count))));
     }
 
     /// <summary>"Paste": presets on the clipboard become presets of the open mod; rules go in after the selected rule.</summary>
@@ -360,8 +365,8 @@ public partial class RulesPage : UserControl
         {
             if (kind == "Check") yield return Menus.Line;
             (string symbol, string colour) = RuleRow.SymbolOf(kind);
-            yield return new MenuChoice(label, () => AddRule(kind), Key: kind == "Edit" ? "Ctrl+N" : "",
-                Tip: RuleRow.Summaries.GetValueOrDefault(kind, ""), Symbol: symbol, SymbolColour: colour);
+            yield return new MenuChoice(RuleKindNames.Of(kind), () => AddRule(kind), Key: kind == "Edit" ? "Ctrl+N" : "",
+                Tip: RuleRow.SummaryOf(kind), Symbol: symbol, SymbolColour: colour);
         }
     }
 
@@ -377,7 +382,7 @@ public partial class RulesPage : UserControl
     private void CopyRules()
     {
         IReadOnlyList<int> picked = Model.SelectedRules;
-        if (picked.Count == 0) { Model.Say("Select a rule to copy."); return; }
+        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Rule.SelectToCopy")); return; }
         var rules = new JsonArray();
         foreach (int place in picked)
         {
@@ -386,6 +391,6 @@ public partial class RulesPage : UserControl
             rules.Add(rule);
         }
         Clipboard.SetText(rules.ToJsonString());
-        Model.Say("Copied " + picked.Count + (picked.Count == 1 ? " rule" : " rules") + " to the clipboard.");
+        Model.Say(Texts.Get("Rules.Copied", ("what", RulesModel.CountRules(picked.Count))));
     }
 }
