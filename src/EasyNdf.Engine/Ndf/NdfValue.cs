@@ -107,6 +107,12 @@ public enum ScalarKind
     Nil,
     /// <summary>Text a rule wrote that is not a plain number. It is written as typed and may hold a // comment.</summary>
     Raw,
+    /// <summary>
+    /// A calculation rules do not look inside, kept as the file writes it: a condition (Value ? A : B), a comparison
+    /// (A != nil), a "not" (!Value), or a member of another object (Object.Member). Game templates and interface files
+    /// use them.
+    /// </summary>
+    Expression,
 }
 
 /// <summary>A single value: a number, a quoted text, a GUID, a reference, a name, nil, or text a rule wrote.</summary>

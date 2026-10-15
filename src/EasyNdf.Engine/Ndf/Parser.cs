@@ -36,6 +36,26 @@ public sealed class Parser
 
     private bool IsPunct(int index, string punctuation) => IsKind(index, TokenKind.Punctuation) && tokens[index].Text == punctuation;
 
+    /// <summary>A keyword in any capitals: NDF is not case-sensitive, and some game files write DIV.</summary>
+    private bool IsKeyword(int index, string word) =>
+        IsKind(index, TokenKind.Identifier) && string.Equals(tokens[index].Text, word, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// How many tokens the comparison or "and" at <paramref name="index"/> takes: "&lt;" or "&amp;" is one; "==", "!=",
+    /// "&lt;=", "&gt;=", "&amp;&amp;" and "||" are two signs written together (the tokenizer reads each sign on its own, as the
+    /// HTML app's does). 0 when there is none.
+    /// </summary>
+    private int ConditionSignAt(int index)
+    {
+        if (!IsKind(index, TokenKind.Punctuation)) return 0;
+        string sign = TextAt(index);
+        bool nextTouches = IsKind(index + 1, TokenKind.Punctuation) && tokens[index + 1].Position == tokens[index].Position + 1;
+        string next = nextTouches ? TextAt(index + 1) : "";
+        if (sign is "=" or "!" or "<" or ">" && next == "=") return 2;
+        if ((sign == "&" && next == "&") || (sign == "|" && next == "|")) return 2;
+        return sign is "<" or ">" or "&" ? 1 : 0;
+    }
+
     private bool IsPunct(string punctuation) => IsPunct(i, punctuation);
 
     private string TextAt(int index) => tokens[index].Text;
@@ -100,9 +120,10 @@ public sealed class Parser
             if (IsWord(i, "private") || IsWord(i, "public"))
                 if (IsKind(i + 1, TokenKind.Identifier) && TextAt(i + 1) != "is")
                     prefix = TextAt(i++) + " ";
-            if (IsWord(i, "template") && IsKind(i + 1, TokenKind.Identifier) && IsPunct(i + 2, "["))
+            if (IsKeyword(i, "template") && IsKind(i + 1, TokenKind.Identifier) && IsPunct(i + 2, "["))
             {
-                prefix += "template ";
+                // the word as written: some game files write "Template"
+                prefix += TextAt(i) + " ";
                 i++;
             }
 
@@ -111,7 +132,7 @@ public sealed class Parser
             string name = TextAt(i++);
 
             string templateParameters = "";
-            if (prefix.Contains("template", StringComparison.Ordinal))
+            if (prefix.Contains("template", StringComparison.OrdinalIgnoreCase))
                 templateParameters = ReadTemplateParameters();
 
             if (!IsWord(i, "is")) throw Error("expected \"is\"");
@@ -161,7 +182,7 @@ public sealed class Parser
         while (true)
         {
             NdfValue combined;
-            if (IsPunct("|"))
+            if (IsPunct("|") && ConditionSignAt(i) == 0)
             {
                 i++;
                 combined = new PairValue(PairKind.Or, left, ReadPrimary());
@@ -171,7 +192,7 @@ public sealed class Parser
                 string op = TextAt(i++);
                 combined = new BinaryValue(op, left, ReadPrimary());
             }
-            else if (IsWord(i, "div") && !IsPunct(i + 1, "=") && !IsWord(i + 1, "is"))
+            else if (IsKeyword(i, "div") && !IsPunct(i + 1, "=") && !IsWord(i + 1, "is"))
             {
                 i++;
                 combined = new BinaryValue("div", left, ReadPrimary());
@@ -180,6 +201,11 @@ public sealed class Parser
             {
                 // "5 -3": the minus sign was read as part of the number
                 combined = new BinaryValue("", left, ReadPrimary());
+            }
+            else if (ConditionSignAt(i) > 0 || IsPunct("?"))
+            {
+                left = ReadCondition(left);
+                continue;
             }
             else break;
 
@@ -205,8 +231,60 @@ public sealed class Parser
             value.Start = tokens[first].Position;
             value.End = EndOfPreviousToken;
         }
+        // Object.Member and Name[2]: a member of another object, or an item of a list, kept as written. A plain name
+        // followed by [ is a typed list (float3[0, 0, 0]), read already.
+        bool indexes = value is ScalarValue { Kind: ScalarKind.Reference or ScalarKind.Path or ScalarKind.Expression } && IsPunct("[");
+        if ((IsPunct(".") && IsKind(i + 1, TokenKind.Identifier)) || indexes)
+        {
+            while (true)
+            {
+                if (IsPunct(".") && IsKind(i + 1, TokenKind.Identifier)) i += 2;
+                else if (IsPunct("[")) ReadList(typeName: null);
+                else break;
+            }
+            return KeptAsWritten(value.Start!.Value);
+        }
         return value;
     }
+
+    /// <summary>
+    /// The rest of a condition or comparison after its first value: "!= nil", "&lt; 6500.0 &amp; ...", "? A : B". Rules
+    /// do not look inside it; it is kept as the file writes it (<see cref="ScalarKind.Expression"/>).
+    /// </summary>
+    private NdfValue ReadCondition(NdfValue first)
+    {
+        int start = first.Start!.Value;
+        while (true)
+        {
+            int sign = ConditionSignAt(i);
+            if (sign > 0)
+            {
+                i += sign;
+                ReadPrimary();
+                continue;
+            }
+            // the arithmetic and "|" between the parts of a condition
+            if (IsPunct("|") || (IsKind(i, TokenKind.Punctuation) && TextAt(i) is "*" or "+" or "-" or "/" or "%") || IsKeyword(i, "div"))
+            {
+                i++;
+                ReadPrimary();
+                continue;
+            }
+            if (IsPunct("?"))
+            {
+                i++;
+                ReadValue();
+                Expect(":");
+                ReadValue();
+            }
+            break;
+        }
+        return KeptAsWritten(start);
+    }
+
+    /// <summary>The text from <paramref name="start"/> to the token just read, as one value kept as written.</summary>
+    private ScalarValue KeptAsWritten(int start) =>
+        new(ScalarKind.Expression, source[start..EndOfPreviousToken]) { Start = start, End = EndOfPreviousToken };
 
     private NdfValue ReadPrimaryValue()
     {
@@ -244,6 +322,14 @@ public sealed class Parser
             i++;
             return new WrappedValue(WrapKind.Negative, ReadPrimary());
         }
+        if (IsPunct("!"))
+        {
+            // !Value: a "not", kept as written
+            int start = tokens[i].Position;
+            i++;
+            ReadPrimary();
+            return KeptAsWritten(start);
+        }
         throw Error("unexpected token");
     }
 
@@ -253,6 +339,11 @@ public sealed class Parser
         string word = TextAt(i++);
         if (word == "nil") return new ScalarValue(ScalarKind.Nil, "nil");
 
+        // "private Name is Value" or "export Name is Value" inside a list or an object: the word in front is kept with
+        // the text around the value, as written
+        if (word is "private" or "public" or "export" && IsKind(i, TokenKind.Identifier) && IsWord(i + 1, "is"))
+            word = TextAt(i++);
+
         if (IsWord(i, "is"))
         {
             i++;
@@ -260,8 +351,10 @@ public sealed class Parser
         }
 
         // An object: the word is followed by "(" and then "Name =", "Name is", or ")".
+        // (The first member may be "export Name is", "private Name is" or "public Name is".)
+        int firstName = IsKind(i + 1, TokenKind.Identifier) && TextAt(i + 1) is "export" or "private" or "public" && IsKind(i + 2, TokenKind.Identifier) ? i + 2 : i + 1;
         bool startsObject = IsPunct("(") &&
-            ((IsKind(i + 1, TokenKind.Identifier) && (IsPunct(i + 2, "=") || IsWord(i + 2, "is"))) || IsPunct(i + 1, ")"));
+            ((IsKind(firstName, TokenKind.Identifier) && (IsPunct(firstName + 1, "=") || IsPunct(firstName + 1, ":") || IsWord(firstName + 1, "is"))) || IsPunct(i + 1, ")"));
         if (startsObject) return ReadObject(word);
 
         if (IsPunct("[")) return ReadList(word);
@@ -277,6 +370,8 @@ public sealed class Parser
         {
             var leadingComments = ClaimComments(i);
             if (!IsKind(i, TokenKind.Identifier)) throw Error("expected a property name");
+            // "export Name is Value" or "private Name is Value": the word in front stays in the text around the value
+            if (TextAt(i) is "export" or "private" or "public" && IsKind(i + 1, TokenKind.Identifier) && IsWord(i + 2, "is")) i++;
             string name = TextAt(i++);
             if (IsWord(i, "is"))
             {
@@ -285,7 +380,9 @@ public sealed class Parser
                 properties.Add(new Property(name, ReadValue()) { LeadingComments = leadingComments, IsMemberDeclaration = true });
                 continue;
             }
-            Expect("=");
+            // "Name: Type" names the type of a template's or an alias's value; it is read as "Name = Type"
+            if (IsPunct(":")) i++;
+            else Expect("=");
             properties.Add(new Property(name, ReadValue()) { LeadingComments = leadingComments });
         }
         var endComments = ClaimComments(i);
@@ -311,6 +408,8 @@ public sealed class Parser
             items.Add(item);
             if (IsPunct(",")) i++;
             else break;
+            // a doubled comma, as in "A",, : the empty place holds nothing
+            while (IsPunct(",")) i++;
         }
         var endComments = ClaimComments(i);
         Expect("]");

@@ -526,8 +526,6 @@ public partial class EditorPage : UserControl
 
     private void FindToggleClicked(object sender, RoutedEventArgs e) => ShowFindBar(FindToggle.IsChecked == true, FindBox);
 
-    private void CloseFindBarClicked(object sender, RoutedEventArgs e) => ShowFindBar(false, null);
-
     /// <summary>Shows the find bar with the keyboard in one of its boxes, or hides it and gives the keyboard back to the text.</summary>
     internal void ShowFindBar(bool show, TextBox? box)
     {
