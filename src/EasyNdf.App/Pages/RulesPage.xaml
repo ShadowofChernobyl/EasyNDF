@@ -140,7 +140,7 @@
                             <ItemsControl x:Name="RuleLines" Focusable="False">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border x:Name="Line" Style="{StaticResource RuleLine}" MouseLeftButtonUp="RuleClicked">
+                                        <Border x:Name="Line" Style="{StaticResource RuleLine}" PreviewMouseLeftButtonDown="RulePressed" MouseLeftButtonUp="RuleClicked">
                                             <DockPanel>
                                                 <!-- ↑ ↓ + ×, 4 pixels apart -->
                                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">

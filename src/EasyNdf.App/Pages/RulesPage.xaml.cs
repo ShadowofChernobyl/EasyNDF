@@ -258,17 +258,26 @@ public partial class RulesPage : UserControl
     private static readonly TimeSpan RuleDoubleClickTime = TimeSpan.FromMilliseconds(500);
 
     /// <summary>
-    /// How soon a second click on a Group heading opens it. Shorter than for other rules: a single click folds the
-    /// group, and that waits this long first, so a double-click only opens the group and never also folds it.
+    /// How soon a second click on a Group heading opens it. Shorter than for other rules: the first click has already
+    /// folded or unfolded the group, so a double-click must be quick to be told from two single clicks.
     /// </summary>
     private static readonly TimeSpan GroupDoubleClickTime = TimeSpan.FromMilliseconds(250);
 
-    /// <summary>The fold a click on a Group heading is waiting to make, unless a second click opens the group instead.</summary>
-    private System.Windows.Threading.DispatcherTimer? waitingFold;
+    /// <summary>
+    /// The line the left button went down on. A click counts only when it is let go on the same line: a press that
+    /// closed a window or a menu by landing outside it never reaches the list, so letting go over a line does nothing.
+    /// </summary>
+    private int? pressedRuleIndex;
+
+    private void RulePressed(object sender, MouseButtonEventArgs e) =>
+        pressedRuleIndex = sender is FrameworkElement { DataContext: RuleRow row } ? row.Index : null;
 
     private void RuleClicked(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: RuleRow row }) return;
+        bool pressedHere = pressedRuleIndex == row.Index;
+        pressedRuleIndex = null;
+        if (!pressedHere) return;
         ModifierKeys keys = Keyboard.Modifiers;
         bool control = keys.HasFlag(ModifierKeys.Control), shift = keys.HasFlag(ModifierKeys.Shift);
         TimeSpan doubleClickTime = row.IsGroup ? GroupDoubleClickTime : RuleDoubleClickTime;
@@ -277,36 +286,14 @@ public partial class RulesPage : UserControl
         Model.ClickRule(row.Index, control, shift);
         if (row.IsGroup && !control && !shift)
         {
-            // a click on a group's heading folds or unfolds it, as on a folder in the file list, once it is clear no
-            // second click follows; a double-click opens the group instead, and the fold never happens
-            CancelWaitingFold();
-            if (!twice) FoldSoon(row.Index);
-            // selecting the heading draws the list's lines anew, the one under the mouse too: WPF is told to look again
-            // at what the mouse is over, or the second click of a double-click goes to the line that is gone
+            // a click on a group's heading folds or unfolds it at once, as on a folder in the file list; the second
+            // click of a double-click puts it back as it was, and opens the group instead
+            Model.ToggleFold(row.Index);
+            // the list's lines are drawn anew, the one under the mouse too: WPF is told to look again at what the mouse
+            // is over, or the second click of a double-click goes to the line that is gone
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, Mouse.Synchronize);
         }
         if (twice) OpenRuleWindow();
-    }
-
-    /// <summary>Folds or unfolds a group once <see cref="GroupDoubleClickTime"/> has passed without a second click.</summary>
-    private void FoldSoon(int index)
-    {
-        waitingFold = new System.Windows.Threading.DispatcherTimer { Interval = GroupDoubleClickTime };
-        waitingFold.Tick += (_, _) =>
-        {
-            CancelWaitingFold();
-            Model.ToggleFold(index);
-            // folding draws the list's lines anew, the one under the mouse too: WPF is told to look again at what the
-            // mouse is over, so the next click goes to the line there now
-            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, Mouse.Synchronize);
-        };
-        waitingFold.Start();
-    }
-
-    private void CancelWaitingFold()
-    {
-        waitingFold?.Stop();
-        waitingFold = null;
     }
 
     /// <summary>A click on a rule's type symbol opens it at once, as a click on an icon does.</summary>
