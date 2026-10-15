@@ -29,14 +29,12 @@ public partial class SettingsPage
         RemoveLanguageButton.IsEnabled = AppData.Current.Languages.Packs.ContainsKey(Texts.Catalog.LanguageCode);
     }
 
-    /// <summary>How much of the app a pack covers: "96%", or "96%, 4 to check" when some texts need a look.</summary>
-    private static string ProgressText(LanguagePack pack)
-    {
-        PackProgress progress = pack.ProgressAgainst(Texts.Catalog.English);
-        return progress.NeedsReview == 0
-            ? Texts.Get("Settings.LanguageChoice.Progress", ("percent", progress.Percent))
-            : Texts.Get("Settings.LanguageChoice.ProgressReview", ("percent", progress.Percent), ("review", progress.NeedsReview));
-    }
+    /// <summary>
+    /// How much of the app a pack covers, such as "96%". How many of its texts still need a person's look is left out:
+    /// that is for translators, not for everyday users.
+    /// </summary>
+    private static string ProgressText(LanguagePack pack) =>
+        Texts.Get("Settings.LanguageChoice.Progress", ("percent", pack.ProgressAgainst(Texts.Catalog.English).Percent));
 
     /// <summary>A language was chosen: it is saved, and every screen shows it at once.</summary>
     private void LanguageChosen(object sender, SelectionChangedEventArgs e)

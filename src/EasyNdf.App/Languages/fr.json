@@ -5248,11 +5248,6 @@
       "english": "{percent}%",
       "text": "{percent}%"
     },
-    "Settings.LanguageChoice.ProgressReview": {
-      "english": "{percent}%, {review} to check",
-      "text": "{percent}%, {review} à vérifier",
-      "machine": true
-    },
     "Settings.LanguagePacks": {
       "english": "Language packs",
       "text": "Packs de langues",
