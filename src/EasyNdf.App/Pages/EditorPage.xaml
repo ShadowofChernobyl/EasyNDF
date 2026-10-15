@@ -261,7 +261,6 @@
                 <TextBox x:Name="SearchAllBox" Width="192" Tag="Search all files"
                          ToolTip="Text to find in every file on the Files tab. Enter searches" KeyDown="SearchAllKeyDown" />
                 <Button Content="Search" ToolTip="Search every file on the Files tab" Click="SearchAllClicked" />
-                <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="Close the find bar (Escape)" Click="CloseFindBarClicked" />
             </controls:FlexRow>
 
             <!-- #edAllWrap: what Search all files found: a note and ×, then the lines found, in a box that can be made taller -->

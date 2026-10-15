@@ -121,6 +121,16 @@ public static class Tokenizer
     /// <summary>//[^\r\n]* or /\*[\s\S]*?\*/ (a /* with no closing */ is not a comment).</summary>
     private static int CommentAt(string text, int at)
     {
+        // { ... } is a comment in NDF too; old code is often left in one. (The language also has (* ... *), which no
+        // game file uses, and which would read "(" and "*" differently from the HTML app.)
+        if (At(text, at) == '{') return BraceCommentAt(text, at);
+        // a line such as #ifdef EUG_PC, #else or #endif: both branches are read, and the line itself is kept as written
+        if (At(text, at) == '#' && (at == 0 || text[at - 1] is '\n' or '\r' or ' ' or '\t') && IsWordStart(At(text, at + 1)))
+        {
+            int i = at;
+            while (i < text.Length && text[i] is not '\r' and not '\n') i++;
+            return i - at;
+        }
         if (At(text, at) != '/') return 0;
         if (At(text, at + 1) == '/')
         {
@@ -137,6 +147,18 @@ public static class Tokenizer
     }
 
     /// <summary>The token at a position: the first kind that matches, in the order of the pattern.</summary>
+    /// <summary>A { ... } comment, which may hold more braces inside it; 0 when it is never closed.</summary>
+    private static int BraceCommentAt(string text, int at)
+    {
+        int depth = 0;
+        for (int i = at; i < text.Length; i++)
+        {
+            if (text[i] == '{') depth++;
+            else if (text[i] == '}' && --depth == 0) return i + 1 - at;
+        }
+        return 0;
+    }
+
     private static (TokenKind Kind, int Length) TokenAt(string text, int at)
     {
         int n;
@@ -147,7 +169,8 @@ public static class Tokenizer
         if ((n = WordAt(text, at)) > 0) return (TokenKind.Identifier, n);
         if ((n = NumberAt(text, at)) > 0) return (TokenKind.Number, n);
         if ((n = StringAt(text, at)) > 0) return (TokenKind.String, n);
-        if (At(text, at) is '(' or ')' or '[' or ']' or ',' or '=' or '|' or ':' or '*' or '+' or '/' or '%' or '<' or '>' or '-')
+        if (At(text, at) is '(' or ')' or '[' or ']' or ',' or '=' or '|' or ':' or '*' or '+' or '/' or '%' or '<' or '>' or '-'
+            or '?' or '!' or '&' or '.')
             return (TokenKind.Punctuation, 1);
         return (TokenKind.Punctuation, 0);
     }

@@ -556,13 +556,26 @@ public sealed class WikiRenderer(PageLook look)
         catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException) { }
     }
 
-    /// <summary>kbd: a key, in the code font on a small raised key.</summary>
+    /// <summary>
+    /// kbd: a key, in the code font on a small raised key. kbd class="mouse" is a click, drawn as a mouse; with "double"
+    /// too, a double-click.
+    /// </summary>
     private static InlineUIContainer Key(WikiElement element)
     {
-        var text = new TextBlock { Text = TextOf(element), FontSize = 11.5 };
-        text.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
-        text.SetResourceReference(TextBlock.ForegroundProperty, "ink");
-        var key = new Bevel { Padding = new Thickness(5, 0, 5, 0), Child = text };
+        FrameworkElement face;
+        if (element.HasClass("mouse"))
+        {
+            face = new Controls.MouseGlyph { IsDouble = element.HasClass("double"), Margin = new Thickness(0, 2, 0, 2) };
+            face.SetResourceReference(Controls.MouseGlyph.ForegroundProperty, "ink");
+        }
+        else
+        {
+            var text = new TextBlock { Text = TextOf(element), FontSize = 11.5 };
+            text.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
+            text.SetResourceReference(TextBlock.ForegroundProperty, "ink");
+            face = text;
+        }
+        var key = new Bevel { Padding = new Thickness(5, 0, 5, 0), Child = face };
         key.SetResourceReference(Bevel.TopLeftProperty, "hi");
         key.SetResourceReference(Bevel.BottomRightProperty, "lo");
         key.SetResourceReference(Bevel.BackgroundProperty, "panel");
