@@ -26,6 +26,12 @@ public sealed class PanePair : Grid
     internal FrameworkElement Bar => bar;
     private readonly DockPanel second = new();
     private readonly Bevel heading;
+
+    /// <summary>
+    /// Folded beside, the heading stands on its side and its line would stop where its text ends; this line takes its
+    /// place down the whole height, as the heading's line spans the whole width when the pane is folded below.
+    /// </summary>
+    private readonly Bevel foldedLine = new() { Edges = new Thickness(1, 0, 0, 0) };
     private readonly TextBlock arrow = new() { Width = 10, TextAlignment = TextAlignment.Center, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock title = new() { Margin = new Thickness(6, 0, 0, 0) };
     private readonly ToggleButton besideButton, belowButton;
@@ -45,6 +51,7 @@ public sealed class PanePair : Grid
         DockPanel.SetDock(tools, Dock.Right);
         heading = new Bevel { Style = (Style)Application.Current.FindResource("Heading"), Child = new DockPanel { LastChildFill = false, Children = { tools, fold } } };
         DockPanel.SetDock(heading, Dock.Top);
+        foldedLine.SetResourceReference(Bevel.TopLeftProperty, "line");
         second.Children.Add(heading);
         second.Children.Add(body);
         bar.Moved += BarMoved;
@@ -220,6 +227,12 @@ public sealed class PanePair : Grid
         body.Visibility = isFolded ? Visibility.Collapsed : Visibility.Visible;
         // folded beside, the heading stands on its side down the window's edge
         heading.LayoutTransform = isFolded && beside ? new RotateTransform(90) : Transform.Identity;
+        if (isFolded && beside)
+        {
+            heading.Edges = new Thickness(0);
+            Put(foldedLine, 2, beside);
+        }
+        else heading.ClearValue(Bevel.EdgesProperty);
         arrow.Text = isFolded ? (beside ? "◂" : "▸") : "▾";
         ShowTitle();
         // pressed only while chosen by hand; while the window's size decides, neither is
