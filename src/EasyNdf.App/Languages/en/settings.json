@@ -223,7 +223,6 @@
   "Settings.LanguageChoice.Note": "Text a language does not cover yet shows in English. File contents and property names are never translated.",
   "Settings.LanguageChoice.English": "English",
   "Settings.LanguageChoice.Progress": "{percent}%",
-  "Settings.LanguageChoice.ProgressReview": "{percent}%, {review} to check",
   "Settings.LanguagePacks": "Language packs",
   "Settings.LanguagePacks.Note": "To translate: Export, fill in each \"text\" in the file, then Import it.",
   "Settings.ImportLanguage": "Import...",
