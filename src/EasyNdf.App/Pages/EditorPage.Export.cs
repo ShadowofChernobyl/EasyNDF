@@ -6,6 +6,7 @@ using EasyNdf.Data.FileList;
 using EasyNdf.Engine.Editing;
 using EasyNdf.Engine.Rules;
 using ICSharpCode.AvalonEdit.Document;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -29,7 +30,7 @@ public partial class EditorPage
         if (shown.Entry is not FileEntry entry || Files is null || !Files.Entries.Contains(entry) || entry.Source is null) return;
         if (entry.Preset is null)
         {
-            Say(entry.Name + " has no preset, so there is nothing to export.", "caution");
+            Say(Texts.Get("Editor.Export.NoPreset", ("file", entry.Name)), "caution");
             return;
         }
 
@@ -45,7 +46,7 @@ public partial class EditorPage
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
 
-        Say("Working...");
+        Say(Texts.Get("Editor.Working"));
         RunResult result;
         string exported;
         try
@@ -55,16 +56,18 @@ public partial class EditorPage
         }
         catch (Exception error)
         {
-            Say("Could not make the export. " + error.Message, "warn");
+            Say(Texts.Get("Editor.Export.Failed", ("problem", error.Message)), "warn");
             return;
         }
         if (!ReferenceEquals(shown, file)) return;
 
-        string how = "as \"" + entry.Preset.Name + "\" would export " + (typed is not null ? "your edited text" : "it") + " now, "
-            + (result.Edits == 1 ? "1 edit" : result.Edits.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " edits");
-        string warning = result.ParseError != "" ? "This result would not be a valid file: " + result.ParseError + "." : "";
+        string edits = Texts.CountWide("Editor.Export.Edits", result.Edits);
+        string how = typed is not null
+            ? Texts.Get("Editor.Export.HowEdited", ("preset", entry.Preset.Name), ("edits", edits))
+            : Texts.Get("Editor.Export.How", ("preset", entry.Preset.Name), ("edits", edits));
+        string warning = result.ParseError != "" ? Texts.Get("Editor.Export.NotValid", ("problem", result.ParseError)) : "";
         if (typed is not null)
-            warning = (warning != "" ? warning + " " : "") + "Your unsaved edits are in it; \"Use in file list\" makes Preview and Run export use them too.";
+            warning = (warning != "" ? warning + " " : "") + Texts.Get("Editor.Export.UnsavedEdits");
         int? handEdits = first is not null && current is not null && first != current
             ? LineComparison.Differences(first.Split('\n'), current.Split('\n')).Count
             : null;
@@ -109,7 +112,7 @@ public partial class EditorPage
         ChangedLines? changes = LineComparison.ChangesOnly(before, NdfColouring.BlocksOfLines(before), after, export.Colourizer!.Blocks);
         if (changes is null)
         {
-            Say(export.Name + ": the export is the same as the source.");
+            Say(Texts.Get("Editor.Export.Same", ("file", export.Name)));
             return;
         }
         var document = new TextDocument(string.Join("\n", changes.Lines));

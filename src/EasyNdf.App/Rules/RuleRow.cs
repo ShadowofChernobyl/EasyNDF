@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Rules;
 
@@ -33,7 +34,7 @@ public sealed class RuleRow
     public bool IsGroup => Kind == "Group";
 
     /// <summary>The rule's name, or "(unnamed)".</summary>
-    public string Name => (string?)Rule["Name"] is { Length: > 0 } name ? name : "(unnamed)";
+    public string Name => (string?)Rule["Name"] is { Length: > 0 } name ? name : Texts.Get("Rules.Rule.Unnamed");
 
     /// <summary>The rule's own switch.</summary>
     public bool IsOn => Rule["Enabled"]?.GetValue<bool>() != false;
@@ -48,26 +49,27 @@ public sealed class RuleRow
     public string SymbolColour => Symbols.GetValueOrDefault(Kind, ("", "muted")).Item2;
 
     /// <summary>The symbol's tooltip, such as "Edit rule. Click to open."</summary>
-    public string SymbolTip => (Kind is "Variable" or "Group" ? Kind : Kind + " rule") + ". Click to open.";
+    public string SymbolTip => Texts.Get("Rules.Rule.SymbolTip", ("kind", RuleKindNames.Of(Kind)));
 
     /// <summary>A rule type's symbol and the theme colour it is drawn in, as the rule list shows them.</summary>
     public static (string Text, string Colour) SymbolOf(string kind) => Symbols.GetValueOrDefault(kind, ("", "muted"));
 
     /// <summary>What each rule type does, in a line: the New rule menu's tooltips, from the Help page on rule types.</summary>
-    public static readonly IReadOnlyDictionary<string, string> Summaries = new Dictionary<string, string>
+    public static string SummaryOf(string kind) => kind switch
     {
-        ["Edit"] = "Changes values in every descriptor that matches. The one you'll use most.",
-        ["Add"] = "Adds a new descriptor, written exactly as you type it.",
-        ["Clone"] = "Copies a descriptor under a new name, then changes the copy.",
-        ["Remove"] = "Deletes every descriptor that matches. Needs at least one condition.",
-        ["Replace"] = "Replaces a value wherever it appears.",
-        ["Scale"] = "Changes a number, then rounds it and keeps it within limits you set.",
-        ["Formula"] = "Works out a value from other values, like round(0.8 * MaximumRangeGRU, 25).",
-        ["Table"] = "Applies values pasted from a spreadsheet: one row per descriptor.",
-        ["Lookup"] = "Changes descriptors based on a list in another file.",
-        ["Check"] = "Changes nothing. Warns you when the number of matches isn't what you expect.",
-        ["Group"] = "A heading with one on/off switch for the rules under it.",
-        ["Variable"] = "A named value you can use in other rules as {Name}. Change it once to change many rules.",
+        "Edit" => Texts.Get("Rules.KindSummary.Edit"),
+        "Add" => Texts.Get("Rules.KindSummary.Add"),
+        "Clone" => Texts.Get("Rules.KindSummary.Clone"),
+        "Remove" => Texts.Get("Rules.KindSummary.Remove"),
+        "Replace" => Texts.Get("Rules.KindSummary.Replace"),
+        "Scale" => Texts.Get("Rules.KindSummary.Scale"),
+        "Formula" => Texts.Get("Rules.KindSummary.Formula").Replace("`", ""),
+        "Table" => Texts.Get("Rules.KindSummary.Table"),
+        "Lookup" => Texts.Get("Rules.KindSummary.Lookup"),
+        "Check" => Texts.Get("Rules.KindSummary.Check"),
+        "Group" => Texts.Get("Rules.KindSummary.Group"),
+        "Variable" => Texts.Get("Rules.KindSummary.Variable").Replace("`", ""),
+        _ => "",
     };
 
     /// <summary>The Group rule's symbol, a folder: drawn by <see cref="Controls.FolderGlyph"/> wherever it is shown, not written.</summary>

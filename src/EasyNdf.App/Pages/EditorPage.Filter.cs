@@ -5,6 +5,7 @@ using EasyNdf.App.Editor;
 using EasyNdf.Data.FileList;
 using EasyNdf.Engine.Ndf;
 using EasyNdf.Engine.Viewer;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -53,7 +54,7 @@ public partial class EditorPage : IDescriptorFilterOwner
         FilterButton.IsChecked = on > 0;
         FilterBadge.Text = on > 0 ? on.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
         FilterBadge.Visibility = on > 0 ? Visibility.Visible : Visibility.Collapsed;
-        FilterButton.ToolTip = on > 0 ? "Filter by property: " + on + (on == 1 ? " condition" : " conditions") + " on" : "Filter by property";
+        FilterButton.ToolTip = on > 0 ? Texts.Count("Editor.FilterButton.On", on) : Texts.Get("Editor.Filter.Tip");
     }
 
     /// <summary>The filter button opens the Filter Descriptors window, or closes it.</summary>
@@ -108,8 +109,11 @@ public partial class EditorPage : IDescriptorFilterOwner
     /// <summary>How many descriptors the filter shows (the HTML app's <c>dfCount</c>).</summary>
     public (string Before, string Bold, string After) FilterCount()
     {
-        string shownCount = treeRoots.Count.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
-        if (!showsAllFiles) return ("Showing ", shownCount, " of " + descriptorTotal.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " descriptors");
-        return ("Showing ", shownCount, treeRoots.Count == 1 ? " descriptor in the read files" : " descriptors in the read files");
+        string text = showsAllFiles
+            ? Texts.Count("Editor.FilterCount.AllFiles", treeRoots.Count, ("count", Texts.Number(treeRoots.Count)))
+            : Texts.Get("Editor.FilterCount.ThisFile", ("count", Texts.Number(treeRoots.Count)), ("total", Texts.Number(descriptorTotal)));
+        // the text marks the number in bold with **, which splits it into the three parts
+        string[] parts = text.Split("**");
+        return parts.Length == 3 ? (parts[0], parts[1], parts[2]) : ("", text, "");
     }
 }

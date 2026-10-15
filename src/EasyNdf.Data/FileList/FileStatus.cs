@@ -1,4 +1,5 @@
 using System.Globalization;
+using EasyNdf.Data.Languages;
 using EasyNdf.Engine.Text;
 
 namespace EasyNdf.Data.FileList;
@@ -30,17 +31,20 @@ public static class FileStatus
     public static (string Text, StatusKind Kind) Of(FileEntry row)
     {
         if (row.Message != "" && row.IsError) return (row.Message, StatusKind.Error);
-        if (!row.On) return ("Off" + (row.HasPresetChosen ? "" : ", no preset") + InBrackets(row.Info), StatusKind.Plain);
+        if (!row.On)
+        {
+            string off = row.HasPresetChosen ? DataTexts.Get("Files.Status.Off") : DataTexts.Get("Files.Status.OffNoPreset");
+            return (off + InBrackets(row.Info), StatusKind.Plain);
+        }
         if (row.Message != "") return MessageWithCounts(row);
-        if (row.Source is null) return ("File not loaded. Add " + row.Name + " again to reattach it.", StatusKind.Error);
-        if (!row.HasPresetChosen) return ("No preset" + ReadOrNot(row), StatusKind.Plain);
-        if (row.Preset is null) return ("Preset \"" + row.MissingPreset + "\" not found", StatusKind.Error);
-        return ("Ready" + ReadOrNot(row), StatusKind.Plain);
+        if (row.Source is null) return (DataTexts.Get("Files.Status.NotLoaded", ("file", row.Name)), StatusKind.Error);
+        if (!row.HasPresetChosen) return (DataTexts.Get("Files.Status.NoPreset") + ReadOrNot(row), StatusKind.Plain);
+        if (row.Preset is null) return (DataTexts.Get("Files.Status.PresetNotFound", ("preset", row.MissingPreset)), StatusKind.Error);
+        return (DataTexts.Get("Files.Status.Ready") + ReadOrNot(row), StatusKind.Plain);
     }
 
     /// <summary>"1 rule changed nothing", "3 rules changed nothing".</summary>
-    public static string IdleText(int count) =>
-        count == 1 ? "1 rule changed nothing" : Count(count) + " rules changed nothing";
+    public static string IdleText(int count) => DataTexts.Count("Files.Status.RulesChangedNothing", count, ("count", Count(count)));
 
     /// <summary>
     /// What a file holds, for the Status column: "952 descriptors", "12 constants", "2 unnamed descriptors", joined with commas.
@@ -49,18 +53,19 @@ public static class FileStatus
     public static string Holds(int descriptors, int constants, int unnamed)
     {
         var parts = new List<string>();
-        if (descriptors != 0 || (constants == 0 && unnamed == 0)) parts.Add(Count(descriptors) + " descriptors");
-        if (constants != 0) parts.Add(Count(constants) + " constants");
-        if (unnamed != 0) parts.Add(Count(unnamed) + (unnamed == 1 ? " unnamed descriptor" : " unnamed descriptors"));
+        // "descriptors" and "constants" stay plural even for 1, as the HTML app writes them
+        if (descriptors != 0 || (constants == 0 && unnamed == 0)) parts.Add(DataTexts.Get("Files.Status.Descriptors", ("count", Count(descriptors))));
+        if (constants != 0) parts.Add(DataTexts.Get("Files.Status.Constants", ("count", Count(constants))));
+        if (unnamed != 0) parts.Add(DataTexts.Count("Files.Status.Unnamed", unnamed, ("count", Count(unnamed))));
         return string.Join(", ", parts);
     }
 
     /// <summary>A file size as the Size column shows it: "512 B", "37 KB" (at least 1), "2.4 MB".</summary>
     public static string Size(long bytes)
     {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1048576) return Count((long)Math.Max(1, JsNumber.Round(bytes / 1024.0))) + " KB";
-        return JsNumber.ToFixed(bytes / 1048576.0, 1) + " MB";
+        if (bytes < 1024) return DataTexts.Get("Files.Size.Bytes", ("size", bytes.ToString(CultureInfo.InvariantCulture)));
+        if (bytes < 1048576) return DataTexts.Get("Files.Size.Kilobytes", ("size", Count((long)Math.Max(1, JsNumber.Round(bytes / 1024.0)))));
+        return DataTexts.Get("Files.Size.Megabytes", ("size", JsNumber.ToFixed(bytes / 1048576.0, 1)));
     }
 
     /// <summary>A date as the Date modified column shows it: "2026-10-08 14:05".</summary>
@@ -73,9 +78,9 @@ public static class FileStatus
     {
         string text = row.Message;
         if (row.IdleRuleCount != 0)
-            text = WithSentenceEnd(text) + IdleText(row.IdleRuleCount) + (row.WarningCount != 0 ? "" : "; click the row for details.");
+            text = WithSentenceEnd(text) + IdleText(row.IdleRuleCount) + (row.WarningCount != 0 ? "" : DataTexts.Get("Files.Status.ClickForDetails"));
         if (row.WarningCount != 0)
-            text = WithSentenceEnd(text) + row.WarningCount + (row.WarningCount == 1 ? " warning" : " warnings") + "; click the row for details.";
+            text = WithSentenceEnd(text) + DataTexts.Count("Files.Status.Warnings", row.WarningCount) + DataTexts.Get("Files.Status.ClickForDetails");
         StatusKind kind = row.WarningCount != 0 || row.IdleRuleCount != 0 ? StatusKind.Idle : row.Done ? StatusKind.Ok : StatusKind.Plain;
         return (text, kind);
     }
@@ -85,7 +90,7 @@ public static class FileStatus
         text + (text.EndsWith('.') || text.EndsWith('!') || text.EndsWith('?') ? " " : ". ");
 
     /// <summary>" (952 descriptors)" once the file has been read, " (not read yet)" before.</summary>
-    private static string ReadOrNot(FileEntry row) => row.Info != "" ? InBrackets(row.Info) : row.Scanned ? "" : " (not read yet)";
+    private static string ReadOrNot(FileEntry row) => row.Info != "" ? InBrackets(row.Info) : row.Scanned ? "" : InBrackets(DataTexts.Get("Files.Status.NotReadYet"));
 
     private static string InBrackets(string info) => info != "" ? " (" + info + ")" : "";
 }

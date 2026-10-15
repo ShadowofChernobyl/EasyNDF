@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Controls;
 
@@ -167,7 +168,7 @@ public static class LongText
         public OpenButton(TextBox box) : base(box)
         {
             Box = box;
-            face = new Border { Width = 15, Height = 12, Child = arrow, Cursor = Cursors.Arrow, ToolTip = "Open a larger box for this text" };
+            face = new Border { Width = 15, Height = 12, Child = arrow, Cursor = Cursors.Arrow, ToolTip = Texts.Get("Common.LongText.Tip") };
             face.SetResourceReference(Border.BackgroundProperty, "well");
             arrow.SetResourceReference(TextBlock.ForegroundProperty, "muted");
             face.MouseEnter += (_, _) => arrow.SetResourceReference(TextBlock.ForegroundProperty, "accent");

@@ -1,5 +1,6 @@
 using System.Windows;
 using EasyNdf.App.Editor;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Editor;
 
@@ -42,10 +43,10 @@ public sealed record ObjectOrListItem(int Depth, int Index, string Key, string T
     public string Arrow => IsShut ? "▸" : "▾";
 
     /// <summary>"3 items hidden" while hidden; "" otherwise.</summary>
-    public string Hidden => IsShut ? Count + (Count == 1 ? " item hidden" : " items hidden") : "";
+    public string Hidden => IsShut ? Texts.Count("Editor.Rows.Hidden", Count) : "";
 
     /// <summary>What the arrow says it does.</summary>
-    public string ArrowTip => IsShut ? "Show what is inside" : "Hide what is inside";
+    public string ArrowTip => IsShut ? Texts.Get("Editor.Rows.ShowInside") : Texts.Get("Editor.Rows.HideInside");
 }
 
 /// <summary>A value (the HTML app's <c>input.dvv</c> row), which can be typed over when the descriptor can be changed.</summary>
@@ -56,7 +57,7 @@ public sealed record ObjectOrListItem(int Depth, int Index, string Key, string T
 public sealed record ValueItem(int Depth, int Index, string Key, string Shown, bool IsReadOnly, bool RunsOverLines, double KeyWidth) : PropertyItem(Depth)
 {
     /// <summary>The value's tooltip: why a value over several lines cannot be typed over here.</summary>
-    public string? Tip => RunsOverLines ? "This value runs over several lines. Change it in the text above." : null;
+    public string? Tip => RunsOverLines ? Texts.Get("Editor.Rows.OverLines") : null;
 }
 
 /// <summary>"Used by": how many descriptors in the read files use this one; it opens to list them.</summary>

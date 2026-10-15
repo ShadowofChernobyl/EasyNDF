@@ -7,6 +7,7 @@ using System.Windows.Input;
 using EasyNdf.App.Controls;
 using EasyNdf.App.Editor;
 using Microsoft.Win32;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Dialogs;
 
@@ -57,7 +58,7 @@ public partial class FilterWindow : UserControl
         CentreBesidePageScrollbar();
         Visibility = Visibility.Visible;
         Draw();
-        CountNote.Text = "Reading the properties...";
+        CountNote.Text = Texts.Get("Editor.Filter.ReadingProperties");
         properties = await viewer.FilterProperties();
         if (owner != viewer || !IsOpen) return;
         Draw();
@@ -105,10 +106,10 @@ public partial class FilterWindow : UserControl
             ValueBox.IsEnabled = rule is not null && !rule.NeedsNoValue;
             GateChoice.SelectedIndex = Filter.Gate == "Any" ? 1 : 0;
 
-            var names = new List<string> { "(none)" };
+            var names = new List<string> { Texts.Get("Editor.Filter.NoSaved") };
             names.AddRange(saved.Keys);
             SavedChoice.ItemsSource = names;
-            SavedChoice.SelectedItem = saved.ContainsKey(Filter.Name) ? Filter.Name : "(none)";
+            SavedChoice.SelectedItem = saved.ContainsKey(Filter.Name) ? Filter.Name : names[0];
             SaveButton.IsEnabled = DeleteButton.IsEnabled = saved.ContainsKey(Filter.Name);
             ExportButton.IsEnabled = saved.Count > 0 || rules.Count > 0;
         }
@@ -122,7 +123,7 @@ public partial class FilterWindow : UserControl
         RuleList.Children.Clear();
         if (rules.Count == 0)
         {
-            RuleList.Children.Add(new TextBlock { Text = "No conditions. Press Add condition.", Margin = new Thickness(6), Foreground = (System.Windows.Media.Brush)FindResource("muted") });
+            RuleList.Children.Add(new TextBlock { Text = Texts.Get("Editor.Filter.NoConditionsAdd"), Margin = new Thickness(6), Foreground = (System.Windows.Media.Brush)FindResource("muted") });
             return;
         }
         for (int i = 0; i < rules.Count; i++)
@@ -130,14 +131,14 @@ public partial class FilterWindow : UserControl
             FilterRule rule = rules[i];
             int index = i;
             var row = new DockPanel { Margin = new Thickness(0), Background = i == chosen ? (System.Windows.Media.Brush)FindResource("sel") : System.Windows.Media.Brushes.Transparent, Tag = index };
-            var on = new CheckBox { Style = (Style)FindResource("Tick"), IsChecked = rule.On, ToolTip = "Use this condition", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 2, 4, 2) };
+            var on = new CheckBox { Style = (Style)FindResource("Tick"), IsChecked = rule.On, ToolTip = Texts.Get("Editor.Filter.UseCondition.Tip"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 2, 4, 2) };
             on.Click += (_, _) =>
             {
                 rule.On = on.IsChecked == true;
                 chosen = index;
                 Changed();
             };
-            var delete = new Button { Style = (Style)FindResource("IconButton"), Content = "×", ToolTip = "Delete", Margin = new Thickness(4, 2, 4, 2) };
+            var delete = new Button { Style = (Style)FindResource("IconButton"), Content = "×", ToolTip = Texts.Get("Common.Menu.Delete"), Margin = new Thickness(4, 2, 4, 2) };
             delete.Click += (_, _) =>
             {
                 chosen = index;
@@ -175,7 +176,7 @@ public partial class FilterWindow : UserControl
             text.Inlines.Add(new Run(" "));
         }
         // the spaces between the parts are in the plain font, as on the page, where they sit between the parts
-        text.Inlines.Add(Part(rule.Property != "" ? rule.Property : "(no property)", mono: true, dim: named));
+        text.Inlines.Add(Part(rule.Property != "" ? rule.Property : Texts.Get("Editor.Filter.NoProperty"), mono: true, dim: named));
         text.Inlines.Add(Part(" " + rule.Test, mono: false, dim: true));
         if (rule.NeedsNoValue) return text;
         text.Inlines.Add(new Run(" "));
@@ -190,7 +191,7 @@ public partial class FilterWindow : UserControl
         CountNote.Inlines.Clear();
         if (!Filter.IsOn)
         {
-            CountNote.Inlines.Add(new Run(Filter.Rules.Count > 0 ? "No complete condition is on: every descriptor is shown." : "No conditions: every descriptor is shown."));
+            CountNote.Inlines.Add(new Run(Filter.Rules.Count > 0 ? Texts.Get("Editor.Filter.NoneComplete") : Texts.Get("Editor.Filter.NoConditions")));
             return;
         }
         (string before, string bold, string after) = owner.FilterCount();
@@ -386,18 +387,18 @@ public partial class FilterWindow : UserControl
         bool has = rule is not null;
         Menus.Show(RuleList,
         [
-            has ? new MenuChoice(rule!.On ? "Disable" : "Enable", ToggleChosen) : null,
-            has ? new MenuChoice("Duplicate", DuplicateChosen) : null,
+            has ? new MenuChoice(rule!.On ? Texts.Get("Common.Menu.Disable") : Texts.Get("Common.Menu.Enable"), ToggleChosen) : null,
+            has ? new MenuChoice(Texts.Get("Common.Menu.Duplicate"), DuplicateChosen) : null,
             has ? Menus.Line : null,
-            has ? new MenuChoice("Move up", () => MoveChosen(-1), chosen > 0, "Ctrl+Up") : null,
-            has ? new MenuChoice("Move down", () => MoveChosen(1), chosen < Filter.Rules.Count - 1, "Ctrl+Down") : null,
+            has ? new MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => MoveChosen(-1), chosen > 0, "Ctrl+Up") : null,
+            has ? new MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => MoveChosen(1), chosen < Filter.Rules.Count - 1, "Ctrl+Down") : null,
             has ? Menus.Line : null,
-            has ? new MenuChoice("Cut", () => { CopyChosen(); DeleteChosen(); }, Key: "Ctrl+X") : null,
-            has ? new MenuChoice("Copy", CopyChosen, Key: "Ctrl+C") : null,
-            new MenuChoice("Paste", Paste, Key: "Ctrl+V"),
+            has ? new MenuChoice(Texts.Get("Common.Menu.Cut"), () => { CopyChosen(); DeleteChosen(); }, Key: "Ctrl+X") : null,
+            has ? new MenuChoice(Texts.Get("Common.Menu.Copy"), CopyChosen, Key: "Ctrl+C") : null,
+            new MenuChoice(Texts.Get("Common.Menu.Paste"), Paste, Key: "Ctrl+V"),
             Menus.Line,
-            new MenuChoice("Add condition", () => Add(has ? chosen + 1 : null)),
-            has ? new MenuChoice("Delete", DeleteChosen, Key: "Delete") : null,
+            new MenuChoice(Texts.Get("Editor.Filter.AddCondition"), () => Add(has ? chosen + 1 : null)),
+            has ? new MenuChoice(Texts.Get("Common.Menu.Delete"), DeleteChosen, Key: "Delete") : null,
         ]);
     }
 
@@ -439,7 +440,8 @@ public partial class FilterWindow : UserControl
     private void SavedChosen(object sender, SelectionChangedEventArgs e)
     {
         if (showing || owner is null || SavedChoice.SelectedItem is not string name) return;
-        if (name == "(none)")
+        // the first choice is "(none)"
+        if (SavedChoice.SelectedIndex == 0)
         {
             Filter.Name = "";
             Filter.Save();
@@ -464,7 +466,7 @@ public partial class FilterWindow : UserControl
         }
         saved[Filter.Name] = Filter.Copy();
         DescriptorFilterState.StoreSaved(saved);
-        SayInCount("Saved \"" + Filter.Name + "\".");
+        SayInCount(Texts.Get("Editor.Filter.Saved", ("name", Filter.Name)));
     }
 
     private async void SaveAsClicked(object sender, RoutedEventArgs e) => await SaveAs();
@@ -474,10 +476,10 @@ public partial class FilterWindow : UserControl
     {
         if (owner is null) return;
         MessageOverlay messages = MainView.Of(this).Messages;
-        DialogAnswer reply = await messages.Ask("Name for this filter:", new DialogOptions { Input = Filter.Name, Ok = "Save" });
+        DialogAnswer reply = await messages.Ask(Texts.Get("Editor.Filter.NameAsk"), new DialogOptions { Input = Filter.Name, Ok = Texts.Get("Editor.Filter.Save") });
         string name = reply.Text.Trim();
         if (reply.Choice != DialogChoice.Ok || name == "" || owner is null) return;
-        if (saved.ContainsKey(name) && name != Filter.Name && !await messages.Confirm("A filter named \"" + name + "\" already exists. Replace it?", "Replace")) return;
+        if (saved.ContainsKey(name) && name != Filter.Name && !await messages.Confirm(Texts.Get("Editor.Filter.ReplaceAsk", ("name", name)), Texts.Get("Editor.Replace"))) return;
         saved[name] = Filter.Copy();
         Filter.Name = name;
         DescriptorFilterState.StoreSaved(saved);
@@ -489,7 +491,7 @@ public partial class FilterWindow : UserControl
     {
         if (owner is null || !saved.ContainsKey(Filter.Name)) return;
         string name = Filter.Name;
-        if (!await MainView.Of(this).Messages.Confirm("Delete the saved filter \"" + name + "\"? The conditions shown stay as they are.", "Delete")) return;
+        if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Editor.Filter.DeleteAsk", ("name", name)), Texts.Get("Editor.Filter.Delete"))) return;
         saved.Remove(name);
         Filter.Name = "";
         DescriptorFilterState.StoreSaved(saved);
@@ -502,12 +504,12 @@ public partial class FilterWindow : UserControl
     {
         if (owner is null) return;
         IReadOnlyDictionary<string, DescriptorFilterState> filters = saved.Count > 0 ? saved : new Dictionary<string, DescriptorFilterState> { ["Filter"] = Filter.Copy() };
-        var dialog = new SaveFileDialog { Title = "Export filters", FileName = "EasyNDF filters.json", Filter = "Filter files (*.json)|*.json" };
+        var dialog = new SaveFileDialog { Title = Texts.Get("Editor.Filter.ExportTitle"), FileName = "EasyNDF filters.json", Filter = Texts.Get("Editor.Filter.Files") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try { File.WriteAllText(dialog.FileName, DescriptorFilterState.FileText(filters)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = MainView.Of(this).Messages.Tell("The filters could not be saved. " + error.Message);
+            _ = MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.CouldNotSave", ("problem", error.Message)));
         }
     }
 
@@ -515,18 +517,18 @@ public partial class FilterWindow : UserControl
     private async void ImportClicked(object sender, RoutedEventArgs e)
     {
         if (owner is null) return;
-        var dialog = new OpenFileDialog { Title = "Import filters", Filter = "Filter files (*.json)|*.json" };
+        var dialog = new OpenFileDialog { Title = Texts.Get("Editor.Filter.ImportTitle"), Filter = Texts.Get("Editor.Filter.Files") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         string text;
         try { text = await File.ReadAllTextAsync(dialog.FileName); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await MainView.Of(this).Messages.Tell("\"" + Path.GetFileName(dialog.FileName) + "\" could not be read. " + error.Message);
+            await MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)));
             return;
         }
         if (DescriptorFilterState.FromFile(text) is not List<(string Name, DescriptorFilterState Filter)> filters)
         {
-            await MainView.Of(this).Messages.Tell("\"" + Path.GetFileName(dialog.FileName) + "\" is not a filter file.");
+            await MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.NotAFilterFile", ("file", Path.GetFileName(dialog.FileName))));
             return;
         }
         foreach ((string name, DescriptorFilterState filter) in filters)
@@ -537,7 +539,7 @@ public partial class FilterWindow : UserControl
         }
         DescriptorFilterState.StoreSaved(saved);
         Draw();
-        SayInCount(filters.Count > 0 ? "Imported " + filters.Count + (filters.Count == 1 ? " filter." : " filters.") : "No filters found in that file.");
+        SayInCount(filters.Count > 0 ? Texts.Count("Editor.Filter.Imported", filters.Count) : Texts.Get("Editor.Filter.NoneInFile"));
     }
 
     // ---- closing ----

@@ -4,6 +4,7 @@ using System.Windows.Media;
 using EasyNdf.App.Controls;
 using EasyNdf.App.Files;
 using EasyNdf.Data.FileList;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -47,28 +48,28 @@ public partial class FilesPage
         bool sortable = FileListView.CanSort(column);
         return
         [
-            sortable ? new MenuChoice("Sort ascending", () => Model.SortBy(column, ascending: true)) : null,
-            sortable ? new MenuChoice("Sort descending", () => Model.SortBy(column, ascending: false)) : null,
-            new MenuChoice("Hide this column", () => Model.SetColumnShown(column, false), IsEnabled: column != FileColumn.File),
-            new MenuChoice("Show every column", Model.ShowEveryColumn, IsEnabled: Model.ColumnOrder.Any(c => !Model.IsShown(c))),
+            sortable ? new MenuChoice(Texts.Get("Files.Menu.SortAscending"), () => Model.SortBy(column, ascending: true)) : null,
+            sortable ? new MenuChoice(Texts.Get("Files.Menu.SortDescending"), () => Model.SortBy(column, ascending: false)) : null,
+            new MenuChoice(Texts.Get("Files.Menu.HideColumn"), () => Model.SetColumnShown(column, false), IsEnabled: column != FileColumn.File),
+            new MenuChoice(Texts.Get("Files.Menu.ShowEveryColumn"), Model.ShowEveryColumn, IsEnabled: Model.ColumnOrder.Any(c => !Model.IsShown(c))),
             Menus.Line,
-            new MenuChoice("Reset column widths", Model.FitColumnsAgain),
+            new MenuChoice(Texts.Get("Files.Menu.ResetColumnWidths"), Model.FitColumnsAgain),
         ];
     }
 
     /// <summary>A folder's line, with "Group by folder".</summary>
     private IEnumerable<MenuChoice?> FolderMenu(FolderRow folder) =>
     [
-        new MenuChoice(folder.IsOpen ? "Collapse this folder" : "Expand this folder", () => Model.ToggleFolder(folder)),
-        new MenuChoice("Select its files", () => Model.SelectFolder(folder)),
-        new MenuChoice("Switch on its files", () => Model.SetFolderOn(folder, true), IsEnabled: !Model.IsBusy),
-        new MenuChoice("Switch off its files", () => Model.SetFolderOn(folder, false), IsEnabled: !Model.IsBusy),
+        new MenuChoice(folder.IsOpen ? Texts.Get("Files.Menu.CollapseFolder") : Texts.Get("Files.Menu.ExpandFolder"), () => Model.ToggleFolder(folder)),
+        new MenuChoice(Texts.Get("Files.Menu.SelectFolderFiles"), () => Model.SelectFolder(folder)),
+        new MenuChoice(Texts.Get("Files.Menu.SwitchOnFolder"), () => Model.SetFolderOn(folder, true), IsEnabled: !Model.IsBusy),
+        new MenuChoice(Texts.Get("Files.Menu.SwitchOffFolder"), () => Model.SetFolderOn(folder, false), IsEnabled: !Model.IsBusy),
         Menus.Line,
-        new MenuChoice("Expand all", Model.OpenAllFolders, Key: "Ctrl+Shift+]"),
-        new MenuChoice("Collapse all", Model.CloseAllFolders, Key: "Ctrl+Shift+["),
+        new MenuChoice(Texts.Get("Files.ExpandAll"), Model.OpenAllFolders, Key: "Ctrl+Shift+]"),
+        new MenuChoice(Texts.Get("Files.CollapseAll"), Model.CloseAllFolders, Key: "Ctrl+Shift+["),
         Menus.Line,
-        new MenuChoice("Add files...", () => AddFilesClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
-        new MenuChoice("Add folder...", () => AddFolderClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
+        new MenuChoice(Texts.Get("Files.AddFiles"), () => AddFilesClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
+        new MenuChoice(Texts.Get("Files.AddFolder"), () => AddFolderClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
     ];
 
     /// <summary>A file's row. A row that is not selected becomes the selection first.</summary>
@@ -76,14 +77,18 @@ public partial class FilesPage
     {
         if (!row.IsSelected) Model.Click(row, control: false, shift: false);
         int count = Model.SelectedCount;
-        string many = count > 1 ? " " + count + " files" : "";
+        // one file: "Switch off"; several: "Switch off 3 files"
+        string switchText = count > 1
+            ? (row.IsOn ? Texts.Get("Files.Menu.SwitchOffSeveral", ("files", FileListModel.Files(count))) : Texts.Get("Files.Menu.SwitchOnSeveral", ("files", FileListModel.Files(count))))
+            : (row.IsOn ? Texts.Get("Files.Menu.SwitchOff") : Texts.Get("Files.Menu.SwitchOn"));
+        string removeText = count > 1 ? Texts.Get("Files.Menu.RemoveSeveral", ("files", FileListModel.Files(count))) : Texts.Get("Files.Remove");
         return
         [
-            new MenuChoice((row.IsOn ? "Switch off" : "Switch on") + many, () => Model.SetSelectedOn(!row.IsOn), IsEnabled: !Model.IsBusy),
-            row.Entry.HeldOutput is not null && count == 1 ? new MenuChoice("Save anyway", () => SaveAnyway(row)) : null,
-            new MenuChoice("Open in editor", () => OpenInEditor(row.Entry), IsEnabled: row.Entry.Source is not null),
-            new MenuChoice("Choose export folder...", () => ExportFolderClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
-            new MenuChoice("Remove" + many, () => RemoveClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
+            new MenuChoice(switchText, () => Model.SetSelectedOn(!row.IsOn), IsEnabled: !Model.IsBusy),
+            row.Entry.HeldOutput is not null && count == 1 ? new MenuChoice(Texts.Get("Files.SaveAnyway"), () => SaveAnyway(row)) : null,
+            new MenuChoice(Texts.Get("Files.Menu.OpenInEditor"), () => OpenInEditor(row.Entry), IsEnabled: row.Entry.Source is not null),
+            new MenuChoice(Texts.Get("Files.Menu.ChooseExportFolder"), () => ExportFolderClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
+            new MenuChoice(removeText, () => RemoveClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
             Menus.Line,
             .. ListMenu(),
         ];
@@ -92,8 +97,8 @@ public partial class FilesPage
     /// <summary>The list's empty part, and the end of a row's menu.</summary>
     private IEnumerable<MenuChoice?> ListMenu() =>
     [
-        new MenuChoice("Select all", Model.SelectAll, IsEnabled: Model.HasFiles),
-        new MenuChoice("Add files...", () => AddFilesClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
-        new MenuChoice("Add folder...", () => AddFolderClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
+        new MenuChoice(Texts.Get("Files.SelectAll"), Model.SelectAll, IsEnabled: Model.HasFiles),
+        new MenuChoice(Texts.Get("Files.AddFiles"), () => AddFilesClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
+        new MenuChoice(Texts.Get("Files.AddFolder"), () => AddFolderClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
     ];
 }

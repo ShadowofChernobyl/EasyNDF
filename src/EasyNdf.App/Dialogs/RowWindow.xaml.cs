@@ -8,6 +8,7 @@ using EasyNdf.App.Rules;
 using EasyNdf.Data;
 using EasyNdf.Engine;
 using EasyNdf.Engine.Mods;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Dialogs;
 
@@ -149,36 +150,36 @@ public partial class RowWindow : UserControl
         // the boxes are named after the row's fields, so the one that had the keys gets them back
         string? focused = (Keyboard.FocusedElement as FrameworkElement)?.Name;
         bool isAction = list == RulesModel.Actions;
-        Title.Text = isAction ? "Action" : "Condition";
+        Title.Text = isAction ? Texts.Get("Rules.Row.Action") : Texts.Get("Rules.Row.Condition");
         Controls.QuickHelp.SetPage(HelpButton, isAction ? "actions" : "conditions");
         ShowPosition();
         Form.Children.Clear();
         commentText = null;
 
-        AddLabel("Name", first: true);
-        AddText("Name", "Optional. Shown in the list", mono: false);
+        AddLabel(Texts.Get("Rules.Row.Name"), first: true);
+        AddText("Name", Texts.Get("Editor.Filter.NameBox.Hint"), mono: false);
 
         string subject = isAction ? "Target" : "Operand", custom = isAction ? "CustomTarget" : "CustomOperand";
-        var customTick = new CheckBox { Content = "Custom", IsChecked = JsonValues.IsTruthy(row["ManualOverride"]), ToolTip = "Type a name instead of choosing one", Name = "ManualOverride" };
+        var customTick = new CheckBox { Content = Texts.Get("Rules.Row.Custom"), IsChecked = JsonValues.IsTruthy(row["ManualOverride"]), ToolTip = Texts.Get("Rules.Row.Custom.Tip"), Name = "ManualOverride" };
         customTick.SetResourceReference(StyleProperty, "Tick");
         customTick.Click += (_, _) => CustomClicked(customTick.IsChecked == true);
-        AddLabel(subject, right: customTick);
+        AddLabel(isAction ? Texts.Get("Rules.Row.Target") : Texts.Get("Rules.Row.Operand"), right: customTick);
         if (JsonValues.IsTruthy(row["ManualOverride"]))
         {
-            TextBox customBox = AddText(custom, isAction ? "Custom target" : "Custom operand", mono: true);
+            TextBox customBox = AddText(custom, isAction ? Texts.Get("Rules.Row.CustomTarget") : Texts.Get("Rules.Row.CustomOperand"), mono: true);
             Controls.ColouredTextBox.SetKind(customBox, RuleTextKind.Path);
             Controls.Suggestions.Attach(customBox, RuleSuggestions.Path(namesFor(list), Variables));
         }
         else
         {
             IEnumerable<string> special = isAction ? RuleEditor.SpecialOperands.Skip(1) : RuleEditor.SpecialOperands;
-            AddChoice(subject, [.. special, .. namesFor(list)], mono: true, notInListSuffix: " (not in scan)");
+            AddChoice(subject, [.. special, .. namesFor(list)], mono: true, notInListSuffix: " " + Texts.Get("Rules.Row.NotInScan"));
         }
 
-        AddLabel("Operator");
+        AddLabel(Texts.Get("Rules.Row.Operator"));
         AddChoice("Operator", isAction ? ActionOperators : ConditionOperators, mono: false, notInListSuffix: null);
 
-        AddLabel("Value", tip: "Enter closes this window. Shift+Enter adds a line break.");
+        AddLabel(Texts.Get("Rules.Row.Value"), tip: Texts.Get("Rules.Row.Value.Tip"));
         AddValueBox();
 
         if (isAction) AddComment();
@@ -213,7 +214,7 @@ public partial class RowWindow : UserControl
     /// <summary>The Value box: the code font, as many lines as the value has, up to 8; Shift+Enter adds one.</summary>
     private void AddValueBox()
     {
-        var box = new TextBox { Text = JsonValues.AsText(row!["Value"]), Name = "Value", Margin = new Thickness(0, 3, 0, 0), ToolTip = "Enter closes this window. Shift+Enter adds a line break." };
+        var box = new TextBox { Text = JsonValues.AsText(row!["Value"]), Name = "Value", Margin = new Thickness(0, 3, 0, 0), ToolTip = Texts.Get("Rules.Row.Value.Tip") };
         box.SetResourceReference(StyleProperty, "TextArea");
         box.TextWrapping = TextWrapping.NoWrap;
         Controls.ColouredTextBox.SetKind(box, RuleTextKind.Value);
@@ -239,12 +240,12 @@ public partial class RowWindow : UserControl
     {
         string current = JsonValues.AsText(row![field]);
         var options = new List<ChoiceOption>();
-        if (current == "") options.Add(new ChoiceOption("", "(choose)"));
+        if (current == "") options.Add(new ChoiceOption("", Texts.Get("Rules.Row.Choose")));
         else if (!choices.Contains(current))
-            options.Add(notInListSuffix is null ? new ChoiceOption("", "(choose)") : new ChoiceOption(current, current + notInListSuffix));
+            options.Add(notInListSuffix is null ? new ChoiceOption("", Texts.Get("Rules.Row.Choose")) : new ChoiceOption(current, current + notInListSuffix));
         options.AddRange(choices.Select(c => new ChoiceOption(c, c)));
         // the operator is named by its label; a property shows its own name, so a name too long for the box can be read in full
-        var choice = new ComboBox { ItemsSource = options, Name = field, Margin = new Thickness(0, 3, 0, 0), ToolTip = field == "Operator" ? "Operator" : NameOrNone(current) };
+        var choice = new ComboBox { ItemsSource = options, Name = field, Margin = new Thickness(0, 3, 0, 0), ToolTip = field == "Operator" ? Texts.Get("Rules.Row.Operator") : NameOrNone(current) };
         choice.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
         if (mono)
         {
@@ -267,7 +268,7 @@ public partial class RowWindow : UserControl
     private void AddComment()
     {
         if (row!["Comment"] is not JsonObject comment) row["Comment"] = comment = RuleLoading.NewComment();
-        CheckBox on = CommentTick(comment, "Enabled", new Run("Comment"));
+        CheckBox on = CommentTick(comment, "Enabled", new Run(Texts.Get("Rules.Row.Comment")));
         on.Margin = new Thickness(0, 13, 0, 0);
         on.HorizontalAlignment = HorizontalAlignment.Left;
         Form.Children.Add(on);
@@ -283,34 +284,41 @@ public partial class RowWindow : UserControl
             var mark = new Run(mod);
             mark.SetResourceReference(TextElement.ForegroundProperty, "accent");
             var includes = new Controls.FlexRow { Gap = 14, LineGap = 6, Margin = new Thickness(16, 3, 0, 8) };
-            CheckBox editedBy = CommentTick(comment, "IncludeMod", new Run("Edited by "), mark);
-            editedBy.ToolTip = "Adds \"Edited by " + mod + "\" to the comment";
+            // "Edited by" and the mod's name in the accent colour, as one text a translator can reorder
+            CheckBox editedBy = CommentTick(comment, "IncludeMod", Text.RichText.Pieces(Texts.Get("Rules.Row.EditedBy", ("mod", mod)),
+                bold: name => { var run = new Run(name); run.SetResourceReference(TextElement.ForegroundProperty, "accent"); return run; }, code: name => new Run(name), plain: text => new Run(text)));
+            editedBy.ToolTip = Texts.Get("Rules.Row.EditedBy.Tip", ("mod", mod));
             includes.Children.Add(editedBy);
-            includes.Children.Add(CommentTick(comment, "IncludeOriginalValue", new Run("Original value")));
-            includes.Children.Add(CommentTick(comment, "IncludeTimestamp", new Run("Timestamp")));
+            includes.Children.Add(CommentTick(comment, "IncludeOriginalValue", new Run(Texts.Get("Rules.Row.OriginalValue"))));
+            includes.Children.Add(CommentTick(comment, "IncludeTimestamp", new Run(Texts.Get("Rules.Row.Timestamp"))));
             Form.Children.Add(includes);
         }
         // .note: 10 pixels below what is above it, besides the 3 between every part
         var note = new TextBlock { Margin = new Thickness(0, 13, 0, 0) };
         note.SetResourceReference(StyleProperty, "Note");
-        note.Inlines.Add(new Run("A target is a property name at any depth, or a pair key such as a MAP entry. Insert and Replace take "));
-        var code = new Run("index:value") { FontSize = 12 };
-        code.SetResourceReference(TextElement.FontFamilyProperty, "mono");
-        note.Inlines.Add(code);
-        note.Inlines.Add(new Run("; index is a number, FirstIndex, LastIndex, or an offset like LastIndex-1. \\n is a line break. {Name} inserts a variable."));
+        note.Inlines.AddRange(Text.RichText.Pieces(Texts.Get("Rules.Row.ActionNote"),
+            bold: text => new Run(text), code: CodeRun, plain: text => new Run(text)));
         Form.Children.Add(note);
     }
 
     /// <summary>The tooltips of the comment's checkboxes ("Edited by" names the mod, so it gets its own).</summary>
-    private static readonly Dictionary<string, string> CommentTips = new()
+    private static Dictionary<string, string> CommentTips => new()
     {
-        ["Enabled"] = "Add a comment after each edited value",
-        ["IncludeOriginalValue"] = "Add the value before the edit",
-        ["IncludeTimestamp"] = "Add the date and time",
+        ["Enabled"] = Texts.Get("Rules.Row.Comment.Tip"),
+        ["IncludeOriginalValue"] = Texts.Get("Rules.Row.OriginalValue.Tip"),
+        ["IncludeTimestamp"] = Texts.Get("Rules.Row.Timestamp.Tip"),
     };
 
     /// <summary>A property's name as a tooltip; none while nothing is chosen.</summary>
     private static string? NameOrNone(string name) => name == "" ? null : name;
+
+    /// <summary>Code in a note, in the code font at 12 pixels.</summary>
+    private static Run CodeRun(string text)
+    {
+        var run = new Run(text) { FontSize = 12 };
+        run.SetResourceReference(TextElement.FontFamilyProperty, "mono");
+        return run;
+    }
 
     private CheckBox CommentTick(JsonObject comment, string field, params Inline[] label)
     {
@@ -334,7 +342,7 @@ public partial class RowWindow : UserControl
         }
         catch (Exception error) when (error is System.Text.Json.JsonException or InvalidOperationException) { }
         // the text box's template shows its Tag as the placeholder
-        commentText.Tag = automatic != "" ? automatic : "Comment text";
+        commentText.Tag = automatic != "" ? automatic : Texts.Get("Rules.Row.CommentText.Hint");
     }
 
     /// <summary>A field of the row was changed: it is written and saved; typing in one box is one step to undo.</summary>

@@ -8,6 +8,7 @@ using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Editing;
 using ICSharpCode.AvalonEdit.Folding;
 using ICSharpCode.AvalonEdit.Rendering;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -167,7 +168,7 @@ public partial class EditorPage
 
     // ---- the folded block's tooltip ----
 
-    private readonly System.Windows.Controls.ToolTip foldTip = new() { Content = "Folded. Click to unfold", Placement = PlacementMode.Mouse };
+    private readonly System.Windows.Controls.ToolTip foldTip = new() { Placement = PlacementMode.Mouse };
 
     private void FoldedBlockHovered(object sender, MouseEventArgs e)
     {
@@ -177,6 +178,8 @@ public partial class EditorPage
         if (line is null) return;
         int column = line.GetVisualColumnFloor(new Point(point.X + view.HorizontalOffset, point.Y + view.VerticalOffset - line.VisualTop));
         if (line.Elements.FirstOrDefault(el => el.VisualColumn <= column && column < el.VisualColumn + el.VisualLength) is not FoldedBlocks.FoldedElement) return;
+        // the text is set here, not when the tooltip is made, so it follows the language in use
+        foldTip.Content = Texts.Get("Editor.Fold.Tip");
         foldTip.PlacementTarget = view;
         foldTip.IsOpen = true;
     }
@@ -199,14 +202,14 @@ public partial class EditorPage
             e.Handled = true;
             Menus.Show(Text,
             [
-                new MenuChoice("Undo", () => Text.Undo(), Text.CanUndo, "Ctrl+Z"),
-                new MenuChoice("Redo", () => Text.Redo(), Text.CanRedo, "Ctrl+Y"),
+                new MenuChoice(Texts.Get("Common.Menu.Undo"), () => Text.Undo(), Text.CanUndo, "Ctrl+Z"),
+                new MenuChoice(Texts.Get("Common.Menu.Redo"), () => Text.Redo(), Text.CanRedo, "Ctrl+Y"),
                 Menus.Line,
-                new MenuChoice("Cut", () => ApplicationCommands.Cut.Execute(null, Text.TextArea), Text.SelectionLength > 0, "Ctrl+X"),
-                new MenuChoice("Copy", () => ApplicationCommands.Copy.Execute(null, Text.TextArea), Text.SelectionLength > 0, "Ctrl+C"),
-                new MenuChoice("Paste", () => ApplicationCommands.Paste.Execute(null, Text.TextArea), Clipboard.ContainsText(), "Ctrl+V"),
+                new MenuChoice(Texts.Get("Common.Menu.Cut"), () => ApplicationCommands.Cut.Execute(null, Text.TextArea), Text.SelectionLength > 0, "Ctrl+X"),
+                new MenuChoice(Texts.Get("Common.Menu.Copy"), () => ApplicationCommands.Copy.Execute(null, Text.TextArea), Text.SelectionLength > 0, "Ctrl+C"),
+                new MenuChoice(Texts.Get("Common.Menu.Paste"), () => ApplicationCommands.Paste.Execute(null, Text.TextArea), Clipboard.ContainsText(), "Ctrl+V"),
                 Menus.Line,
-                new MenuChoice("Select all", () => Text.SelectAll(), Key: "Ctrl+A"),
+                new MenuChoice(Texts.Get("Editor.Menu.SelectAll"), () => Text.SelectAll(), Key: "Ctrl+A"),
             ]);
             return;
         }
@@ -218,18 +221,18 @@ public partial class EditorPage
             int index = line is null ? -1 : line.LineNumber - 1;
             bool isGap = index >= 0 && shown.Changes is ChangedLines changes && changes.Marks[index] == LineMark.Gap;
             string lineText = line is null ? "" : shown.Document.GetText(line);
-            if (Text.SelectionLength > 0) items.Add(new MenuChoice("Copy selected text", () => Copy(Text.SelectedText)));
-            items.Add(new MenuChoice("Copy this line", () => Copy(lineText), line is not null && !isGap));
+            if (Text.SelectionLength > 0) items.Add(new MenuChoice(Texts.Get("Editor.Menu.CopySelected"), () => Copy(Text.SelectedText)));
+            items.Add(new MenuChoice(Texts.Get("Editor.CopyThisLine"), () => Copy(lineText), line is not null && !isGap));
             items.Add(Menus.Line);
             FoldArrow arrow = index >= 0 ? ArrowOf(index) : FoldArrow.None;
-            if (arrow != FoldArrow.None) items.Add(new MenuChoice(arrow == FoldArrow.Shut ? "Unfold this block" : "Fold this block", () => ToggleBlock(index)));
+            if (arrow != FoldArrow.None) items.Add(new MenuChoice(arrow == FoldArrow.Shut ? Texts.Get("Editor.Menu.UnfoldBlock") : Texts.Get("Editor.Menu.FoldBlock"), () => ToggleBlock(index)));
         }
-        items.Add(new MenuChoice("Fold all", FoldAll, folding is not null));
-        items.Add(new MenuChoice("Unfold all", UnfoldAll, folding is not null));
+        items.Add(new MenuChoice(Texts.Get("Editor.Menu.FoldAll"), FoldAll, folding is not null));
+        items.Add(new MenuChoice(Texts.Get("Editor.Menu.UnfoldAll"), UnfoldAll, folding is not null));
         items.Add(Menus.Line);
-        items.Add(new MenuChoice(shown.IsExport ? "Show source" : "Show export", () => _ = ShowExportOrSource(), ExportButton.IsEnabled));
-        items.Add(new MenuChoice("Changes only", () => _ = ChangesFromMenu(), ChangesButton.IsEnabled));
-        items.Add(new MenuChoice("Save as...", () => SaveClicked(this, e)));
+        items.Add(new MenuChoice(shown.IsExport ? Texts.Get("Editor.ShowSource") : Texts.Get("Editor.ShowExport"), () => _ = ShowExportOrSource(), ExportButton.IsEnabled));
+        items.Add(new MenuChoice(Texts.Get("Editor.ChangesOnly"), () => _ = ChangesFromMenu(), ChangesButton.IsEnabled));
+        items.Add(new MenuChoice(Texts.Get("Editor.SaveAs"), () => SaveClicked(this, e)));
         Menus.Show(Text, items);
     }
 

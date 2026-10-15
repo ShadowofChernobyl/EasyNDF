@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using EasyNdf.App.Controls;
 using EasyNdf.Data.FileList;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -66,7 +67,7 @@ public partial class FilesPage
             Tag = column,
             AllowDrop = true,
             Cursor = sortable ? Cursors.Hand : null,
-            ToolTip = sortable ? "Click to sort by this column; click again to reverse. Drag to move the column." : "Row number. Drag to move the column.",
+            ToolTip = sortable ? Texts.Get("Files.Column.Sortable.Tip") : Texts.Get("Files.Column.Number.Tip"),
         };
         heading.MouseLeftButtonDown += HeadingPressed;
         heading.MouseMove += HeadingDragged;
@@ -140,7 +141,7 @@ public partial class FilesPage
             Background = Brushes.Transparent,
             Cursor = Cursors.SizeWE,
             Tag = column,
-            ToolTip = "Drag to resize this column. Double-click to go back to automatic widths.",
+            ToolTip = Texts.Get("Files.Column.Resize.Tip"),
         };
         void ShowState() => line.Background = line.IsMouseOver || line.IsMouseCaptured ? AccentAtHalf() : Brushes.Transparent;
         line.MouseEnter += (_, _) => ShowState();
@@ -195,7 +196,7 @@ public partial class FilesPage
             var choice = new CheckBox
             {
                 Style = (Style)FindResource("PopupChoice"),
-                ToolTip = "Show or hide this column",
+                ToolTip = Texts.Get("Files.Column.ShowOrHide.Tip"),
                 Content = ColumnFit.Heading(column),
                 IsChecked = Model.IsShown(column),
                 IsEnabled = column != FileColumn.File, // the file's name is always shown
@@ -207,10 +208,10 @@ public partial class FilesPage
         }
         var reset = new Button
         {
-            Content = "Reset columns",
+            Content = Texts.Get("Files.Column.Reset"),
             // a grid item stretches across the popup
             Margin = new Thickness(0, 9, 0, 0), // the 5 between items and its own 4
-            ToolTip = "Show every column in the original order, sorted by #, with automatic widths",
+            ToolTip = Texts.Get("Files.Column.Reset.Tip"),
         };
         reset.Click += (_, _) =>
         {

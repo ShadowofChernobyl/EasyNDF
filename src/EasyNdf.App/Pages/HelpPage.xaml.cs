@@ -4,6 +4,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using EasyNdf.App.Help;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -32,6 +33,8 @@ public partial class HelpPage : UserControl
         renderer.WelcomeClicked += () => WelcomeRequested?.Invoke();
         string last = (string?)AppData.Current.State["helpPage"] ?? "start";
         Go(last, remember: false);
+        // the page and the list are drawn again in the new language
+        Texts.LanguageChanged += () => Go(shownId, remember: false);
     }
 
     /// <summary>Shows a page (the HTML app's <c>wkGo</c>); an unknown id shows the first page.</summary>
@@ -69,23 +72,23 @@ public partial class HelpPage : UserControl
         int index = WikiPages.All.ToList().IndexOf(page);
         WikiPage? previous = index > 0 ? WikiPages.All[index - 1] : null;
         WikiPage? next = index < WikiPages.All.Count - 1 ? WikiPages.All[index + 1] : null;
-        ShowPagerButton(PreviousButton, previous, "Previous");
-        ShowPagerButton(NextButton, next, "Next");
+        ShowPagerButton(PreviousButton, previous, isNext: false);
+        ShowPagerButton(NextButton, next, isNext: true);
     }
 
-    private static void ShowPagerButton(Button button, WikiPage? target, string label)
+    private static void ShowPagerButton(Button button, WikiPage? target, bool isNext)
     {
         button.Visibility = target is null ? Visibility.Collapsed : Visibility.Visible;
         if (target is null) return;
         button.Tag = target.Id;
         var text = new TextBlock();
-        var labelRun = new System.Windows.Documents.Run(label + ":");
+        var labelRun = new System.Windows.Documents.Run(isNext ? Texts.Get("Help.Next") : Texts.Get("Help.Previous"));
         // the label is dim, except under the mouse (Styles/Controls.xaml, PagerLabel)
         labelRun.Style = (Style)Application.Current.FindResource("PagerLabel");
-        if (label == "Previous") text.Inlines.Add("‹ ");
+        if (!isNext) text.Inlines.Add("‹ ");
         text.Inlines.Add(labelRun);
         text.Inlines.Add(" " + target.Title);
-        if (label == "Next") text.Inlines.Add(" ›");
+        if (isNext) text.Inlines.Add(" ›");
         button.Content = text;
     }
 
@@ -122,7 +125,7 @@ public partial class HelpPage : UserControl
         }
         if (PageList.Children.Count == 0)
         {
-            var none = new TextBlock { Text = "No page has that.", Margin = new Thickness(8, 4, 8, 4) };
+            var none = new TextBlock { Text = Texts.Get("Help.NoPageHasThat"), Margin = new Thickness(8, 4, 8, 4) };
             none.SetResourceReference(TextBlock.ForegroundProperty, "muted");
             PageList.Children.Add(none);
         }

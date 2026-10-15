@@ -15,6 +15,8 @@ public static class TitleCase
     /// <summary>"Find and replace" becomes "Find and Replace".</summary>
     public static string Of(string text)
     {
+        // title case is English's own habit; other languages keep their headings as their translators wrote them
+        if (Texts.Catalog.LanguageCode != EasyNdf.Data.Languages.LanguagePack.EnglishCode) return text;
         // the words and the spaces between them, in order
         string[] parts = Regex.Split(text, @"(\s+)");
         int first = Array.FindIndex(parts, IsWord), last = Array.FindLastIndex(parts, IsWord);

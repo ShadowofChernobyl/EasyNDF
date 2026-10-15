@@ -4,6 +4,7 @@ using System.Windows.Input;
 using EasyNdf.App.Controls;
 using EasyNdf.Data.FileList;
 using EasyNdf.Engine.Rules;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Files;
 
@@ -36,12 +37,12 @@ public sealed class DetailsPanel : StackPanel
     {
         if (row?.LastRun is not RunRecord run)
         {
-            showTitle("Details");
-            AddEmpty(row is null ? "Click a row to see what its last run changed." : "No run yet for " + row.Name + ". Use Preview or Run export.");
+            showTitle(Texts.Get("Files.Details"));
+            AddEmpty(row is null ? Texts.Get("Files.Details.ClickARow") : Texts.Get("Files.Details.NoRunYet", ("file", row.Name)));
             return;
         }
         RunResult result = run.Result;
-        showTitle("Details: " + row.Name + " with " + run.Preset.Name);
+        showTitle(Texts.Get("Files.Details.Title", ("file", row.Name), ("preset", run.Preset.Name)));
         List<List<EditLogEntry>> logs = result.Logs;
         if (run.ShownRule is not int shown || shown >= result.Stats.Count)
         {
@@ -49,45 +50,46 @@ public sealed class DetailsPanel : StackPanel
             run.ShownRule = first < 0 ? 0 : first;
         }
 
-        string what = run.Held ? "Not exported."
-            : run.Wrote ? (run.Unchanged ? "Exported as an unchanged copy." : "Exported.")
-            : run.Unchanged ? "The rules changed nothing, so it was not exported."
-            : "Preview only, nothing was saved.";
-        AddParagraph(FileStatus.Count(result.Edits) + " edits across " + FileStatus.Holds(run.Info.Descriptors, run.Info.Constants, run.Info.Unnamed)
-            + ", " + run.Milliseconds + " ms. " + what + " Click a rule to list its edits; double-click an edit to see it in the exported file.", "muted", 0, 8);
+        string what = run.Held ? Texts.Get("Files.Details.NotExported")
+            : run.Wrote ? (run.Unchanged ? Texts.Get("Files.Details.ExportedUnchanged") : Texts.Get("Files.Details.Exported"))
+            : run.Unchanged ? Texts.Get("Files.Details.NothingChanged")
+            : Texts.Get("Files.Details.PreviewOnly");
+        AddParagraph(Texts.Get("Files.Details.Summary", ("edits", FileStatus.Count(result.Edits)),
+            ("holds", FileStatus.Holds(run.Info.Descriptors, run.Info.Constants, run.Info.Unnamed)), ("milliseconds", run.Milliseconds), ("what", what)), "muted", 0, 8);
 
         if (result.ParseError != "")
-            AddParagraph("The file these rules produce would not be valid NDF, so it "
-                + (run.Held ? "was held back: it was not written to its export folder. \"Save anyway\" on the row saves it so you can look." : "would be held back on export.")
-                + "\nProblem found when reading it back: " + result.ParseError + ".\nThe usual cause is a rule that writes text with a bracket or quote that is never closed, such as an Insert, Set To, Append or Find and replace value.",
+            AddParagraph((run.Held ? Texts.Get("Files.Details.InvalidHeld") : Texts.Get("Files.Details.InvalidWouldBeHeld"))
+                + "\n" + Texts.Get("Files.Details.InvalidProblem", ("problem", result.ParseError)) + "\n" + Texts.Get("Files.Details.InvalidCause"),
                 "warn", 12.5, 12.5);
         if (result.Warnings.Count > 0)
-            AddParagraph(string.Join("\n", result.Warnings.Select(w => (w.Type == "number" ? "Rule \"" + w.Rule + "\": " : "Check \"" + w.Rule + "\" failed. ") + w.Message)),
+            AddParagraph(string.Join("\n", result.Warnings.Select(w => (w.Type == "number" ? Texts.Get("Files.Details.RuleWarning", ("rule", w.Rule)) : Texts.Get("Files.Details.CheckFailed", ("rule", w.Rule))) + " " + w.Message)),
                 "caution", 12.5, 12.5);
         List<RuleStats> idle = result.Stats.Where(RunRecord.IsIdle).ToList();
         if (idle.Count > 0 && result.Edits > 0)
-            AddParagraph(FileStatus.IdleText(idle.Count) + " in this file: " + string.Join(", ", idle.Take(8).Select(s => "\"" + s.Name + "\""))
-                + (idle.Count > 8 ? " and " + (idle.Count - 8) + " more" : "") + ". That is not an error. If it should have, a name or value it looks for may have changed.",
-                "caution", 0, 8);
+        {
+            string names = string.Join(", ", idle.Take(8).Select(s => "\"" + s.Name + "\""));
+            if (idle.Count > 8) names = Texts.Get("Files.NotNdf.AndMore", ("files", names), ("more", idle.Count - 8));
+            AddParagraph(Texts.Get("Files.Details.IdleRules", ("idle", FileStatus.IdleText(idle.Count)), ("rules", names)), "caution", 0, 8);
+        }
 
         AddRuleTable(row, run);
         if (result.Stats.Any(s => s.Skipped > 0))
-            AddParagraph("Skipped means the target was found but the action did not apply, such as arithmetic on a non-numeric value or an index out of range.", "muted", 0, 8);
+            AddParagraph(Texts.Get("Files.Details.SkippedMeans"), "muted", 0, 8);
         AddEditList(run);
     }
 
     /// <summary>The table of the preset's rules: click one to list its edits below.</summary>
     private void AddRuleTable(FileEntry row, RunRecord run)
     {
-        var table = new WebTable(["Rule", "Type", "Descriptors matched", "Edits", "Skipped"], [false, false, false, false, false]);
+        var table = new WebTable([Texts.Get("Files.Details.Rule"), Texts.Get("Files.Details.Type"), Texts.Get("Files.Details.Matched"), Texts.Get("Files.Details.Edits"), Texts.Get("Files.Details.Skipped")], [false, false, false, false, false]);
         List<RuleStats> stats = run.Result.Stats;
         for (int index = 0; index < stats.Count; index++)
         {
             RuleStats rule = stats[index];
             bool isIdle = RunRecord.IsIdle(rule);
             WebTableRow tableRow = table.AddRow([
-                rule.Name + (rule.Enabled && !rule.OffByGroup ? "" : " (off)"),
-                rule.Kind == "" ? "Edit" : rule.Kind,
+                rule.Enabled && !rule.OffByGroup ? rule.Name : Texts.Get("Files.Details.RuleOff", ("rule", rule.Name)),
+                Rules.RuleKindNames.Short(rule.Kind),
                 FileStatus.Count(rule.Matched), FileStatus.Count(rule.Edits), FileStatus.Count(rule.Skipped),
             ]);
             tableRow.IsSelected = index == run.ShownRule;
@@ -98,7 +100,7 @@ public sealed class DetailsPanel : StackPanel
                 // a rule that changed nothing: dim, with its edit count in the caution colour
                 for (int column = 0; column < 5; column++) tableRow.SetColour(column, "muted");
                 tableRow.SetColour(3, "caution");
-                tableRow.ToolTip = "This rule changed nothing in this file.";
+                tableRow.ToolTip = Texts.Get("Files.Details.ChangedNothing");
             }
             int picked = index;
             tableRow.Clicked += (_, _) =>
@@ -118,16 +120,16 @@ public sealed class DetailsPanel : StackPanel
         RuleStats rule = run.Result.Stats[shown];
         List<EditLogEntry> log = shown < run.Result.Logs.Count ? run.Result.Logs[shown] : [];
         // h3: dim, 12 pixels above, 5 below
-        AddParagraph((log.Count > 0 ? "Edits by" : "No edits listed for") + " \"" + rule.Name + "\"", "muted", 12, 5);
+        AddParagraph(log.Count > 0 ? Texts.Get("Files.Details.EditsBy", ("rule", rule.Name)) : Texts.Get("Files.Details.NoEditsListed", ("rule", rule.Name)), "muted", 12, 5);
         if (log.Count == 0)
         {
-            AddParagraph(rule.Edits > 0 ? "The edit list is switched off in Settings." : "This rule changed nothing in this file.", "muted", 0, 8);
+            AddParagraph(rule.Edits > 0 ? Texts.Get("Files.Details.ListSwitchedOff") : Texts.Get("Files.Details.ChangedNothing"), "muted", 0, 8);
             return;
         }
 
         // only the edits in sight are made: up to 500 rows made at once froze the app while the panes were resized
         // (Double-clicking an edit to see it in the exported file comes with the Editor tab.)
-        var table = new LongTable(["Descriptor", "Target", "Before", "After"], [true, true, true, true],
+        var table = new LongTable([Texts.Get("Files.Details.Descriptor"), Texts.Get("Files.Details.Target"), Texts.Get("Files.Details.Before"), Texts.Get("Files.Details.After")], [true, true, true, true],
             [.. log.Select(edit => (IReadOnlyList<string>)[edit.Descriptor, edit.Target, edit.Old, edit.New])]);
         // #detBox: a sunken list, at most max(14rem, 46% of the window's height less 40 pixels) tall, with a grip under it
         var box = new Bevel { Child = table };
@@ -136,7 +138,7 @@ public sealed class DetailsPanel : StackPanel
         box.SetResourceReference(Bevel.BackgroundProperty, "well");
         FitEditListHeight(box);
         Add(box, 0, 0);
-        var grip = new ResizeGrip { Target = box, ToolTip = "Drag to resize. Double-click to reset." };
+        var grip = new ResizeGrip { Target = box, ToolTip = Texts.Get("Common.ResizeGrip.Tip") };
         grip.HeightChosen += height =>
         {
             chosenEditListHeight = height is double chosen ? Math.Clamp(chosen, 96, EditListCap()) : null;
@@ -145,7 +147,7 @@ public sealed class DetailsPanel : StackPanel
         grip.HeightSettled += () => Pages.FilesPage.RememberSize("detBox", chosenEditListHeight);
         Add(grip, 1, 9);
         if (rule.Edits > log.Count)
-            AddParagraph("Showing the first " + FileStatus.Count(log.Count) + " of " + FileStatus.Count(rule.Edits) + " edits by this rule. Settings sets how many are listed.", "muted", 0, 8);
+            AddParagraph(Texts.Get("Files.Details.ShowingFirst", ("shown", FileStatus.Count(log.Count)), ("edits", FileStatus.Count(rule.Edits))), "muted", 0, 8);
     }
 
     private void FitEditListHeight(Bevel box)

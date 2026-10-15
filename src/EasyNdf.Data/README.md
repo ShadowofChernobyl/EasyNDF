@@ -11,7 +11,7 @@ The data is in `%LOCALAPPDATA%\EasyNDF\`, or, in portable mode, in a `Data` fold
 | `Mods` | One `.mod.json` per mod, in the "Export mod" format. A mod file can be copied in or out by hand. | `ModStore` |
 | `Themes` | One `.theme.json` per custom theme, in the "Export theme" format. | `ThemeStore` |
 | `Filters` | One `.json` per saved descriptor filter, in the filter window's "Export" format. | `FilterStore` |
-| `Languages` | One `.json` per imported language pack, named after its code. | `LanguageStore` |
+| `Languages` | One `.json` per imported language pack, named after its code, in the Settings tab's "Export" format: each text by name, with its translation and the English it was made from. | `Languages/LanguageStore` |
 | `Settings` | `settings.json` (the Settings tab, with the HTML app's keys) and `state.json` (what the app remembers between sessions). | `SettingsStore` |
 
 Every file is written to a temporary file first, which then replaces the old one, so a crash never leaves half a file.

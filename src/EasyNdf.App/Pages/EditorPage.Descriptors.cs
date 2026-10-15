@@ -11,6 +11,7 @@ using EasyNdf.Data.FileList;
 using EasyNdf.Engine.Ndf;
 using EasyNdf.Engine.Viewer;
 using ICSharpCode.AvalonEdit.Document;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -221,7 +222,7 @@ public partial class EditorPage
         List<PropertyRow> oldRows = propertyRows;
         bool oldCut = propertiesCut;
         string text = WholeText();
-        SayDescriptors("Reading the descriptors...");
+        SayDescriptors(Texts.Get("Editor.Viewer.Reading"));
         List<OutlineEntry> list = [];
         string error = "";
         try { list = await Task.Run(() => DescriptorViewer.Outline(text)); }
@@ -396,7 +397,10 @@ public partial class EditorPage
                 try { rows = await RowsOf(node); }
                 catch (Exception problem) when (problem is NdfParseException or ArgumentException or IOException or UnauthorizedAccessException)
                 {
-                    treeError = node.Name + " could not be read" + (IsLocal(node.Entry) || node.Entry is null ? "" : " from " + node.Entry.Name) + ". " + problem.Message;
+                    treeError = (IsLocal(node.Entry) || node.Entry is null
+                        ? Texts.Get("Editor.Viewer.CouldNotRead", ("name", node.Name))
+                        : Texts.Get("Editor.Viewer.CouldNotReadFrom", ("name", node.Name), ("file", node.Entry.Name)))
+                        + " " + problem.Message;
                 }
                 node.Rows = rows;
                 node.Children = rows is null ? [] : tree.Children(node, rows, -1);
@@ -429,7 +433,7 @@ public partial class EditorPage
         }
         else
         {
-            if (node.Kind != TreeNodeKind.File && node.Children is null && node.Entry is not null && !IsLocal(node.Entry)) SayDescriptors("Reading " + node.Entry.Name + "...");
+            if (node.Kind != TreeNodeKind.File && node.Children is null && node.Entry is not null && !IsLocal(node.Entry)) SayDescriptors(Texts.Get("Editor.Viewer.ReadingFile", ("file", node.Entry.Name)));
             treeError = "";
             await Expand(node, chain: true);
             if (mine != treeBuild) return;
@@ -453,7 +457,7 @@ public partial class EditorPage
         if (pinnedFile is not null && (!entries.Contains(pinnedFile) || pinnedFile.Source is null)) pinnedFile = null;
         string filter = DescriptorFind.Text.Trim().ToLowerInvariant();
         FileEntry? pin = !showsAllFiles && pinnedFile is not null && !IsLocal(pinnedFile) ? pinnedFile : null;
-        ModeOneText.Text = pin is not null ? pin.Name : "This file";
+        ModeOneText.Text = pin is not null ? pin.Name : Texts.Get("Editor.ThisFile");
         List<TreeNode> roots;
         if (!showsAllFiles)
         {
@@ -569,7 +573,9 @@ public partial class EditorPage
             roots.Add(new TreeNode
             {
                 Key = "F\u0001" + entry.Id.ToString(CultureInfo.InvariantCulture), Kind = TreeNodeKind.File, Label = entry.Name, Entry = entry,
-                Sub = (entry.Folder != "" ? entry.Folder + "   · " : "") + Plural(tops.Count, "chain") + " into " + Plural(reach, "file") + (IsLocal(entry) ? "   · open in the editor" : ""),
+                Sub = (entry.Folder != "" ? entry.Folder + "   · " : "")
+                    + Texts.Get("Editor.Viewer.ChainsInto", ("chains", Texts.CountWide("Editor.Viewer.Chains", tops.Count)), ("files", Texts.CountWide("Editor.Search.Files", reach)))
+                    + (IsLocal(entry) ? "   · " + Texts.Get("Editor.Viewer.OpenInEditor") : ""),
             });
         }
         return roots;
@@ -608,7 +614,10 @@ public partial class EditorPage
         if (selectedKey != node.Key) return;
         if (rows is null)
         {
-            SayDescriptors((owner.Name != "" ? owner.Name : "It") + " could not be read" + (IsLocal(owner.Entry) || owner.Entry is null ? "." : " from " + owner.Entry.Name + "."), warning: true);
+            string name = owner.Name != "" ? owner.Name : Texts.Get("Editor.Viewer.It");
+            SayDescriptors(IsLocal(owner.Entry) || owner.Entry is null
+                ? Texts.Get("Editor.Viewer.CouldNotRead", ("name", name))
+                : Texts.Get("Editor.Viewer.CouldNotReadFrom", ("name", name), ("file", owner.Entry.Name)), warning: true);
             return;
         }
         bool inside = node != owner;
@@ -809,7 +818,7 @@ public partial class EditorPage
         showsAllFiles = allFiles;
         ModeOneButton.IsChecked = !allFiles;
         ModeAllButton.IsChecked = allFiles;
-        DescriptorFind.Tag = allFiles ? "Find a descriptor in the read files" : "Filter by name or type";
+        DescriptorFind.Tag = allFiles ? Texts.Get("Editor.DescriptorFind.AllFilesHint") : Texts.Get("Editor.DescriptorFind.Hint");
         if (VisualTreeHelperFindScroller(TreeList) is ScrollViewer list) list.ScrollToTop();
         _ = RebuildTree();
     }
@@ -847,12 +856,12 @@ public partial class EditorPage
         List<FileEntry> waiting = [.. (Files?.Entries ?? []).Where(f => f.Source is not null && f.Name.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase) && f.References is null)];
         if (waiting.Count == 0)
         {
-            SayDescriptors(Files is { } list && list.Entries.Any(f => f.Source is not null) ? "Every file on the Files tab has been read already." : "There are no files on the Files tab to read.");
+            SayDescriptors(Files is { } list && list.Entries.Any(f => f.Source is not null) ? Texts.Get("Editor.Scan.AllRead") : Texts.Get("Editor.Scan.NoFiles"));
             return;
         }
         scanning = true;
         stopScanning = false;
-        ScanButton.Content = "Stop";
+        ScanButton.Content = Texts.Get("Editor.Scan.Stop");
         int done = 0, failed = 0;
         DateTime lastSaid = DateTime.MinValue;
         try
@@ -864,7 +873,7 @@ public partial class EditorPage
                 if ((DateTime.Now - lastSaid).TotalMilliseconds > 120)
                 {
                     lastSaid = DateTime.Now;
-                    SayDescriptors("Reading file " + (done + 1).ToString("N0", CultureInfo.InvariantCulture) + " of " + waiting.Count.ToString("N0", CultureInfo.InvariantCulture) + ": " + entry.Name);
+                    SayDescriptors(Texts.Get("Editor.Scan.ReadingFile", ("number", Texts.Number(done + 1)), ("total", Texts.Number(waiting.Count)), ("file", entry.Name)));
                 }
                 if (await Task.Run(() => FileListModel.Read(entry)) is null)
                 {
@@ -878,12 +887,15 @@ public partial class EditorPage
         finally
         {
             scanning = false;
-            ScanButton.Content = "Scan all";
+            ScanButton.Content = Texts.Get("Editor.ScanAll");
         }
         await RebuildTree();
         ShowProperties();
         string said = string.Concat(DescriptorNote.Inlines.OfType<Run>().Select(r => r.Text));
-        SayDescriptors((stopScanning ? "Stopped. " : "") + Plural(done - failed, "file") + " read" + (failed > 0 ? ", " + failed.ToString("N0", CultureInfo.InvariantCulture) + " could not be read" : "") + ". " + said);
+        string read = failed > 0
+            ? Texts.CountWide("Editor.Scan.ReadSomeFailed", done - failed, ("failed", Texts.Number(failed)))
+            : Texts.CountWide("Editor.Scan.Read", done - failed);
+        SayDescriptors((stopScanning ? Texts.Get("Editor.Scan.Stopped") + " " : "") + read + " " + said);
     }
 
     // ---- the note ----
@@ -891,7 +903,7 @@ public partial class EditorPage
     /// <summary>The note above the viewer (the HTML app's <c>dvSay</c>): how many descriptors, and how to use the viewer.</summary>
     private void SayDescriptors()
     {
-        const string How = " Click one to open it and list its properties. Double-click shows it in the text.";
+        string how = " " + Texts.Get("Editor.Viewer.How");
         List<FileEntry> entries = [.. Files?.Entries ?? []];
         if (showsAllFiles)
         {
@@ -901,32 +913,37 @@ public partial class EditorPage
             bool finding = DescriptorFind.Text.Trim() != "" || Filter.IsOn;
             if (Filter.IsOn)
             {
-                SayDescriptors("Filter on: " + Plural(treeRoots.Count, "descriptor") + " in " + Plural(index.Files.Count, "read file") + " pass." + How);
+                SayDescriptors(Texts.Get("Editor.Viewer.FilterOn",
+                    ("descriptors", Texts.CountWide("Editor.Viewer.Descriptors", treeRoots.Count)), ("files", Texts.CountWide("Editor.Viewer.ReadFiles", index.Files.Count))) + how);
                 return;
             }
-            SayDescriptors(Plural(index.Names.Count, "descriptor") + " in " + Plural(index.Files.Count, "read file")
-                + (unread > 0 ? ", " + Plural(unread, "file") + " not read yet (\"Scan all\" reads them)" : "") + ". "
-                + (finding ? "" : chains.Count > 0
-                    ? chains.Count.ToString("N0", CultureInfo.InvariantCulture) + (chains.Count == 1 ? " chain starts" : " chains start") + " in the files listed; the other files are reached by opening them."
-                    : "No descriptor of one read file refers to a descriptor of another yet, so there is no chain to list.")
-                + How);
+            string descriptors = Texts.CountWide("Editor.Viewer.Descriptors", index.Names.Count);
+            string readFiles = Texts.CountWide("Editor.Viewer.ReadFiles", index.Files.Count);
+            string found = unread > 0
+                ? Texts.Get("Editor.Viewer.InReadFilesSomeUnread", ("descriptors", descriptors), ("files", readFiles), ("unread", Texts.CountWide("Editor.Search.Files", unread)))
+                : Texts.Get("Editor.Viewer.InReadFiles", ("descriptors", descriptors), ("files", readFiles));
+            string chainsSaid = finding ? "" : chains.Count > 0 ? " " + Texts.CountWide("Editor.Viewer.ChainsStart", chains.Count) : " " + Texts.Get("Editor.Viewer.NoChains");
+            SayDescriptors(found + chainsSaid + how);
             return;
         }
         FileEntry? pin = pinnedFile is not null && !IsLocal(pinnedFile) ? pinnedFile : null;
         if (shown is null && pin is null)
         {
-            SayDescriptors("Open a file to list its descriptors here.");
+            SayDescriptors(Texts.Get("Editor.Viewer.OpenAFile"));
             return;
         }
         if (outlineError != "" && pin is null)
         {
-            SayDescriptors("The descriptors cannot be listed until the text reads cleanly. " + outlineError, warning: true);
+            SayDescriptors(Texts.Get("Editor.Viewer.NotClean", ("problem", outlineError)), warning: true);
             return;
         }
         int total = descriptorTotal, listed = treeRoots.Count;
-        SayDescriptors((listed == total ? Plural(total, "descriptor") : "Showing " + listed.ToString("N0", CultureInfo.InvariantCulture) + " of " + Plural(total, "descriptor"))
-            + (pin is not null ? " in " + pin.Name : "") + "." + How
-            + (pin is not null || shown is null ? "" : CanChangeValues ? " Type over a value and press Enter to change it in the text." : " Values cannot be changed in the export view."));
+        string count = listed == total
+            ? Texts.CountWide("Editor.Viewer.Descriptors", total)
+            : Texts.CountWide("Editor.Viewer.ShowingOf", total, ("listed", Texts.Number(listed)));
+        string said = pin is not null ? Texts.Get("Editor.Viewer.CountInFile", ("count", count), ("file", pin.Name)) : Texts.Get("Editor.Viewer.Count", ("count", count));
+        string change = pin is not null || shown is null ? "" : " " + (CanChangeValues ? Texts.Get("Editor.Viewer.TypeOver") : Texts.Get("Editor.Viewer.NoChangeInExport"));
+        SayDescriptors(said + how + change);
     }
 
     /// <summary>The note says something else, plain or as a warning.</summary>
@@ -943,11 +960,11 @@ public partial class EditorPage
     {
         string state = "";
         bool readOnly = true;
-        if (otherDescriptor is not null) state = "Read-only: in " + otherDescriptor.Entry.Name + ". Double-click opens it";
+        if (otherDescriptor is not null) state = Texts.Get("Editor.State.InOtherFile", ("file", otherDescriptor.Entry.Name));
         else if (shown is not null && selectedDescriptor >= 0 && selectedDescriptor < outline.Count)
         {
-            if (shown.IsExport) state = "Read-only: this is the export";
-            else { state = "Values can be changed"; readOnly = false; }
+            if (shown.IsExport) state = Texts.Get("Editor.State.Export");
+            else { state = Texts.Get("Editor.State.CanChange"); readOnly = false; }
         }
         DescriptorState.Text = state;
         if (readOnly && state != "") DescriptorState.Foreground = Mixed("caution", "muted", 0.7);
@@ -984,8 +1001,8 @@ public partial class EditorPage
         bool canChange = other is null && CanChangeValues && !descriptorsStale;
 
         DescriptorHead.Inlines.Clear();
-        DescriptorHead.Inlines.Add(Coloured(name != "" ? name : "(unnamed)", "s-name"));
-        DescriptorHead.Inlines.Add(new Run(isConstant ? "  constant" : type != "" ? "  is " + type : ""));
+        DescriptorHead.Inlines.Add(Coloured(name != "" ? name : Texts.Get("Editor.Unnamed"), "s-name"));
+        DescriptorHead.Inlines.Add(new Run(isConstant ? "  " + Texts.Get("Editor.Head.Constant") : type != "" ? "  " + Texts.Get("Editor.Head.Is", ("type", type)) : ""));
 
         var items = new List<PropertyItem>();
         FileEntry? mine = other?.Entry ?? shown?.Entry;
@@ -996,7 +1013,7 @@ public partial class EditorPage
             if (usersOpen)
             {
                 foreach (ReferenceIndex.User user in users.Take(300)) items.Add(new UserItem(user));
-                if (users.Count > 300) items.Add(new NoteItem("Only the first 300 are listed.", false, new Thickness(32, 2, 32, 2)));
+                if (users.Count > 300) items.Add(new NoteItem(Texts.Get("Editor.Users.First300"), false, new Thickness(32, 2, 32, 2)));
             }
         }
         if (propertiesError != "" && other is null)
@@ -1028,8 +1045,8 @@ public partial class EditorPage
             items.Add(new ValueItem(row.Depth, i, row.Key, shownValue, !canChange || overLines, overLines, keyWidth));
         }
         if (other?.IsCut ?? propertiesCut)
-            items.Add(new NoteItem("Only the first " + rows.Count.ToString("N0", CultureInfo.InvariantCulture) + " rows are listed." + (other is null ? " The rest can be changed in the text above." : ""), false, new Thickness(6)));
-        if (rows.Count == 0) items.Add(new NoteItem("Nothing inside.", false, new Thickness(10)));
+            items.Add(new NoteItem(Texts.Get("Editor.Rows.FirstOnly", ("count", Texts.Number(rows.Count))) + (other is null ? " " + Texts.Get("Editor.Rows.RestInText") : ""), false, new Thickness(6)));
+        if (rows.Count == 0) items.Add(new NoteItem(Texts.Get("Editor.Rows.Empty"), false, new Thickness(10)));
         PropertyList.ItemsSource = items;
     }
 
@@ -1114,15 +1131,15 @@ public partial class EditorPage
         if (node is not null)
         {
             if (node.Kind != TreeNodeKind.File)
-                items.Add(new Controls.MenuChoice("Show in the text", () => { CloseNow(); selectedKey = node.Key; _ = Pick(node, reveal: true); }));
+                items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.ShowInText"), () => { CloseNow(); selectedKey = node.Key; _ = Pick(node, reveal: true); }));
             if (!node.IsLeaf)
-                items.Add(new Controls.MenuChoice(node.IsOpen ? "Collapse" : "Expand", () => { CloseNow(); _ = Toggle(node); }));
-            items.Add(new Controls.MenuChoice("Copy name", () => Copy(node.Name != "" ? node.Name : node.Label)));
+                items.Add(new Controls.MenuChoice(node.IsOpen ? Texts.Get("Editor.Menu.Collapse") : Texts.Get("Editor.Menu.Expand"), () => { CloseNow(); _ = Toggle(node); }));
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopyName"), () => Copy(node.Name != "" ? node.Name : node.Label)));
             items.Add(Controls.Menus.Line);
         }
-        items.Add(new Controls.MenuChoice("This file", () => ModeOneClicked(this, e)));
-        items.Add(new Controls.MenuChoice("All files", () => ModeAllClicked(this, e)));
-        items.Add(new Controls.MenuChoice(scanning ? "Stop" : "Scan all", () => ScanClicked(this, e)));
+        items.Add(new Controls.MenuChoice(Texts.Get("Editor.ThisFile"), () => ModeOneClicked(this, e)));
+        items.Add(new Controls.MenuChoice(Texts.Get("Editor.AllFiles"), () => ModeAllClicked(this, e)));
+        items.Add(new Controls.MenuChoice(scanning ? Texts.Get("Editor.Scan.Stop") : Texts.Get("Editor.ScanAll"), () => ScanClicked(this, e)));
         Controls.Menus.Show(TreeList, items);
     }
 
@@ -1143,17 +1160,17 @@ public partial class EditorPage
         e.Handled = true;
         string selected = box?.SelectedText ?? "";
         List<Controls.MenuChoice?> items = [];
-        if (selected != "") items.Add(new Controls.MenuChoice("Copy selected text", () => Copy(selected)));
+        if (selected != "") items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopySelected"), () => Copy(selected)));
         if (item is ValueItem or ObjectOrListItem)
         {
             string key = item is ValueItem v ? v.Key : ((ObjectOrListItem)item).Key;
-            items.Add(new Controls.MenuChoice("Copy property name", () => Copy(key)));
-            items.Add(new Controls.MenuChoice("Copy value", () => Copy(((ValueItem)item).Shown), item is ValueItem));
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopyPropertyName"), () => Copy(key)));
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopyValue"), () => Copy(((ValueItem)item).Shown), item is ValueItem));
         }
         else
         {
             string name = otherDescriptor?.Name ?? (selectedDescriptor >= 0 && selectedDescriptor < outline.Count ? outline[selectedDescriptor].Name : "");
-            items.Add(new Controls.MenuChoice("Copy name", () => Copy(name), name != ""));
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopyName"), () => Copy(name), name != ""));
         }
         Controls.Menus.Show(PropertyList, items);
     }
@@ -1207,7 +1224,7 @@ public partial class EditorPage
         {
             box.Text = item.Shown;
             box.Tag = "bad";
-            SayDescriptors("Not changed. " + why, warning: true);
+            SayDescriptors(Texts.Get("Editor.Value.NotChanged", ("why", why)), warning: true);
         }
         if (!CanChangeValues || descriptorsStale)
         {
@@ -1216,7 +1233,7 @@ public partial class EditorPage
         }
         if (typed == "")
         {
-            Refuse("A value cannot be left empty.");
+            Refuse(Texts.Get("Editor.Value.Empty"));
             return;
         }
         TextDocument document = shown!.Document;
@@ -1239,7 +1256,7 @@ public partial class EditorPage
             try { read = DescriptorViewer.Properties(changed); }
             catch (Exception problem) when (problem is NdfParseException or ArgumentException)
             {
-                Refuse("With \"" + (typed.Length > 60 ? typed[..57] + "..." : typed) + "\" the descriptor would not read: " + problem.Message);
+                Refuse(Texts.Get("Editor.Value.WouldNotRead", ("value", typed.Length > 60 ? typed[..57] + "..." : typed), ("problem", problem.Message)));
                 return;
             }
             // a value inside a folded block: the block is unfolded, then the value changed
@@ -1273,9 +1290,10 @@ public partial class EditorPage
             }
             _ = RebuildTree();
             int userCount = users.Count;
-            SayDescriptors((descriptor.Name != "" ? descriptor.Name : "(unnamed)") + ": " + row.Key + " changed from " + Shortened(row.Value) + " to " + Shortened(typed)
-                + ", on line " + (line + 1).ToString("N0", CultureInfo.InvariantCulture) + ". Ctrl+Z in the text undoes it."
-                + (userCount > 0 ? " " + userCount.ToString("N0", CultureInfo.InvariantCulture) + (userCount == 1 ? " descriptor uses this one and gets the change." : " descriptors use this one and get the change.") : ""));
+            string said = Texts.Get("Editor.Value.Changed",
+                ("descriptor", descriptor.Name != "" ? descriptor.Name : Texts.Get("Editor.Unnamed")), ("property", row.Key),
+                ("before", Shortened(row.Value)), ("after", Shortened(typed)), ("line", Texts.Number(line + 1)));
+            SayDescriptors(said + (userCount > 0 ? " " + Texts.CountWide("Editor.Value.UsersGetIt", userCount) : ""));
         }
         finally { committing = false; }
     }

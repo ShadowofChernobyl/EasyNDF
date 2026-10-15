@@ -5,6 +5,7 @@ using System.Windows.Documents;
 using System.Windows.Data;
 using EasyNdf.App.Controls;
 using EasyNdf.Data.FileList;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Files;
 
@@ -77,7 +78,7 @@ public sealed class FileRowView : Decorator
             Margin = new Thickness(7, 8, 7, 3),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
-            ToolTip = "Include in run",
+            ToolTip = Texts.Get("Files.Row.On.Tip"),
         };
         box.SetBinding(CheckBox.IsCheckedProperty, nameof(FileRow.IsOn));
         return box;
@@ -112,7 +113,7 @@ public sealed class FileRowView : Decorator
 
     private static UIElement PresetCell()
     {
-        var choice = new ComboBox { Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center, ToolTip = "Preset" };
+        var choice = new ComboBox { Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center, ToolTip = Texts.Get("Files.Row.Preset.Tip") };
         choice.SetBinding(ItemsControl.ItemsSourceProperty, nameof(FileRow.Choices));
         choice.SetBinding(Selector.SelectedItemProperty, nameof(FileRow.Preset));
         return choice;
@@ -122,12 +123,12 @@ public sealed class FileRowView : Decorator
     private static UIElement ExportFolderCell()
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center };
-        row.Children.Add(new Button { Content = "Browse...", Tag = ChooseFolderAction, ToolTip = "Choose the folder this file is exported to" });
+        row.Children.Add(new Button { Content = Texts.Get("Files.Row.Browse"), Tag = ChooseFolderAction, ToolTip = Texts.Get("Files.Row.Browse.Tip") });
         var name = new TextBlock { Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         name.SetBinding(TextBlock.TextProperty, nameof(FileRow.ExportFolderText));
         name.SetBinding(ToolTipProperty, nameof(FileRow.ExportFolderTip));
         row.Children.Add(name);
-        var clear = new Button { Style = (Style)Application.Current.FindResource("IconButton"), Content = "×", Tag = ClearFolderAction, ToolTip = "Clear folder" };
+        var clear = new Button { Style = (Style)Application.Current.FindResource("IconButton"), Content = "×", Tag = ClearFolderAction, ToolTip = Texts.Get("Files.Row.ClearFolder.Tip") };
         clear.SetBinding(VisibilityProperty, new Binding(nameof(FileRow.HasExportFolder)) { Converter = (IValueConverter)Application.Current.FindResource("ShowWhenTrue") });
         row.Children.Add(clear);
         return row;
@@ -144,12 +145,12 @@ public sealed class FileRowView : Decorator
     private UIElement ButtonsCell(FileListModel list)
     {
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-        var saveAnyway = new Button { Content = "Save anyway", Tag = SaveAnywayAction, ToolTip = "Save the file that failed the check, to look at it" };
+        var saveAnyway = new Button { Content = Texts.Get("Files.SaveAnyway"), Tag = SaveAnywayAction, ToolTip = Texts.Get("Files.Row.SaveAnyway.Tip") };
         // the gap between the buttons is a space, as between two buttons in a line of text
         saveAnyway.SetBinding(MarginProperty, new Binding(nameof(ColumnWidths.ButtonGap)) { Source = list.Columns });
         saveAnyway.SetBinding(VisibilityProperty, new Binding(nameof(FileRow.HasHeldOutput)) { Converter = (IValueConverter)Application.Current.FindResource("ShowWhenTrue") });
         buttons.Children.Add(saveAnyway);
-        buttons.Children.Add(new Button { Style = (Style)Application.Current.FindResource("IconButton"), Content = "×", Tag = RemoveAction, ToolTip = "Remove row" });
+        buttons.Children.Add(new Button { Style = (Style)Application.Current.FindResource("IconButton"), Content = "×", Tag = RemoveAction, ToolTip = Texts.Get("Files.Row.Remove.Tip") });
         // it stays at the list's right edge while the list scrolls sideways (see ColumnWidths.ButtonsOffset)
         return new Border { Style = (Style)FindResource("FileButtonsCell"), Child = buttons, RenderTransform = list.Columns.ButtonsOffset };
     }

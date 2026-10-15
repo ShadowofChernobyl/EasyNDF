@@ -6,6 +6,7 @@ using System.Windows.Navigation;
 using EasyNdf.App.Controls;
 using EasyNdf.App.Editor;
 using EasyNdf.Engine.Editing;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -68,20 +69,22 @@ public partial class ThemePreview : UserControl
     /// <summary>A row of the sample list: its look ("" plain, "sel" selected, "off" switched off), its cells, and its status colour.</summary>
     private sealed record SampleRow(string Look, string File, string Size, string Preset, string StatusColour, string Status);
 
-    private static readonly SampleRow[] SampleRows =
+    // the rows and headings are made when they are drawn, so they are in the language in use
+    private static SampleRow[] SampleRows =>
     [
-        new("", "Ammunition.ndf", "3.1 MB", "WTO (Ammunition.ndf)", "ok", "Exported: 3,290 edits"),
-        new("sel", "UniteDescriptor.ndf", "27.2 MB", "WTO (UniteDescriptor.ndf)", "muted", "Ready (this row is selected)"),
-        new("", "MissileDescriptors.ndf", "637 KB", "WTO (MissileDescriptors.ndf)", "caution", "Exported: 408 edits. 1 rule changed nothing"),
-        new("", "WeaponDescriptor.ndf", "14.6 MB", "WTO (WeaponDescriptor.ndf)", "warn", "Not exported: the result would not be a valid file"),
-        new("off", "Terrains.ndf", "11 KB", "(none)", "muted", "Switched off"),
+        new("", "Ammunition.ndf", "3.1 MB", "WTO (Ammunition.ndf)", "ok", Texts.Get("Settings.Preview.Exported", ("edits", Texts.Number(3290)))),
+        new("sel", "UniteDescriptor.ndf", "27.2 MB", "WTO (UniteDescriptor.ndf)", "muted", Texts.Get("Settings.Preview.Selected")),
+        new("", "MissileDescriptors.ndf", "637 KB", "WTO (MissileDescriptors.ndf)", "caution", Texts.Get("Settings.Preview.ChangedNothing", ("edits", 408))),
+        new("", "WeaponDescriptor.ndf", "14.6 MB", "WTO (WeaponDescriptor.ndf)", "warn", Texts.Get("Settings.Preview.NotValid")),
+        new("off", "Terrains.ndf", "11 KB", Texts.Get("Settings.Preview.NoPreset"), "muted", Texts.Get("Settings.Preview.Off")),
     ];
 
     /// <summary>The sample list's columns, in order; the first is always shown.</summary>
-    private static readonly string[] ColumnHeadings = ["Source file", "Size", "Preset", "Status"];
+    private static string[] ColumnHeadings =>
+        [Texts.Get("Files.Column.File"), Texts.Get("Files.Column.Size"), Texts.Get("Files.Column.Preset"), Texts.Get("Files.Column.Status")];
 
-    /// <summary>The columns the user has hidden in the sample list, by heading.</summary>
-    private readonly HashSet<string> hiddenColumns = [];
+    /// <summary>The columns the user has hidden in the sample list, by their place in <see cref="ColumnHeadings"/>.</summary>
+    private readonly HashSet<int> hiddenColumns = [];
 
     /// <summary>What the sample editor's text belongs to, so it keeps its undo steps while the page is drawn again.</summary>
     private readonly JsonObject sampleOwner = [];
@@ -108,8 +111,9 @@ public partial class ThemePreview : UserControl
     /// <summary>Draws the sample list with the columns that are shown (the HTML app's <c>renderPvTable</c>).</summary>
     private void ShowSampleList()
     {
-        List<int> shown = [.. Enumerable.Range(0, ColumnHeadings.Length).Where(column => !hiddenColumns.Contains(ColumnHeadings[column]))];
-        var table = new WebTable([.. shown.Select(column => ColumnHeadings[column])], [.. shown.Select(column => column == 0)]);
+        string[] headings = ColumnHeadings;
+        List<int> shown = [.. Enumerable.Range(0, headings.Length).Where(column => !hiddenColumns.Contains(column))];
+        var table = new WebTable([.. shown.Select(column => headings[column])], [.. shown.Select(column => column == 0)]);
         foreach (SampleRow sample in SampleRows)
         {
             string[] cells = [sample.File, sample.Size, sample.Preset, sample.Status];
@@ -130,21 +134,23 @@ public partial class ThemePreview : UserControl
     {
         if (ColumnsPopup.IsOpen) { ColumnsPopup.IsOpen = false; return; }
         ColumnChoices.Children.Clear();
-        foreach (string heading in ColumnHeadings)
+        string[] headings = ColumnHeadings;
+        for (int place = 0; place < headings.Length; place++)
         {
+            int column = place;
             var choice = new CheckBox
             {
                 Style = (Style)FindResource("PopupChoice"),
-                Content = heading,
-                IsChecked = !hiddenColumns.Contains(heading),
-                IsEnabled = heading != ColumnHeadings[0],
-                ToolTip = "Show or hide this column",
+                Content = headings[column],
+                IsChecked = !hiddenColumns.Contains(column),
+                IsEnabled = column != 0,
+                ToolTip = Texts.Get("Files.Column.ShowOrHide.Tip"),
                 Margin = new Thickness(0, ColumnChoices.Children.Count == 0 ? 0 : 5, 0, 0),
             };
             choice.Click += (_, _) =>
             {
-                if (choice.IsChecked == true) hiddenColumns.Remove(heading);
-                else hiddenColumns.Add(heading);
+                if (choice.IsChecked == true) hiddenColumns.Remove(column);
+                else hiddenColumns.Add(column);
                 ShowSampleList();
             };
             ColumnChoices.Children.Add(choice);

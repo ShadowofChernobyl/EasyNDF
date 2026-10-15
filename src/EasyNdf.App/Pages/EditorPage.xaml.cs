@@ -14,6 +14,7 @@ using EasyNdf.Engine.Editing;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Rendering;
 using Microsoft.Win32;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
 
@@ -231,7 +232,7 @@ public partial class EditorPage : UserControl
         {
             shown = null;
             ShowText();
-            await Messages.Tell("Could not read " + entry.Name + ". " + error.Message);
+            await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", entry.Name), ("problem", error.Message)));
         }
     }
 
@@ -255,7 +256,7 @@ public partial class EditorPage : UserControl
     /// user says to discard them.
     /// </summary>
     private async Task<bool> MayLeave() =>
-        shown?.File is not { IsEdited: true } edited || await Messages.Confirm("\"" + edited.Name + "\" has edits that are not saved. Discard them?", "Discard");
+        shown?.File is not { IsEdited: true } edited || await Messages.Confirm(Texts.Get("Editor.DiscardUnsaved", ("file", edited.Name)), Texts.Get("Editor.Discard"));
 
     private async void FilePicked(object sender, SelectionChangedEventArgs e)
     {
@@ -270,12 +271,12 @@ public partial class EditorPage : UserControl
     /// <summary>"Open file...": a file that is not on the Files tab.</summary>
     private async Task OpenFileOnItsOwn()
     {
-        var dialog = new OpenFileDialog { Title = "Open file", Filter = "NDF files (*.ndf)|*.ndf" };
+        var dialog = new OpenFileDialog { Title = Texts.Get("Editor.OpenFile.Title"), Filter = Texts.Get("Files.NdfFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true || !await MayLeave()) return;
         try { Load(Path.GetFileName(dialog.FileName), await File.ReadAllTextAsync(dialog.FileName), null); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await Messages.Tell("Could not read " + Path.GetFileName(dialog.FileName) + ". " + error.Message);
+            await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)));
         }
     }
 
@@ -285,8 +286,8 @@ public partial class EditorPage : UserControl
         e.Handled = true;
         Controls.Menus.Show(FilePick,
         [
-            new Controls.MenuChoice("Open file...", () => _ = OpenFileOnItsOwn()),
-            new Controls.MenuChoice("Save as...", () => SaveClicked(this, e), IsEnabled: shown is not null),
+            new Controls.MenuChoice(Texts.Get("Editor.OpenFile"), () => _ = OpenFileOnItsOwn()),
+            new Controls.MenuChoice(Texts.Get("Editor.SaveAs"), () => SaveClicked(this, e), IsEnabled: shown is not null),
         ]);
     }
 
@@ -296,7 +297,7 @@ public partial class EditorPage : UserControl
     private async void DiscardClicked(object sender, RoutedEventArgs e)
     {
         if (shown is not { IsFile: true, IsEdited: true } open) return;
-        if (!await Messages.Confirm("Discard every edit to \"" + open.Name + "\" and go back to the file as it was opened?", "Discard")) return;
+        if (!await Messages.Confirm(Texts.Get("Editor.DiscardAll", ("file", open.Name)), Texts.Get("Editor.Discard"))) return;
         Load(open.Name, open.Original, open.Entry);
         shown!.HasWindowsLineEnds = open.HasWindowsLineEnds;
     }
@@ -314,12 +315,12 @@ public partial class EditorPage : UserControl
     private void SaveClicked(object sender, RoutedEventArgs e)
     {
         if (shown is null) return;
-        var dialog = new SaveFileDialog { Title = "Save as", FileName = shown.Name, Filter = "NDF files (*.ndf)|*.ndf" };
+        var dialog = new SaveFileDialog { Title = Texts.Get("Editor.SaveAs.Title"), FileName = shown.Name, Filter = Texts.Get("Files.NdfFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try { File.WriteAllText(dialog.FileName, TextToSave(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = Messages.Tell("The file could not be saved. " + error.Message);
+            _ = Messages.Tell(Texts.Get("Editor.CouldNotSave", ("problem", error.Message)));
         }
     }
 
@@ -346,7 +347,7 @@ public partial class EditorPage : UserControl
         }
         else open.Entry = await AddFile(new FileToAdd(open.Name, "", open.Name, edited, DateTime.Now));
         Show();
-        Note.Text = open.Name + ": the file list now uses your edited text. Preview and Run export will apply the rules to it.";
+        Note.Text = Texts.Get("Editor.Note.UsedInFileList", ("file", open.Name));
     }
 
     /// <summary>The first edit of a file marks it as edited: Discard changes and Use in file list can be used.</summary>
@@ -428,7 +429,7 @@ public partial class EditorPage : UserControl
     {
         List<FileEntry> listed = [.. (Files?.Entries ?? []).Where(f => f.Source is not null)];
         var names = new PropertyScans(new Dictionary<string, Data.ScanInfo>(), [.. listed.Select(FileListModel.ScanKey)]);
-        var options = new List<ChoiceOption> { new("", Files is { Entries.Count: > 0 } ? "(choose a file)" : "(no files on the Files tab)") };
+        var options = new List<ChoiceOption> { new("", Files is { Entries.Count: > 0 } ? Texts.Get("Editor.ChooseFile") : Texts.Get("Editor.NoFiles")) };
         foreach (FileEntry entry in listed.OrderBy(FileListModel.ScanKey, Comparer<string>.Create(PropertyScans.CompareByFileName)))
         {
             string key = FileListModel.ScanKey(entry), folder = names.Folder(key);
@@ -453,29 +454,31 @@ public partial class EditorPage : UserControl
         int lines = shown.Document.LineCount;
         if (shown.Changes is ChangedLines changes)
         {
-            string edits = shown.HandEdits is > 0 and int hand
-                ? (shown.RuleEdits is int rule ? ": " + Plural(rule, "rule edit") + " and " : ": ") + Plural(hand, "handwritten edit")
-                : "";
-            Note.Inlines.Add(new Run(shown.Name + ": " + Plural(changes.ChangedLineCount, "changed line") + " in " + Plural(changes.PlaceCount, "place") + edits
-                + ". Removed lines are marked −, added lines +. \"Changes only\" goes back to the whole export."));
+            string changed = Texts.Get("Editor.Note.Changes",
+                ("lines", Texts.CountWide("Editor.Note.ChangedLines", changes.ChangedLineCount)),
+                ("places", Texts.CountWide("Editor.Note.Places", changes.PlaceCount)));
+            if (shown.HandEdits is > 0 and int hand)
+            {
+                string handEdits = Texts.CountWide("Editor.Note.HandEdits", hand);
+                changed = shown.RuleEdits is int rule
+                    ? Texts.Get("Editor.Note.ChangesByRulesAndHand", ("changes", changed), ("rules", Texts.CountWide("Editor.Note.RuleEdits", rule)), ("hand", handEdits))
+                    : Texts.Get("Editor.Note.ChangesByHand", ("changes", changed), ("hand", handEdits));
+            }
+            Note.Inlines.Add(new Run(Texts.Get("Editor.Note.ChangesOnly", ("file", shown.Name), ("changes", changed))));
             return;
         }
-        string length = Plural(lines, "line") + ". ";
+        string length = Texts.CountWide("Editor.Note.Lines", lines);
         if (shown.IsExport)
         {
-            Note.Inlines.Add(new Run(shown.Name + ", " + shown.How + ": " + length + "Read-only. \"Show source\" goes back to the file."));
+            Note.Inlines.Add(new Run(Texts.Get("Editor.Note.Export", ("file", shown.Name), ("how", shown.How), ("length", length))));
             if (shown.Warning != "") Note.Inlines.Add(Coloured(" " + shown.Warning, "warn"));
             return;
         }
-        Note.Inlines.Add(new Run(shown.Name + ": " + length));
-        if (!shown.IsEdited) { Note.Inlines.Add(new Run("Editable.")); return; }
-        Note.Inlines.Add(Coloured("Edited, not saved.", "caution"));
-        Note.Inlines.Add(new Run(" \"Use in file list\" makes the rules run on your edited text; \"Save as...\" saves it as a file."));
+        Note.Inlines.Add(new Run(Texts.Get("Editor.Note.File", ("file", shown.Name), ("length", length))));
+        if (!shown.IsEdited) { Note.Inlines.Add(new Run(Texts.Get("Editor.Note.Editable"))); return; }
+        Note.Inlines.Add(Coloured(Texts.Get("Editor.Note.Edited"), "caution"));
+        Note.Inlines.Add(new Run(" " + Texts.Get("Editor.Note.EditedHow")));
     }
-
-    /// <summary>A count and its word, such as "1 line" or "1,234 lines".</summary>
-    private static string Plural(int count, string word) =>
-        count.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + " " + word + (count == 1 ? "" : "s");
 
     /// <summary>Text in one of the theme's colours, such as "caution" or "warn".</summary>
     private static Run Coloured(string text, string colour)

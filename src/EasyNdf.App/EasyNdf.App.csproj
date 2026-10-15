@@ -25,6 +25,10 @@
     <!-- WARNO Tactical Overhaul, the mod the app comes with: the HTML app's #defaultMod -->
     <EmbeddedResource Include="Assets\DefaultMod.json" LogicalName="DefaultMod.json" />
     <!-- the Help wiki's pages, copied from the HTML app -->
+    <!-- the app's English texts, one file per part of the app (see Text\Texts.cs) -->
+    <EmbeddedResource Include="Languages\en\*.json" LogicalName="EasyNdf.App.Languages.en.%(Filename)%(Extension)" />
+    <!-- the other languages built into the app, one pack file each (fr.json...), made by the translate tool -->
+    <EmbeddedResource Include="Languages\*.json" LogicalName="EasyNdf.App.LanguagePacks.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Help\wiki.json" LogicalName="wiki.json" />
     <!-- the About tab's text, and the license its License button shows -->
     <EmbeddedResource Include="Help\about.html" LogicalName="about.html" />

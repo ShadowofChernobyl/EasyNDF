@@ -1,4 +1,5 @@
 using System.Windows;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Dialogs;
 
@@ -12,7 +13,7 @@ public sealed record DialogOptions
     public string? Alternative { get; init; }
 
     /// <summary>The last button: "Cancel" unless named.</summary>
-    public string Cancel { get; init; } = "Cancel";
+    public string Cancel { get; init; } = Texts.Get("Common.Cancel");
 
     /// <summary>Whether the window only tells something: then it has an OK button alone.</summary>
     public bool InfoOnly { get; init; }

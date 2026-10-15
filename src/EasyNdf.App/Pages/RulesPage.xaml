@@ -6,6 +6,7 @@
 <UserControl x:Class="EasyNdf.App.Pages.RulesPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              xmlns:theming="clr-namespace:EasyNdf.App.Theming"
              PreviewMouseDown="PageMouseDown">
@@ -65,33 +66,33 @@
 
             <!-- the mod and its presets -->
             <DockPanel Grid.Column="0">
-                <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}"><TextBlock Text="Mod" /></controls:Bevel>
-                <ComboBox DockPanel.Dock="Top" x:Name="ModChoice" Margin="0,0,0,8" SelectionChanged="ModChosen" ToolTip="Mod" PreviewMouseRightButtonUp="ModBoxRightClicked" />
+                <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}"><TextBlock Text="{t:Text Rules.Mod}" /></controls:Bevel>
+                <ComboBox DockPanel.Dock="Top" x:Name="ModChoice" Margin="0,0,0,8" SelectionChanged="ModChosen" ToolTip="{t:Text Rules.ModChoice.Tip}" PreviewMouseRightButtonUp="ModBoxRightClicked" />
                 <controls:WrapRow DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <Button Content="New" Click="NewModClicked" ToolTip="New mod" />
-                    <Button x:Name="RenameModButton" ToolTip="Rename mod" Content="Rename" Click="RenameModClicked" />
-                    <Button x:Name="CopyModButton" ToolTip="Copy this mod and its presets" Content="Make copy" Click="CopyModClicked" />
-                    <Button x:Name="DeleteModButton" ToolTip="Delete mod and its presets" Content="Delete" Click="DeleteModClicked" />
-                    <Button x:Name="WatermarkButton" Content="Watermark..." ToolTip="This mod's watermark comment" Click="WatermarkClicked" />
+                    <Button Content="{t:Text Rules.New}" Click="NewModClicked" ToolTip="{t:Text Rules.New.Tip}" />
+                    <Button x:Name="RenameModButton" ToolTip="{t:Text Rules.RenameMod.Tip}" Content="{t:Text Rules.Rename}" Click="RenameModClicked" />
+                    <Button x:Name="CopyModButton" ToolTip="{t:Text Rules.CopyMod.Tip}" Content="{t:Text Rules.MakeCopy}" Click="CopyModClicked" />
+                    <Button x:Name="DeleteModButton" ToolTip="{t:Text Rules.DeleteMod.Tip}" Content="{t:Text Rules.Delete}" Click="DeleteModClicked" />
+                    <Button x:Name="WatermarkButton" Content="{t:Text Rules.Watermark}" ToolTip="{t:Text Rules.Watermark.Tip}" Click="WatermarkClicked" />
                 </controls:WrapRow>
                 <controls:WrapRow DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <Button Content="Import mod..." Click="ImportModClicked" ToolTip="Load a mod file" />
-                    <Button x:Name="ExportModButton" ToolTip="Save mod as a file" Content="Export mod" Click="ExportModClicked" />
+                    <Button Content="{t:Text Rules.ImportMod}" Click="ImportModClicked" ToolTip="{t:Text Rules.ImportMod.Tip}" />
+                    <Button x:Name="ExportModButton" ToolTip="{t:Text Rules.ExportMod.Tip}" Content="{t:Text Rules.ExportMod}" Click="ExportModClicked" />
                 </controls:WrapRow>
 
                 <!-- 4 above, as the row above already leaves 8: the HTML's margins collapse to its 12 -->
                 <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}" Margin="0,4,0,6"><TextBlock Text="{Binding PresetsTitle}" /></controls:Bevel>
                 <!-- under the list: its buttons, kept at the column's foot -->
                 <controls:WrapRow DockPanel.Dock="Bottom" Margin="0">
-                    <Button x:Name="NewPresetButton" ToolTip="New preset" Content="New" Click="NewPresetClicked" />
-                    <Button x:Name="RenamePresetButton" ToolTip="Rename preset" Content="Rename" Click="RenamePresetClicked" />
-                    <Button x:Name="DuplicatePresetButton" ToolTip="Duplicate selected presets" Content="Duplicate" Click="DuplicatePresetClicked" />
-                    <Button x:Name="DeletePresetButton" ToolTip="Delete selected presets (Delete)" Content="Delete" Click="DeletePresetClicked" />
+                    <Button x:Name="NewPresetButton" ToolTip="{t:Text Rules.NewPreset.Tip}" Content="{t:Text Rules.New}" Click="NewPresetClicked" />
+                    <Button x:Name="RenamePresetButton" ToolTip="{t:Text Rules.RenamePreset.Tip}" Content="{t:Text Rules.Rename}" Click="RenamePresetClicked" />
+                    <Button x:Name="DuplicatePresetButton" ToolTip="{t:Text Rules.DuplicatePreset.Tip}" Content="{t:Text Rules.Duplicate}" Click="DuplicatePresetClicked" />
+                    <Button x:Name="DeletePresetButton" ToolTip="{t:Text Rules.DeletePreset.Tip}" Content="{t:Text Rules.Delete}" Click="DeletePresetClicked" />
                 </controls:WrapRow>
                 <controls:Bevel x:Name="PresetBox" Style="{StaticResource SunkenList}" Margin="0,0,0,10" MouseRightButtonUp="PresetListRightClicked">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                         <StackPanel>
-                            <TextBlock x:Name="NoPresets" Text="No presets in this mod." Foreground="{DynamicResource muted}" Padding="4,2" />
+                            <TextBlock x:Name="NoPresets" Text="{t:Text Rules.NoPresetsInThis}" Foreground="{DynamicResource muted}" Padding="4,2" />
                             <ItemsControl x:Name="PresetLines" Focusable="False">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -127,11 +128,11 @@
                 </Grid>
                 <!-- under the list, kept at the column's foot: adding rules, what the clipboard did, and the keys (copying, pasting and opening rules are on the right-click menu and the keys) -->
                 <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Note}" Margin="0"
-                           Text="Double-click a rule to open it. Rules run top to bottom. Ctrl-click or Shift-click selects several, in the preset list too. Ctrl+X, Ctrl+C, Ctrl+V, Ctrl+A and Delete act on the selection; Ctrl+Up and Ctrl+Down move rules." />
+                           Text="{t:Text Rules.DoubleClickARule}" />
                 <TextBlock DockPanel.Dock="Bottom" x:Name="ClipNote" Style="{StaticResource Note}" Text="{Binding Note}" Margin="0,0,0,8" />
                 <controls:WrapRow DockPanel.Dock="Bottom" Margin="0,0,0,8">
                     <!-- a menu of the rule types, each with its symbol and a line on what it does -->
-                    <Button x:Name="NewRuleButton" Content="New rule ▾" ToolTip="Add a rule below the selected one. Ctrl+N adds an Edit rule" Click="NewRuleClicked" />
+                    <Button x:Name="NewRuleButton" Content="{t:Text Rules.NewRule}" ToolTip="{t:Text Rules.NewRule.Tip}" Click="NewRuleClicked" />
                 </controls:WrapRow>
                 <controls:Bevel x:Name="RuleBox" Style="{StaticResource SunkenList}" Margin="0,0,0,10" MouseRightButtonUp="RuleListRightClicked">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
@@ -144,15 +145,15 @@
                                             <DockPanel>
                                                 <!-- ↑ ↓ + ×, 4 pixels apart -->
                                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                                    <Button Style="{StaticResource IconButton}" Content="&#x2191;" Tag="up" Margin="4,0,0,0" ToolTip="Move up" Click="RuleButtonClicked" />
-                                                    <Button Style="{StaticResource IconButton}" Content="&#x2193;" Tag="down" Margin="4,0,0,0" ToolTip="Move down" Click="RuleButtonClicked" />
-                                                    <Button Style="{StaticResource IconButton}" Content="+" Tag="dup" Margin="4,0,0,0" ToolTip="Duplicate" Click="RuleButtonClicked" />
-                                                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" Tag="del" Margin="4,0,0,0" ToolTip="Delete" Click="RuleButtonClicked" />
+                                                    <Button Style="{StaticResource IconButton}" Content="&#x2191;" Tag="up" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveUp.Tip}" Click="RuleButtonClicked" />
+                                                    <Button Style="{StaticResource IconButton}" Content="&#x2193;" Tag="down" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveDown.Tip}" Click="RuleButtonClicked" />
+                                                    <Button Style="{StaticResource IconButton}" Content="+" Tag="dup" Margin="4,0,0,0" ToolTip="{t:Text Rules.Duplicate.Tip}" Click="RuleButtonClicked" />
+                                                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" Tag="del" Margin="4,0,0,0" ToolTip="{t:Text Rules.Delete.Tip}" Click="RuleButtonClicked" />
                                                 </StackPanel>
                                                 <Button x:Name="Fold" DockPanel.Dock="Left" Style="{StaticResource IconButton}" Tag="fold" Margin="0,0,4,0"
-                                                        Content="&#x25BE;" ToolTip="Hide the rules in this group" Visibility="Collapsed" Click="RuleButtonClicked" />
+                                                        Content="&#x25BE;" ToolTip="{t:Text Rules.Fold.Tip}" Visibility="Collapsed" Click="RuleButtonClicked" />
                                                 <CheckBox DockPanel.Dock="Left" Style="{StaticResource Toggle}" IsChecked="{Binding IsOn, Mode=OneWay}" Margin="0,0,4,0"
-                                                          ToolTip="Enable rule" Click="RuleSwitchClicked" />
+                                                          ToolTip="{t:Text Rules.EnableRule.Tip}" Click="RuleSwitchClicked" />
                                                 <!-- .ksym: the type's symbol, in its colour; a click opens the rule -->
                                                 <!-- the rule's type symbol opens the rule; under the mouse it takes the hover colour, as menus do -->
                                                 <Border DockPanel.Dock="Left" Width="18" CornerRadius="3" Margin="0,0,4,0" VerticalAlignment="Center" Cursor="Hand"

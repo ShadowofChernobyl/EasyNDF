@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using EasyNdf.App.Text;
 using EasyNdf.App.Theming;
 using EasyNdf.Data;
 using EasyNdf.Data.Themes;
@@ -36,23 +37,29 @@ public partial class SettingsPage : UserControl
 
     // ---- the categories ----
 
-    /// <summary>The cards, each by its heading.</summary>
+    /// <summary>
+    /// The cards, each by its name: the English name in its Tag, which stays the same whatever language the headings
+    /// are shown in.
+    /// </summary>
     private IEnumerable<(string Name, FrameworkElement Card)> CardsByName =>
-        Cards.Children.OfType<FrameworkElement>().Select(card => (HeadingOf(card), card));
+        Cards.Children.OfType<FrameworkElement>().Select(card => ((string)card.Tag, card));
 
-    /// <summary>A card's heading: the text of the heading strip at its top.</summary>
-    private static string HeadingOf(FrameworkElement card) =>
-        card is Controls.Bevel { Child: StackPanel { Children: [Controls.Bevel { Child: TextBlock heading }, ..] } } ? heading.Text : "";
+    /// <summary>A card's heading: the text in the heading strip at its top.</summary>
+    private static TextBlock HeadingOf(FrameworkElement card) =>
+        card is Controls.Bevel { Child: StackPanel { Children: [Controls.Bevel { Child: TextBlock heading }, ..] } } ? heading : new TextBlock();
 
-    /// <summary>The list on the left: a line for each card, in their order.</summary>
+    /// <summary>The list on the left: a line for each card, in their order, showing the card's heading.</summary>
     private void ListCategories()
     {
         foreach ((string name, FrameworkElement card) in CardsByName)
         {
+            // the line shows the heading's text, so it changes with the language
+            var title = new TextBlock();
+            title.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(TextBlock.Text)) { Source = HeadingOf(card) });
             var line = new System.Windows.Controls.Primitives.ToggleButton
             {
                 Style = (Style)FindResource("WikiNavItem"),
-                Content = new TextBlock { Text = name },
+                Content = title,
                 Tag = name,
             };
             line.Click += (_, _) => ShowCategory(name);
@@ -103,13 +110,13 @@ public partial class SettingsPage : UserControl
             bool cardShown = false;
             foreach (Controls.SettingRow row in RowsOf(card))
             {
-                bool rowShown = Matches(name + " " + row.Label + " " + row.Note);
+                bool rowShown = Matches(HeadingOf(card).Text + " " + row.Label + " " + row.Note);
                 row.Visibility = rowShown ? Visibility.Visible : Visibility.Collapsed;
                 cardShown |= rowShown;
             }
             if (card.IsAncestorOf(DesignerBlock))
             {
-                bool designerShown = Matches(name + " Theme Designer themes colors scrollbars");
+                bool designerShown = Matches(HeadingOf(card).Text + " " + Text.Texts.Get("Settings.Designer.SearchWords"));
                 DesignerBlock.Visibility = designerShown ? Visibility.Visible : Visibility.Collapsed;
                 cardShown |= designerShown;
             }
@@ -150,11 +157,11 @@ public partial class SettingsPage : UserControl
         try
         {
             CapBox.Text = Number("logCap", 500).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            CapRow.Note = "0 to 20000. Limits the before and after list in Details, not the edits made. 0 hides the list.";
+            CapRow.Note = Texts.Get("Settings.CapRow.Note");
             ShowFonts();
             CapRow.NoteIsWarning = false;
             DecimalsBox.Text = Number("decimals", 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            DecimalsRow.Note = "The maximum decimal places that Add, Subtract, Multiply, Divide and Scale write into one value. 0 for no limit.";
+            DecimalsRow.Note = Texts.Get("Settings.DecimalsRow.Note");
             DecimalsRow.NoteIsWarning = false;
             foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, DoubleClickSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
                 ConfirmExportSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch })
@@ -166,12 +173,13 @@ public partial class SettingsPage : UserControl
             }
             ShowTextSizes();
             ShowThemes();
+            ShowLanguages();
             Designer.Show();
             BevelSwitch.IsChecked = Settings["bevel"]?.GetValue<bool>() ?? ThemeColors.HasOwnBevel(ThemeManager.Current);
             TreadSwitch.IsChecked = Settings["treadScrollbars"]?.GetValue<bool>() ?? ThemeManager.Current.Scrollbars == "tread";
             DataNote.Text = AppData.Current.Folders is { } folders
-                ? "Mods, scans and settings are kept in " + folders.Root + "."
-                : "Mods, scans and settings are kept in memory only.";
+                ? Texts.Get("Settings.DataNote.Folder", ("folder", folders.Root))
+                : Texts.Get("Settings.DataNote.InMemory");
         }
         finally { showing = false; }
     }
@@ -246,7 +254,7 @@ public partial class SettingsPage : UserControl
         if (typed == "" || !typed.All(char.IsAsciiDigit) || !int.TryParse(typed, out int cap) || cap > 20000)
         {
             CapBox.Text = before.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            CapRow.Note = "Enter a whole number from 0 to 20000. Still " + before.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + ".";
+            CapRow.Note = Texts.Get("Settings.CapRow.Refused", ("before", before.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)));
             CapRow.NoteIsWarning = true;
             return;
         }
@@ -263,7 +271,7 @@ public partial class SettingsPage : UserControl
         if (typed == before.ToString(System.Globalization.CultureInfo.InvariantCulture)) return;
         if (typed != "" && (typed.Length > 2 || !typed.All(char.IsAsciiDigit)))
         {
-            DecimalsRow.Note = "Enter a whole number from 0 to 12.";
+            DecimalsRow.Note = Texts.Get("Settings.DecimalsRow.Refused");
             DecimalsRow.NoteIsWarning = true;
             DecimalsBox.Text = before.ToString(System.Globalization.CultureInfo.InvariantCulture);
             return;
@@ -278,10 +286,10 @@ public partial class SettingsPage : UserControl
     /// <summary>The theme dropdown: Automatic, the built-in themes in the HTML app's order, then the user's own (the HTML app's "Your themes").</summary>
     private void ShowThemes()
     {
-        var options = new List<Rules.ChoiceOption> { new("system", "Automatic (Light or Dark, following the system)") };
+        var options = new List<Rules.ChoiceOption> { new("system", Texts.Get("Settings.ThemeChoice.Automatic")) };
         options.AddRange(BuiltInThemes.Order.Select(id => new Rules.ChoiceOption(id, BuiltInThemes.ById[id].Name)));
         foreach (CustomTheme own in AppData.Current.Themes.Themes)
-            options.Add(new Rules.ChoiceOption(ThemeManager.CustomKey(own), own.Name != "" ? own.Name : "Untitled", "your theme"));
+            options.Add(new Rules.ChoiceOption(ThemeManager.CustomKey(own), own.Name != "" ? own.Name : Texts.Get("Settings.ThemeChoice.Untitled"), Texts.Get("Settings.ThemeChoice.YourTheme")));
         ThemeChoice.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
         ThemeChoice.ItemsSource = options;
         string current = (string?)Settings["theme"] ?? BuiltInThemes.DefaultId;
@@ -309,9 +317,9 @@ public partial class SettingsPage : UserControl
         static string Named(bool isCode)
         {
             string chosen = ThemeManager.ChosenFont(isCode);
-            return chosen != "" ? chosen : ThemeManager.ThemeFontName(isCode) + " (the theme's)";
+            return chosen != "" ? chosen : Texts.Get("Settings.FontsRow.ThemeFont", ("font", ThemeManager.ThemeFontName(isCode)));
         }
-        FontsRow.Note = "Interface: " + Named(false) + ". Code: " + Named(true) + ".";
+        FontsRow.Note = Texts.Get("Settings.FontsRow.Note", ("interface", Named(false)), ("code", Named(true)));
     }
 
     private void BevelClicked(object sender, RoutedEventArgs e)
@@ -336,8 +344,8 @@ public partial class SettingsPage : UserControl
         Files.FileListModel files = View.FilesTab.Model;
         bool had = files.HasColumnWidthsByHand;
         files.FitColumnsAgain();
-        ColumnsNote.Text = had ? "Column widths reset." : "Nothing to reset.";
-        DataNote.Text = "Column widths reset.";
+        ColumnsNote.Text = had ? Texts.Get("Settings.ColumnsReset") : Texts.Get("Settings.NothingToReset");
+        DataNote.Text = Texts.Get("Settings.ColumnsReset");
     }
 
     // ---- data ----
@@ -348,24 +356,24 @@ public partial class SettingsPage : UserControl
         int presets = AppData.Current.Mods.Sum(m => m.Presets.Count);
         if (presets == 0)
         {
-            DataNote.Text = "No presets to back up.";
+            DataNote.Text = Texts.Get("Settings.Backup.NoPresets");
             return;
         }
-        var dialog = new SaveFileDialog { Title = "Back up all mods", FileName = "EasyNDF mods backup.json", Filter = "Mod files (*.json)|*.json" };
+        var dialog = new SaveFileDialog { Title = Texts.Get("Settings.BackUpAllMods"), FileName = "EasyNDF mods backup.json", Filter = Texts.Get("Settings.ModFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try { File.WriteAllText(dialog.FileName, ModFiles.BackupText(AppData.Current.Mods)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell("The backup could not be saved. " + error.Message);
+            _ = View.Messages.Tell(Texts.Get("Settings.Backup.NotSaved", ("reason", error.Message)));
             return;
         }
-        DataNote.Text = "Backed up " + Rules.RulesModel.Count(presets) + " to \"" + Path.GetFileName(dialog.FileName) + "\".";
+        DataNote.Text = Texts.Get("Settings.Backup.Done", ("presets", Rules.RulesModel.Count(presets)), ("file", Path.GetFileName(dialog.FileName)));
     }
 
     /// <summary>"Restore backup...": the mods in it are added on the Rules tab, as Import mod adds them.</summary>
     private async void RestoreClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = "Restore backup", Filter = "Mod files (*.json)|*.json", Multiselect = true };
+        var dialog = new OpenFileDialog { Title = Texts.Get("Settings.Restore.Title"), Filter = Texts.Get("Settings.ModFiles"), Multiselect = true };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         View.Tabs.SelectedIndex = 1;
         await View.RulesTab.ImportModFiles(dialog.FileNames);
@@ -374,12 +382,13 @@ public partial class SettingsPage : UserControl
     /// <summary>"Reset settings": every setting as at first, the theme too. Mods, rules and files are kept.</summary>
     private async void ResetClicked(object sender, RoutedEventArgs e)
     {
-        if (!await View.Messages.Confirm("Put every setting back to how it was at first, including the theme? Your mods, rules and files are kept. Undo does not cover settings.", "Reset settings")) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Reset.Ask"), Texts.Get("Settings.ResetSettings"))) return;
         AppData.Current.ResetSettings();
         ThemeManager.ApplySaved();
+        Text.Texts.UseSaved();
         View.SettingsChanged("");
         Show();
-        DataNote.Text = "Settings reset.";
+        DataNote.Text = Texts.Get("Settings.Reset.Done");
     }
 
     /// <summary>
@@ -388,11 +397,11 @@ public partial class SettingsPage : UserControl
     /// </summary>
     private async void ClearClicked(object sender, RoutedEventArgs e)
     {
-        if (!await View.Messages.Confirm("Delete every mod, preset, property scan and setting EasyNDF has saved, and empty the file list? This cannot be undone. Back up your mods first if you want to keep them. Files on disk are not touched.", "OK")) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Clear.Ask"), Texts.Get("Common.Ok"))) return;
         try { AppData.Current.ClearAll(); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await View.Messages.Tell("Not everything could be deleted. " + error.Message);
+            await View.Messages.Tell(Texts.Get("Settings.Clear.NotAll", ("reason", error.Message)));
         }
         // the app starts again, as the HTML app reloads its page
         if (Environment.ProcessPath is string app) Process.Start(app);
