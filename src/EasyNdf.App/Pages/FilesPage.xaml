@@ -146,7 +146,7 @@
             </TextBlock>
         </StackPanel>
 
-        <controls:PanePair x:Name="Panes" Key="files" SecondTitle="Details" DefaultBeside="520" DefaultBelow="300">
+        <controls:PanePair x:Name="Panes" Key="files" SecondTitle="Details" FoldedTitle="Details" FoldedAtFirst="True" DefaultBeside="520" DefaultBelow="300">
             <controls:PanePair.Main>
                 <DockPanel>
                     <!-- h2: the File List heading -->

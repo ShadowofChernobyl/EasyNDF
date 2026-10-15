@@ -10,7 +10,6 @@
              xmlns:theming="clr-namespace:EasyNdf.App.Theming"
              PreviewMouseDown="PageMouseDown">
     <UserControl.Resources>
-        <theming:ThemeBrushConverter x:Key="ThemeBrush" />
         <!-- .rows li: a line of a list, 2 by 4 pixels in; selected lines in the selection colour -->
         <Style x:Key="ListLine" TargetType="Border">
             <Setter Property="Padding" Value="4,2" />
@@ -170,10 +169,10 @@
                                                     </Border.Style>
                                                     <Grid>
                                                         <TextBlock x:Name="Symbol" TextAlignment="Center" FontSize="13" Padding="0,2" Text="{Binding SymbolText}"
-                                                                   Foreground="{Binding SymbolColour, Converter={StaticResource ThemeBrush}}" />
+                                                                   theming:ThemeColour.Foreground="{Binding SymbolColour}" />
                                                         <!-- a group's symbol: a manila folder's outline (Controls/FolderGlyph.cs) -->
                                                         <controls:FolderGlyph x:Name="Folder" Visibility="Collapsed"
-                                                                              Foreground="{Binding SymbolColour, Converter={StaticResource ThemeBrush}}" />
+                                                                              theming:ThemeColour.Foreground="{Binding SymbolColour}" />
                                                     </Grid>
                                                 </Border>
                                                 <TextBlock x:Name="Count" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" FontSize="11" VerticalAlignment="Center"
