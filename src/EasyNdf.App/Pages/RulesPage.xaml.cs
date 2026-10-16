@@ -265,10 +265,14 @@ public partial class RulesPage : UserControl
     private static readonly TimeSpan RuleDoubleClickTime = TimeSpan.FromMilliseconds(500);
 
     /// <summary>
-    /// How soon a second click on a Group heading opens it. Shorter than for other rules: the first click has already
-    /// folded or unfolded the group, so a double-click must be quick to be told from two single clicks.
+    /// How soon a second click on a Group heading opens it, and how long a single click waits before it folds or
+    /// unfolds the group. Shorter than for other rules, so the fold still feels immediate; long enough that a
+    /// double-click opens the group without folding it first.
     /// </summary>
     private static readonly TimeSpan GroupDoubleClickTime = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>The fold a click on a Group heading asked for, waiting in case a second click makes it a double-click.</summary>
+    private System.Windows.Threading.DispatcherTimer? pendingFold;
 
     /// <summary>
     /// The line the left button went down on. A click counts only when it is let go on the same line: a press that
@@ -291,16 +295,34 @@ public partial class RulesPage : UserControl
         bool twice = !control && !shift && lastRuleClick is { } last && last.Index == row.Index && DateTime.UtcNow - last.At < doubleClickTime;
         lastRuleClick = twice || control || shift ? null : (row.Index, DateTime.UtcNow);
         Model.ClickRule(row.Index, control, shift);
-        if (row.IsGroup && !control && !shift)
-        {
-            // a click on a group's heading folds or unfolds it at once, as on a folder in the file list; the second
-            // click of a double-click puts it back as it was, and opens the group instead
-            Model.ToggleFold(row.Index);
-            // the list's lines are drawn anew, the one under the mouse too: WPF is told to look again at what the mouse
-            // is over, or the second click of a double-click goes to the line that is gone
-            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, Mouse.Synchronize);
-        }
+        CancelPendingFold();
+        // a click on a group's heading folds or unfolds it a moment later; a second click in that moment makes it a
+        // double-click, which opens the group and leaves it folded or unfolded as it was
+        if (row.IsGroup && !control && !shift && !twice) FoldSoon(row.Index);
         if (twice) OpenRuleWindow();
+    }
+
+    /// <summary>Folds or unfolds a group once <see cref="GroupDoubleClickTime"/> has passed with no second click.</summary>
+    private void FoldSoon(int index)
+    {
+        pendingFold = new System.Windows.Threading.DispatcherTimer { Interval = GroupDoubleClickTime };
+        pendingFold.Tick += (_, _) =>
+        {
+            CancelPendingFold();
+            if (index >= Model.Rules.Count || !Model.IsGroupHeading(index)) return;
+            Model.ToggleFold(index);
+            // the list's lines are drawn anew, the one under the mouse too: WPF is told to look again at what the mouse
+            // is over, or the next click goes to the line that is gone
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, Mouse.Synchronize);
+        };
+        pendingFold.Start();
+    }
+
+    /// <summary>Drops a fold still waiting: a second click came, or another line was clicked.</summary>
+    private void CancelPendingFold()
+    {
+        pendingFold?.Stop();
+        pendingFold = null;
     }
 
     /// <summary>A click on a rule's type symbol opens it at once, as a click on an icon does.</summary>

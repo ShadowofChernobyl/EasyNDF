@@ -749,13 +749,13 @@
       "machine": true
     },
     "Editor.FoldAll.Tip": {
-      "english": "Fold all",
-      "text": "Réduire tout",
+      "english": "Fold all (Ctrl+Shift+[)",
+      "text": "Tout replier (Ctrl+Maj+[)",
       "machine": true
     },
     "Editor.UnfoldAll.Tip": {
-      "english": "Unfold all",
-      "text": "Déplier tout",
+      "english": "Unfold all (Ctrl+Shift+])",
+      "text": "Tout déplier (Ctrl+Maj+])",
       "machine": true
     },
     "Editor.FileEditor": {

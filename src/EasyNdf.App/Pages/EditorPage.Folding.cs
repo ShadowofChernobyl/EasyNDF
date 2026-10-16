@@ -125,9 +125,65 @@ public partial class EditorPage
         fold.IsFolded = true;
     }
 
-    private void FoldAllClicked(object sender, RoutedEventArgs e) => FoldAll();
+    // ---- Fold all and Unfold all, in the status strip ----
 
-    private void UnfoldAllClicked(object sender, RoutedEventArgs e) => UnfoldAll();
+    private System.Windows.Controls.Button? foldAllButton, unfoldAllButton;
+
+    /// <summary>
+    /// Fold all and Unfold all, at the left of the status strip under the text. They used to sit at the right of the File
+    /// Editor heading, where, with the panes switching between beside and below, they ended up next to the pane
+    /// buttons and were mistaken for them. A right-click on them offers the same two.
+    /// </summary>
+    private FrameworkElement FoldButtons()
+    {
+        foldAllButton = FoldButton("FoldAllIcon", FoldAll, new Thickness(0, 0, 6, 0));
+        unfoldAllButton = FoldButton("UnfoldAllIcon", UnfoldAll, new Thickness(0));
+        var buttons = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { foldAllButton, unfoldAllButton },
+        };
+        buttons.MouseRightButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            Menus.Show(buttons, FoldChoices());
+        };
+        ShowFoldTips();
+        return buttons;
+    }
+
+    /// <summary>One of the two buttons: its icon (from the page's resources), drawn in the button's text colour.</summary>
+    private System.Windows.Controls.Button FoldButton(string icon, Action action, Thickness margin)
+    {
+        var path = new System.Windows.Shapes.Path
+        {
+            Data = (System.Windows.Media.Geometry)FindResource(icon),
+            StrokeThickness = 1.3, Width = 14, Height = 14, Margin = new Thickness(0, 2, 0, 2),
+        };
+        path.SetBinding(System.Windows.Shapes.Shape.StrokeProperty, new System.Windows.Data.Binding(nameof(System.Windows.Controls.Control.Foreground))
+        {
+            RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.FindAncestor, typeof(System.Windows.Controls.Button), 1),
+        });
+        var button = new System.Windows.Controls.Button { Style = (Style)FindResource("IconButton"), Margin = margin, Content = path };
+        button.Click += (_, _) => action();
+        return button;
+    }
+
+    /// <summary>The buttons' tooltips, in the language in use.</summary>
+    private void ShowFoldTips()
+    {
+        if (foldAllButton is null || unfoldAllButton is null) return;
+        foldAllButton.ToolTip = Texts.Get("Editor.FoldAll.Tip");
+        unfoldAllButton.ToolTip = Texts.Get("Editor.UnfoldAll.Tip");
+    }
+
+    /// <summary>Fold all and Unfold all as menu items, with their keys (the same ones that fold the Rules tab's groups).</summary>
+    private List<MenuChoice?> FoldChoices() =>
+    [
+        new MenuChoice(Texts.Get("Editor.Menu.FoldAll"), FoldAll, folding is not null, "Ctrl+Shift+["),
+        new MenuChoice(Texts.Get("Editor.Menu.UnfoldAll"), UnfoldAll, folding is not null, "Ctrl+Shift+]"),
+    ];
 
     /// <summary>"Unfold all".</summary>
     internal void UnfoldAll() => folding?.Clear();
@@ -210,6 +266,8 @@ public partial class EditorPage
                 new MenuChoice(Texts.Get("Common.Menu.Paste"), () => ApplicationCommands.Paste.Execute(null, Text.TextArea), Clipboard.ContainsText(), "Ctrl+V"),
                 Menus.Line,
                 new MenuChoice(Texts.Get("Editor.Menu.SelectAll"), () => Text.SelectAll(), Key: "Ctrl+A"),
+                Menus.Line,
+                .. FoldChoices(),
             ]);
             return;
         }
@@ -227,8 +285,7 @@ public partial class EditorPage
             FoldArrow arrow = index >= 0 ? ArrowOf(index) : FoldArrow.None;
             if (arrow != FoldArrow.None) items.Add(new MenuChoice(arrow == FoldArrow.Shut ? Texts.Get("Editor.Menu.UnfoldBlock") : Texts.Get("Editor.Menu.FoldBlock"), () => ToggleBlock(index)));
         }
-        items.Add(new MenuChoice(Texts.Get("Editor.Menu.FoldAll"), FoldAll, folding is not null));
-        items.Add(new MenuChoice(Texts.Get("Editor.Menu.UnfoldAll"), UnfoldAll, folding is not null));
+        items.AddRange(FoldChoices());
         items.Add(Menus.Line);
         items.Add(new MenuChoice(shown.IsExport ? Texts.Get("Editor.ShowSource") : Texts.Get("Editor.ShowExport"), () => _ = ShowExportOrSource(), ExportButton.IsEnabled));
         items.Add(new MenuChoice(Texts.Get("Editor.ChangesOnly"), () => _ = ChangesFromMenu(), ChangesButton.IsEnabled));
