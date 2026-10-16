@@ -53,9 +53,10 @@ public static class FileStatus
     public static string Holds(int descriptors, int constants, int unnamed)
     {
         var parts = new List<string>();
-        // "descriptors" and "constants" stay plural even for 1, as the HTML app writes them
-        if (descriptors != 0 || (constants == 0 && unnamed == 0)) parts.Add(DataTexts.Get("Files.Status.Descriptors", ("count", Count(descriptors))));
-        if (constants != 0) parts.Add(DataTexts.Get("Files.Status.Constants", ("count", Count(constants))));
+        // in English "descriptors" and "constants" stay plural even for 1, as the HTML app writes them (both forms of
+        // the text are plural); other languages give their singular for 1
+        if (descriptors != 0 || (constants == 0 && unnamed == 0)) parts.Add(DataTexts.Count("Files.Status.Descriptors", descriptors, ("count", Count(descriptors))));
+        if (constants != 0) parts.Add(DataTexts.Count("Files.Status.Constants", constants, ("count", Count(constants))));
         if (unnamed != 0) parts.Add(DataTexts.Count("Files.Status.Unnamed", unnamed, ("count", Count(unnamed))));
         return string.Join(", ", parts);
     }
@@ -72,7 +73,7 @@ public static class FileStatus
     public static string Date(DateTime when) => when.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
     /// <summary>A whole number with the user's thousands separator, as the browser's <c>toLocaleString</c> writes it.</summary>
-    public static string Count(long number) => number.ToString("N0", CultureInfo.CurrentCulture);
+    public static string Count(long number) => number.ToString("N0", DataTexts.Catalog.Culture);
 
     private static (string, StatusKind) MessageWithCounts(FileEntry row)
     {

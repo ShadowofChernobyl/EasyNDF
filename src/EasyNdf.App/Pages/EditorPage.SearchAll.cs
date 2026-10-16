@@ -82,7 +82,7 @@ public partial class EditorPage
         for (int n = 0; n < files.Count; n++)
         {
             FileEntry entry = files[n];
-            SearchNote.Text = "Searching " + (n + 1) + " of " + files.Count + ": " + entry.Name;
+            SearchNote.Text = Texts.Get("Editor.Search.Searching", ("number", n + 1), ("total", files.Count), ("file", entry.Name));
             string text;
             try { text = await Task.Run(() => FileContent.Text(entry)); }
             catch (Exception error) when (error is IOException or UnauthorizedAccessException)

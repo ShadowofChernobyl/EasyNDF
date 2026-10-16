@@ -17,6 +17,16 @@ public sealed class SnappedRow : Panel
     /// <inheritdoc cref="GapProperty"/>
     public double Gap { get => (double)GetValue(GapProperty); set => SetValue(GapProperty, value); }
 
+    /// <summary>
+    /// Whether the controls go on a new line when the next one does not fit, as a CSS flex row with
+    /// <c>flex-wrap:wrap</c> does; the lines are <see cref="Gap"/> apart. Off by default: the row stays on one line.
+    /// </summary>
+    public static readonly DependencyProperty WrapProperty = DependencyProperty.Register(
+        nameof(Wrap), typeof(bool), typeof(SnappedRow), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    /// <inheritdoc cref="WrapProperty"/>
+    public bool Wrap { get => (bool)GetValue(WrapProperty); set => SetValue(WrapProperty, value); }
+
     /// <summary>The row's controls report their exact widths, so it does not round them.</summary>
     public SnappedRow() => UseLayoutRounding = false;
 
@@ -30,17 +40,22 @@ public sealed class SnappedRow : Panel
         if (added is FrameworkElement element) element.HorizontalAlignment = HorizontalAlignment.Stretch;
     }
 
-    /// <summary>Where each control goes: its left edge and width, in whole pixels, worked out while measuring.</summary>
-    private readonly List<(double Left, double Width)> slots = [];
+    /// <summary>Where each control goes: its left edge and width, in whole pixels, and its line, worked out while measuring.</summary>
+    private readonly List<(double Left, double Width, int Line)> slots = [];
+
+    /// <summary>The height of each line, worked out while measuring.</summary>
+    private readonly List<double> lineHeights = [];
 
     /// <summary>
     /// Measures the controls as a browser lays out the row: first at their natural widths, to a fraction of a pixel; then
     /// again at the whole-pixel width their rounded edges leave them, which can be a fraction smaller. A browser shrinks the
     /// box to that width and lets its text overhang into the padding; measuring again lets the boxes here do the same.
+    /// With <see cref="Wrap"/>, a control that would run past the width available starts a new line.
     /// </summary>
     protected override Size MeasureOverride(Size availableSize)
     {
-        double x = 0, height = 0;
+        double x = 0;
+        int line = 0;
         slots.Clear();
         foreach (UIElement child in InternalChildren)
         {
@@ -48,27 +63,43 @@ public sealed class SnappedRow : Panel
             // A hidden control takes no room, and no gap either.
             if (child.Visibility == Visibility.Collapsed)
             {
-                slots.Add((Snap(x), 0));
+                slots.Add((Snap(x), 0, line));
                 continue;
             }
+            if (Wrap && x > 0 && x + child.DesiredSize.Width > availableSize.Width + 0.01)
+            {
+                line++;
+                x = 0;
+            }
             double left = Snap(x), right = Snap(x + child.DesiredSize.Width);
-            slots.Add((left, right - left));
+            slots.Add((left, right - left, line));
             x += child.DesiredSize.Width + Gap;
         }
+
+        lineHeights.Clear();
+        for (int i = 0; i <= line; i++) lineHeights.Add(0);
         for (int i = 0; i < InternalChildren.Count; i++)
         {
             UIElement child = InternalChildren[i];
             child.Measure(new Size(slots[i].Width, availableSize.Height));
-            height = Math.Max(height, child.DesiredSize.Height);
+            lineHeights[slots[i].Line] = Math.Max(lineHeights[slots[i].Line], child.DesiredSize.Height);
         }
         double width = slots.Count == 0 ? 0 : slots.Max(slot => slot.Left + slot.Width);
+        double height = lineHeights.Sum() + Gap * (lineHeights.Count - 1);
         return new Size(width, height); // the exact height, as a browser keeps it: the boxes in it put their own edges on whole pixels
     }
 
     protected override Size ArrangeOverride(Size finalSize)
     {
+        // one line fills the height it is given, as before; several lines each take their own height, a gap apart
+        bool oneLine = lineHeights.Count <= 1;
         for (int i = 0; i < InternalChildren.Count && i < slots.Count; i++)
-            InternalChildren[i].Arrange(new Rect(slots[i].Left, 0, slots[i].Width, finalSize.Height));
+        {
+            int line = slots[i].Line;
+            double top = lineHeights.Take(line).Sum() + Gap * line;
+            double height = oneLine ? finalSize.Height : lineHeights[line];
+            InternalChildren[i].Arrange(new Rect(slots[i].Left, top, slots[i].Width, height));
+        }
         return finalSize;
     }
 

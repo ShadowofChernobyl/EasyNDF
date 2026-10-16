@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using EasyNdf.App.Theming;
+using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Dialogs;
 
@@ -78,7 +79,7 @@ public partial class FontWindow : UserControl
         string search = (isCode ? CodeSearch : UiSearch).Text.Trim();
         bool fixedOnly = isCode && FixedOnly.IsChecked == true;
         string themeFont = ThemeManager.ThemeFontName(isCode);
-        var choices = new List<FontChoice> { new("", "Theme's font (" + themeFont + ")", ThemeManager.FontFamilyFor(themeFont, isCode)) };
+        var choices = new List<FontChoice> { new("", Texts.Get("Settings.Fonts.ThemeFont", ("font", themeFont)), ThemeManager.FontFamilyFor(themeFont, isCode)) };
         foreach (FontFamily family in Installed())
         {
             string name = family.Source;

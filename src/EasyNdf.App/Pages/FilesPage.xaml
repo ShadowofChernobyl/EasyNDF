@@ -68,7 +68,8 @@
             <!-- .jobbar: adding and removing files on the left, running the rules on the right; in a narrow window the
                  running buttons go on a second line -->
             <controls:FlexRow Gap="6" LineGap="6" Margin="0,0,0,8">
-                <controls:SnappedRow Gap="6">
+                <!-- wraps when the window is too narrow for it, as the HTML app's .jobbar .grp does (flex-wrap:wrap) -->
+                <controls:SnappedRow Gap="6" Wrap="True">
                     <!-- bold while the list is empty: then adding files is the thing to do -->
                     <Button x:Name="AddFilesButton" ToolTip="{t:Text Files.AddFiles.Tip}" Click="AddFilesClicked" Content="{t:Text Files.AddFiles}" Style="{StaticResource GoButton}" IsEnabled="{Binding IsIdle}" />
                     <Button x:Name="AddFolderButton" ToolTip="{t:Text Files.AddFolder.Tip}" Click="AddFolderClicked" Content="{t:Text Files.AddFolder}" IsEnabled="{Binding IsIdle}" />
@@ -147,7 +148,7 @@
             </TextBlock>
         </StackPanel>
 
-        <controls:PanePair x:Name="Panes" Key="files" SecondTitle="Details" FoldedTitle="Details" FoldedAtFirst="True" DefaultBeside="520" DefaultBelow="300">
+        <controls:PanePair x:Name="Panes" Key="files" FoldedAtFirst="True" DefaultBeside="520" DefaultBelow="300">
             <controls:PanePair.Main>
                 <DockPanel>
                     <!-- h2: the File List heading -->

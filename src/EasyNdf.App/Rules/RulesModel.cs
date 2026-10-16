@@ -221,7 +221,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         var made = new List<ModPreset>();
         foreach (ModPreset preset in SelectedPresets)
         {
-            var copy = new ModPreset { Name = OpenMod.FreePresetName(preset.Name + " copy"), Rules = (JsonArray)preset.Rules.DeepClone() };
+            var copy = new ModPreset { Name = OpenMod.FreePresetName(Texts.Get("Rules.Preset.CopyName", ("name", preset.Name))), Rules = (JsonArray)preset.Rules.DeepClone() };
             ReseedClones(copy.Rules);
             OpenMod.Presets.Add(copy);
             made.Add(copy);

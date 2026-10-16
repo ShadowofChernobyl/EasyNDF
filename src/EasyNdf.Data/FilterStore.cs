@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using EasyNdf.Data.Languages;
 
 namespace EasyNdf.Data;
 
@@ -89,7 +90,7 @@ public sealed class FilterStore
         JsonNode? json = null;
         try { json = JsonFiles.Parse(text); } catch (JsonException) { }
         if (json is not JsonObject file || file["Filters"] is not JsonObject)
-            throw new ModFileException("\"" + fileName + "\" is not a filter file.");
+            throw new ModFileException(DataTexts.Get("Editor.FilterFile.NotOne", ("file", fileName)));
 
         int added = 0;
         foreach (SavedFilter filter in FiltersIn(file))

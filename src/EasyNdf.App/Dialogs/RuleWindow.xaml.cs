@@ -240,7 +240,7 @@ public partial class RuleWindow : UserControl
         if (!AppData.Current.Scans.Scans.ContainsKey(file))
         {
             if (ListedFiles().FirstOrDefault(f => f.Source is not null && FileListModel.ScanKey(f) == file) is not FileEntry entry) return;
-            ScanNote.Text = "Reading " + entry.Name + "...";
+            ScanNote.Text = Texts.Get("Editor.Viewer.ReadingFile", ("file", entry.Name));
             await ReadFile(entry);
             if (!AppData.Current.Scans.Scans.ContainsKey(file))
             {
@@ -259,7 +259,7 @@ public partial class RuleWindow : UserControl
         var dialog = new Microsoft.Win32.OpenFileDialog { Title = Texts.Get("Rules.Scan.Title"), Filter = Texts.Get("Files.NdfFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true || model is null) return;
         string name = System.IO.Path.GetFileName(dialog.FileName);
-        ScanNote.Text = "Scanning " + name + "...";
+        ScanNote.Text = Texts.Get("Rules.Scan.Scanning", ("file", name));
         try
         {
             string path = dialog.FileName;

@@ -302,7 +302,7 @@
             </StackPanel>
         </StackPanel>
 
-        <controls:PanePair x:Name="Panes" Key="editor" SecondTitle="Descriptors" FoldedAtFirst="True" DefaultBeside="600" DefaultBelow="300">
+        <controls:PanePair x:Name="Panes" Key="editor" FoldedAtFirst="True" DefaultBeside="600" DefaultBelow="300">
             <controls:PanePair.Main>
                 <DockPanel>
                 <!-- .fhrow: the File Editor heading, the note about the file, and Fold all and Unfold all, on a line -->

@@ -57,7 +57,7 @@ public sealed partial class LanguageStore
     {
         JsonNode? json = null;
         try { json = JsonFiles.Parse(text); } catch (JsonException) { }
-        if (json is not JsonObject file) throw new ModFileException("It is not a language pack.");
+        if (json is not JsonObject file) throw new ModFileException(DataTexts.Get("Settings.LanguageFile.NotAPack"));
 
         LanguagePack pack = Read(file, english);
         Keep(pack);
@@ -71,7 +71,7 @@ public sealed partial class LanguageStore
     /// </summary>
     public static LanguagePack ReadPack(string text)
     {
-        if (JsonFiles.Parse(text) is not JsonObject file) throw new ModFileException("It is not a language pack.");
+        if (JsonFiles.Parse(text) is not JsonObject file) throw new ModFileException(DataTexts.Get("Settings.LanguageFile.NotAPack"));
         return Read(file, english: null);
     }
 
@@ -145,19 +145,19 @@ public sealed partial class LanguageStore
     {
         bool byName = json["texts"] is JsonObject;
         bool byEnglish = json["strings"] is JsonObject || json["sections"] is JsonArray;
-        if (!byName && !byEnglish) throw new ModFileException("It is not a language pack.");
+        if (!byName && !byEnglish) throw new ModFileException(DataTexts.Get("Settings.LanguageFile.NotAPack"));
 
         string code = NotCodeCharacters().Replace(JsonValues.AsText(json["code"]).ToLowerInvariant(), "");
         if (code.Length > 12) code = code[..12];
         if (code == "" || code == LanguagePack.EnglishCode)
-            throw new ModFileException("Its \"code\" must be a short language code other than \"en\", such as \"fr\".");
+            throw new ModFileException(DataTexts.Get("Settings.LanguageFile.BadCode"));
 
         string name = JsonValues.IsTruthy(json["name"]) ? JsonValues.AsText(json["name"]) : code;
         var pack = new LanguagePack { Code = code, Name = name.Length > 40 ? name[..40] : name, MadeFor = JsonValues.AsText(json["madeFor"]) };
         if (byName) TakeTextsByName((JsonObject)json["texts"]!, pack.Texts);
         else if (english is not null) TakeTextsByEnglish(json, english, pack.Texts);
 
-        if (pack.Texts.Count == 0) throw new ModFileException("None of its texts are translated yet.");
+        if (pack.Texts.Count == 0) throw new ModFileException(DataTexts.Get("Settings.LanguageFile.NothingTranslated"));
         return pack;
     }
 

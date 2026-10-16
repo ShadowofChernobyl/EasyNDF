@@ -50,7 +50,7 @@ public static class Menus
         foreach (MenuChoice item in items.OfType<MenuChoice>())
         {
             if (ReferenceEquals(item, Line)) { menu.Items.Add(new Separator()); continue; }
-            var entry = new MenuItem { Header = HeaderOf(item), IsEnabled = item.IsEnabled, InputGestureText = item.Key };
+            var entry = new MenuItem { Header = HeaderOf(item), IsEnabled = item.IsEnabled, InputGestureText = Text.KeyNames.Of(item.Key) };
             if (item.Tip != "") entry.ToolTip = item.Tip;
             entry.Click += (_, _) => item.Run();
             menu.Items.Add(entry);

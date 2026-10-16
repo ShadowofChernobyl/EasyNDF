@@ -46,6 +46,9 @@ public static class Texts
     /// </summary>
     public static string Count(string name, long count, params (string Name, object? Value)[] blanks) => Catalog.Count(name, count, blanks);
 
+    /// <summary>A label with its colon, as the language writes it: "Name:" in English, "Nom :" in French.</summary>
+    public static string WithColon(string label) => Get("Common.WithColon", ("label", label));
+
     /// <summary>A number with the language's thousands separators, such as "1,234" in English or "1 234" in French.</summary>
     public static string Number(long number) => number.ToString("N0", Catalog.Culture);
 

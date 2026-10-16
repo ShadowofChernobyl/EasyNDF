@@ -843,7 +843,7 @@ public partial class EditorPage
     private void DescriptorFindChanged(object sender, TextChangedEventArgs e) => _ = RebuildTree();
 
     /// <summary>
-    /// "Scan all": reads, one after another, every file on the Files tab not read yet, for what it declares and what each
+    /// "Refresh": reads, one after another, every file on the Files tab not read yet, for what it declares and what each
     /// declaration refers to. Pressed again, it stops.
     /// </summary>
     private async void ScanClicked(object sender, RoutedEventArgs e)
@@ -853,10 +853,34 @@ public partial class EditorPage
             stopScanning = true;
             return;
         }
+        await ReadUnreadFiles(sayWhenNothing: true);
+    }
+
+    /// <summary>Whether the Descriptor Tree pane has been opened since the app started, which refreshes it once.</summary>
+    private bool treeOpenedOnce;
+
+    /// <summary>
+    /// The first time the Descriptor Tree pane shows (opened, or open when the Editor tab is first shown), it is
+    /// refreshed, as "Refresh" does, so it lists the chains across files without a click.
+    /// </summary>
+    private void RefreshTreeOnFirstOpen()
+    {
+        if (treeOpenedOnce || Panes.IsFolded || scanning) return;
+        treeOpenedOnce = true;
+        _ = ReadUnreadFiles(sayWhenNothing: false);
+    }
+
+    /// <summary>
+    /// Reads, one after another, every file on the Files tab not read yet. With <paramref name="sayWhenNothing"/>, says so
+    /// when there is nothing to read.
+    /// </summary>
+    private async Task ReadUnreadFiles(bool sayWhenNothing)
+    {
         List<FileEntry> waiting = [.. (Files?.Entries ?? []).Where(f => f.Source is not null && f.Name.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase) && f.References is null)];
         if (waiting.Count == 0)
         {
-            SayDescriptors(Files is { } list && list.Entries.Any(f => f.Source is not null) ? Texts.Get("Editor.Scan.AllRead") : Texts.Get("Editor.Scan.NoFiles"));
+            if (sayWhenNothing)
+                SayDescriptors(Files is { } list && list.Entries.Any(f => f.Source is not null) ? Texts.Get("Editor.Scan.AllRead") : Texts.Get("Editor.Scan.NoFiles"));
             return;
         }
         scanning = true;

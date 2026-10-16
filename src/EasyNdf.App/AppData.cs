@@ -137,6 +137,9 @@ public sealed class AppData
     public void ClearAll()
     {
         isCleared = true;
+        // what the app remembers (pane sizes and folds, column widths, the window's place) goes from memory too, so
+        // nothing written before the app starts again can bring it back
+        State.Clear();
         if (Folders is null) return;
         foreach (string folder in Folders.All)
             if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
