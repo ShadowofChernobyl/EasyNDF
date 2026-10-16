@@ -7,13 +7,15 @@ using EasyNdf.App.Text;
 namespace EasyNdf.App.Editor;
 
 /// <summary>
-/// The thin strip along the bottom of an editor's box, as in Visual Studio: the caret's line and column at the left,
-/// and the text size as a percentage at the right, in a dropdown. The size is the one both editors share
+/// The thin strip along the bottom of an editor's box, as in Visual Studio: the caret's line and column at the left
+/// (after any buttons the editor puts there, <see cref="AddTools"/>), and the text size as a percentage at the right,
+/// in a dropdown. The size is the one both editors share
 /// (<see cref="TextZoom"/>); the editor calls <see cref="ShowSize"/> whenever its size changes, so the dropdown follows Ctrl and the wheel too.
 /// </summary>
 public sealed class StatusStrip : Border
 {
     private readonly TextEditor editor;
+    private readonly DockPanel row = new();
     private readonly TextBlock caretPlace = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly ComboBox sizeChoice = new() { MinWidth = 72, FontSize = 12, ToolTip = Texts.Get("Editor.TextSize.Tip") };
     private bool showing;
@@ -34,7 +36,6 @@ public sealed class StatusStrip : Border
         SetResourceReference(BackgroundProperty, "panel");
         caretPlace.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         caretPlace.FontSize = 12;
-        var row = new DockPanel();
         DockPanel.SetDock(sizeChoice, Dock.Right);
         row.Children.Add(sizeChoice);
         row.Children.Add(caretPlace);
@@ -44,6 +45,14 @@ public sealed class StatusStrip : Border
         editor.TextArea.Caret.PositionChanged += (_, _) => ShowCaretPlace();
         ShowSize(editor.FontSize);
         ShowCaretPlace();
+    }
+
+    /// <summary>Puts buttons at the strip's left, before the caret's line and column, which move right to make room.</summary>
+    public void AddTools(FrameworkElement tools)
+    {
+        DockPanel.SetDock(tools, Dock.Left);
+        tools.Margin = new Thickness(0, 0, 10, 0);
+        row.Children.Insert(0, tools);
     }
 
     /// <summary>The percentage the dropdown shows.</summary>

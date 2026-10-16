@@ -164,6 +164,7 @@ public partial class EditorPage : UserControl
         // the results of Search all files take at most 40% of the tab, so the panes under them keep their room
         SizeChanged += (_, _) => ResultsBox.MaxHeight = Math.Max(ResultsBox.MinHeight, 0.4 * ActualHeight);
         StripHolder.Content = strip = new StatusStrip(Text);
+        strip.AddTools(FoldButtons());
         SetTextSize(TextZoom.Saved, remember: false);
         TextZoom.Changed += size => SetTextSize(size, remember: false);
         ApplyViewSettings();
@@ -436,6 +437,7 @@ public partial class EditorPage : UserControl
     private void ShowInNewLanguage()
     {
         Panes.SecondTitle = Texts.Get("Editor.Descriptors");
+        ShowFoldTips();
         if (!scanning) ScanButton.Content = Texts.Get("Editor.ScanAll");
         DescriptorFind.Tag = showsAllFiles ? Texts.Get("Editor.DescriptorFind.AllFilesHint") : Texts.Get("Editor.DescriptorFind.Hint");
         Show();
@@ -599,8 +601,8 @@ public partial class EditorPage : UserControl
     }
 
     /// <summary>
-    /// The find bar's keys, anywhere on the tab: Ctrl+F finds, Ctrl+H replaces, Ctrl+G goes to a line, Ctrl+Shift+F
-    /// searches all files; Escape in the bar hides it.
+    /// The tab's keys, anywhere on it: Ctrl+F finds, Ctrl+H replaces, Ctrl+G goes to a line, Ctrl+Shift+F searches all
+    /// files; Ctrl+Shift+[ folds every descriptor and Ctrl+Shift+] unfolds them; Escape in the find bar hides it.
     /// </summary>
     private void FindBarKeys(object sender, KeyEventArgs e)
     {
@@ -618,6 +620,17 @@ public partial class EditorPage : UserControl
         {
             e.Handled = true;
             ShowFindBar(true, box);
+        }
+        // the keys that fold and unfold the Rules tab's groups fold and unfold the file's descriptors here
+        else if (RulesPage.IsCollapseAllKey(e))
+        {
+            e.Handled = true;
+            FoldAll();
+        }
+        else if (RulesPage.IsExpandAllKey(e))
+        {
+            e.Handled = true;
+            UnfoldAll();
         }
         else if (e.Key == Key.Escape && FindBar.IsKeyboardFocusWithin)
         {
