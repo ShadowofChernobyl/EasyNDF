@@ -295,6 +295,9 @@ public partial class RulesPage : UserControl
         bool twice = !control && !shift && lastRuleClick is { } last && last.Index == row.Index && DateTime.UtcNow - last.At < doubleClickTime;
         lastRuleClick = twice || control || shift ? null : (row.Index, DateTime.UtcNow);
         Model.ClickRule(row.Index, control, shift);
+        // the click selects the line, which draws the list's lines anew, the one under the mouse too: WPF is told to
+        // look again at what the mouse is over, or the second click of a double-click goes to the line that is gone
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, Mouse.Synchronize);
         CancelPendingFold();
         // a click on a group's heading folds or unfolds it a moment later; a second click in that moment makes it a
         // double-click, which opens the group and leaves it folded or unfolded as it was

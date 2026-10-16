@@ -155,11 +155,12 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
+        <editor:KeyWidth x:Key="KeyWidth" />
         <!-- .dvrow with input.dvv: a value's key, at most 55% of the row, then the value to the row's end -->
         <DataTemplate DataType="{x:Type editor:ValueItem}">
             <Grid x:Name="Row" MinHeight="19" Background="Transparent">
                 <DockPanel Margin="{Binding Indent}" VerticalAlignment="Center" LastChildFill="True">
-                    <TextBlock DockPanel.Dock="Left" Text="{Binding Key}" MaxWidth="{Binding KeyWidth}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource s-field}" VerticalAlignment="Center" />
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Key}" MaxWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource KeyWidth}}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource s-field}" VerticalAlignment="Center" />
                     <TextBox Style="{StaticResource ValueBox}" Margin="6,0,0,0" Text="{Binding Shown, Mode=OneTime}" IsReadOnly="{Binding IsReadOnly}" ToolTip="{Binding Tip}"
                              KeyDown="ValueKeyDown" LostKeyboardFocus="ValueLeft" TextChanged="ValueTyped" />
                 </DockPanel>
