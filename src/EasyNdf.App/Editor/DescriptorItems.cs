@@ -53,8 +53,7 @@ public sealed record ObjectOrListItem(int Depth, int Index, string Key, string T
 /// <param name="Index">Its row in the descriptor's rows.</param>
 /// <param name="Shown">The value as shown: one that runs over several lines is put on one.</param>
 /// <param name="IsReadOnly">Whether it cannot be typed over here.</param>
-/// <param name="KeyWidth">The most width its key takes: 55% of the row.</param>
-public sealed record ValueItem(int Depth, int Index, string Key, string Shown, bool IsReadOnly, bool RunsOverLines, double KeyWidth) : PropertyItem(Depth)
+public sealed record ValueItem(int Depth, int Index, string Key, string Shown, bool IsReadOnly, bool RunsOverLines) : PropertyItem(Depth)
 {
     /// <summary>The value's tooltip: why a value over several lines cannot be typed over here.</summary>
     public string? Tip => RunsOverLines ? Texts.Get("Editor.Rows.OverLines") : null;

@@ -1046,7 +1046,6 @@ public partial class EditorPage
             PropertyList.ItemsSource = items;
             return;
         }
-        double keyWidth = Math.Max(40, 0.55 * Math.Max(0, PropertyList.ActualWidth - 4));
         int hideBelow = -1;
         for (int i = 0; i < rows.Count; i++)
         {
@@ -1066,7 +1065,7 @@ public partial class EditorPage
             var value = (ValueRow)row;
             bool overLines = value.Value.Contains('\n');
             string shownValue = overLines ? System.Text.RegularExpressions.Regex.Replace(value.Value, @"[ \t\r\n\f\v]+", " ") : value.Value;
-            items.Add(new ValueItem(row.Depth, i, row.Key, shownValue, !canChange || overLines, overLines, keyWidth));
+            items.Add(new ValueItem(row.Depth, i, row.Key, shownValue, !canChange || overLines, overLines));
         }
         if (other?.IsCut ?? propertiesCut)
             items.Add(new NoteItem(Texts.Get("Editor.Rows.FirstOnly", ("count", Texts.Number(rows.Count))) + (other is null ? " " + Texts.Get("Editor.Rows.RestInText") : ""), false, new Thickness(6)));
@@ -1378,6 +1377,7 @@ public partial class EditorPage
         double width = e.NewSize.Width;
         TreeColumn.MinWidth = Math.Min(144, 0.3 * width);
         PropertiesColumn.MinWidth = Math.Min(224, 0.4 * width);
-        if (e.WidthChanged && PropertyList.ItemsSource is not null) ShowProperties();
+        // the property rows follow the width by themselves (Editor/KeyWidth.cs): building the list again on every step
+        // of a resize made resizing the window slow
     }
 }
