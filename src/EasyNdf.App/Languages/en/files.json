@@ -107,7 +107,7 @@
   "Files.Details.Exported": "Exported.",
   "Files.Details.NothingChanged": "The rules changed nothing, so it was not exported.",
   "Files.Details.PreviewOnly": "Preview only, nothing was saved.",
-  "Files.Details.Summary": "{edits} edits across {holds}, {milliseconds} ms. {what} Click a rule to list its edits; double-click an edit to see it in the exported file.",
+  "Files.Details.Summary": "{edits} across {holds}, {milliseconds} ms. {what} Click a rule to list its edits; double-click an edit to see it in the exported file.",
   "Files.Details.InvalidHeld": "The file these rules produce would not be valid NDF, so it was held back: it was not written to its export folder. \"Save anyway\" on the row saves it so you can look.",
   "Files.Details.InvalidWouldBeHeld": "The file these rules produce would not be valid NDF, so it would be held back on export.",
   "Files.Details.InvalidProblem": "Problem found when reading it back: {problem}.",
@@ -186,5 +186,8 @@
   "Files.Row.Remove.Tip": "Remove row",
   "Files.Compare.AlreadyListed": "Already listed",
   "Files.Compare.Picked": "File you picked",
-  "Files.Compare.Differs": "{label} (differs)"
+  "Files.Compare.Differs": "{label} (differs)",
+  "Files.Run.Failed": "Failed. {problem}",
+  "Files.Opening": "Opening {file}...",
+  "Files.Details.EditCount": "{count} edits|{count} edits"
 }

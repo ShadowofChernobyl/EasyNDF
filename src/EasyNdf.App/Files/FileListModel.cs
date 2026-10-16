@@ -728,6 +728,15 @@ public sealed class FileListModel : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Draws every row again after the language changed: their sizes and statuses are written in the language in use.
+    /// </summary>
+    public void ShowInNewLanguage()
+    {
+        foreach (FileRow row in rowOf.Values) row.Refresh();
+        Refilter();
+    }
+
+    /// <summary>
     /// Works out again which rows are shown and in what order. Rows the search or filter hides are deselected, so a
     /// button that acts on the selection never acts on something unseen; rows in a closed folder stay selected.
     /// </summary>

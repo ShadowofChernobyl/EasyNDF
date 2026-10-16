@@ -29,7 +29,7 @@ Every text the app shows has a fixed name, such as `Files.AddFolder`, and its En
 - **In code:** `Texts.Get("Files.AddFolder")`. A text with blanks: `"Delete \"{name}\"?"` and `Texts.Get("Rules.DeleteAsk", ("name", rule.Name))`. A text that depends on a number lists its forms with `|`: `"{count} edit|{count} edits"` and `Texts.Count("Files.Edits", 5)`.
 - **Bold or code inside a sentence:** `**bold**` and `` `code` ``, shown with `t:RichText.Markup="{t:Text Welcome.Intro}"` on a TextBlock.
 - **To add a text:** add its name and English to the right file, then use the name. Rewording the English later never loses a translation: packs remember which English they were made from, and count the text as "to check".
-- **The Help wiki and the About tab** stay as HTML (`src/EasyNdf.App/Help/wiki.json` and `about.html`); each page's title and HTML, and each group, are texts too (`Help.Page.start.Title`, `Help.Page.start.Html`, `Help.Group.GettingStarted`, `About.Page.Html`), so packs translate them like the rest.
+- **The Help wiki and the About tab** stay as HTML (`src/EasyNdf.App/Help/wiki.json` and `about.html`); each page's title and HTML, and each group, are texts too (`Help.Page.start.Title`, `Help.Page.start.Html`, `Help.Group.GettingStarted`, `About.Page.Html`), so packs translate them like the rest. The change log is one text per version (`Help.ChangeLog.1.0.0.Html`), so a new version is the only part to translate.
 - **Numbers:** `Texts.Number(1234)` writes "1,234" with the language's separators; `Texts.CountWide` is `Texts.Count` with the number written that way.
 - Other languages are packs imported on the Settings tab (Language card). **Export** gives a file with every text to translate; whatever a pack lacks shows in English.
 
@@ -40,3 +40,9 @@ Mod files keep the HTML app's format (`FormatVersion: 1`), so mods made in the H
 ## Test switches
 
 For a PC that draws the app oddly: `--render software` draws without the graphics card, and `--frame native` uses Windows' own title bar and frame instead of the app's. In Visual Studio, set them under **Debug > EasyNdf.App Debug Properties > Command line arguments**.
+
+## License
+
+EasyNDF is free software under the [GNU General Public License, version 3](LICENSE.txt), with two additional terms (section 7): forks may not call themselves EasyNDF or suggest that they are, and modified versions must be marked as different from the original. The code it includes from others is under the MIT License (see THIRD-PARTY-NOTICES.txt).
+
+"ShadowofChernobyl" is the author's user name. Despite it, the author is not involved with GSC Game World or any of its products.

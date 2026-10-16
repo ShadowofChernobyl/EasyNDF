@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using ICSharpCode.AvalonEdit.Document;
@@ -156,8 +155,7 @@ public partial class EditorPage
         Text.Document.BeginUpdate();
         for (int k = matches.Count - 1; k >= 0; k--) Text.Document.Replace(matches[k], wanted.Length, ReplaceBox.Text);
         Text.Document.EndUpdate();
-        string count = matches.Count.ToString("N0", CultureInfo.InvariantCulture) + (matches.Count == 1 ? " match" : " matches");
-        Say(Texts.Get("Editor.Find.Replaced", ("file", shown!.Name), ("count", count)));
+        Say(Texts.CountWide("Editor.Find.Replaced", matches.Count, ("file", shown!.Name)));
     }
 
     /// <summary>Replacing needs the file itself, and the text to find.</summary>

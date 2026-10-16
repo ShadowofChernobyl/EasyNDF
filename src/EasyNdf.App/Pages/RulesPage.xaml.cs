@@ -35,6 +35,8 @@ public partial class RulesPage : UserControl
         DataContext = Model;
         Model.PropertyChanged += (_, _) => Show();
         AppData.Current.ModsChanged += _ => Model.Refresh();
+        // the rule lines' type names and summaries are written in the language in use
+        Texts.LanguageChanged += Model.Refresh;
         Show();
     }
 
@@ -74,7 +76,7 @@ public partial class RulesPage : UserControl
         public string Name => Preset.Name;
 
         /// <summary>"3 files", or nothing when no file uses it.</summary>
-        public string UseText => FilesUsing == 0 ? "" : FilesUsing + (FilesUsing == 1 ? " file" : " files");
+        public string UseText => FilesUsing == 0 ? "" : Texts.Count("Rules.Preset.FilesUsing", FilesUsing);
     }
 
     // ---- the mod ----

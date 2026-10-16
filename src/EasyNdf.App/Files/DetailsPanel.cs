@@ -54,7 +54,9 @@ public sealed class DetailsPanel : StackPanel
             : run.Wrote ? (run.Unchanged ? Texts.Get("Files.Details.ExportedUnchanged") : Texts.Get("Files.Details.Exported"))
             : run.Unchanged ? Texts.Get("Files.Details.NothingChanged")
             : Texts.Get("Files.Details.PreviewOnly");
-        AddParagraph(Texts.Get("Files.Details.Summary", ("edits", FileStatus.Count(result.Edits)),
+        // "1 edits" in English, as the HTML app writes it (both forms are plural); other languages give their singular
+        string edits = Texts.Count("Files.Details.EditCount", result.Edits, ("count", FileStatus.Count(result.Edits)));
+        AddParagraph(Texts.Get("Files.Details.Summary", ("edits", edits),
             ("holds", FileStatus.Holds(run.Info.Descriptors, run.Info.Constants, run.Info.Unnamed)), ("milliseconds", run.Milliseconds), ("what", what)), "muted", 0, 8);
 
         if (result.ParseError != "")

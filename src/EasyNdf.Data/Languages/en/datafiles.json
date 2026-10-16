@@ -1,0 +1,11 @@
+{
+  "Settings.LanguageFile.NotAPack": "It is not a language pack.",
+  "Settings.LanguageFile.BadCode": "Its \"code\" must be a short language code other than \"en\", such as \"fr\".",
+  "Settings.LanguageFile.NothingTranslated": "None of its texts are translated yet.",
+  "Editor.FilterFile.NotOne": "\"{file}\" is not a filter file.",
+  "Rules.ModFile.NameTaken": "A mod named \"{name}\" already exists.",
+  "Rules.ModFile.NotJson": "not valid JSON: {problem}",
+  "Rules.ModFile.IsPreset": "a preset, not a mod. Open the file, copy its text, and paste it into the preset list",
+  "Rules.ModFile.NotAMod": "not a mod: a mod file holds a \"Presets\" list",
+  "Rules.ModFile.PresetWithoutRules": "preset {number} in it has no \"Rules\" list"
+}

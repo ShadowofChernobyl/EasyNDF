@@ -128,6 +128,11 @@ public partial class EditorPage : UserControl
     public EditorPage()
     {
         InitializeComponent();
+        Panes.SecondTitle = Texts.Get("Editor.Descriptors");
+        Texts.LanguageChanged += ShowInNewLanguage;
+        // the Descriptor Tree refreshes the first time it shows: opened, or already open when the tab first shows
+        Panes.FoldChanged += RefreshTreeOnFirstOpen;
+        IsVisibleChanged += (_, _) => { if (IsVisible) RefreshTreeOnFirstOpen(); };
         Text.Options.ConvertTabsToSpaces = true; // Tab types four spaces, as the Sublime settings file asks
         Text.Options.IndentationSize = 4;
         Text.Options.EnableHyperlinks = false;
@@ -222,7 +227,7 @@ public partial class EditorPage : UserControl
     {
         if (entry.Source is null || !await MayLeave()) return;
         if (showTab) MainView.Of(this).Tabs.SelectedIndex = 2;
-        Note.Text = "Reading " + entry.Name + "...";
+        Note.Text = Texts.Get("Editor.Viewer.ReadingFile", ("file", entry.Name));
         try
         {
             string text = await Task.Run(() => FileContent.Text(entry));
@@ -422,6 +427,20 @@ public partial class EditorPage : UserControl
     {
         Show();
         _ = RebuildTree();
+    }
+
+    /// <summary>
+    /// Draws again what the code wrote in the old language: the pane's heading, the note and buttons, the Refresh button
+    /// and the Descriptor Tree with its notes.
+    /// </summary>
+    private void ShowInNewLanguage()
+    {
+        Panes.SecondTitle = Texts.Get("Editor.Descriptors");
+        if (!scanning) ScanButton.Content = Texts.Get("Editor.ScanAll");
+        DescriptorFind.Tag = showsAllFiles ? Texts.Get("Editor.DescriptorFind.AllFilesHint") : Texts.Get("Editor.DescriptorFind.Hint");
+        Show();
+        _ = RebuildTree();
+        ShowProperties();
     }
 
     /// <summary>The dropdown of the Files tab's files, by file name, with a folder only where two files share a name.</summary>

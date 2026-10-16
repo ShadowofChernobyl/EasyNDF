@@ -2,5 +2,6 @@
   "About.ChangeLog": "Change log",
   "About.ChangeLog.Tip": "What changed in each version",
   "About.License": "License",
-  "About.License.Tip": "The license EasyNDF is under"
+  "About.License.Tip": "The license EasyNDF is under",
+  "About.ChangeLog.Title": "Change Log"
 }

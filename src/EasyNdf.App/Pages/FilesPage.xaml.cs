@@ -36,6 +36,18 @@ public partial class FilesPage : UserControl
     public FilesPage()
     {
         InitializeComponent();
+        ShowPaneTitles();
+        Texts.LanguageChanged += () =>
+        {
+            ShowPaneTitles();
+            // the column headings and the rows' sizes and statuses are written in code, so they are drawn again
+            headingsBuiltFor = "";
+            ShowHeadings();
+            Model.ShowInNewLanguage();
+            // Details is drawn again, in the new language
+            detailsShown = null;
+            ShowDetails();
+        };
         searchPause.Tick += SearchPaused;
         Rows.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(RowButtonClicked));
         Rows.AddHandler(MouseLeftButtonUpEvent, new MouseButtonEventHandler(RowMouseUp));
@@ -266,7 +278,7 @@ public partial class FilesPage : UserControl
         foreach (string archive in archives)
         {
             string name = Path.GetFileName(archive);
-            Model.Say("Opening " + name + "...");
+            Model.Say(Texts.Get("Files.Opening", ("file", name)));
             try
             {
                 List<FileToAdd> files = await Task.Run(() => ArchiveReader.NdfFilesIn(archive));
@@ -611,6 +623,13 @@ public partial class FilesPage : UserControl
 
     /// <summary>The row and run Details last showed, so it is drawn again only when one of them changes.</summary>
     private (FileEntry? Row, RunRecord? Run)? detailsShown;
+
+    /// <summary>The Details pane's heading before a row is chosen, and while it is folded.</summary>
+    private void ShowPaneTitles()
+    {
+        Panes.FoldedTitle = Texts.Get("Files.Details");
+        Panes.SecondTitle = Texts.Get("Files.Details");
+    }
 
     /// <summary>Shows the chosen row's last run in Details, when the row or its run has changed since it was last shown.</summary>
     private void ShowDetails()

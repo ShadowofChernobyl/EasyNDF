@@ -153,7 +153,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         catch (Exception error)
         {
             // Whatever goes wrong with one file is said on its row, and the run goes on with the next, as in the HTML app.
-            entry.Message = "Failed. " + error.Message;
+            entry.Message = Texts.Get("Files.Run.Failed", ("problem", error.Message));
             entry.IsError = true;
         }
     }

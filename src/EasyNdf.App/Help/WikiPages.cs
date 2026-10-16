@@ -18,7 +18,8 @@ public sealed record WikiPage(string Id, string Group, string Title, string Html
 /// <remarks>
 /// The pages are in English in wiki.json; each title, group and page, and the About tab's page (Help/about.html), are
 /// also texts of the catalog, so a language pack translates them like any other text: "Help.Page.start.Title",
-/// "Help.Page.start.Html", "Help.Group.GettingStarted" and "About.Page.Html". The translation tool
+/// "Help.Page.start.Html", "Help.Group.GettingStarted" and "About.Page.Html"; so is each version of the change log
+/// ("Help.ChangeLog.1.0.0.Html"). The translation tool
 /// (tools/Translate) names them the same way.
 /// </remarks>
 public static class WikiPages
@@ -52,6 +53,15 @@ public static class WikiPages
     /// <summary>The About tab's page, in the language in use, with "{version}" where the app's version goes.</summary>
     public static string AboutHtml => Texts.Get(AboutName);
 
+    /// <summary>
+    /// The change log (Help/changelog.html), in the language in use: its opening line, then each version, newest first.
+    /// Each version is a text of its own, so a new version is the only part a translation has to add.
+    /// </summary>
+    public static string ChangeLogHtml => string.Concat(ChangeLogParts.Select(part => Texts.Get(part.Name)));
+
+    /// <summary>The change log's parts in English, by text name, in their order.</summary>
+    private static readonly IReadOnlyList<(string Name, string Html)> ChangeLogParts;
+
     static WikiPages()
     {
         using Stream stream = typeof(WikiPages).Assembly.GetManifestResourceStream("wiki.json")!;
@@ -60,14 +70,39 @@ public static class WikiPages
             (string)page!["id"]!, (string)page["group"]!, (string)page["title"]!, (string)page["html"]!))];
         QuickHelp = json["quickHelp"]!.AsArray().ToDictionary(
             help => (string)help!["id"]!, help => ((string)help!["title"]!, (string)help["html"]!));
+        ChangeLogParts = SplitChangeLog(ReadText("changelog.html"));
+    }
+
+    /// <summary>
+    /// The change log cut into its opening ("Help.ChangeLog.Intro.Html") and one part for each version, from its
+    /// &lt;h2&gt; heading to the next ("Help.ChangeLog.1.0.0.Html").
+    /// </summary>
+    private static List<(string Name, string Html)> SplitChangeLog(string log)
+    {
+        string[] pieces = log.Split("<h2>");
+        var parts = new List<(string Name, string Html)> { ("Help.ChangeLog.Intro.Html", pieces[0]) };
+        foreach (string piece in pieces.Skip(1))
+        {
+            string version = piece[..piece.IndexOf("</h2>", StringComparison.Ordinal)].Trim();
+            parts.Add(("Help.ChangeLog." + version + ".Html", "<h2>" + piece));
+        }
+        return parts;
+    }
+
+    /// <summary>A text the app carries in itself (the csproj names them).</summary>
+    private static string ReadText(string name)
+    {
+        using Stream stream = typeof(WikiPages).Assembly.GetManifestResourceStream(name)!;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     /// <summary>A page by its id, in the language in use; null when there is none.</summary>
     public static WikiPage? ById(string id) => All.FirstOrDefault(page => page.Id == id);
 
     /// <summary>
-    /// The English of the pages and of the About tab's page, by text name, for the catalog: each page's title and HTML,
-    /// and each group's name once.
+    /// The English of the pages, the About tab's page and the change log, by text name, for the catalog: each page's
+    /// title and HTML, each group's name once, and each part of the change log.
     /// </summary>
     public static JsonObject EnglishTexts()
     {
@@ -78,9 +113,8 @@ public static class WikiPages
             texts[TitleName(page.Id)] = page.Title;
             texts[HtmlName(page.Id)] = page.Html;
         }
-        using Stream stream = typeof(WikiPages).Assembly.GetManifestResourceStream("about.html")!;
-        using var reader = new StreamReader(stream);
-        texts[AboutName] = reader.ReadToEnd();
+        texts[AboutName] = ReadText("about.html");
+        foreach ((string name, string html) in ChangeLogParts) texts[name] = html;
         return texts;
     }
 

@@ -138,7 +138,7 @@ public partial class RowWindow : UserControl
     private void ShowPosition()
     {
         int count = model?.RowsOf(list)?.Count ?? 0;
-        Position.Text = (index + 1) + " of " + count;
+        Position.Text = Texts.Get("Rules.Row.Position", ("number", index + 1), ("count", count));
         PreviousButton.IsEnabled = index > 0;
         NextButton.IsEnabled = index < count - 1;
     }
@@ -197,7 +197,7 @@ public partial class RowWindow : UserControl
             DockPanel.SetDock(right, Dock.Right);
             line.Children.Add(right);
         }
-        line.Children.Add(new TextBlock { Text = text + ":" }.Themed(TextBlock.ForegroundProperty, "muted"));
+        line.Children.Add(new TextBlock { Text = Texts.WithColon(text) }.Themed(TextBlock.ForegroundProperty, "muted"));
         Form.Children.Add(line);
     }
 

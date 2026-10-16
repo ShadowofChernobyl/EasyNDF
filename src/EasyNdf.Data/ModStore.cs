@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using EasyNdf.Data.Languages;
 
 namespace EasyNdf.Data;
 
@@ -50,7 +51,7 @@ public sealed class ModStore
     /// <summary>Adds a mod and saves it. Its name must be free (see <see cref="FreeName"/>).</summary>
     public void Add(Mod mod)
     {
-        if (Find(mod.Name) is not null) throw new InvalidOperationException("A mod named \"" + mod.Name + "\" already exists.");
+        if (Find(mod.Name) is not null) throw new InvalidOperationException(DataTexts.Get("Rules.ModFile.NameTaken", ("name", mod.Name)));
         Mods.Add(mod);
         Mods.Sort(ByName);
         Save(mod);

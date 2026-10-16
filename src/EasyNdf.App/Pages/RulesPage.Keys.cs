@@ -207,7 +207,7 @@ public partial class RulesPage
     {
         IEnumerable<MenuChoice?> tail =
         [
-            new MenuChoice("Create New Rule", () => Menus.Show(RuleBox, NewRuleChoices())),
+            new MenuChoice(Texts.Get("Rules.Menu.CreateNewRule"), () => Menus.Show(RuleBox, NewRuleChoices())),
             new MenuChoice(Texts.Get("Common.Menu.Paste"), () => PasteClicked(this, new RoutedEventArgs()), Key: "Ctrl+V"),
             .. FoldChoices(),
             .. UndoChoices(),
@@ -227,8 +227,8 @@ public partial class RulesPage
         [
             new MenuChoice(Texts.Get("Common.Menu.Configure"), () => { Model.SelectOnly(row.Index); OpenRuleWindow(); }, IsEnabled: count == 1, Key: "Enter"),
             new MenuChoice(Texts.Get("Common.Menu.Duplicate"), Model.DuplicateSelectedRules),
-            new MenuChoice("Move Up", () => _ = MoveSelectedRules(-1), Key: "Ctrl+Up"),
-            new MenuChoice("Move Down", () => _ = MoveSelectedRules(+1), Key: "Ctrl+Down"),
+            new MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => _ = MoveSelectedRules(-1), Key: "Ctrl+Up"),
+            new MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => _ = MoveSelectedRules(+1), Key: "Ctrl+Down"),
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CutSeveral", ("what", RulesModel.CountRules(count))) : Texts.Get("Common.Menu.Cut"), () => _ = CutRules(), Key: "Ctrl+X"),
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CopySeveral", ("what", RulesModel.CountRules(count))) : Texts.Get("Common.Menu.Copy"), CopyRules, Key: "Ctrl+C"),
             new MenuChoice(isOn ? Texts.Get("Common.Menu.Disable") : Texts.Get("Common.Menu.Enable"), () => Model.SetSelectedRulesOn(!isOn)),
@@ -246,7 +246,7 @@ public partial class RulesPage
         activeList = KeyList.Presets;
         IEnumerable<MenuChoice?> tail =
         [
-            new MenuChoice("Create New Preset", () => NewPresetClicked(this, e)),
+            new MenuChoice(Texts.Get("Rules.Menu.CreateNewPreset"), () => NewPresetClicked(this, e)),
             new MenuChoice(Texts.Get("Common.Menu.Paste"), () => PasteClicked(this, e), Key: "Ctrl+V"),
             .. UndoChoices(),
         ];
@@ -301,12 +301,12 @@ public partial class RulesPage
         Menus.Show((FrameworkElement)sender,
         [
             new MenuChoice(Texts.Get("Common.Menu.Rename"), () => RenameModClicked(this, e)),
-            new MenuChoice("Make Copy", () => CopyModClicked(this, e)),
+            new MenuChoice(Texts.Get("Rules.Menu.MakeCopy"), () => CopyModClicked(this, e)),
             new MenuChoice(Texts.Get("Rules.ExportMod"), () => ExportModClicked(this, e)),
             new MenuChoice(Texts.Get("Rules.Watermark"), () => WatermarkClicked(this, e)),
-            new MenuChoice("Delete Mod", () => DeleteModClicked(this, e)),
+            new MenuChoice(Texts.Get("Rules.Menu.DeleteMod"), () => DeleteModClicked(this, e)),
             Menus.Line,
-            new MenuChoice("Create New Mod", () => NewModClicked(this, e)),
+            new MenuChoice(Texts.Get("Rules.Menu.CreateNewMod"), () => NewModClicked(this, e)),
             new MenuChoice(Texts.Get("Rules.ImportMod"), () => ImportModClicked(this, e)),
         ]);
     }

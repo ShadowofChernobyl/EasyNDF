@@ -331,5 +331,6 @@
   "Settings.Preview.ChangedNothing": "Exported: {edits} edits. 1 rule changed nothing",
   "Settings.Preview.NotValid": "Not exported: the result would not be a valid file",
   "Settings.Preview.NoPreset": "(none)",
-  "Settings.Preview.Off": "Switched off"
+  "Settings.Preview.Off": "Switched off",
+  "Settings.Fonts.ThemeFont": "Theme's font ({font})"
 }

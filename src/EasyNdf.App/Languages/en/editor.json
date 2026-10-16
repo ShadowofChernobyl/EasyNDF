@@ -81,7 +81,7 @@
   "Editor.Filter.Tip": "Filter by property",
   "Editor.DescriptorFind.Hint": "Filter by name or type",
   "Editor.DescriptorFind.Tip": "Filter the descriptor list",
-  "Editor.ScanAll": "Scan all",
+  "Editor.ScanAll": "Refresh",
   "Editor.Scan.Tip": "Read every file on the Files tab, to follow descriptors from one file to another",
   "Editor.TreeList.Tip": "Click: open or close, and list properties. Double-click or Alt+click: show in the text. Arrows move (Shift: five rows), Right opens, Left closes, Enter shows in the text.",
   "Editor.DescriptorSplit.Tip": "Drag to resize. Double-click to reset.",
@@ -121,7 +121,7 @@
   "Editor.Find.NotFound": "\"{text}\" was not found.",
   "Editor.Find.Found": "{file}: \"{text}\" found on line {line}.",
   "Editor.Find.TypeLine": "Type a line number, then Enter.",
-  "Editor.Find.Replaced": "{file}: replaced {count}. Ctrl+Z in the text undoes it.",
+  "Editor.Find.Replaced": "{file}: replaced {count} match. Ctrl+Z in the text undoes it.|{file}: replaced {count} matches. Ctrl+Z in the text undoes it.",
   "Editor.Find.TypeFirst": "Type the text to find first.",
   "Editor.Search.NoFiles": "No files on the Files tab to search.",
   "Editor.Search.NotRead": "{count} could not be read.",
@@ -166,7 +166,7 @@
   "Editor.Viewer.Descriptors": "{count} descriptor|{count} descriptors",
   "Editor.Viewer.ReadFiles": "{count} read file|{count} read files",
   "Editor.Viewer.InReadFiles": "{descriptors} in {files}.",
-  "Editor.Viewer.InReadFilesSomeUnread": "{descriptors} in {files}, {unread} not read yet (\"Scan all\" reads them).",
+  "Editor.Viewer.InReadFilesSomeUnread": "{descriptors} in {files}, {unread} not read yet (\"Refresh\" reads them).",
   "Editor.Viewer.ChainsStart": "{count} chain starts in the files listed; the other files are reached by opening them.|{count} chains start in the files listed; the other files are reached by opening them.",
   "Editor.Viewer.NoChains": "No descriptor of one read file refers to a descriptor of another yet, so there is no chain to list.",
   "Editor.Viewer.OpenAFile": "Open a file to list its descriptors here.",
@@ -221,5 +221,7 @@
   "Editor.Filter.CouldNotRead": "\"{file}\" could not be read. {problem}",
   "Editor.Filter.NotAFilterFile": "\"{file}\" is not a filter file.",
   "Editor.Filter.Imported": "Imported {count} filter.|Imported {count} filters.",
-  "Editor.Filter.NoneInFile": "No filters found in that file."
+  "Editor.Filter.NoneInFile": "No filters found in that file.",
+  "Editor.Descriptors": "Descriptor Tree",
+  "Editor.Search.Searching": "Searching {number} of {total}: {file}"
 }

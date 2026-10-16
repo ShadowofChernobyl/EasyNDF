@@ -172,7 +172,7 @@ public sealed class RuleEditor
     private void BuildFormula()
     {
         AddRow(Texts.Get("Rules.Editor.Target"), Coloured(TextField("Target", Texts.Get("Rules.Editor.TargetHint.PropertyNameOr"), mono: true), RuleTextKind.Path), Fill("Target", scan.Names));
-        TextBox formula = Coloured(TextField("Expression", "For example round(0.8 * MaximumRangeGRU, 25)", mono: true), RuleTextKind.Formula);
+        TextBox formula = Coloured(TextField("Expression", Texts.Get("Rules.Editor.FormulaHint", ("sample", "round(0.8 * MaximumRangeGRU, 25)")), mono: true), RuleTextKind.Formula);
         Suggestions.Attach(formula, RuleSuggestions.Formula(scan.Names, () => RuleSuggestions.VariablesOf(model)));
         AddRow(Texts.Get("Rules.Editor.Formula"), formula);
         AddCommentRow();
@@ -216,7 +216,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         if (JsonValues.AsText(parameters["Expect"]) != "none") expect.Add(TextField("Count", Texts.Get("Rules.Editor.ValueHint.Number"), mono: true));
         AddRow(Texts.Get("Rules.Editor.Expect"), [.. expect]);
         AddRow(Texts.Get("Rules.Editor.MessageWhenItFails"), TextField("Message", Texts.Get("Rules.Editor.MessageHint.OptionalNoteTo"), mono: false));
-        AddConditions(Texts.Get("Rules.Editor.ConditionsOptional"), "No conditions: every descriptor.");
+        AddConditions(Texts.Get("Rules.Editor.ConditionsOptional"), EveryDescriptor);
     }
 
     // ---- the parts every rule has ----
@@ -401,7 +401,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     }
 
     /// <summary>A label in the dim colour, with the colon the HTML app's style adds.</summary>
-    private static TextBlock Label(string text) => new TextBlock { Text = text + ":" }.Themed(TextBlock.ForegroundProperty, "muted");
+    private static TextBlock Label(string text) => new TextBlock { Text = Texts.WithColon(text) }.Themed(TextBlock.ForegroundProperty, "muted");
 
     /// <summary>.note: dim text, wrapped, made of plain, code and caution parts.</summary>
     private void AddNote(params Inline[] text)

@@ -181,6 +181,9 @@ public sealed class PanePair : Grid
         else if (!Beside && RowDefinitions.Count > 2) { RowDefinitions[0].Height = mainSize; RowDefinitions[2].Height = secondSize; }
     }
 
+    /// <summary>Raised after the second pane is folded away or brought back.</summary>
+    public event Action? FoldChanged;
+
     /// <summary>Folds the second pane away or back, and keeps that for next time.</summary>
     public void Fold(bool folded)
     {
@@ -190,6 +193,7 @@ public sealed class PanePair : Grid
         folds[Key] = folded;
         AppData.Current.SaveState();
         Arrange();
+        FoldChanged?.Invoke();
     }
 
     /// <summary>Lays the panes out beside or below, folded or not.</summary>

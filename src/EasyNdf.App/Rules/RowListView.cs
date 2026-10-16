@@ -54,7 +54,7 @@ public sealed class RowListView : Grid
         var heading = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 3) };
         var titleText = new TextBlock
         {
-            Text = title + ":",
+            Text = Texts.WithColon(title),
             FontWeight = FontWeights.Bold,
             TextTrimming = TextTrimming.CharacterEllipsis,
             // #editor h3: 6 pixels above, which a web page keeps even in this line

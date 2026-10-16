@@ -311,5 +311,14 @@
   "Rules.Suggest.Type": "type",
   "Rules.Suggest.Type.Tip": "A descriptor type in the scanned file.",
   "Rules.Suggest.Property": "property",
-  "Rules.Suggest.Property.Tip": "A property in the scanned file."
+  "Rules.Suggest.Property.Tip": "A property in the scanned file.",
+  "Rules.Menu.CreateNewRule": "Create New Rule",
+  "Rules.Menu.CreateNewPreset": "Create New Preset",
+  "Rules.Menu.MakeCopy": "Make Copy",
+  "Rules.Menu.DeleteMod": "Delete Mod",
+  "Rules.Menu.CreateNewMod": "Create New Mod",
+  "Rules.Preset.FilesUsing": "{count} file|{count} files",
+  "Rules.Editor.FormulaHint": "For example {sample}",
+  "Rules.Preset.CopyName": "{name} copy",
+  "Rules.Scan.Scanning": "Scanning {file}..."
 }

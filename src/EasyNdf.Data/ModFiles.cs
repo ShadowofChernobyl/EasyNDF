@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using EasyNdf.Engine.Mods;
 using EasyNdf.Engine.Text;
+using EasyNdf.Data.Languages;
 
 namespace EasyNdf.Data;
 
@@ -57,15 +58,15 @@ public static class ModFiles
     {
         JsonNode? json;
         try { json = JsonFiles.Parse(text); }
-        catch (JsonException error) { throw new ModFileException("not valid JSON: " + error.Message); }
+        catch (JsonException error) { throw new ModFileException(DataTexts.Get("Rules.ModFile.NotJson", ("problem", error.Message))); }
 
         if (json is JsonObject modFile && modFile["Presets"] is JsonArray presets)
             return [ReadModFile(modFile, presets, NameFromFileName(fileName))];
         if (json is JsonArray list && IsBackup(list))
             return ReadBackup(list);
         if (LooksLikePresets(json))
-            throw new ModFileException("a preset, not a mod. Open the file, copy its text, and paste it into the preset list");
-        throw new ModFileException("not a mod: a mod file holds a \"Presets\" list");
+            throw new ModFileException(DataTexts.Get("Rules.ModFile.IsPreset"));
+        throw new ModFileException(DataTexts.Get("Rules.ModFile.NotAMod"));
     }
 
     private static Mod ReadModFile(JsonObject modFile, JsonArray presets, string fileBaseName)
@@ -108,7 +109,7 @@ public static class ModFiles
     {
         for (int i = 0; i < presets.Count; i++)
             if (presets[i] is not JsonObject preset || preset["Rules"] is not JsonArray)
-                throw new ModFileException("preset " + (i + 1) + " in it has no \"Rules\" list");
+                throw new ModFileException(DataTexts.Get("Rules.ModFile.PresetWithoutRules", ("number", i + 1)));
 
         var mod = new Mod { Name = modName };
         for (int i = 0; i < presets.Count; i++)

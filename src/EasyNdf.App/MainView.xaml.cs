@@ -108,13 +108,8 @@ public partial class MainView : UserControl
         HelpPopup.Close();
     }
 
-    /// <summary>The change log: what changed in each version, newest first (Help/changelog.html).</summary>
-    private static string ChangeLogText()
-    {
-        using System.IO.Stream stream = typeof(MainView).Assembly.GetManifestResourceStream("changelog.html")!;
-        using var reader = new System.IO.StreamReader(stream);
-        return reader.ReadToEnd();
-    }
+    /// <summary>The change log: what changed in each version, newest first (Help/changelog.html), in the language in use.</summary>
+    private static string ChangeLogText() => Help.WikiPages.ChangeLogHtml;
 
     /// <summary>
     /// The version button: what changed in the newest version only, read from the change log (from its first version
@@ -137,7 +132,7 @@ public partial class MainView : UserControl
         (FrameworkElement log, double top, _) = new Help.WikiRenderer(Help.PageLook.ChangeLog).Render(ChangeLogText());
         // the scrolling box keeps the first paragraph's margin inside it, as a browser does
         log.Margin = new Thickness(0, top, 0, 0);
-        TextWindow.Open("Change Log", log);
+        TextWindow.Open(Texts.Get("About.ChangeLog.Title"), log);
     }
 
     /// <summary>"Paste" in a menu of the rule window: what is on the clipboard goes where the Rules tab's Paste puts it.</summary>
