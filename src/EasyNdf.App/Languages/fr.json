@@ -4973,13 +4973,13 @@
       "machine": true
     },
     "Settings.Theme.Note": {
-      "english": "Colors and scrollbars. Automatic follows the system.",
-      "text": "Couleurs et barres de défilement. Les paramètres automatiques suivent ceux du système.",
+      "english": "Colors and fonts. Automatic follows the system.",
+      "text": "Couleurs et polices. Les paramètres automatiques suivent ceux du système.",
       "machine": true
     },
     "Settings.ThemeChoice.Tip": {
-      "english": "Colors, fonts and scrollbars",
-      "text": "Couleurs, polices et barres de défilement",
+      "english": "Colors and fonts",
+      "text": "Couleurs et polices",
       "machine": true
     },
     "Settings.Fonts": {
@@ -5498,8 +5498,8 @@
       "machine": true
     },
     "Settings.Designer.SearchWords": {
-      "english": "Theme Designer themes colors scrollbars",
-      "text": "Concepteur de thèmes thèmes couleurs barres de défilement",
+      "english": "Theme Designer themes colors fonts",
+      "text": "Thèmes, couleurs et polices de Theme Designer",
       "machine": true
     },
     "Settings.CapRow.Note": {
@@ -5827,11 +5827,6 @@
       "text": "Sans titre",
       "machine": true
     },
-    "Settings.Designer.ScrollbarStyle": {
-      "english": "Scrollbar style",
-      "text": "Style de la barre de défilement",
-      "machine": true
-    },
     "Settings.Designer.Hex.Tip": {
       "english": "{colour}, as a hex color",
       "text": "{colour}, en hexadécimal",
@@ -5840,16 +5835,6 @@
     "Settings.Designer.NotAColour": {
       "english": "That is not a color. Use six hex digits after a #, like #1c221e.",
       "text": "Ce n'est pas une couleur. Utilisez six chiffres hexadécimaux après un #, comme #1c221e.",
-      "machine": true
-    },
-    "Settings.Designer.Scrollbar.Plain": {
-      "english": "Plain: a flat bar",
-      "text": "Plain : une barre plate",
-      "machine": true
-    },
-    "Settings.Designer.Scrollbar.Tread": {
-      "english": "Tread: a raised thumb with a grip, in a sunken track",
-      "text": "Tread : curseur en relief avec prise, dans une rainure",
       "machine": true
     },
     "Settings.Designer.CouldNotSave": {
@@ -6353,8 +6338,8 @@
       "machine": true
     },
     "Help.Page.themes.Html": {
-      "english": "<ul><li>Pick a look under <b>Theme</b> in Settings. <b>Automatic</b> follows your computer's light or dark mode: Paper when it is light, Slate when it is dark.</li><li><b>New from this theme</b> makes your own copy to change: colors and scrollbars, with a live preview.</li><li>Your own themes can be renamed, exported and shared.</li></ul><h3>Built-in Themes</h3><p>Olivine (the default), Automatic, Slate, Paper, Dusk, Lilac, Ember, Blush, Basalt, Monokai, Mariana, Solarized Dark and Solarized Light.</p><h3>Other Looks</h3><ul><li><b>Beveled edges</b> gives buttons and boxes raised and sunken edges in any theme. Off makes any theme flat.</li><li><b>Fonts...</b> chooses the interface font and the code font, for every theme. The code list shows fixed-width fonts, which keep NDF text lined up.</li><li><b>Tread scrollbars</b> gives scrollbars a raised thumb with a grip, in a sunken track.</li><li><b>Interface size</b> makes everything larger or smaller.</li><li><b>Reset column widths</b> puts every table back to automatic widths.</li></ul><h3>More About Your Own Themes</h3><ul><li>Change any color with the picker or a code like <span class=\"mono\">#1c221e</span>. You see the change straight away in the app and in the preview.</li><li>There are separate colors for errors and warnings, the toggle sliders, and the old and new lines of Changes only.</li><li>Themes can also be deleted, reset and imported. Built-in themes can't be changed.</li></ul>",
-      "text": "<ul><li>Choisissez un thème dans la rubrique « <b>Thème</b> » des Paramètres. <b>Le mode « Automatique »</b> suit le mode clair ou sombre de votre ordinateur : « Paper » en mode clair, « Slate » en mode sombre.</li><li><b>L’option « Nouveau à partir de ce thème »</b> crée votre propre copie que vous pouvez modifier : couleurs et barres de défilement, avec un aperçu en temps réel.</li><li>Vous pouvez renommer, exporter et partager vos propres thèmes.</li></ul><h3>Thèmes intégrés</h3><p>Olivine (par défaut), Automatique, Slate, Paper, Dusk, Lilac, Ember, Blush, Basalt, Monokai, Mariana, Solarized Dark et Solarized Light.</p><h3>Autres styles</h3><ul><li><b>L’option « Bords biseautés »</b> donne aux boutons et aux encadrés des bords en relief ou en creux, quel que soit le thème. L’option « Désactivé » rend tous les thèmes plats.</li><li><b>Polices…</b> permet de choisir la police de l’interface et celle du code, pour chaque thème. La liste des polices affiche les polices à espacement fixe, qui maintiennent l’alignement du texte NDF.</li><li><b>Les barres de défilement « Tread »</b> dotent les barres de défilement d’un curseur en relief muni d’une poignée, dans une rainure en creux.</li><li><b>La taille de l’interface</b> permet d’agrandir ou de réduire l’ensemble de l’affichage.</li><li><b>L’option « Réinitialiser les largeurs de colonnes »</b> rétablit la largeur automatique de tous les tableaux.</li></ul><h3>En savoir plus sur vos propres thèmes</h3><ul><li>Modifiez n’importe quelle couleur à l’aide du sélecteur ou d’un code tel que <span class=\"mono\">#1c221e</span>. Vous voyez immédiatement le changement dans l’application et dans l’aperçu.</li><li>Des couleurs distinctes sont disponibles pour les erreurs et les avertissements, les curseurs de basculement, ainsi que pour les anciennes et nouvelles lignes de la section « Modifications » uniquement.</li><li>Les thèmes peuvent également être supprimés, réinitialisés et importés. Les thèmes intégrés ne peuvent pas être modifiés.</li></ul>",
+      "english": "<ul><li>Pick a look under <b>Theme</b> in Settings. <b>Automatic</b> follows your computer's light or dark mode: Paper when it is light, Slate when it is dark.</li><li><b>New from this theme</b> makes your own copy to change: colors and fonts, with a live preview.</li><li>Your own themes can be renamed, exported and shared.</li></ul><h3>Built-in Themes</h3><p>Olivine (the default), Automatic, Slate, Paper, Dusk, Lilac, Ember, Blush, Cartridge, Basalt, Monokai, Mariana, Solarized Dark and Solarized Light.</p><h3>Other Looks</h3><ul><li><b>Beveled edges</b> gives buttons and boxes raised and sunken edges in any theme. Off makes any theme flat.</li><li><b>Fonts...</b> chooses the interface font and the code font, for every theme. The code list shows fixed-width fonts, which keep NDF text lined up.</li><li><b>Tread scrollbars</b> gives scrollbars a raised thumb with a grip, in a sunken track.</li><li><b>Interface size</b> makes everything larger or smaller.</li><li><b>Reset column widths</b> puts every table back to automatic widths.</li></ul><h3>More About Your Own Themes</h3><ul><li>Change any color with the picker or a code like <span class=\"mono\">#1c221e</span>. You see the change straight away in the app and in the preview.</li><li>There are separate colors for errors and warnings, the toggle sliders, and the old and new lines of Changes only.</li><li>Themes can also be deleted, reset and imported. Built-in themes can't be changed.</li></ul>",
+      "text": "<ul><li>Choisissez un thème dans la rubrique « <b>Thème</b> » des Paramètres. <b>L’option « Automatique »</b> suit le mode clair ou sombre de votre ordinateur : « Paper » en mode clair, « Slate » en mode sombre.</li><li><b>L’option « Nouveau à partir de ce thème »</b> crée votre propre copie que vous pouvez modifier : couleurs et polices, avec un aperçu en temps réel.</li><li>Vous pouvez renommer, exporter et partager vos propres thèmes.</li></ul><h3>Thèmes intégrés</h3><p>Olivine (par défaut), Automatique, Slate, Paper, Dusk, Lilac, Ember, Blush, Cartridge, Basalt, Monokai, Mariana, Solarized Dark et Solarized Light.</p><h3>Autres styles</h3><ul><li><b>L&#x27;option « Bords biseautés »</b> donne aux boutons et aux encadrés des bords en relief ou en creux, quel que soit le thème. L&#x27;option « Désactivé » rend tous les thèmes plats.</li><li><b>Polices…</b> permet de choisir la police de l’interface et celle du code, pour chaque thème. La liste des polices affiche les polices à espacement fixe, qui maintiennent l’alignement du texte NDF.</li><li><b>L’option « Barres de défilement à rainure »</b> donne aux barres de défilement un curseur en relief muni d’une poignée, dans une rainure en creux.</li><li><b>La taille de l’interface</b> permet d’agrandir ou de réduire l’ensemble de l’affichage.</li><li><b>L’option « Réinitialiser les largeurs de colonnes »</b> rétablit la largeur automatique de tous les tableaux.</li></ul><h3>En savoir plus sur vos propres thèmes</h3><ul><li>Modifiez n’importe quelle couleur à l’aide du sélecteur ou d’un code tel que <span class=\"mono\">#1c221e</span>. Vous voyez immédiatement le changement dans l’application et dans l’aperçu.</li><li>Des couleurs distinctes sont disponibles pour les erreurs et les avertissements, les curseurs de basculement, ainsi que pour les anciennes et nouvelles lignes de la section « Modifications » uniquement.</li><li>Les thèmes peuvent également être supprimés, réinitialisés et importés. Les thèmes intégrés ne peuvent pas être modifiés.</li></ul>",
       "machine": true
     },
     "Help.Page.data.Title": {

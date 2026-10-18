@@ -36,9 +36,8 @@ public static class ThemeManager
         // the Fonts window's choice, for every theme; else the theme's own font
         resources["ui-font"] = FontFor(Chosen("uiFont") ?? theme.Font, UiFonts);
         resources["mono"] = FontFor(Chosen("codeFont") ?? theme.CodeFont, CodeFonts);
-        // Every scrollbar takes the theme's style (Tread for Olivine, Plain for the others; Styles/Controls.xaml), unless
-        // the "Tread scrollbars" setting chooses for every theme.
-        bool tread = treadSetting ?? theme.Scrollbars == "tread";
+        // the "Tread scrollbars" setting, on until the user turns it off, chooses for every theme (Styles/Controls.xaml)
+        bool tread = treadSetting ?? true;
         resources[typeof(System.Windows.Controls.Primitives.ScrollBar)] = resources[tread ? "TreadScrollBar" : "PlainScrollBar"];
         Applied?.Invoke();
     }
@@ -82,7 +81,7 @@ public static class ThemeManager
     public static Theme? CustomThemeFor(string key)
     {
         if (CustomThemeOf(key) is not CustomTheme custom) return null;
-        return new Theme(custom.Name, custom.Scheme, custom.Scrollbars, new Dictionary<string, string>(custom.Colors), custom.Font, custom.CodeFont, custom.BaseId);
+        return new Theme(custom.Name, custom.Scheme, new Dictionary<string, string>(custom.Colors), custom.Font, custom.CodeFont, custom.BaseId);
     }
 
     /// <summary>A user's own theme as it is kept, by its key; null when there is none of that key.</summary>
