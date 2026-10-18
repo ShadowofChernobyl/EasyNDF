@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -99,16 +100,40 @@ public partial class UnitsPage
         tableHeadings.RenderTransform = headingsOffset;
         scroller.ScrollChanged += (_, _) => headingsOffset.X = -scroller.HorizontalOffset;
         tableHeadings.SortClicked += SortBy;
+        tableHeadings.ColumnResized += ResizeColumn;
+        tableHeadings.ResizeEnded += () => { AppData.Current.SaveState(); ShowTable(); };
+        tableHeadings.ColumnReset += key =>
+        {
+            (AppData.Current.State["unitColumns"] as JsonObject)?.Remove(key);
+            AppData.Current.SaveState();
+            ShowTable();
+        };
+    }
+
+    /// <summary>The columns' widths as the user dragged them, by key, kept between sessions.</summary>
+    private static Dictionary<string, double> ChosenColumnWidths() =>
+        AppData.Current.State["unitColumns"] is JsonObject widths
+            ? widths.Where(width => width.Value is JsonValue).ToDictionary(width => width.Key, width => width.Value!.GetValue<double>())
+            : [];
+
+    /// <summary>A column's edge dragged: the column takes the width, within its limits, and the rows follow at once.</summary>
+    private void ResizeColumn(string key, double width)
+    {
+        if (AppData.Current.State["unitColumns"] is not JsonObject widths) AppData.Current.State["unitColumns"] = widths = [];
+        widths[key] = Math.Round(UnitTableColumn.All.First(column => column.Key == key).Fit(width));
+        ShowTable(keepHeadings: true);
     }
 
     /// <summary>
     /// The Table view: one row a unit, sorted by the column chosen. Each number's bar is filled as far as the biggest
     /// number of its column among the units listed.
     /// </summary>
-    private void ShowTable()
+    /// <param name="keepHeadings">While a column's edge is dragged: the headings only change their widths.</param>
+    private void ShowTable(bool keepHeadings = false)
     {
-        tableWidths = UnitTableColumn.Widths(TableList.ActualWidth - ScrollBarWidth);
-        tableHeadings.Show(Game, tableWidths, sortKey, sortAscending);
+        tableWidths = UnitTableColumn.Widths(TableList.ActualWidth - ScrollBarWidth, ChosenColumnWidths());
+        if (keepHeadings) tableHeadings.SetWidths(tableWidths);
+        else tableHeadings.Show(Game, tableWidths, sortKey, sortAscending);
         UnitTableColumn sortColumn = UnitTableColumn.All.First(column => column.Key == sortKey);
         List<Unit> sorted = sortColumn.Sort(shown, sortAscending);
         var most = new Dictionary<string, double>();
@@ -123,7 +148,7 @@ public partial class UnitsPage
     private void TableListResized(object sender, SizeChangedEventArgs e)
     {
         if (loaded is null || view != UnitView.Table) return;
-        double[] widths = UnitTableColumn.Widths(TableList.ActualWidth - ScrollBarWidth);
+        double[] widths = UnitTableColumn.Widths(TableList.ActualWidth - ScrollBarWidth, ChosenColumnWidths());
         if (tableWidths.Length == 0 || Math.Abs(widths[0] - tableWidths[0]) >= 1) ShowTable();
     }
 

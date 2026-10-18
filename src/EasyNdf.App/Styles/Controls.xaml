@@ -492,6 +492,14 @@
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Cursor" Value="Hand" />
+        <!-- a plain list of items, laid out in full, so the scroll box above can scroll it by pixels -->
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <StackPanel />
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
@@ -519,7 +527,11 @@
                         <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" VerticalOffset="1" AllowsTransparency="True" Focusable="False">
                             <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource well}" Padding="2"
                                             MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
-                                <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto">
+                                <!--
+                                  scrolled by pixels, as every other box is: WPF's own dropdown scrolls by whole items,
+                                  and the wheel's 100 pixels a notch then jumped 100 items, to the end of a long list
+                                -->
+                                <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto" CanContentScroll="False">
                                     <ItemsPresenter />
                                 </ScrollViewer>
                             </controls:Bevel>

@@ -133,9 +133,6 @@
                         <controls:SettingRow Label="{t:Text Settings.ConfirmRuleDeletion}" Note="{t:Text Settings.ConfirmRuleDeletion.Note}">
                             <CheckBox x:Name="ConfirmSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.ConfirmSwitch.Tip}" Click="SwitchClicked" Tag="confirmDelete" />
                         </controls:SettingRow>
-                        <controls:SettingRow Label="{t:Text Settings.DoubleClickAdds}" Note="{t:Text Settings.DoubleClickAdds.Note}">
-                            <CheckBox x:Name="DoubleClickSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.DoubleClickSwitch.Tip}" Click="SwitchClicked" Tag="dblClickAdds" />
-                        </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.UndoSteps}" Note="{t:Text Settings.UndoSteps.Note}">
                             <ComboBox x:Name="UndoChoice" MinWidth="144" ToolTip="{t:Text Settings.UndoChoice.Tip}" SelectionChanged="ChoiceChanged" Tag="undoSteps">
                                 <ComboBoxItem Content="30" Tag="30" />

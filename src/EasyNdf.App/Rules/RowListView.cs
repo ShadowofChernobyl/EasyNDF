@@ -152,8 +152,8 @@ public sealed class RowListView : Grid
     private FontFamily FontFamily() => (FontFamily)GetValue(TextElement.FontFamilyProperty);
 
     /// <summary>
-    /// A press on the list: it takes the keys, and the row under the mouse is selected. A double-click opens that row,
-    /// or adds one on the list's empty part, unless the setting "Double-click adds" is off.
+    /// A press on the list: it takes the keys, and the row under the mouse is selected. A double-click opens that row;
+    /// on the list's empty part it does nothing, as a new row is added only with the Add button.
     /// </summary>
     private void Pressed(object sender, MouseButtonEventArgs e)
     {
@@ -164,7 +164,6 @@ public sealed class RowListView : Grid
         model.PressRow(List, index, keys.HasFlag(ModifierKeys.Control), keys.HasFlag(ModifierKeys.Shift), e.ChangedButton == MouseButton.Right);
         if (e.ChangedButton != MouseButton.Left || e.ClickCount != 2) return;
         if (index >= 0) RowOpenAsked?.Invoke(List, index);
-        else if (AppData.Current.Settings["dblClickAdds"]?.GetValue<bool>() != false) AddRow(); // the setting "Double-click adds"
     }
 
     /// <summary>Whether a press is on the list's scrollbar, which only scrolls.</summary>

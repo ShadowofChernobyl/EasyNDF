@@ -169,6 +169,8 @@ public sealed class CompareCard : Grid
 
             var label = Small(UnitNames.Stat(stat.Key));
             label.FontSize = 11.5;
+            // on one line, so every row keeps the same height; cut short with "..." when the card is narrow
+            label.TextWrapping = TextWrapping.NoWrap;
             label.TextTrimming = TextTrimming.CharacterEllipsis;
             label.ToolTip = UnitNames.Stat(stat.Key);
             var number = new TextBlock { Text = UnitNumbers.Of(value), TextAlignment = TextAlignment.Right, FontSize = 12, FontWeight = isBest ? FontWeights.Bold : FontWeights.Normal };

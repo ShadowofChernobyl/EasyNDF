@@ -13,14 +13,16 @@ namespace EasyNdf.App.Units;
 /// <param name="Key">The column's key, which names its heading in the texts ("Units.Table.Cost") and its sort.</param>
 /// <param name="Width">Its width; the Unit column takes the room left, with this at the least.</param>
 /// <param name="Number">How to read a unit's number; null for a column of words.</param>
-public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double?>? Number)
+/// <param name="Smallest">The narrowest it can be dragged to.</param>
+/// <param name="Largest">The widest it can be dragged to.</param>
+public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double?>? Number, double Smallest = 56, double Largest = 160)
 {
     /// <summary>The columns, in order: who the unit is, then its numbers, each with a small bar.</summary>
     public static IReadOnlyList<UnitTableColumn> All { get; } =
     [
-        new("Unit", 220, null),
-        new("Nation", 64, null),
-        new("Role", 150, null),
+        new("Unit", 220, null, Smallest: 160, Largest: 600),
+        new("Nation", 64, null, Smallest: 44, Largest: 120),
+        new("Role", 150, null, Smallest: 80, Largest: 300),
         new("Cost", 76, unit => unit.Cost),
         new("Strength", 76, unit => unit.Strength),
         new("FrontArmor", 92, unit => unit.Armor.Front),
@@ -48,11 +50,19 @@ public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double
         _ => Texts.Get("Units.Weapons"),
     };
 
-    /// <summary>The widths of all the columns, the Unit column given the room the others leave in a list this wide.</summary>
-    public static double[] Widths(double listWidth)
+    /// <summary>A width within the column's limits.</summary>
+    public double Fit(double width) => Math.Clamp(width, Smallest, Largest);
+
+    /// <summary>
+    /// The widths of all the columns: each as the user dragged it (by key in <paramref name="chosen"/>), else as at
+    /// first. The Unit column also takes any room the others leave in a list this wide, so the rows reach its edge.
+    /// </summary>
+    public static double[] Widths(double listWidth, IReadOnlyDictionary<string, double> chosen)
     {
-        double others = All.Skip(1).Sum(column => column.Width);
-        return [Math.Max(All[0].Width, listWidth - others), .. All.Skip(1).Select(column => column.Width)];
+        double[] widths = [.. All.Select(column => column.Fit(chosen.TryGetValue(column.Key, out double width) ? width : column.Width))];
+        double others = widths.Skip(1).Sum();
+        widths[0] = Math.Max(widths[0], listWidth - others);
+        return widths;
     }
 
     /// <summary>
@@ -185,6 +195,18 @@ public sealed class UnitTableHeadings : Bevel
     /// <summary>Raised when a heading is clicked, with its column's key.</summary>
     public event Action<string>? SortClicked;
 
+    /// <summary>Raised while a column's right edge is dragged, with its key and its new width (not yet within its limits).</summary>
+    public event Action<string, double>? ColumnResized;
+
+    /// <summary>Raised when a drag of a column's edge ends, so its width can be kept.</summary>
+    public event Action? ResizeEnded;
+
+    /// <summary>Raised when a column's edge is double-clicked, with its key: the column goes back to its first width.</summary>
+    public event Action<string>? ColumnReset;
+
+    /// <summary>The column whose edge is being dragged: its key, where the drag started and the width it had.</summary>
+    private (string Key, double StartX, double StartWidth)? resizing;
+
     /// <summary>Builds empty headings; <see cref="Show"/> fills them.</summary>
     public UnitTableHeadings()
     {
@@ -192,6 +214,16 @@ public sealed class UnitTableHeadings : Bevel
         SetResourceReference(BottomRightProperty, "lo");
         SetResourceReference(BackgroundProperty, "panel");
         Child = cells;
+    }
+
+    /// <summary>
+    /// The columns at new widths while an edge is dragged: the headings stay as they are, so the one being dragged
+    /// keeps the mouse.
+    /// </summary>
+    public void SetWidths(double[] widths)
+    {
+        for (int column = 0; column < cells.ColumnDefinitions.Count && column < widths.Length; column++)
+            cells.ColumnDefinitions[column].Width = new GridLength(widths[column]);
     }
 
     /// <summary>Shows the headings at the columns' widths, marking the one sorted by.</summary>
@@ -219,8 +251,51 @@ public sealed class UnitTableHeadings : Bevel
             cell.SetResourceReference(BottomRightProperty, "line");
             string key = heading.Key;
             cell.MouseLeftButtonUp += (_, _) => SortClicked?.Invoke(key);
-            Grid.SetColumn(cell, column);
-            cells.Children.Add(cell);
+            var place = new Grid { Children = { cell, ResizeLine(key, widths[column]) } };
+            Grid.SetColumn(place, column);
+            cells.Children.Add(place);
         }
+    }
+
+    /// <summary>
+    /// The strip over the line at a heading's right, 7 pixels wide: dragged, it makes the column wider or narrower;
+    /// double-clicked, it puts the column back as at first. It shows in the accent colour under the mouse and while dragged.
+    /// </summary>
+    private Border ResizeLine(string key, double width)
+    {
+        var line = new Border { Width = 7, HorizontalAlignment = HorizontalAlignment.Right, Background = Brushes.Transparent, Cursor = Cursors.SizeWE, ToolTip = Texts.Get("Units.Table.Resize.Tip") };
+        void ShowState()
+        {
+            if (line.IsMouseOver || line.IsMouseCaptured) line.SetResourceReference(Border.BackgroundProperty, "accent");
+            else line.Background = Brushes.Transparent;
+            line.Opacity = 0.55;
+        }
+        line.MouseEnter += (_, _) => ShowState();
+        line.MouseLeave += (_, _) => ShowState();
+        line.MouseLeftButtonDown += (_, e) =>
+        {
+            e.Handled = true;
+            if (e.ClickCount == 2)
+            {
+                ColumnReset?.Invoke(key);
+                return;
+            }
+            resizing = (key, e.GetPosition(this).X, width);
+            line.CaptureMouse();
+        };
+        line.MouseMove += (_, e) =>
+        {
+            if (resizing is var (dragged, startX, startWidth)) ColumnResized?.Invoke(dragged, startWidth + e.GetPosition(this).X - startX);
+        };
+        // a release ends the drag without sorting by the column
+        line.MouseLeftButtonUp += (_, e) => { e.Handled = true; line.ReleaseMouseCapture(); };
+        line.LostMouseCapture += (_, _) =>
+        {
+            bool wasResizing = resizing is not null;
+            resizing = null;
+            if (wasResizing) ResizeEnded?.Invoke();
+            ShowState();
+        };
+        return line;
     }
 }

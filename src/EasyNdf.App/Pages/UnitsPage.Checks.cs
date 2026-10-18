@@ -11,6 +11,7 @@ public partial class UnitsPage
     internal Task ReadNow(UnitSource source)
     {
         started = true;
+        chosen = source;
         sources = [new UnitSource(source.Game, source.GameFolder, null), .. GameInstall.ModsOf(source.GameFolder).Select(mod => new UnitSource(source.Game, source.GameFolder, mod))];
         FillSourceList();
         fillingLists = true;

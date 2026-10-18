@@ -107,8 +107,10 @@
         <!-- the right column -->
         <DockPanel Grid.Column="2">
             <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}">
-                <DockPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- the title, then the buttons at the right; in a narrow window the buttons go on a line of their own -->
+                <controls:FlexRow Gap="8" LineGap="4">
+                    <TextBlock x:Name="TitleText" VerticalAlignment="Center" controls:FlexRow.Grow="1" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="AddUnitsButton" Style="{StaticResource HeadingButton}" Content="{t:Text Units.AddUnits}" ToolTip="{t:Text Units.AddUnits.Tip}"
                                 Margin="0,0,8,0" Click="AddUnitsClicked" />
                         <ToggleButton x:Name="CardsButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Content="{t:Text Units.Cards}" ToolTip="{t:Text Units.Cards.Tip}" Click="ViewClicked" />
@@ -116,8 +118,7 @@
                         <ToggleButton x:Name="CompareButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Margin="-1,0,0,0" Content="{t:Text Units.Compare}" ToolTip="{t:Text Units.Compare.Tip}" Click="ViewClicked" />
                         <Button Style="{StaticResource HelpButton}" Margin="8,0,0,0" FontWeight="Bold" controls:QuickHelp.Page="tab-units" />
                     </StackPanel>
-                    <TextBlock x:Name="TitleText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                </DockPanel>
+                </controls:FlexRow>
             </controls:Bevel>
 
             <!-- what the view shows: how to use it, and how many units -->
