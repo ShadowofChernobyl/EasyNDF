@@ -759,9 +759,9 @@
 
 
     <!--
-      Scrollbars in the theme's colours, 14 pixels thick, without arrow buttons. Plain (most themes): a flat bar of the
-      light edge colour, 3 pixels in from the edges of a track in the box colour; the dim text colour under the mouse.
-      ThemeManager picks Plain or Tread for the theme (Theming/ThemeManager.cs).
+      Scrollbars in the theme's colours, 14 pixels thick, without arrow buttons. Plain: a flat bar of the light edge
+      colour, 3 pixels in from the edges of a track in the box colour; the dim text colour under the mouse.
+      ThemeManager picks Plain or Tread from the "Tread scrollbars" setting, whatever the theme (Theming/ThemeManager.cs).
     -->
     <Style x:Key="PlainScrollThumb" TargetType="Thumb">
         <Setter Property="Template">

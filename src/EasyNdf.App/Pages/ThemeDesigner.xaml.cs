@@ -86,7 +86,6 @@ public partial class ThemeDesigner : UserControl
             bool isEditorColour = key.StartsWith("s-", StringComparison.Ordinal) || key.StartsWith("d-", StringComparison.Ordinal);
             (isEditorColour ? editorRows : interfaceRows).AddColour(ThemeColourNames.Row(key), ColourRow(theme, key, ThemeColourNames.Of(key), colours[key]));
         }
-        interfaceRows.AddOwnRow(Texts.Get("Settings.Designer.ScrollbarStyle"), ScrollbarChoice(theme));
     }
 
     /// <summary>A colour's swatch, which opens the colour window, and its hex text box.</summary>
@@ -172,20 +171,6 @@ public partial class ThemeDesigner : UserControl
         Dispatcher.BeginInvoke(Show);
     }
 
-    private ComboBox ScrollbarChoice(CustomTheme theme)
-    {
-        var choice = new ComboBox { ToolTip = Texts.Get("Settings.Designer.ScrollbarStyle") };
-        choice.Items.Add(new ComboBoxItem { Content = Texts.Get("Settings.Designer.Scrollbar.Plain"), Tag = "plain" });
-        choice.Items.Add(new ComboBoxItem { Content = Texts.Get("Settings.Designer.Scrollbar.Tread"), Tag = "tread" });
-        choice.SelectedIndex = theme.Scrollbars == "tread" ? 1 : 0;
-        choice.SelectionChanged += (_, _) =>
-        {
-            theme.Scrollbars = choice.SelectedIndex == 1 ? "tread" : "plain";
-            SaveAndApply(theme);
-        };
-        return choice;
-    }
-
     /// <summary>Saves the theme, and applies it.</summary>
     private void SaveAndApply(CustomTheme theme)
     {
@@ -220,7 +205,6 @@ public partial class ThemeDesigner : UserControl
         {
             Name = FreeName(name),
             Scheme = copied.Scheme,
-            Scrollbars = copied.Scrollbars,
             Font = CustomTheme.CleanFontName(copied.Font),
             CodeFont = CustomTheme.CleanFontName(copied.CodeFont),
             Colors = ThemeColors.Complete(copied.Colors, baseId),
@@ -259,7 +243,7 @@ public partial class ThemeDesigner : UserControl
         ThemesChanged?.Invoke();
     }
 
-    /// <summary>"Reset colors": every colour, the scrollbars and the fonts as in the built-in theme it was made from.</summary>
+    /// <summary>"Reset colors": every colour and the fonts as in the built-in theme it was made from.</summary>
     private async void ResetClicked(object sender, RoutedEventArgs e)
     {
         if (EditedTheme is not CustomTheme theme) return;
@@ -267,7 +251,6 @@ public partial class ThemeDesigner : UserControl
         if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.ResetAsk", ("name", theme.Name), ("theme", from.Name)), Texts.Get("Settings.Designer.ResetColors"))) return;
         theme.Colors = new Dictionary<string, string>(from.Colors);
         theme.Scheme = from.Scheme;
-        theme.Scrollbars = from.Scrollbars == "tread" ? "tread" : "plain";
         theme.Font = CustomTheme.CleanFontName(from.Font);
         theme.CodeFont = CustomTheme.CleanFontName(from.CodeFont);
         SaveAndApply(theme);

@@ -42,7 +42,7 @@ public static class BuiltInThemes
     public const string DefaultId = "steam";
 
     /// <summary>The order of the Theme dropdown.</summary>
-    public static readonly IReadOnlyList<string> Order = ["slate", "paper", "dusk", "lilac", "ember", "blush", "basalt", "monokai", "mariana", "soldark", "sollight", "steam"];
+    public static readonly IReadOnlyList<string> Order = ["slate", "paper", "dusk", "lilac", "ember", "blush", "cartridge", "basalt", "monokai", "mariana", "soldark", "sollight", "steam"];
 
     /// <summary>The theme "Automatic" uses while Windows' apps are dark, and while they are light.</summary>
     public const string AutomaticDarkId = "slate", AutomaticLightId = "paper";
@@ -56,7 +56,7 @@ public static class BuiltInThemes
     /// <summary>The built-in themes by id.</summary>
     public static readonly IReadOnlyDictionary<string, Theme> ById = new Dictionary<string, Theme>
     {
-        ["steam"] = new Theme("Olivine", "dark", "tread", new Dictionary<string, string>
+        ["steam"] = new Theme("Olivine", "dark", new Dictionary<string, string>
         {
             ["toggle"] = "#364f3b",
             ["bg"] = "#141815",
@@ -85,7 +85,7 @@ public static class BuiltInThemes
             ["s-name"] = "#e3e8e2",
             ["s-field"] = "#b9c7bc",
         }),
-        ["slate"] = new Theme("Slate", "dark", "tread", new Dictionary<string, string>
+        ["slate"] = new Theme("Slate", "dark", new Dictionary<string, string>
         {
             ["bg"] = "#1e2023",
             ["panel"] = "#26292d",
@@ -116,7 +116,7 @@ public static class BuiltInThemes
             ["d-add"] = "#85c79a",
             ["d-del"] = "#ee8a80",
         }),
-        ["paper"] = new Theme("Paper", "light", "tread", new Dictionary<string, string>
+        ["paper"] = new Theme("Paper", "light", new Dictionary<string, string>
         {
             ["bg"] = "#dddcd9",
             ["panel"] = "#eeede9",
@@ -147,7 +147,7 @@ public static class BuiltInThemes
             ["d-add"] = "#2a7a3f",
             ["d-del"] = "#b03a2e",
         }),
-        ["dusk"] = new Theme("Dusk", "dark", "tread", new Dictionary<string, string>
+        ["dusk"] = new Theme("Dusk", "dark", new Dictionary<string, string>
         {
             ["bg"] = "#1b1c21",
             ["panel"] = "#23242b",
@@ -178,7 +178,7 @@ public static class BuiltInThemes
             ["d-add"] = "#8cc8a0",
             ["d-del"] = "#ef8f8f",
         }),
-        ["lilac"] = new Theme("Lilac", "light", "tread", new Dictionary<string, string>
+        ["lilac"] = new Theme("Lilac", "light", new Dictionary<string, string>
         {
             ["bg"] = "#d9dadf",
             ["panel"] = "#e9eaf0",
@@ -209,7 +209,7 @@ public static class BuiltInThemes
             ["d-add"] = "#237a46",
             ["d-del"] = "#b42a2a",
         }),
-        ["ember"] = new Theme("Ember", "dark", "tread", new Dictionary<string, string>
+        ["ember"] = new Theme("Ember", "dark", new Dictionary<string, string>
         {
             ["bg"] = "#1f1c1c",
             ["panel"] = "#282424",
@@ -240,7 +240,7 @@ public static class BuiltInThemes
             ["d-add"] = "#9cc79a",
             ["d-del"] = "#f0806a",
         }),
-        ["blush"] = new Theme("Blush", "light", "tread", new Dictionary<string, string>
+        ["blush"] = new Theme("Blush", "light", new Dictionary<string, string>
         {
             ["bg"] = "#e0dbda",
             ["panel"] = "#f1ecea",
@@ -271,7 +271,38 @@ public static class BuiltInThemes
             ["d-add"] = "#2f7a46",
             ["d-del"] = "#b2361f",
         }),
-        ["basalt"] = new Theme("Basalt", "dark", "tread", new Dictionary<string, string>
+        ["cartridge"] = new Theme("Cartridge", "light", new Dictionary<string, string>
+        {
+            ["bg"] = "#9f9e9a",
+            ["panel"] = "#c9c8c4",
+            ["well"] = "#d9d8d4",
+            ["ink"] = "#1c1c1c",
+            ["muted"] = "#53524d",
+            ["line"] = "#b0afaa",
+            ["accent"] = "#991e24",
+            ["ok"] = "#2c6a38",
+            ["warn"] = "#a3221b",
+            ["caution"] = "#734f00",
+            ["sel"] = "#dcc8c5",
+            ["hover"] = "#d2b2ae",
+            ["toggle"] = "#c0666a",
+            ["hi"] = "#e7e6e2",
+            ["lo"] = "#6f6e6a",
+            ["s-comment"] = "#5b5a54",
+            ["s-string"] = "#7a4e00",
+            ["s-number"] = "#8c3a12",
+            ["s-keyword"] = "#991e24",
+            ["s-type"] = "#1f5f6b",
+            ["s-func"] = "#5f3f8f",
+            ["s-const"] = "#8a2f5a",
+            ["s-ref"] = "#2f6a30",
+            ["s-param"] = "#8c3a12",
+            ["s-name"] = "#1c1c1c",
+            ["s-field"] = "#3e3d39",
+            ["d-add"] = "#2c6e3a",
+            ["d-del"] = "#a8241c",
+        }),
+        ["basalt"] = new Theme("Basalt", "dark", new Dictionary<string, string>
         {
             ["bg"] = "#1b1c1e",
             ["panel"] = "#232427",
@@ -299,7 +330,7 @@ public static class BuiltInThemes
             ["s-name"] = "#dfe1e4",
             ["s-field"] = "#b9bcc1",
         }),
-        ["monokai"] = new Theme("Monokai", "dark", "tread", new Dictionary<string, string>
+        ["monokai"] = new Theme("Monokai", "dark", new Dictionary<string, string>
         {
             ["bg"] = "#1e1f1c",
             ["panel"] = "#272822",
@@ -327,7 +358,7 @@ public static class BuiltInThemes
             ["s-name"] = "#a6e22e",
             ["s-field"] = "#f8f8f2",
         }),
-        ["mariana"] = new Theme("Mariana", "dark", "tread", new Dictionary<string, string>
+        ["mariana"] = new Theme("Mariana", "dark", new Dictionary<string, string>
         {
             ["bg"] = "#262d35",
             ["panel"] = "#303841",
@@ -355,7 +386,7 @@ public static class BuiltInThemes
             ["s-name"] = "#5fb4b4",
             ["s-field"] = "#d8dee9",
         }),
-        ["soldark"] = new Theme("Solarized Dark", "dark", "tread", new Dictionary<string, string>
+        ["soldark"] = new Theme("Solarized Dark", "dark", new Dictionary<string, string>
         {
             ["bg"] = "#002b36",
             ["panel"] = "#073642",
@@ -383,7 +414,7 @@ public static class BuiltInThemes
             ["s-name"] = "#4f9fdc",
             ["s-field"] = "#b6c4c4",
         }),
-        ["sollight"] = new Theme("Solarized Light", "light", "tread", new Dictionary<string, string>
+        ["sollight"] = new Theme("Solarized Light", "light", new Dictionary<string, string>
         {
             ["bg"] = "#eee8d5",
             ["panel"] = "#fdf6e3",
@@ -417,6 +448,5 @@ public static class BuiltInThemes
 /// <summary>A theme: its name, whether it is light or dark, its scrollbar style, and its colours by key.</summary>
 /// <param name="Name">The name shown in the Theme dropdown.</param>
 /// <param name="Scheme">"light" or "dark".</param>
-/// <param name="Scrollbars">"plain" or "tread" (the ridged scrollbars of Olivine).</param>
 /// <param name="Colors">The colours by key, as "#rrggbb". A theme may leave keys out; see <see cref="ThemeColors"/>.</param>
-public sealed record Theme(string Name, string Scheme, string Scrollbars, IReadOnlyDictionary<string, string> Colors, string Font = "", string CodeFont = "", string BaseId = "");
+public sealed record Theme(string Name, string Scheme, IReadOnlyDictionary<string, string> Colors, string Font = "", string CodeFont = "", string BaseId = "");

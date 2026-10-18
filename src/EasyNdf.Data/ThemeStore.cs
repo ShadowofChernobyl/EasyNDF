@@ -31,9 +31,6 @@ public sealed partial class CustomTheme
     /// <summary>"dark" or "light": which built-in controls (such as scrollbars) suit it.</summary>
     public string Scheme { get; set; } = "dark";
 
-    /// <summary>"plain" or "tread": the scrollbar style.</summary>
-    public string Scrollbars { get; set; } = "tread";
-
     /// <summary>The font for the interface, or "" for the default.</summary>
     public string Font { get; set; } = "";
 
@@ -89,7 +86,6 @@ public sealed class ThemeStore
         {
             Name = JsonValues.AsText(json["name"]),
             Scheme = JsonValues.AsText(json["scheme"]) == "light" ? "light" : "dark",
-            Scrollbars = JsonValues.AsText(json["scrollbars"]) == "tread" ? "tread" : "plain",
             Font = JsonValues.AsText(json["font"]),
             CodeFont = JsonValues.AsText(json["codeFont"]),
             BaseId = BuiltInThemes.CurrentId(JsonValues.AsText(json["base"])),
@@ -134,7 +130,6 @@ public sealed class ThemeStore
             ["EasyNDFTheme"] = 1,
             ["name"] = theme.Name,
             ["scheme"] = theme.Scheme,
-            ["scrollbars"] = theme.Scrollbars,
             ["font"] = theme.Font,
             ["codeFont"] = theme.CodeFont,
             ["colors"] = colors,
