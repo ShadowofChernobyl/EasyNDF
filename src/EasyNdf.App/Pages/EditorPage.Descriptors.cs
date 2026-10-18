@@ -1120,14 +1120,17 @@ public partial class EditorPage
             return;
         }
         bool alt = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
-        var row = new TreeNode
-        {
-            Key = "U\u0001" + user.Entry.Id.ToString(CultureInfo.InvariantCulture) + "\u0001" + user.Name, Kind = TreeNodeKind.Descriptor,
-            Label = user.Name, Sub = user.Type, Entry = user.Entry, Name = user.Name,
-        };
+        TreeNode row = NodeOf(user);
         lastUserClick = alt ? null : (row, DateTime.Now);
         _ = Pick(row, reveal: alt);
     }
+
+    /// <summary>A descriptor in "Used by" as a tree row, so it can be picked and shown like one.</summary>
+    private static TreeNode NodeOf(ReferenceIndex.User user) => new()
+    {
+        Key = "U\u0001" + user.Entry.Id.ToString(CultureInfo.InvariantCulture) + "\u0001" + user.Name, Kind = TreeNodeKind.Descriptor,
+        Label = user.Name, Sub = user.Type, Entry = user.Entry, Name = user.Name,
+    };
 
     // ---- what the viewer shows ----
 
@@ -1145,7 +1148,7 @@ public partial class EditorPage
 
     // ---- right-click menus ----
 
-    /// <summary>The tree's right-click menu: on a row, show it in the text, open or close it, copy its name; then the bar's choices.</summary>
+    /// <summary>The tree's right-click menu: on a row, show it in the File Editor, open or close it, copy its name; then the bar's choices.</summary>
     private void TreeRightClicked(object sender, MouseButtonEventArgs e)
     {
         e.Handled = true;
@@ -1154,7 +1157,7 @@ public partial class EditorPage
         if (node is not null)
         {
             if (node.Kind != TreeNodeKind.File)
-                items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.ShowInText"), () => { CloseNow(); selectedKey = node.Key; _ = Pick(node, reveal: true); }));
+                items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.ShowInEditor"), () => { CloseNow(); selectedKey = node.Key; _ = Pick(node, reveal: true); }));
             if (!node.IsLeaf)
                 items.Add(new Controls.MenuChoice(node.IsOpen ? Texts.Get("Editor.Menu.Collapse") : Texts.Get("Editor.Menu.Expand"), () => { CloseNow(); _ = Toggle(node); }));
             items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopyName"), () => Copy(node.Name != "" ? node.Name : node.Label)));
@@ -1167,8 +1170,9 @@ public partial class EditorPage
     }
 
     /// <summary>
-    /// The properties' right-click menu: on a row, copy its property name or value; elsewhere, copy the descriptor's
-    /// name. A value being typed over keeps its own menu.
+    /// The properties' right-click menu: on a row, copy its property name or value; on a descriptor in "Used by", show
+    /// it in the File Editor or copy its name; elsewhere, copy the descriptor's name. A value being typed over keeps its
+    /// own menu.
     /// </summary>
     private void PropertiesRightClicked(object sender, MouseButtonEventArgs e)
     {
@@ -1189,6 +1193,11 @@ public partial class EditorPage
             string key = item is ValueItem v ? v.Key : ((ObjectOrListItem)item).Key;
             items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopyPropertyName"), () => Copy(key)));
             items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopyValue"), () => Copy(((ValueItem)item).Shown), item is ValueItem));
+        }
+        else if (item is UserItem user)
+        {
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.ShowInEditor"), () => _ = Pick(NodeOf(user.User), reveal: true)));
+            items.Add(new Controls.MenuChoice(Texts.Get("Editor.Menu.CopyName"), () => Copy(user.User.Name)));
         }
         else
         {

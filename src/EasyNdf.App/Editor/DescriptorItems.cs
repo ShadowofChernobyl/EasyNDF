@@ -68,7 +68,7 @@ public sealed record UsedByItem(int Count, bool IsOpen) : PropertyItem(0)
     public string Arrow => IsOpen ? "▾" : "▸";
 
     /// <summary>"3 descriptors".</summary>
-    public string Text => Count.ToString("N0", System.Globalization.CultureInfo.InvariantCulture) + (Count == 1 ? " descriptor" : " descriptors");
+    public string Text => Texts.CountWide("Editor.Viewer.Descriptors", Count);
 }
 
 /// <summary>A descriptor that uses this one: its name, type and file.</summary>
@@ -78,7 +78,7 @@ public sealed record UserItem(ReferenceIndex.User User) : PropertyItem(0)
     public override Thickness Indent => new(32, 0, 6, 0);
 
     /// <summary>Its type, or "constant".</summary>
-    public string Type => User.Type != "" ? User.Type : "constant";
+    public string Type => User.Type != "" ? User.Type : Texts.Get("Editor.Head.Constant");
 
     /// <summary>"   · Ammunition.ndf".</summary>
     public string FileTag => "   · " + User.Entry.Name;

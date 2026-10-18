@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using EasyNdf.Data.Themes;
 
 namespace EasyNdf.Data;
 
@@ -31,7 +32,7 @@ public sealed partial class CustomTheme
     public string Scheme { get; set; } = "dark";
 
     /// <summary>"plain" or "tread": the scrollbar style.</summary>
-    public string Scrollbars { get; set; } = "plain";
+    public string Scrollbars { get; set; } = "tread";
 
     /// <summary>The font for the interface, or "" for the default.</summary>
     public string Font { get; set; } = "";
@@ -91,7 +92,7 @@ public sealed class ThemeStore
             Scrollbars = JsonValues.AsText(json["scrollbars"]) == "tread" ? "tread" : "plain",
             Font = JsonValues.AsText(json["font"]),
             CodeFont = JsonValues.AsText(json["codeFont"]),
-            BaseId = JsonValues.AsText(json["base"]),
+            BaseId = BuiltInThemes.CurrentId(JsonValues.AsText(json["base"])),
         };
         foreach (var (key, value) in colors) theme.Colors[key] = JsonValues.AsText(value);
         return theme;
