@@ -246,8 +246,6 @@
   "Rules.Rule.DeleteAsk": "Delete the rule \"{rule}\"?",
   "Rules.Rule.DeleteAskSeveral": "Delete these {count} rules?",
   "Rules.Group.DeleteAsk": "Deleting a group heading leaves its rules in the group above, or in none. Delete it?",
-  "Rules.Group.MoveAsk": "Moving a group heading changes which rules belong to it: the rules stay where they are and the heading moves past them. Move it?",
-  "Rules.Group.Move": "Move",
   "Rules.Group.DoNotAskAgain": "Do not ask again until the app is closed",
   "Rules.Rule.SelectToCut": "Select a rule to cut.",
   "Rules.Cut": "Cut {what} to the clipboard.",

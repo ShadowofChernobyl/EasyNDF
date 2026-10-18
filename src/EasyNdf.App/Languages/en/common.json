@@ -36,5 +36,6 @@
   "Common.Key.Up": "Up",
   "Common.Key.Down": "Down",
   "Common.WithColon": "{label}:",
-  "Rules.Row.Position": "{number} of {count}"
+  "Rules.Row.Position": "{number} of {count}",
+  "Common.Pane.Open.Tip": "Show {name}"
 }

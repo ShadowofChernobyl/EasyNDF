@@ -128,6 +128,7 @@ public partial class EditorPage : UserControl
     public EditorPage()
     {
         InitializeComponent();
+        Panes.FoldedPlace = PaneSlot;
         Panes.SecondTitle = Texts.Get("Editor.Descriptors");
         Texts.LanguageChanged += ShowInNewLanguage;
         // the Descriptor Tree refreshes the first time it shows: opened, or already open when the tab first shows
