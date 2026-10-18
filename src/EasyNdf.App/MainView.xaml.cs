@@ -36,7 +36,7 @@ public partial class MainView : UserControl
         };
         FilesTab.OpenInEditor = entry => _ = EditorTab.Open(entry);
         // the Editor tab's list of files follows the Files tab
-        Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs) && Tabs.SelectedIndex == 2) EditorTab.Refresh(); };
+        Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs) && Tabs.SelectedItem == EditorTabItem) EditorTab.Refresh(); };
         Watermark.AppVersion = AppVersion;
         RowWindow.OpenChanged += RuleWindow.ShowBeside;
         RuleWindow.ListedFiles = () => FilesTab.Model.Entries;
@@ -87,7 +87,7 @@ public partial class MainView : UserControl
         RowWindow.Close();
         Watermark.Cancel();
         RuleWindow.Close();
-        Tabs.SelectedIndex = 4;
+        Tabs.SelectedItem = HelpTabItem;
         HelpTab.Go(id);
     }
 
@@ -154,7 +154,7 @@ public partial class MainView : UserControl
     private void Tell(UndoResult result)
     {
         RulesTab.Model.Say(result.Message);
-        if (result.IsDone || Tabs.SelectedIndex == 0) FilesTab.Model.Say(result.Message);
+        if (result.IsDone || Tabs.SelectedItem == FilesTabItem) FilesTab.Model.Say(result.Message);
     }
 
     /// <summary>
@@ -225,7 +225,7 @@ public partial class MainView : UserControl
     public void HandleShortcut(KeyEventArgs e)
     {
         // the Watermark window takes its own keys
-        if (Messages.IsOpen || Watermark.IsOpen || Tabs.SelectedIndex > 1) return;
+        if (Messages.IsOpen || Watermark.IsOpen || (Tabs.SelectedItem != FilesTabItem && Tabs.SelectedItem != RulesTabItem)) return;
         // Undo and redo work on the Files and Rules tabs outside a text box, which keeps its own.
         bool inTextBox = Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem;
         ModifierKeys keys = Keyboard.Modifiers;
@@ -236,7 +236,7 @@ public partial class MainView : UserControl
             if (e.Key == Key.Y || (e.Key == Key.Z && shift)) { e.Handled = true; Redo(); return; }
         }
         if (RuleWindow.IsOpen) RuleWindow.HandleShortcut(e, RulesTab.Paste);
-        else if (Tabs.SelectedIndex == 0) FilesTab.HandleShortcut(e);
+        else if (Tabs.SelectedItem == FilesTabItem) FilesTab.HandleShortcut(e);
         else RulesTab.HandleShortcut(e);
     }
 
@@ -253,7 +253,7 @@ public partial class MainView : UserControl
         }
         e.Effects = DragDropEffects.Copy;
         if (Messages.IsOpen) return;
-        Tabs.SelectedIndex = 0;
+        Tabs.SelectedItem = FilesTabItem;
         FilesTab.ShowDropHint(true);
     }
 

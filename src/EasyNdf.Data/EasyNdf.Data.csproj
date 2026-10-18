@@ -12,4 +12,9 @@
     <ProjectReference Include="..\EasyNdf.Engine\EasyNdf.Engine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- unpacks the games' textures and atlases, which are compressed with Zstandard (MIT; its notice is in THIRD-PARTY-NOTICES.txt) -->
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.6" />
+  </ItemGroup>
+
 </Project>

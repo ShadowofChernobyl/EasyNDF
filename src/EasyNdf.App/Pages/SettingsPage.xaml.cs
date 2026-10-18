@@ -375,7 +375,7 @@ public partial class SettingsPage : UserControl
     {
         var dialog = new OpenFileDialog { Title = Texts.Get("Settings.Restore.Title"), Filter = Texts.Get("Settings.ModFiles"), Multiselect = true };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        View.Tabs.SelectedIndex = 1;
+        View.Tabs.SelectedItem = View.RulesTabItem;
         await View.RulesTab.ImportModFiles(dialog.FileNames);
     }
 

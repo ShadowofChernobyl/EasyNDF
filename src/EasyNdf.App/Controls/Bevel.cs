@@ -9,7 +9,7 @@ namespace EasyNdf.App.Controls;
 /// <c>.raised</c> (light top-left, dark bottom-right) and <c>.sunken</c> (the other way round) look. WPF's own Border can only
 /// give all four sides one colour.
 /// </summary>
-public sealed class Bevel : Decorator
+public class Bevel : Decorator
 {
     /// <summary>The colour of the top and left edges.</summary>
     public static readonly DependencyProperty TopLeftProperty = DependencyProperty.Register(

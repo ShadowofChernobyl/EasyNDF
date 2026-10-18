@@ -45,6 +45,12 @@ public sealed class AppFolders
     /// <summary>The settings, and what the app remembers between sessions (column widths, the open mod...).</summary>
     public string Settings => Path.Combine(Root, "Settings");
 
+    /// <summary>
+    /// What the app saves to save time, and can make again: the Units tab's pictures, read out of the games. It is not
+    /// one of the folders in <see cref="All"/>, so it is not copied when portable mode is turned on or off.
+    /// </summary>
+    public string Cache => Path.Combine(Root, "Cache");
+
     /// <summary>All five folders, in the order above.</summary>
     public IReadOnlyList<string> All => [Mods, Themes, Filters, Languages, Settings];
 

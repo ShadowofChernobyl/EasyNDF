@@ -228,7 +228,7 @@ public partial class EditorPage : UserControl
     private async Task Open(FileEntry entry, bool showTab)
     {
         if (entry.Source is null || !await MayLeave()) return;
-        if (showTab) MainView.Of(this).Tabs.SelectedIndex = 2;
+        if (showTab) MainView.Of(this).Tabs.SelectedItem = MainView.Of(this).EditorTabItem;
         Note.Text = Texts.Get("Editor.Viewer.ReadingFile", ("file", entry.Name));
         try
         {

@@ -27,6 +27,20 @@ public static class SmoothScrolling
     /// <summary>The glide each scrolling box is on, if any.</summary>
     private static readonly ConditionalWeakTable<ScrollViewer, Glide> glides = [];
 
+    /// <summary>
+    /// Set on a box inside a page that scrolls, such as the Theme Designer's sample editor: the wheel passes over it and
+    /// scrolls the page until the box is clicked into, so a mouse resting on it while the page is scrolled is not
+    /// caught by it.
+    /// </summary>
+    public static readonly DependencyProperty ScrollsOnceClickedProperty = DependencyProperty.RegisterAttached(
+        "ScrollsOnceClicked", typeof(bool), typeof(SmoothScrolling), new PropertyMetadata(false));
+
+    /// <inheritdoc cref="ScrollsOnceClickedProperty"/>
+    public static bool GetScrollsOnceClicked(DependencyObject element) => (bool)element.GetValue(ScrollsOnceClickedProperty);
+
+    /// <inheritdoc cref="ScrollsOnceClickedProperty"/>
+    public static void SetScrollsOnceClicked(DependencyObject element, bool value) => element.SetValue(ScrollsOnceClickedProperty, value);
+
     /// <summary>Starts smooth scrolling for every scrolling box of the app; called once at start-up.</summary>
     public static void Register() =>
         // Wheel events tunnel down from the window, so the outermost box hears them first; it finds the box that
@@ -37,7 +51,7 @@ public static class SmoothScrolling
     {
         if (e.Handled) return;
         // Ctrl and the wheel change an editor's text size; the editor hears it only if no box around it has taken it first
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && IsInEditor(e.OriginalSource as DependencyObject)) return;
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && IsInEditor(e.OriginalSource as DependencyObject) && !IsWaitingForClick(e.OriginalSource as DependencyObject)) return;
         bool sideways = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
         // turning the wheel towards you (a negative delta) scrolls down
         double distance = -e.Delta / DeltaPerNotch * PixelsPerNotch;
@@ -61,12 +75,20 @@ public static class SmoothScrolling
         return false;
     }
 
+    /// <summary>Whether an element is inside a box that scrolls once clicked (<see cref="ScrollsOnceClickedProperty"/>) and has not been clicked into.</summary>
+    private static bool IsWaitingForClick(DependencyObject? element)
+    {
+        for (DependencyObject? at = element; at is not null; at = Parent(at))
+            if (at is UIElement box && GetScrollsOnceClicked(box)) return !box.IsKeyboardFocusWithin;
+        return false;
+    }
+
     /// <summary>The innermost scrolling box around an element that can still move that way.</summary>
     private static ScrollViewer? BoxToScroll(DependencyObject? element, double distance, bool sideways)
     {
         for (DependencyObject? at = element; at is not null; at = Parent(at))
         {
-            if (at is ScrollViewer box && CanMove(box, distance, sideways)) return box;
+            if (at is ScrollViewer box && CanMove(box, distance, sideways) && !IsWaitingForClick(box)) return box;
             // a dropdown's list at its end leaves the page behind it alone, as in a browser
             if (at is System.Windows.Controls.Primitives.Popup) return null;
         }

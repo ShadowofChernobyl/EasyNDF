@@ -225,13 +225,15 @@
                 </DockPanel>
             </controls:PanePair.Main>
             <controls:PanePair.Second>
-                <!-- #details: what the selected file's last run did; it scrolls in its pane -->
+                <!-- #details: what the selected file's last run did; it scrolls in a sunken box, so its edge shows where it is cut off -->
+                <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource panel}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                     <!-- what Details says until a row is clicked or run; then Files/DetailsPanel.cs takes over -->
-                    <ContentControl x:Name="DetailsArea" Focusable="False">
-                        <TextBlock Foreground="{DynamicResource muted}" Margin="10" Text="{t:Text Files.SelectAFileTo}" />
+                    <ContentControl x:Name="DetailsArea" Focusable="False" Margin="8,6,8,8">
+                        <TextBlock Foreground="{DynamicResource muted}" Margin="2" Text="{t:Text Files.SelectAFileTo}" />
                     </ContentControl>
                 </ScrollViewer>
+                </controls:Bevel>
             </controls:PanePair.Second>
         </controls:PanePair>
     </DockPanel>

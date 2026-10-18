@@ -25,7 +25,7 @@ public static class ThemeManager
         Current = theme;
         ResourceDictionary resources = Application.Current.Resources;
         Dictionary<string, string> colours = ThemeColors.For(theme, bevelSetting);
-        colours["scroll-track"] = ThemeColors.ScrollTrack(colours);
+        ThemeColors.AddWorkedOut(colours);
         foreach (var (key, hex) in colours)
         {
             int[] rgb = ThemeColors.Channels(hex);

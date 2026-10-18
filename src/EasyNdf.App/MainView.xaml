@@ -63,24 +63,27 @@
                     </DockPanel>
                 </controls:Bevel>
 
-                <!-- #tabs and the pages. Each page is built in its own stage of the port. -->
+                <!-- #tabs and the pages. Code picks a tab by its name (EditorTabItem...), so tabs can be added between others. -->
                 <TabControl x:Name="Tabs">
-                    <TabItem Header="{t:Text Main.Files}" ToolTip="{t:Text Main.Files.Tip}">
+                    <TabItem x:Name="FilesTabItem" Header="{t:Text Main.Files}" ToolTip="{t:Text Main.Files.Tip}">
                         <pages:FilesPage x:Name="FilesTab" />
                     </TabItem>
-                    <TabItem Header="{t:Text Main.Rules}" ToolTip="{t:Text Main.Rules.Tip}">
+                    <TabItem x:Name="RulesTabItem" Header="{t:Text Main.Rules}" ToolTip="{t:Text Main.Rules.Tip}">
                         <pages:RulesPage x:Name="RulesTab" />
                     </TabItem>
-                    <TabItem Header="{t:Text Main.Editor}" ToolTip="{t:Text Main.Editor.Tip}">
+                    <TabItem x:Name="EditorTabItem" Header="{t:Text Main.Editor}" ToolTip="{t:Text Main.Editor.Tip}">
                         <pages:EditorPage x:Name="EditorTab" />
                     </TabItem>
-                    <TabItem Header="{t:Text Main.Settings}" ToolTip="{t:Text Main.Settings.Tip}">
+                    <TabItem x:Name="UnitsTabItem" Header="{t:Text Main.Units}" ToolTip="{t:Text Main.Units.Tip}">
+                        <pages:UnitsPage x:Name="UnitsTab" />
+                    </TabItem>
+                    <TabItem x:Name="SettingsTabItem" Header="{t:Text Main.Settings}" ToolTip="{t:Text Main.Settings.Tip}">
                         <pages:SettingsPage x:Name="SettingsTab" />
                     </TabItem>
-                    <TabItem Header="{t:Text Main.Help}" ToolTip="{t:Text Main.Help.Tip}">
+                    <TabItem x:Name="HelpTabItem" Header="{t:Text Main.Help}" ToolTip="{t:Text Main.Help.Tip}">
                         <pages:HelpPage x:Name="HelpTab" />
                     </TabItem>
-                    <TabItem Header="{t:Text Main.About}" ToolTip="{t:Text Main.About.Tip}">
+                    <TabItem x:Name="AboutTabItem" Header="{t:Text Main.About}" ToolTip="{t:Text Main.About.Tip}">
                         <pages:AboutPage x:Name="AboutTab" />
                     </TabItem>
                 </TabControl>
@@ -101,6 +104,8 @@
         <dialogs:ColourWindow x:Name="ColourWindow" />
         <!-- the Fonts window of Settings, Appearance -->
         <dialogs:FontWindow x:Name="FontWindow" />
+        <!-- the Units tab's Add Units window -->
+        <dialogs:AddUnitsWindow x:Name="AddUnits" />
         <!-- the welcome window, the first time the app starts -->
         <dialogs:WelcomeWindow x:Name="Welcome" />
         <!-- the message window, over everything else while it is open -->

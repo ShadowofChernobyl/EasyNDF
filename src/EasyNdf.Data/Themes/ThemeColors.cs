@@ -98,6 +98,38 @@ public static partial class ThemeColors
     /// <summary>The Tread scrollbars' track (the HTML app's <c>color-mix(in srgb, var(--well) 60%, var(--lo))</c>).</summary>
     public static string ScrollTrack(IReadOnlyDictionary<string, string> colors) => Mix(colors["well"], 0.6, colors["lo"]);
 
+    /// <summary>
+    /// Adds the colours the app works out from a theme's own: the Tread scrollbars' track, and the Units tab's bars and
+    /// side marks.
+    /// </summary>
+    public static void AddWorkedOut(Dictionary<string, string> colors)
+    {
+        colors["scroll-track"] = ScrollTrack(colors);
+        colors["meter"] = Meter(colors);
+        (colors["side-a"], colors["side-b"]) = Sides(colors);
+    }
+
+    /// <summary>
+    /// The Units tab's bar colour: the accent, as Slate, Paper and Cartridge show it; but where the accent is the "ok"
+    /// colour (Olivine), which marks the best unit, the caution colour, so a plain bar never looks like the best one.
+    /// </summary>
+    public static string Meter(IReadOnlyDictionary<string, string> colors) =>
+        string.Equals(colors["accent"], colors["ok"], StringComparison.OrdinalIgnoreCase) ? colors["caution"] : colors["accent"];
+
+    /// <summary>
+    /// The Units tab's colours for the two sides of a game (NATO and PACT, Allies and Axis): a blue and a red, darker on a
+    /// light theme so they stand out on its pale background.
+    /// </summary>
+    public static (string First, string Second) Sides(IReadOnlyDictionary<string, string> colors) =>
+        IsLight(colors["bg"]) ? ("#3d6b9e", "#a3443d") : ("#6f93bd", "#bd6f68");
+
+    /// <summary>Whether a colour is light: its brightness, as the eye sees it, is past half way.</summary>
+    private static bool IsLight(string hex)
+    {
+        int[] rgb = Channels(hex);
+        return 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2] > 127.5;
+    }
+
     /// <summary>CSS's <c>color-mix(in srgb, a share%, b)</c>: <paramref name="share"/> of a, the rest of b.</summary>
     private static string Mix(string a, double share, string b)
     {

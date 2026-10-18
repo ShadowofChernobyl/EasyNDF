@@ -131,8 +131,9 @@ public sealed class AppData
     }
 
     /// <summary>
-    /// "Clear all data": deletes everything the app keeps (mods, themes, filters, language packs, settings, scans). The
-    /// app starts again afterwards, with the mods it comes with. Files elsewhere on the disk are not touched.
+    /// "Clear all data": deletes everything the app keeps (mods, themes, filters, language packs, settings, scans, the
+    /// Units tab's saved pictures). The app starts again afterwards, with the mods it comes with. Files elsewhere on
+    /// the disk are not touched.
     /// </summary>
     public void ClearAll()
     {
@@ -143,6 +144,12 @@ public sealed class AppData
         if (Folders is null) return;
         foreach (string folder in Folders.All)
             if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+        // the Units tab's saved pictures can be read out of the games again; one still on screen may be in use
+        try
+        {
+            if (Directory.Exists(Folders.Cache)) Directory.Delete(Folders.Cache, recursive: true);
+        }
+        catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
     }
 
     /// <summary>Data that lives in memory only, with the default settings and mods: for the designer, and for drawing the app without touching saved data.</summary>

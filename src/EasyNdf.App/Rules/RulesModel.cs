@@ -651,12 +651,15 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     }
 
     /// <summary>"New rule": a new rule of a type after the selected one, selected. With no preset, one is made to hold it.</summary>
-    public void NewRule(string kind)
+    public void NewRule(string kind) => AddRule(RuleLoading.NewRule(kind));
+
+    /// <summary>A rule made elsewhere (such as the Units tab's "New Rule for This Unit"), added as <see cref="NewRule"/> adds one.</summary>
+    public void AddRule(JsonObject rule)
     {
         bool madePreset = OpenPreset is null;
         if (madePreset) MakePresetForRules();
         int at = Rules.Count == 0 ? 0 : Math.Min(CurrentRule + 1, Rules.Count);
-        Rules.Insert(at, RuleLoading.NewRule(kind));
+        Rules.Insert(at, rule);
         SelectOnly(at);
         Reveal(at);
         SaveRules();
