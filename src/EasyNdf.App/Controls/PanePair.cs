@@ -44,6 +44,12 @@ public sealed class PanePair : Grid
     /// because a button can only be in one panel at a time.
     /// </summary>
     private readonly StackPanel foldedRow = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+    /// <summary>
+    /// Beside, in the main pane's heading: an empty element as tall as the second pane's heading row, so the main
+    /// heading is at least that tall and the two headings' lines meet.
+    /// </summary>
+    private readonly FrameworkElement headingSpacer = new() { Width = 0 };
     /// <summary>The pane's own heading: a button with the pane's icon, name and an arrow, open or folded.</summary>
     private readonly System.Windows.Shapes.Path foldIcon = new() { Width = 14, Height = 14, StrokeThickness = 1.3, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock arrow = new() { Margin = new Thickness(5, 0, 0, 0), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
@@ -64,7 +70,9 @@ public sealed class PanePair : Grid
         // 3 pixels kept under the buttons, so they do not sit on the heading's line
         tools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3), Children = { besideButton, belowButton } };
         DockPanel.SetDock(tools, Dock.Right);
-        headingRow = new DockPanel { LastChildFill = false, Children = { tools, fold } };
+        // at the bottom, so the row keeps its own height when the heading is made as tall as the main one
+        headingRow = new DockPanel { LastChildFill = false, VerticalAlignment = VerticalAlignment.Bottom, Children = { tools, fold } };
+        headingSpacer.SetBinding(HeightProperty, new System.Windows.Data.Binding(nameof(ActualHeight)) { Source = headingRow });
         heading = new Bevel { Style = (Style)Application.Current.FindResource("Heading"), Child = headingRow };
         DockPanel.SetDock(heading, Dock.Top);
         // the name and its icon in the accent colour, as the pane's own heading is
@@ -278,6 +286,7 @@ public sealed class PanePair : Grid
         // folded beside, the main pane has the whole width; the button that opens the pane, and ▥ and ▤, are in its heading
         bool inMainHeading = isFolded && beside && FoldedPlace is not null;
         PutTools(inMainHeading);
+        MatchHeadings(beside && !inMainHeading);
         ShowTitle();
         ShowPlaceButtons(beside);
         if (inMainHeading) return;
@@ -312,6 +321,30 @@ public sealed class PanePair : Grid
             tools.Margin = new Thickness(0, 0, 0, 3);
             headingRow.Children.Insert(0, tools);
         }
+    }
+
+    /// <summary>
+    /// Beside, the two panes' headings are made the same height, whichever has the taller content, so their lines meet:
+    /// the main heading holds <see cref="headingSpacer"/>, and the second heading is at least as tall as the main one.
+    /// Below, each heading has its own height.
+    /// </summary>
+    private void MatchHeadings(bool beside)
+    {
+        Bevel? mainHeading = MainHeading();
+        if (beside && mainHeading is not null)
+        {
+            FoldedPlace!.Content = headingSpacer;
+            heading.SetBinding(MinHeightProperty, new System.Windows.Data.Binding(nameof(ActualHeight)) { Source = mainHeading });
+        }
+        else heading.ClearValue(MinHeightProperty);
+    }
+
+    /// <summary>The main pane's heading: the one <see cref="FoldedPlace"/> sits in.</summary>
+    private Bevel? MainHeading()
+    {
+        for (DependencyObject? at = FoldedPlace; at is not null; at = LogicalTreeHelper.GetParent(at))
+            if (at is Bevel bevel) return bevel;
+        return null;
     }
 
     /// <summary>▥ and ▤ pressed only while chosen by hand; while the window's size decides, neither is.</summary>
