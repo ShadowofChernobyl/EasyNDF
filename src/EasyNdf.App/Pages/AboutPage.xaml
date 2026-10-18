@@ -14,8 +14,11 @@
             <Button x:Name="ChangeLogButton" Content="{t:Text About.ChangeLog}" MinWidth="112" ToolTip="{t:Text About.ChangeLog.Tip}" Click="ChangeLogClicked" />
             <Button Content="{t:Text About.License}" MinWidth="112" ToolTip="{t:Text About.License.Tip}" Click="LicenseClicked" />
         </controls:SnappedRow>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-            <ContentControl x:Name="Body" Focusable="False" />
-        </ScrollViewer>
+        <!-- the text scrolls in a sunken box, so its edge shows where it is cut off -->
+        <controls:Bevel Margin="0,8,0,0" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource panel}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <ContentControl x:Name="Body" Focusable="False" Margin="10,6" />
+            </ScrollViewer>
+        </controls:Bevel>
     </DockPanel>
 </UserControl>

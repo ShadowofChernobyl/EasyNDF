@@ -31,10 +31,12 @@
                     </StackPanel>
                 </ScrollViewer>
             </controls:Bevel>
-            <ScrollViewer x:Name="CardScroller" Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+            <!-- the cards scroll in a sunken box, like the list on the left, so its edge shows where they are cut off -->
+            <controls:Bevel Grid.Column="2" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+            <ScrollViewer x:Name="CardScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
                           ScrollChanged="CardsScrolled">
         <!-- one card per category, all on the page; SettingsPage.xaml.cs lists them on the left by their headings -->
-        <StackPanel x:Name="Cards">
+        <StackPanel x:Name="Cards" Margin="8,8,8,0">
             <!-- Results -->
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Results">
                 <StackPanel>
@@ -272,6 +274,7 @@
             </controls:Bevel>
         </StackPanel>
             </ScrollViewer>
+            </controls:Bevel>
         </Grid>
     </DockPanel>
 </UserControl>

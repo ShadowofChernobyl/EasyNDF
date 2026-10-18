@@ -358,6 +358,32 @@ public partial class RulesPage : UserControl
         }
     }
 
+    /// <summary>
+    /// The Units tab's "New Rule for This Unit" and the like: an Edit rule for some descriptors, one condition each
+    /// ("Descriptor Title", "Is Equal To"), any of which it matches. It is added below the selected rule, this tab
+    /// comes to the front, and the rule opens, to choose what it changes.
+    /// </summary>
+    /// <param name="name">The rule's name, such as the unit's.</param>
+    /// <param name="descriptors">The descriptors' names, such as "Descriptor_Unit_M1A1_Abrams_US".</param>
+    public void AddRuleFor(string name, IReadOnlyList<string> descriptors)
+    {
+        JsonObject rule = RuleLoading.NewRule("Edit");
+        rule["Name"] = name;
+        var conditions = new JsonArray();
+        foreach (string descriptor in descriptors)
+        {
+            JsonObject condition = RuleLoading.NewCondition();
+            condition["Operator"] = "Is Equal To";
+            condition["Value"] = descriptor;
+            conditions.Add(condition);
+        }
+        rule["Conditions"] = conditions;
+        Model.AddRule(rule);
+        MainView view = MainView.Of(this);
+        view.Tabs.SelectedItem = view.RulesTabItem;
+        OpenRuleWindow();
+    }
+
     /// <summary>Adds a rule of a type below the selected one, and opens it.</summary>
     private void AddRule(string kind)
     {

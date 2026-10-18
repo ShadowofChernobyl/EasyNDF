@@ -34,8 +34,10 @@
                 <Button x:Name="ForwardButton" Style="{StaticResource IconButton}" Content="›" ToolTip="{t:Text Help.Forward.Tip}" Click="ForwardClicked" Margin="6,0,0,0" VerticalAlignment="Center" />
                 <Button DockPanel.Dock="Right" Content="{t:Text Help.WelcomeWindow}" ToolTip="{t:Text Help.WelcomeWindow.Tip}" HorizontalAlignment="Right" Click="WelcomeClicked" />
             </DockPanel>
+            <!-- the page scrolls in a sunken box, so its edge shows where the text is cut off -->
+            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
             <ScrollViewer x:Name="PageScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                <StackPanel>
+                <StackPanel Margin="12,6,12,10">
                     <!-- #wkCrumb: the page's group, a link to its first page -->
                     <TextBlock HorizontalAlignment="Left" Margin="0,2,0,2" FontSize="11.5" LineHeight="16.675" LineStackingStrategy="BlockLineHeight">
                         <Hyperlink x:Name="Crumb" Style="{StaticResource CrumbLink}" Click="CrumbClicked" ToolTip="{t:Text Help.Crumb.Tip}"><Run x:Name="CrumbText" /></Hyperlink>
@@ -59,6 +61,7 @@
                     </Grid>
                 </StackPanel>
             </ScrollViewer>
+            </controls:Bevel>
         </DockPanel>
     </Grid>
 </UserControl>

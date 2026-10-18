@@ -1125,6 +1125,30 @@ public partial class EditorPage
         _ = Pick(row, reveal: alt);
     }
 
+    /// <summary>
+    /// Shows a descriptor of a file on the Files tab, for the Units tab's "Show Unit in File Editor" and the like: the
+    /// Editor tab comes to the front with the file open, the descriptor selected in the Descriptor Tree and shown in
+    /// the text.
+    /// </summary>
+    public async Task ShowDescriptor(FileEntry entry, string name)
+    {
+        MainView view = MainView.Of(this);
+        view.Tabs.SelectedItem = view.EditorTabItem;
+        if (IsLocal(entry))
+        {
+            int index = outline.FindIndex(descriptor => descriptor.Name == name);
+            if (index < 0) return;
+            otherDescriptor = null;
+            await SelectDescriptor(index, reveal: true, keepClosed: false);
+            ShowTree();
+            return;
+        }
+        // shown once the file is open and its descriptors are listed
+        wanted = new Wanted(name, 0, -1, Quiet: false);
+        await Open(entry);
+        if (shown?.Entry != entry) wanted = null;
+    }
+
     /// <summary>A descriptor in "Used by" as a tree row, so it can be picked and shown like one.</summary>
     private static TreeNode NodeOf(ReferenceIndex.User user) => new()
     {

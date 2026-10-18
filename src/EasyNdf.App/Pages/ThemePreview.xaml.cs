@@ -160,7 +160,13 @@ public partial class ThemePreview : UserControl
 
     // ---- the sample editor ----
 
-    private void ShowSampleEditor(string text) => SampleEditor.Content = new NdfTextBox(text, sampleOwner, isSample: true);
+    /// <summary>The sample editor; the wheel scrolls the page over it until it is clicked into.</summary>
+    private void ShowSampleEditor(string text)
+    {
+        var editor = new NdfTextBox(text, sampleOwner, isSample: true);
+        Controls.SmoothScrolling.SetScrollsOnceClicked(editor, true);
+        SampleEditor.Content = editor;
+    }
 
     /// <summary>"Reset text": the sample text as it was.</summary>
     private void ResetTextClicked(object sender, RoutedEventArgs e)

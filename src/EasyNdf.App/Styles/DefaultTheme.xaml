@@ -38,6 +38,10 @@
     <!-- the Tread scrollbars' track, worked out from "well" and "lo" (see ThemeColors.ScrollTrack) -->
     <SolidColorBrush x:Key="scroll-track" Color="#101311" />
     <SolidColorBrush x:Key="d-del" Color="#f0957a" />
+    <!-- the Units tab's bars and side marks, worked out from the theme (see ThemeColors.Meter and ThemeColors.Sides) -->
+    <SolidColorBrush x:Key="meter" Color="#bfac5f" />
+    <SolidColorBrush x:Key="side-a" Color="#6f93bd" />
+    <SolidColorBrush x:Key="side-b" Color="#bd6f68" />
 
     <FontFamily x:Key="ui-font">Tahoma, Verdana, Segoe UI</FontFamily>
     <FontFamily x:Key="mono">Cascadia Mono, Consolas, Lucida Console</FontFamily>
