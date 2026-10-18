@@ -36,7 +36,6 @@ public sealed class SettingsStore(string settingsFolder)
         ["autoAssign"] = true,
         ["confirmDelete"] = true,
         // the desktop app's own: a double-click on the empty part of a rule's condition or action list adds one
-        ["dblClickAdds"] = true,
         ["theme"] = "steam",
         // the desktop app's own: the file list comes back when the app starts again
         ["restoreSession"] = true,

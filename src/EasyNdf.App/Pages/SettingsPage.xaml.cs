@@ -163,7 +163,7 @@ public partial class SettingsPage : UserControl
             DecimalsBox.Text = Number("decimals", 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
             DecimalsRow.Note = Texts.Get("Settings.DecimalsRow.Note");
             DecimalsRow.NoteIsWarning = false;
-            foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, DoubleClickSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
+            foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
                 ConfirmExportSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch })
                 toggle.IsChecked = IsOn((string)toggle.Tag);
             foreach (ComboBox choice in new[] { LineEndChoice, ScopeChoice, FolderChoice, DuplicateChoice, UndoChoice, ScaleChoice })

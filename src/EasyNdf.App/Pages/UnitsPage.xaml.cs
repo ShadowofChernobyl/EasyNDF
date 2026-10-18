@@ -97,13 +97,9 @@ public partial class UnitsPage : UserControl
         ShowMessage(Texts.Get("Units.LookingForGames"), offerChooser: false);
         sources = await Task.Run(() => UnitSource.FindAll(ChosenFolders()));
         FillSourceList();
-        UnitSource? first = sources.FirstOrDefault(source => source.Key == (string?)AppData.Current.State["unitSource"]) ?? sources.FirstOrDefault();
-        if (first is null)
-        {
-            ShowMessage(Texts.Get("Units.NoGame"), offerChooser: true);
-            return;
-        }
-        SelectSource(first);
+        // nothing is read until a source is chosen: reading a game's units and pictures takes a while, and the user
+        // should know what started it
+        ShowMessage(Texts.Get(sources.Count == 0 ? "Units.NoGame" : "Units.ChooseSourceFirst"), offerChooser: sources.Count == 0);
     }
 
     /// <summary>The game folders the user chose with "Choose a Game Folder…", kept between sessions.</summary>
@@ -118,24 +114,54 @@ public partial class UnitsPage : UserControl
     {
         fillingLists = true;
         SourceChoice.Items.Clear();
+        // until a source is chosen, the list shows "Choose a Source..."
+        if (chosen is null) SourceChoice.Items.Add(new ComboBoxItem { Content = Texts.Get("Units.ChooseSource"), Tag = "none", IsEnabled = false });
         foreach (UnitSource game in sources.Where(source => source.Mod is null))
             SourceChoice.Items.Add(new ComboBoxItem { Content = game.Name, Tag = game });
         List<UnitSource> mods = [.. sources.Where(source => source.Mod is not null)];
         if (mods.Count > 0)
         {
-            var heading = new ComboBoxItem { Content = Texts.Get("Units.Mods"), IsEnabled = false, FontWeight = FontWeights.Bold };
-            SourceChoice.Items.Add(heading);
+            SourceChoice.Items.Add(new ComboBoxItem { Content = CategoryHeading(Texts.Get("Units.Mods")), IsEnabled = false });
             foreach (UnitSource mod in mods)
             {
                 var game = new System.Windows.Documents.Run("  " + mod.Game.Name);
                 game.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "muted");
-                SourceChoice.Items.Add(new ComboBoxItem { Content = new TextBlock { Inlines = { new System.Windows.Documents.Run(mod.Name), game } }, Tag = mod, ToolTip = mod.Folder });
+                // never bold: the box shows a picture of the chosen item, which the list draws bold while it is chosen
+                var name = new TextBlock { Inlines = { new System.Windows.Documents.Run(mod.Name), game }, FontWeight = FontWeights.Normal };
+                SourceChoice.Items.Add(new ComboBoxItem { Content = name, Tag = mod, ToolTip = mod.Folder });
             }
         }
         SourceChoice.Items.Add(new ComboBoxItem { Content = Texts.Get("Units.ChooseGameFolder"), Tag = "choose", ToolTip = Texts.Get("Units.ChooseGameFolder.Tip") });
-        if (loaded is not null) SourceChoice.SelectedItem = ItemOf(loaded.Source);
+        SourceChoice.SelectedItem = chosen is null ? SourceChoice.Items[0] : ItemOf(chosen);
         fillingLists = false;
     }
+
+    /// <summary>
+    /// A category's heading in the Source list, such as "Mods": its name in the middle, bold and dim, with a dashed line
+    /// on each side reaching the list's edges, so it reads as the start of a group rather than something to choose.
+    /// </summary>
+    private static Grid CategoryHeading(string name)
+    {
+        var heading = new Grid();
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var text = new TextBlock { Text = name, FontWeight = FontWeights.Bold, Margin = new Thickness(8, 0, 8, 0) };
+        text.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        Grid.SetColumn(text, 1);
+        heading.Children.Add(text);
+        foreach (int column in new[] { 0, 2 })
+        {
+            var line = new System.Windows.Shapes.Rectangle { Height = 1, StrokeThickness = 1, StrokeDashArray = [3, 2], VerticalAlignment = VerticalAlignment.Center, MinWidth = 12 };
+            line.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "muted");
+            Grid.SetColumn(line, column);
+            heading.Children.Add(line);
+        }
+        return heading;
+    }
+
+    /// <summary>The source chosen in the list, read or being read; null until one is chosen, each time the app starts.</summary>
+    private UnitSource? chosen;
 
     private ComboBoxItem? ItemOf(UnitSource source) =>
         SourceChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => item.Tag is UnitSource listed && listed.Key == source.Key);
@@ -154,6 +180,10 @@ public partial class UnitsPage : UserControl
         if (fillingLists || SourceChoice.SelectedItem is not ComboBoxItem item) return;
         if (item.Tag is UnitSource source)
         {
+            bool first = chosen is null;
+            chosen = source;
+            // "Choose a Source..." goes once a source is chosen
+            if (first) FillSourceList();
             if (loaded?.Source.Key != source.Key) _ = Read(source);
             return;
         }
@@ -161,7 +191,7 @@ public partial class UnitsPage : UserControl
         {
             // the list goes back to the source shown, whether or not a folder is chosen
             fillingLists = true;
-            SourceChoice.SelectedItem = loaded is null ? null : ItemOf(loaded.Source);
+            SourceChoice.SelectedItem = chosen is null ? SourceChoice.Items[0] : ItemOf(chosen);
             fillingLists = false;
             ChooseGameFolder();
         }
@@ -169,6 +199,8 @@ public partial class UnitsPage : UserControl
 
     private void SelectSource(UnitSource source)
     {
+        chosen = source;
+        FillSourceList();
         fillingLists = true;
         SourceChoice.SelectedItem = ItemOf(source);
         fillingLists = false;
@@ -236,8 +268,6 @@ public partial class UnitsPage : UserControl
 
         loaded = read;
         UnitPictureLibrary.Current = new UnitPictureLibrary(read.Pictures, read.Catalog.FlagSources);
-        AppData.Current.State["unitSource"] = source.Key;
-        AppData.Current.SaveState();
         ProblemsText.Visibility = read.Problems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ProblemsText.ToolTip = string.Join("\n", read.Problems.Take(20));
         ResetFilters();

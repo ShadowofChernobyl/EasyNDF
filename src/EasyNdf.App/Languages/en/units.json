@@ -1,6 +1,8 @@
 {
   "Units.Source": "Source",
   "Units.SourceChoice.Tip": "The game or mod whose units are shown",
+  "Units.ChooseSource": "Choose a Source...",
+  "Units.ChooseSourceFirst": "Choose a game or mod under Source to see its units. Reading them and their pictures can take a few seconds.",
   "Units.Mods": "Mods",
   "Units.ChooseGameFolder": "Choose a Game Folder...",
   "Units.ChooseGameFolder.Tip": "For a game Steam did not find: pick the folder with Data and Mods in it",
@@ -71,6 +73,7 @@
   "Units.Table.Role": "Role",
   "Units.Table.Strength": "HP",
   "Units.Table.Sort.Tip": "Sort by this column; click again for the other way",
+  "Units.Table.Resize.Tip": "Drag to resize the column; double-click for its first width",
   "Units.Pane.Title": "Unit",
   "Units.Pane.ClickAUnit": "Click a unit to see it here.",
   "Units.Pane.ShowInEditor": "Show in File Editor",

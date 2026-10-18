@@ -147,7 +147,12 @@
                                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                                     <Button Style="{StaticResource IconButton}" Content="&#x2191;" Tag="up" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveUp.Tip}" Click="RuleButtonClicked" />
                                                     <Button Style="{StaticResource IconButton}" Content="&#x2193;" Tag="down" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveDown.Tip}" Click="RuleButtonClicked" />
-                                                    <Button Style="{StaticResource IconButton}" Content="+" Tag="dup" Margin="4,0,0,0" ToolTip="{t:Text Rules.Duplicate.Tip}" Click="RuleButtonClicked" />
+                                                    <!-- Duplicate: the copy icon, two square outlines, the front one over the corner of the one behind -->
+                                                    <Button Style="{StaticResource IconButton}" Tag="dup" Margin="4,0,0,0" ToolTip="{t:Text Rules.Duplicate.Tip}" Click="RuleButtonClicked">
+                                                        <Path Width="11" Height="11" StrokeThickness="1" VerticalAlignment="Center"
+                                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                              Data="M 3.5,3.5 V 0.5 H 10.5 V 7.5 H 7.5 M 0.5,3.5 H 7.5 V 10.5 H 0.5 Z" />
+                                                    </Button>
                                                     <Button Style="{StaticResource IconButton}" Content="&#xD7;" Tag="del" Margin="4,0,0,0" ToolTip="{t:Text Rules.Delete.Tip}" Click="RuleButtonClicked" />
                                                 </StackPanel>
                                                 <Button x:Name="Fold" DockPanel.Dock="Left" Style="{StaticResource IconButton}" Tag="fold" Margin="0,0,4,0"
