@@ -21,7 +21,7 @@ public partial class RulesPage
 
     private KeyList activeList;
 
-    /// <summary>"Do not ask again" for moving and deleting group headings, until the app is closed.</summary>
+    /// <summary>"Do not ask again" for deleting group headings, until the app is closed.</summary>
     private static bool groupHeadingsNeedNoQuestion;
 
     /// <summary>
@@ -102,8 +102,8 @@ public partial class RulesPage
         }
         else if (activeList == KeyList.Rules)
         {
-            if (control && e.Key == Key.Up) { e.Handled = true; _ = MoveSelectedRules(-1); }
-            else if (control && e.Key == Key.Down) { e.Handled = true; _ = MoveSelectedRules(+1); }
+            if (control && e.Key == Key.Up) { e.Handled = true; MoveSelectedRules(-1); }
+            else if (control && e.Key == Key.Down) { e.Handled = true; MoveSelectedRules(+1); }
             else if (control && e.Key == Key.A) { e.Handled = true; Model.SelectAllRules(); }
             else if (control && e.Key == Key.C) { e.Handled = true; CopyRules(); }
             else if (control && e.Key == Key.X) { e.Handled = true; _ = CutRules(); }
@@ -119,12 +119,12 @@ public partial class RulesPage
 
     // ---- acting on the selected rules ----
 
-    /// <summary>Moves the selected rules up or down; a group heading among them asks first.</summary>
-    private async Task MoveSelectedRules(int direction)
+    /// <summary>Moves the selected rules up or down; with a group heading among them, whole groups move.</summary>
+    private void MoveSelectedRules(int direction)
     {
         if (Model.SelectedRules.Count == 0) return;
-        if (Model.SelectionHasGroupHeading && !await MayChangeGroupHeading(isDelete: false)) return;
-        Model.MoveSelectedRules(direction);
+        if (Model.SelectionHasGroupHeading) Model.MoveSelectedGroups(direction);
+        else Model.MoveSelectedRules(direction);
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ public partial class RulesPage
         List<JsonNode?> rules = [.. picked.Select(place => Model.Rules[place])];
         if (Model.DeletingLeavesGroupRulesBehind)
         {
-            if (!await MayChangeGroupHeading(isDelete: true)) return false;
+            if (!await MayDeleteGroupHeading()) return false;
         }
         else if (AppData.Current.Settings["confirmDelete"]?.GetValue<bool>() != false)
         {
@@ -153,16 +153,13 @@ public partial class RulesPage
     }
 
     /// <summary>
-    /// Asks before a group heading is moved or deleted, since that changes which rules belong to the group (the HTML
-    /// app's <c>groupAsk</c>).
+    /// Asks before a group heading is deleted without its rules, since they then belong to the group above, or to none
+    /// (the HTML app's <c>groupAsk</c>).
     /// </summary>
-    private async Task<bool> MayChangeGroupHeading(bool isDelete)
+    private async Task<bool> MayDeleteGroupHeading()
     {
         if (groupHeadingsNeedNoQuestion) return true;
-        string question = isDelete
-            ? Texts.Get("Rules.Group.DeleteAsk")
-            : Texts.Get("Rules.Group.MoveAsk");
-        DialogAnswer answer = await Messages.Ask(question, new DialogOptions { Ok = isDelete ? Texts.Get("Common.Menu.Delete") : Texts.Get("Rules.Group.Move"), CheckText = Texts.Get("Rules.Group.DoNotAskAgain") });
+        DialogAnswer answer = await Messages.Ask(Texts.Get("Rules.Group.DeleteAsk"), new DialogOptions { Ok = Texts.Get("Common.Menu.Delete"), CheckText = Texts.Get("Rules.Group.DoNotAskAgain") });
         if (answer.Choice != DialogChoice.Ok) return false;
         if (answer.IsChecked) groupHeadingsNeedNoQuestion = true;
         return true;
@@ -227,8 +224,8 @@ public partial class RulesPage
         [
             new MenuChoice(Texts.Get("Common.Menu.Configure"), () => { Model.SelectOnly(row.Index); OpenRuleWindow(); }, IsEnabled: count == 1, Key: "Enter"),
             new MenuChoice(Texts.Get("Common.Menu.Duplicate"), Model.DuplicateSelectedRules),
-            new MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => _ = MoveSelectedRules(-1), Key: "Ctrl+Up"),
-            new MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => _ = MoveSelectedRules(+1), Key: "Ctrl+Down"),
+            new MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => MoveSelectedRules(-1), Key: "Ctrl+Up"),
+            new MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => MoveSelectedRules(+1), Key: "Ctrl+Down"),
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CutSeveral", ("what", RulesModel.CountRules(count))) : Texts.Get("Common.Menu.Cut"), () => _ = CutRules(), Key: "Ctrl+X"),
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CopySeveral", ("what", RulesModel.CountRules(count))) : Texts.Get("Common.Menu.Copy"), CopyRules, Key: "Ctrl+C"),
             new MenuChoice(isOn ? Texts.Get("Common.Menu.Disable") : Texts.Get("Common.Menu.Enable"), () => Model.SetSelectedRulesOn(!isOn)),

@@ -498,6 +498,77 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         SaveRules();
     }
 
+    /// <summary>
+    /// Ctrl+Up and Ctrl+Down, or a heading's arrows, when group headings are selected: each of those groups moves past
+    /// the group above or below it, with all its rules, so no rule changes group. Rules before the first group belong to
+    /// none, so a group never moves above them. Other selected rules stay selected where they go.
+    /// </summary>
+    public void MoveSelectedGroups(int direction)
+    {
+        List<(int Start, int End)> groups = GroupBlocks();
+        var picked = new HashSet<int>(SelectedRules);
+        List<JsonNode?> selected = [.. picked.Select(place => Rules[place])];
+        JsonNode? current = CurrentRule < Rules.Count ? Rules[CurrentRule] : null;
+        var held = new HashSet<int>(); // groups that stay where they are, by their place in the list of groups
+        IEnumerable<int> order = direction < 0 ? Enumerable.Range(0, groups.Count) : Enumerable.Range(0, groups.Count).Reverse();
+        foreach (int group in order)
+        {
+            if (!picked.Contains(groups[group].Start)) continue;
+            int other = group + direction;
+            if (other < 0 || other >= groups.Count || held.Contains(other))
+            {
+                held.Add(group);
+                continue;
+            }
+            SwapBlocks(groups, Math.Min(group, other));
+            groups = GroupBlocks();
+            held.Add(other);
+        }
+        selectedRules.Clear();
+        foreach (JsonNode? rule in selected) selectedRules.Add(Rules.IndexOf(rule));
+        CurrentRule = current is null ? CurrentRule : Rules.IndexOf(current);
+        ruleAnchor = CurrentRule;
+        if (CurrentRule < Rules.Count) Reveal(CurrentRule);
+        SaveRules();
+    }
+
+    /// <summary>Each group in the list, as the place of its heading and of its last rule, from the top.</summary>
+    private List<(int Start, int End)> GroupBlocks()
+    {
+        var groups = new List<(int Start, int End)>();
+        for (int place = 0; place < Rules.Count; place++)
+        {
+            if (!IsGroupHeading(place)) continue;
+            if (groups.Count > 0) groups[^1] = (groups[^1].Start, place - 1);
+            groups.Add((place, Rules.Count - 1));
+        }
+        return groups;
+    }
+
+    /// <summary>Swaps a group with the group below it, each with all its rules.</summary>
+    private void SwapBlocks(List<(int Start, int End)> groups, int upper)
+    {
+        (int upperStart, int upperEnd) = groups[upper];
+        (int lowerStart, int lowerEnd) = groups[upper + 1];
+        List<JsonNode?> upperRules = TakeRules(upperStart, upperEnd);
+        // the lower group's rules are now where the upper group's began
+        List<JsonNode?> lowerRules = TakeRules(upperStart, upperStart + lowerEnd - lowerStart);
+        int at = upperStart;
+        foreach (JsonNode? rule in lowerRules.Concat(upperRules)) Rules.Insert(at++, rule);
+    }
+
+    /// <summary>Takes the rules from one place to another, both included, out of the list.</summary>
+    private List<JsonNode?> TakeRules(int first, int last)
+    {
+        var taken = new List<JsonNode?>();
+        for (int place = first; place <= last; place++)
+        {
+            taken.Add(Rules[first]);
+            Rules.RemoveAt(first);
+        }
+        return taken;
+    }
+
     /// <summary>Swaps two rules.</summary>
     private void Swap(int first, int second)
     {
@@ -543,7 +614,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         SaveRules();
     }
 
-    /// <summary>Whether a group heading is among the selected rules: moving it changes which rules belong to it.</summary>
+    /// <summary>Whether a group heading is among the selected rules: then whole groups move.</summary>
     public bool SelectionHasGroupHeading => SelectedRules.Any(IsGroupHeading);
 
     /// <summary>

@@ -303,12 +303,14 @@
             </StackPanel>
         </StackPanel>
 
-        <controls:PanePair x:Name="Panes" Key="editor" FoldedAtFirst="True" DefaultBeside="600" DefaultBelow="300">
+        <controls:PanePair x:Name="Panes" Key="editor" FoldedAtFirst="True" FoldedIcon="M 2,2.5 H 6 M 4,2.5 V 11.5 H 7 M 4,7 H 7 M 8.5,7 H 12 M 8.5,11.5 H 12" DefaultBeside="600" DefaultBelow="300">
             <controls:PanePair.Main>
                 <DockPanel>
                 <!-- .fhrow: the File Editor heading and the note about the file, on a line (Fold all and Unfold all are in the status strip) -->
                 <controls:Bevel DockPanel.Dock="Top" Edges="0,0,0,1" BottomRight="{DynamicResource line}" Padding="0,0,0,3" Margin="0,0,0,5">
                     <DockPanel>
+                        <!-- the Descriptor Tree folded beside: the button that opens it, with the layout buttons (PanePair.FoldedPlace) -->
+                        <ContentControl x:Name="PaneSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Center" />
                         <TextBlock DockPanel.Dock="Left" Text="{t:Text Editor.FileEditor}" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
                         <TextBlock x:Name="Note" Style="{StaticResource Note}" Margin="6,0,6,0" VerticalAlignment="Center" TextWrapping="Wrap" />
                     </DockPanel>

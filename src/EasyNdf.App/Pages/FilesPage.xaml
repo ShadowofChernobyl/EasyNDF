@@ -148,12 +148,16 @@
             </TextBlock>
         </StackPanel>
 
-        <controls:PanePair x:Name="Panes" Key="files" FoldedAtFirst="True" DefaultBeside="520" DefaultBelow="300">
+        <controls:PanePair x:Name="Panes" Key="files" FoldedAtFirst="True" FoldedIcon="M 1.5,1.5 H 12.5 V 12.5 H 1.5 Z M 4,4.5 H 10 M 4,7 H 10 M 4,9.5 H 8" DefaultBeside="520" DefaultBelow="300">
             <controls:PanePair.Main>
                 <DockPanel>
                     <!-- h2: the File List heading -->
                     <controls:Bevel Style="{StaticResource Heading}" DockPanel.Dock="Top">
-                        <TextBlock Text="{t:Text Files.FileList}" />
+                        <DockPanel>
+                            <!-- Details folded beside: the button that opens it, with the layout buttons (PanePair.FoldedPlace) -->
+                            <ContentControl x:Name="PaneSlot" DockPanel.Dock="Right" Focusable="False" />
+                            <TextBlock Text="{t:Text Files.FileList}" VerticalAlignment="Center" />
+                        </DockPanel>
                     </controls:Bevel>
                     <!-- #jobWrap: the list, with the outline that shows while files are dragged over the app -->
                     <Grid x:Name="ListArea">

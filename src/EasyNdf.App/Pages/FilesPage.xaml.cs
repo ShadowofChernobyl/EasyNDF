@@ -36,6 +36,7 @@ public partial class FilesPage : UserControl
     public FilesPage()
     {
         InitializeComponent();
+        Panes.FoldedPlace = PaneSlot;
         ShowPaneTitles();
         Texts.LanguageChanged += () =>
         {

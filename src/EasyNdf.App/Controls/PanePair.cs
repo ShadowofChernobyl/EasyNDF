@@ -10,8 +10,10 @@ namespace EasyNdf.App.Controls;
 /// <summary>
 /// A tab's main pane and its second pane (Details on the Files tab, Descriptors on the Editor tab), beside it or below
 /// it as <see cref="PaneArrangement"/> decides, with a bar between them to drag. The second pane has a heading that
-/// folds it away and holds ▥ and ▤, which put it beside or below. Its size beside and its size below are kept apart,
-/// and with whether it is folded, between sessions.
+/// folds it away and holds ▥ and ▤, which put it beside or below. Folded below, its heading stays as a line along the
+/// bottom; folded beside, it leaves the main pane the whole width and a button with its name, with ▥ and ▤, waits at
+/// the right of the main pane's heading (<see cref="FoldedPlace"/>). Its size beside and its size below are kept
+/// apart, and with whether it is folded, between sessions.
 /// </summary>
 public sealed class PanePair : Grid
 {
@@ -27,14 +29,25 @@ public sealed class PanePair : Grid
     internal FrameworkElement Bar => bar;
     private readonly DockPanel second = new();
     private readonly Bevel heading;
+    private readonly DockPanel headingRow;
+
+    /// <summary>▥ and ▤: in the second pane's heading, or with the button in the main pane's heading when folded beside.</summary>
+    private readonly StackPanel tools;
+
+    /// <summary>Folded beside: the button in the main pane's heading that opens the pane again, with its icon and name.</summary>
+    private readonly Button openButton = new();
+    private readonly System.Windows.Shapes.Path openIcon = new() { Width = 14, Height = 14, StrokeThickness = 1.3, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock openName = new() { VerticalAlignment = VerticalAlignment.Center };
 
     /// <summary>
-    /// Folded beside, the heading stands on its side and its line would stop where its text ends; this line takes its
-    /// place down the whole height, as the heading's line spans the whole width when the pane is folded below.
+    /// Folded beside: the open button and the ▥ ▤ buttons together in the main pane's heading. Kept, not made anew,
+    /// because a button can only be in one panel at a time.
     /// </summary>
-    private readonly Bevel foldedLine = new() { Edges = new Thickness(1, 0, 0, 0) };
-    private readonly TextBlock arrow = new() { Width = 10, TextAlignment = TextAlignment.Center, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
-    private readonly TextBlock title = new() { Margin = new Thickness(6, 0, 0, 0) };
+    private readonly StackPanel foldedRow = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+    /// <summary>The pane's own heading: a button with the pane's icon, name and an arrow, open or folded.</summary>
+    private readonly System.Windows.Shapes.Path foldIcon = new() { Width = 14, Height = 14, StrokeThickness = 1.3, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock arrow = new() { Margin = new Thickness(5, 0, 0, 0), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock title = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly ToggleButton besideButton, belowButton;
     private readonly ContentControl body = new() { Focusable = false };
     private UIElement? main;
@@ -45,14 +58,26 @@ public sealed class PanePair : Grid
     {
         besideButton = PlaceButton("beside");
         belowButton = PlaceButton("below");
-        var fold = new Button { Style = (Style)Application.Current.FindResource("FoldHeading"), ToolTip = Texts.Get("Common.Pane.Fold.Tip"), Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { arrow, title } } };
+        // the same button look as the one that opens the pane when folded beside, so the heading never changes style
+        var fold = new Button { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 3), ToolTip = Texts.Get("Common.Pane.Fold.Tip"), Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { foldIcon, title, arrow } } };
         fold.Click += (_, _) => Fold(!isFolded);
         // 3 pixels kept under the buttons, so they do not sit on the heading's line
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3), Children = { besideButton, belowButton } };
+        tools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3), Children = { besideButton, belowButton } };
         DockPanel.SetDock(tools, Dock.Right);
-        heading = new Bevel { Style = (Style)Application.Current.FindResource("Heading"), Child = new DockPanel { LastChildFill = false, Children = { tools, fold } } };
+        headingRow = new DockPanel { LastChildFill = false, Children = { tools, fold } };
+        heading = new Bevel { Style = (Style)Application.Current.FindResource("Heading"), Child = headingRow };
         DockPanel.SetDock(heading, Dock.Top);
-        foldedLine.SetResourceReference(Bevel.TopLeftProperty, "line");
+        // the name and its icon in the accent colour, as the pane's own heading is
+        foreach (TextBlock name in new[] { openName, title })
+        {
+            name.FontWeight = FontWeights.Bold;
+            name.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+        }
+        foreach (System.Windows.Shapes.Path icon in new[] { openIcon, foldIcon })
+            icon.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "accent");
+        openButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { openIcon, openName, new TextBlock { Text = " ◂", VerticalAlignment = VerticalAlignment.Center } } };
+        openButton.Click += (_, _) => Fold(false);
+        foldedRow.Children.Add(openButton);
         second.Children.Add(heading);
         second.Children.Add(body);
         bar.Moved += BarMoved;
@@ -74,6 +99,29 @@ public sealed class PanePair : Grid
 
     /// <summary>The second pane's size at first: its height below.</summary>
     public double DefaultBelow { get; set; } = 280;
+
+    /// <summary>
+    /// The place at the right of the main pane's heading where, folded beside, the button that opens the second pane
+    /// and ▥ and ▤ go (the tab puts an empty ContentControl there and gives it here).
+    /// </summary>
+    public ContentControl? FoldedPlace
+    {
+        get => foldedPlace;
+        set { foldedPlace = value; Arrange(); }
+    }
+    private ContentControl? foldedPlace;
+
+    /// <summary>The second pane's icon, on the button that opens it when it is folded beside.</summary>
+    public Geometry? FoldedIcon
+    {
+        get => openIcon.Data;
+        set
+        {
+            openIcon.Data = value;
+            foldIcon.Data = value;
+            foldIcon.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible;
+        }
+    }
 
     /// <summary>The main pane: it takes the room the second pane leaves.</summary>
     public UIElement? Main
@@ -104,7 +152,12 @@ public sealed class PanePair : Grid
     public string? FoldedTitle { get; set; }
 
     /// <summary>Shows the heading for the pane as it is now, folded or not.</summary>
-    private void ShowTitle() => title.Text = isFolded && FoldedTitle is not null ? FoldedTitle : secondTitle;
+    private void ShowTitle()
+    {
+        title.Text = isFolded && FoldedTitle is not null ? FoldedTitle : secondTitle;
+        openName.Text = FoldedTitle ?? secondTitle;
+        openButton.ToolTip = Texts.Get("Common.Pane.Open.Tip", ("name", openName.Text));
+    }
 
     /// <summary>Whether the second pane is folded away, with only its heading showing.</summary>
     public bool IsFolded => isFolded;
@@ -222,6 +275,12 @@ public sealed class PanePair : Grid
             ShowShare();
         }
         Put(main, 0, beside);
+        // folded beside, the main pane has the whole width; the button that opens the pane, and ▥ and ▤, are in its heading
+        bool inMainHeading = isFolded && beside && FoldedPlace is not null;
+        PutTools(inMainHeading);
+        ShowTitle();
+        ShowPlaceButtons(beside);
+        if (inMainHeading) return;
         bar.LiesFlat = !beside;
         bar.ToolTip = Texts.Get("Common.ResizeGrip.Tip");
         // folded, the bar cannot be dragged but keeps its room, so the heading keeps the same gap from the main pane
@@ -230,17 +289,34 @@ public sealed class PanePair : Grid
         Put(bar, 1, beside);
         Put(second, 2, beside);
         body.Visibility = isFolded ? Visibility.Collapsed : Visibility.Visible;
-        // folded beside, the heading stands on its side down the window's edge
-        heading.LayoutTransform = isFolded && beside ? new RotateTransform(90) : Transform.Identity;
-        if (isFolded && beside)
+        arrow.Text = isFolded ? "▸" : "▾";
+    }
+
+    /// <summary>
+    /// Puts ▥ and ▤ in the main pane's heading, after the button that opens the pane, or back in the second pane's
+    /// own heading.
+    /// </summary>
+    private void PutTools(bool inMainHeading)
+    {
+        (tools.Parent as Panel)?.Children.Remove(tools);
+        if (FoldedPlace is not null) FoldedPlace.Content = null;
+        if (inMainHeading)
         {
-            heading.Edges = new Thickness(0);
-            Put(foldedLine, 2, beside);
+            tools.Margin = new Thickness(0);
+            foldedRow.Children.Add(tools);
+            FoldedPlace!.Content = foldedRow;
         }
-        else heading.ClearValue(Bevel.EdgesProperty);
-        arrow.Text = isFolded ? (beside ? "◂" : "▸") : "▾";
-        ShowTitle();
-        // pressed only while chosen by hand; while the window's size decides, neither is
+        else
+        {
+            // 3 pixels kept under the buttons, so they do not sit on the heading's line
+            tools.Margin = new Thickness(0, 0, 0, 3);
+            headingRow.Children.Insert(0, tools);
+        }
+    }
+
+    /// <summary>▥ and ▤ pressed only while chosen by hand; while the window's size decides, neither is.</summary>
+    private void ShowPlaceButtons(bool beside)
+    {
         bool byHand = !PaneArrangement.IsAutomatic;
         besideButton.IsChecked = byHand && beside;
         belowButton.IsChecked = byHand && !beside;
