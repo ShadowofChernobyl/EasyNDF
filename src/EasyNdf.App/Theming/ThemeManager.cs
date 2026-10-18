@@ -50,14 +50,20 @@ public static class ThemeManager
     public static event Action? Applied;
 
     /// <summary>
-    /// The theme chosen on the Settings tab (setting "theme"): a built-in theme by its id, or "system" for Light or Dark
-    /// as Windows' own apps are set to; Olivine for anything else. With the "Beveled edges" setting.
+    /// The theme chosen on the Settings tab (setting "theme"): a built-in theme by its id, or "system" for Paper or Slate
+    /// as Windows' own apps are set to; Olivine for anything else. With the "Beveled edges" setting. A theme since
+    /// replaced (Light, Dark) is swapped for its replacement in the setting too.
     /// </summary>
     public static void ApplySaved()
     {
         JsonObject settings = EasyNdf.App.AppData.Current.Settings;
         string id = (string?)settings["theme"] ?? BuiltInThemes.DefaultId;
-        if (id == "system") id = WindowsAppsAreLight() ? "light" : "dark";
+        if (BuiltInThemes.Replaced.ContainsKey(id))
+        {
+            id = BuiltInThemes.CurrentId(id);
+            settings["theme"] = id;
+        }
+        if (id == "system") id = WindowsAppsAreLight() ? BuiltInThemes.AutomaticLightId : BuiltInThemes.AutomaticDarkId;
         Theme theme = CustomThemeFor(id) ?? BuiltInThemes.ById.GetValueOrDefault(id) ?? BuiltInThemes.ById[BuiltInThemes.DefaultId];
         Apply(theme, SwitchOrNone(settings["bevel"]), SwitchOrNone(settings["treadScrollbars"]));
     }

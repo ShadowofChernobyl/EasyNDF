@@ -175,7 +175,7 @@ public partial class SettingsPage : UserControl
             ShowThemes();
             ShowLanguages();
             Designer.Show();
-            BevelSwitch.IsChecked = Settings["bevel"]?.GetValue<bool>() ?? ThemeColors.HasOwnBevel(ThemeManager.Current);
+            BevelSwitch.IsChecked = Settings["bevel"]?.GetValue<bool>() ?? true;
             TreadSwitch.IsChecked = Settings["treadScrollbars"]?.GetValue<bool>() ?? ThemeManager.Current.Scrollbars == "tread";
             DataNote.Text = AppData.Current.Folders is { } folders
                 ? Texts.Get("Settings.DataNote.Folder", ("folder", folders.Root))

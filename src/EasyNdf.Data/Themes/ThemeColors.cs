@@ -13,7 +13,7 @@ public static partial class ThemeColors
     /// Every colour key's colour for a theme, as "#rrggbb".
     /// </summary>
     /// <param name="theme">The theme.</param>
-    /// <param name="bevelSetting">The "Beveled edges" setting: null until the user touches it, so each theme keeps its own look.</param>
+    /// <param name="bevelSetting">The "Beveled edges" setting: null until the user touches it, when every theme is beveled.</param>
     public static Dictionary<string, string> For(Theme theme, bool? bevelSetting)
     {
         var colors = new Dictionary<string, string>();
@@ -71,12 +71,12 @@ public static partial class ThemeColors
     }
 
     /// <summary>
-    /// The "Beveled edges" setting, once touched, decides for every theme: on gives a flat theme a lighter and a darker edge
-    /// made from its own colours; off gives a beveled theme one edge colour.
+    /// The "Beveled edges" setting, on until the user turns it off: on gives a flat theme a lighter and a darker edge made
+    /// from its own colours; off gives a beveled theme one edge colour.
     /// </summary>
     private static void ApplyBevelSetting(Theme theme, Dictionary<string, string> colors, bool? bevelSetting)
     {
-        bool own = HasOwnBevel(theme), wanted = bevelSetting ?? own, light = theme.Scheme == "light";
+        bool own = HasOwnBevel(theme), wanted = bevelSetting ?? true, light = theme.Scheme == "light";
         if (wanted && !own)
         {
             colors["hi"] = light ? Mix(colors["line"], 0.45, "#ffffff") : Mix(colors["line"], 0.82, colors["ink"]);
