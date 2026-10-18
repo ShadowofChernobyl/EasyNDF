@@ -118,8 +118,8 @@ public static class BuiltInThemes
         }),
         ["paper"] = new Theme("Paper", "light", "tread", new Dictionary<string, string>
         {
-            ["bg"] = "#eeede9",
-            ["panel"] = "#f8f7f4",
+            ["bg"] = "#dddcd9",
+            ["panel"] = "#eeede9",
             ["well"] = "#fffffe",
             ["ink"] = "#262624",
             ["muted"] = "#66645e",
@@ -180,8 +180,8 @@ public static class BuiltInThemes
         }),
         ["lilac"] = new Theme("Lilac", "light", "tread", new Dictionary<string, string>
         {
-            ["bg"] = "#e9eaf0",
-            ["panel"] = "#f6f6f9",
+            ["bg"] = "#d9dadf",
+            ["panel"] = "#e9eaf0",
             ["well"] = "#ffffff",
             ["ink"] = "#23232b",
             ["muted"] = "#5f5f70",
@@ -242,8 +242,8 @@ public static class BuiltInThemes
         }),
         ["blush"] = new Theme("Blush", "light", "tread", new Dictionary<string, string>
         {
-            ["bg"] = "#f1ecea",
-            ["panel"] = "#faf7f6",
+            ["bg"] = "#e0dbda",
+            ["panel"] = "#f1ecea",
             ["well"] = "#ffffff",
             ["ink"] = "#2a2324",
             ["muted"] = "#6c6062",
