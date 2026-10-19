@@ -7,10 +7,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls">
-    <!-- the buttons stay put; the text under them scrolls -->
-    <DockPanel>
+    <!--
+      the buttons stay put; the text under them scrolls. Laid out as the Help tab's page is, so the two look alike: as wide
+      as Help's page (its 1152 pixels less its 240-pixel list and the 14 between), in the middle of the tab, the buttons
+      in a row above it, and the text at most 736 wide, as Help's is.
+    -->
+    <DockPanel MaxWidth="898" HorizontalAlignment="Stretch">
         <!-- .helpmode: the buttons in the middle, 7rem wide at least -->
-        <controls:SnappedRow DockPanel.Dock="Top" Gap="6" HorizontalAlignment="Center" Margin="0,2,0,0">
+        <controls:SnappedRow DockPanel.Dock="Top" Gap="6" HorizontalAlignment="Center" Margin="0,0,0,6">
             <Button x:Name="ChangeLogButton" Content="{t:Text About.ChangeLog}" MinWidth="112" ToolTip="{t:Text About.ChangeLog.Tip}" Click="ChangeLogClicked" />
             <Button Content="{t:Text About.License}" MinWidth="112" ToolTip="{t:Text About.License.Tip}" Click="LicenseClicked" />
             <Button Style="{StaticResource GoButton}" MinWidth="112" ToolTip="{t:Text About.Support.Tip}" Click="SupportClicked">
@@ -20,10 +24,10 @@
                 </StackPanel>
             </Button>
         </controls:SnappedRow>
-        <!-- the text scrolls in a sunken box, so its edge shows where it is cut off -->
-        <controls:Bevel Margin="0,8,0,0" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource panel}">
+        <!-- the text scrolls in a sunken box, as Help's page does, so its edge shows where it is cut off -->
+        <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                <ContentControl x:Name="Body" Focusable="False" Margin="10,6" />
+                <ContentControl x:Name="Body" Focusable="False" Margin="12,6,12,10" MaxWidth="736" HorizontalAlignment="Left" />
             </ScrollViewer>
         </controls:Bevel>
     </DockPanel>

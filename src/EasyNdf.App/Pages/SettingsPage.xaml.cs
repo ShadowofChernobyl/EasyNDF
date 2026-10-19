@@ -318,7 +318,7 @@ public partial class SettingsPage : UserControl
         if (await View.FontWindow.Edit()) ShowFonts();
     }
 
-    /// <summary>The Fonts row's note: the two fonts in use, and whether they are the theme's.</summary>
+    /// <summary>The fonts in use, beside the Fonts button, and whether they are the theme's.</summary>
     private void ShowFonts()
     {
         static string Named(bool isCode)
@@ -326,7 +326,7 @@ public partial class SettingsPage : UserControl
             string chosen = ThemeManager.ChosenFont(isCode);
             return chosen != "" ? chosen : Texts.Get("Settings.FontsRow.ThemeFont", ("font", ThemeManager.ThemeFontName(isCode)));
         }
-        FontsRow.Note = Texts.Get("Settings.FontsRow.Note", ("interface", Named(false)), ("code", Named(true)));
+        FontsValue.Text = Texts.Get("Settings.FontsRow.Note", ("interface", Named(false)), ("code", Named(true)));
     }
 
     private void BevelClicked(object sender, RoutedEventArgs e)
