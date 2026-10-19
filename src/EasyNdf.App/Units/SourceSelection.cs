@@ -3,12 +3,11 @@ using System.Text.Json.Nodes;
 using EasyNdf.Data.Game;
 using EasyNdf.Data.Units;
 
-namespace EasyNdf.App.Files;
+namespace EasyNdf.App.Units;
 
 /// <summary>
-/// The game or mod the app works with (the Source bar on the Files tab): the games found on this computer and their
-/// mods, and the one chosen. The Files tab adds its files; the Units tab reads its units. Nothing is chosen when the
-/// app starts, so nothing slow happens before the user asks for it.
+/// The game or mod whose units the Units tab shows (its Source list): the games found on this computer and their mods,
+/// and the one chosen. Nothing is chosen when the app starts, so nothing slow happens before the user asks for it.
 /// </summary>
 public sealed class SourceSelection
 {

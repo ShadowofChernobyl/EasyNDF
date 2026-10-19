@@ -11,9 +11,9 @@ public partial class UnitsPage
     internal Task ReadNow(UnitSource source)
     {
         List<UnitSource> found = [new UnitSource(source.Game, source.GameFolder, null), .. GameInstall.ModsOf(source.GameFolder).Select(mod => new UnitSource(source.Game, source.GameFolder, mod))];
-        sources?.UseForChecks(found, source);
-        ShowSource();
-        return Read(source);
+        started = true;
+        sources.UseForChecks(found, source);
+        return lastRead;
     }
 
     /// <summary>Every unit read.</summary>

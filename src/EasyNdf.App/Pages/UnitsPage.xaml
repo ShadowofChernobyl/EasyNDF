@@ -75,6 +75,11 @@
         <!-- the left column: where the units come from, the filters, and the nations -->
         <DockPanel Grid.Column="0">
             <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Source}" /></controls:Bevel>
+                <units:SourceChoice x:Name="SourceChoice" />
+                <TextBlock x:Name="WhereText" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
                 <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Find}" /></controls:Bevel>
                 <TextBox x:Name="SearchBox" Tag="{t:Text Units.SearchBox.Hint}" ToolTip="{t:Text Units.SearchBox.Tip}" TextChanged="SearchChanged" />
                 <StackPanel x:Name="SideChoices" Orientation="Horizontal" Margin="0,6,0,0" />
@@ -227,8 +232,8 @@
                 <controls:Bevel x:Name="MessageArea" Style="{StaticResource SunkenBox}" Visibility="Collapsed">
                     <StackPanel Margin="10">
                         <TextBlock x:Name="MessageText" Foreground="{DynamicResource muted}" TextWrapping="Wrap" />
-                        <Button x:Name="ChooseFolderButton" Content="{t:Text Units.ChooseSourceOnFiles}" ToolTip="{t:Text Units.ChangeSource.Tip}"
-                                HorizontalAlignment="Left" Margin="0,8,0,0" Click="ChangeSourceClicked" Visibility="Collapsed" />
+                        <Button x:Name="ChooseFolderButton" Content="{t:Text Units.ChooseGameFolder}" ToolTip="{t:Text Units.ChooseGameFolder.Tip}"
+                                HorizontalAlignment="Left" Margin="0,8,0,0" Click="ChooseFolderClicked" Visibility="Collapsed" />
                     </StackPanel>
                 </controls:Bevel>
             </Grid>

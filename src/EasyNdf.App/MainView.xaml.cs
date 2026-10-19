@@ -35,11 +35,6 @@ public partial class MainView : UserControl
             return FilesTab.Model.Entries.LastOrDefault(entry => entry.Name == added.Name);
         };
         FilesTab.OpenInEditor = entry => _ = EditorTab.Open(entry);
-        // the game or mod chosen on the Files tab is the one the Units tab shows; the games are looked for once the
-        // window is up, in the background
-        FilesTab.UseSources(Sources);
-        UnitsTab.Sources = Sources;
-        Loaded += (_, _) => { if (!Sources.HasLooked) _ = Sources.LookAsync(); };
         // the Editor tab's list of files follows the Files tab
         Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs) && Tabs.SelectedItem == EditorTabItem) EditorTab.Refresh(); };
         Watermark.AppVersion = AppVersion;
@@ -142,16 +137,6 @@ public partial class MainView : UserControl
 
     /// <summary>"Paste" in a menu of the rule window: what is on the clipboard goes where the Rules tab's Paste puts it.</summary>
     public void PasteFromClipboard() => RulesTab.PasteFromClipboard();
-
-    /// <summary>The game or mod the app works with, chosen on the Files tab's Source bar.</summary>
-    public Files.SourceSelection Sources { get; } = new();
-
-    /// <summary>The Units tab's "Change…": the Files tab comes to the front with the Source list open.</summary>
-    public void ShowSourceList()
-    {
-        Tabs.SelectedItem = FilesTabItem;
-        Dispatcher.BeginInvoke(() => FilesTab.SourceBar.OpenList(), System.Windows.Threading.DispatcherPriority.Loaded);
-    }
 
     /// <summary>Undo and Redo, for the changes on the Files and Rules tabs.</summary>
     public UndoHistory History { get; }

@@ -5,7 +5,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using EasyNdf.App.Controls;
-using EasyNdf.App.Files;
 using EasyNdf.App.Text;
 using EasyNdf.App.Units;
 using EasyNdf.Data.Game;
@@ -50,6 +49,9 @@ public partial class UnitsPage : UserControl
             OpenUnitMenu(unit, UnitPaneContent);
         };
         IsVisibleChanged += (_, _) => TabShown();
+        sources.Changed += SourceChanged;
+        SourceChoice.Selection = sources;
+        ShowSource();
         PreviewKeyDown += FoldKeys;
         Texts.LanguageChanged += LanguageChanged;
         CardsList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
@@ -64,14 +66,13 @@ public partial class UnitsPage : UserControl
     public GameTitle Game => loaded?.Source.Game ?? GameTitle.Warno;
 
     /// <summary>
-    /// The tab is shown: the source chosen on the Files tab is read if it is not shown yet, and the Unit pane is drawn
-    /// again, as files added on the Files tab meanwhile change what its "Show in File Editor" can open.
+    /// The tab is shown: the first time, the games are looked for; each time, the Unit pane is drawn again, as files
+    /// added on the Files tab meanwhile change what its "Show in File Editor" can open.
     /// </summary>
     private void TabShown()
     {
         if (!IsVisible) return;
-        ShowSource();
-        ReadChosenSource();
+        if (!started) _ = LookForGames();
         ShowUnitPane();
     }
 
@@ -89,37 +90,46 @@ public partial class UnitsPage : UserControl
 
     // ---- the source ----
 
-    /// <summary>
-    /// The game or mod chosen on the Files tab's Source bar. The units are read when it changes while this tab is
-    /// shown, or when the tab is next shown, so choosing a source on the Files tab costs nothing until its units are wanted.
-    /// </summary>
-    public SourceSelection? Sources
-    {
-        get => sources;
-        set
-        {
-            if (sources is not null) sources.Changed -= SourceChanged;
-            sources = value;
-            if (sources is not null) sources.Changed += SourceChanged;
-        }
-    }
-    private SourceSelection? sources;
+    /// <summary>The games and mods found, and the one chosen in the Source list.</summary>
+    private readonly SourceSelection sources = new();
 
+    /// <summary>Whether the games have been looked for: the first time the tab is shown, not when the app starts.</summary>
+    private bool started;
+
+    /// <summary>The read started last, so the checks can wait for it.</summary>
+    private Task lastRead = Task.CompletedTask;
+
+    /// <summary>The source being read now, so it is not read twice at once.</summary>
+    private string? readingKey;
+
+    /// <summary>The first time the tab is shown: finds the games and their mods. Nothing is read until a source is chosen.</summary>
+    private async Task LookForGames()
+    {
+        started = true;
+        ShowMessage(Texts.Get("Units.LookingForGames"), offerChooser: false);
+        await sources.LookAsync();
+        // reading a game's units and pictures takes a while, and the user should know what started it
+        if (sources.Chosen is null)
+            ShowMessage(Texts.Get(sources.Sources.Count == 0 ? "Units.NoGame" : "Units.ChooseSourceFirst"), offerChooser: sources.Sources.Count == 0);
+    }
+
+    /// <summary>A source was chosen in the list: it is shown in the heading and read, unless it is shown already.</summary>
     private void SourceChanged()
     {
         ShowSource();
-        if (IsVisible) ReadChosenSource();
+        if (sources.Chosen is not UnitSource chosen || loaded?.Source.Key == chosen.Key || readingKey == chosen.Key) return;
+        lastRead = Read(chosen);
     }
 
     /// <summary>
-    /// Which source the units are from, in the heading: "Units in WTO x WiF", the game dimmed after a mod's name, with
-    /// the folder as its tooltip; "Units" alone while none is chosen.
+    /// Which source the units are from: in the heading, "Units in WTO x WiF", the game dimmed after a mod's name, and
+    /// "Units" alone while none is chosen; and its folder under the Source list.
     /// </summary>
     private void ShowSource()
     {
         TitleText.Inlines.Clear();
-        UnitSource? chosen = sources?.Chosen;
-        TitleText.ToolTip = chosen?.Folder;
+        UnitSource? chosen = sources.Chosen;
+        WhereText.Text = chosen?.Folder ?? "";
         if (chosen is null)
         {
             TitleText.Inlines.Add(new System.Windows.Documents.Run(Texts.Get("Main.Units")));
@@ -132,28 +142,7 @@ public partial class UnitsPage : UserControl
         TitleText.Inlines.Add(game);
     }
 
-    /// <summary>
-    /// Reads the source chosen, unless its units are shown already. With none chosen, says to choose one on the Files
-    /// tab: reading a game's units and pictures takes a while, so it only starts when the user asks.
-    /// </summary>
-    private void ReadChosenSource()
-    {
-        UnitSource? chosen = sources?.Chosen;
-        if (chosen is null)
-        {
-            bool noGame = sources?.HasLooked == true && sources.Sources.Count == 0;
-            ShowMessage(Texts.Get(noGame ? "Units.NoGame" : "Units.ChooseSourceFirst"), offerChooser: true);
-            return;
-        }
-        if (loaded?.Source.Key == chosen.Key || readingKey == chosen.Key) return;
-        _ = Read(chosen);
-    }
-
-    /// <summary>The source being read now, so it is not read twice at once.</summary>
-    private string? readingKey;
-
-    /// <summary>"Change…": the Files tab's Source list, opened.</summary>
-    private void ChangeSourceClicked(object sender, RoutedEventArgs e) => MainView.Of(this).ShowSourceList();
+    private void ChooseFolderClicked(object sender, RoutedEventArgs e) => SourceChoice.ChooseFolder();
 
     /// <summary>
     /// Reads a source's units in the background (a few seconds), then shows them with the filters cleared. The units
@@ -196,7 +185,7 @@ public partial class UnitsPage : UserControl
         ShowAll();
     }
 
-    /// <summary>Shows a line where the units go: while reading, or when there is nothing to read; with a button to the Files tab's Source list when it helps.</summary>
+    /// <summary>Shows a line where the units go: while reading, or when there is nothing to read; with "Choose a Game Folder…" when it helps.</summary>
     private void ShowMessage(string text, bool offerChooser)
     {
         MessageText.Text = text;
