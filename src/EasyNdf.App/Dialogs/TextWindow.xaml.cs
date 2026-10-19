@@ -28,10 +28,18 @@ public partial class TextWindow : UserControl
         Dispatcher.BeginInvoke(() => Scroller.Focus());
     }
 
-    /// <summary>The License text: white space kept, in the code font, dim (the HTML app's <c>.lic</c>).</summary>
+    /// <summary>
+    /// The License text: white space kept, in the code font, dim (the HTML app's <c>.lic</c>). The text is as wide as its
+    /// longest line and sits in the middle of the box, so the license's lines, written to fit 80 columns, keep their
+    /// shape and its centred headings look centred; a narrow window wraps them.
+    /// </summary>
     public static TextBlock PlainText(string text)
     {
-        var block = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 11.5, LineHeight = 16.675, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+        var block = new TextBlock
+        {
+            Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 11.5, LineHeight = 16.675, LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
         block.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
         block.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         return block;
