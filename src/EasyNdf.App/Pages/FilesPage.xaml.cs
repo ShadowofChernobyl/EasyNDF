@@ -73,9 +73,8 @@ public partial class FilesPage : UserControl
         Model.ViewChanged += SaveView;
         AppData.Current.ModsChanged += FollowMods;
         // once a burst: reading a thousand files tells of a thousand changes
-        var showState = new RunOnceSoon(() => { ShowListState(); ShowSourceCount(); });
+        var showState = new RunOnceSoon(ShowListState);
         Model.PropertyChanged += (_, _) => showState.Ask();
-        SourceBar.AddFilesRequested += AddSourceFiles;
         DataContext = Model;
         ListBox.SizeChanged += (_, _) => FitColumns();
         Loaded += (_, _) =>
@@ -200,64 +199,6 @@ public partial class FilesPage : UserControl
         };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         await AddLooseFiles(dialog.FileNames);
-    }
-
-    // ---- the source ----
-
-    /// <summary>
-    /// "Add Its Files": the source's .ndf files are added as a folder's are, so a big one asks whether to take only the
-    /// files the open mod has presets for. A mod's files are its own GameData folder; a game's are in its base.zip,
-    /// which is read only for the files taken.
-    /// </summary>
-    private async void AddSourceFiles()
-    {
-        if (SourceBar.Selection?.Chosen is not Data.Units.UnitSource source) return;
-        try
-        {
-            if (source.Mod is not null)
-            {
-                string gameData = Path.Combine(source.Mod.Folder, "GameData");
-                await AddFolderFiles(NdfFilesIn(Directory.Exists(gameData) ? gameData : source.Mod.Folder));
-                return;
-            }
-            string zip = Data.Game.GameInstall.BaseZipOf(source.GameFolder);
-            Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))));
-            List<FileToAdd> listed = await Task.Run(() => ArchiveReader.NdfFilesListedIn(zip));
-            Model.Say("");
-            List<FileToAdd>? taken = await ChooseFolderFiles(listed);
-            if (taken is null) return;
-            Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))));
-            List<FileToAdd> read = await Task.Run(() => ArchiveReader.WithContent(zip, taken));
-            Model.Say("");
-            await AddAndRead(read, fromFolder: true);
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
-        {
-            Model.Say("");
-            await Messages.Tell(Texts.Get("Files.Source.NotRead", ("name", source.Name), ("reason", error.Message)));
-        }
-    }
-
-    /// <summary>The sources the Source bar shows, shared with the Units tab.</summary>
-    public void UseSources(SourceSelection sources)
-    {
-        SourceBar.Selection = sources;
-        sources.Changed += ShowSourceCount;
-    }
-
-    /// <summary>"✓ 17 of its files listed": how many rows hold a file from the source chosen.</summary>
-    private void ShowSourceCount()
-    {
-        if (SourceBar.Selection?.Chosen is not Data.Units.UnitSource source)
-        {
-            SourceBar.ShowListedCount(0);
-            return;
-        }
-        // a mod's files are on disk in its folder; a game's are inside its base.zip ("...\base.zip > GameData/...")
-        string start = source.Mod is not null
-            ? Path.GetFullPath(source.Mod.Folder).TrimEnd('\\', '/') + Path.DirectorySeparatorChar
-            : Path.GetFullPath(Data.Game.GameInstall.BaseZipOf(source.GameFolder)) + " > ";
-        SourceBar.ShowListedCount(Model.Entries.Count(entry => entry.Source?.StartsWith(start, StringComparison.OrdinalIgnoreCase) == true));
     }
 
     private async void AddFolderClicked(object sender, RoutedEventArgs e)
