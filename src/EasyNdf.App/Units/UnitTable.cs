@@ -20,7 +20,7 @@ public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double
     /// <summary>The columns, in order: who the unit is, then its numbers, each with a small bar.</summary>
     public static IReadOnlyList<UnitTableColumn> All { get; } =
     [
-        new("Unit", 220, null, Smallest: 160, Largest: 600),
+        new("Unit", 220, null, Smallest: 160, Largest: 1000),
         new("Nation", 64, null, Smallest: 44, Largest: 120),
         new("Role", 150, null, Smallest: 80, Largest: 300),
         new("Cost", 76, unit => unit.Cost),
@@ -55,13 +55,14 @@ public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double
 
     /// <summary>
     /// The widths of all the columns: each as the user dragged it (by key in <paramref name="chosen"/>), else as at
-    /// first. The Unit column also takes any room the others leave in a list this wide, so the rows reach its edge.
+    /// first. Until the user drags a column, the Unit column also takes any room the others leave in a list this wide.
     /// </summary>
     public static double[] Widths(double listWidth, IReadOnlyDictionary<string, double> chosen)
     {
         double[] widths = [.. All.Select(column => column.Fit(chosen.TryGetValue(column.Key, out double width) ? width : column.Width))];
-        double others = widths.Skip(1).Sum();
-        widths[0] = Math.Max(widths[0], listWidth - others);
+        // the Unit column fills the room until a column is dragged; from then on every column keeps its own width, and
+        // dragging an edge moves only that edge
+        if (!chosen.ContainsKey(All[0].Key)) widths[0] = Math.Max(widths[0], listWidth - widths.Skip(1).Sum());
         return widths;
     }
 
@@ -198,6 +199,9 @@ public sealed class UnitTableHeadings : Bevel
     /// <summary>Raised while a column's right edge is dragged, with its key and its new width (not yet within its limits).</summary>
     public event Action<string, double>? ColumnResized;
 
+    /// <summary>Raised when a drag of a column's edge starts, so the columns' widths can be fixed where they are.</summary>
+    public event Action? ResizeStarted;
+
     /// <summary>Raised when a drag of a column's edge ends, so its width can be kept.</summary>
     public event Action? ResizeEnded;
 
@@ -280,6 +284,7 @@ public sealed class UnitTableHeadings : Bevel
                 ColumnReset?.Invoke(key);
                 return;
             }
+            ResizeStarted?.Invoke();
             resizing = (key, e.GetPosition(this).X, width);
             line.CaptureMouse();
         };

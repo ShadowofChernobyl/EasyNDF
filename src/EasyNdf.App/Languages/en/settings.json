@@ -79,6 +79,8 @@
   "Settings.EditedWithEasyNDFComment": "\"Edited with EasyNDF\" comment",
   "Settings.EditedWithEasyNDFComment.Note": "First line of each edited file, with the version.",
   "Settings.StampSwitch.Tip": "Start each edited file with a comment naming EasyNDF and its version",
+  "Settings.StampOff.Ask": "Without this comment, EasyNDF cannot tell whether it has already edited a file, so it cannot warn you before it edits that file a second time. Turn it off anyway?",
+  "Settings.StampOff.TurnOff": "Turn Off",
   "Settings.Files": "Files",
   "Settings.AddFolderLists": "Add folder lists",
   "Settings.AddFolderLists.Note": "Subfolders are included. The export zip keeps the folder structure.",

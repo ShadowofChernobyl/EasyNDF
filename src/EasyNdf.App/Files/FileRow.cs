@@ -48,6 +48,12 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
     /// <summary>The Source file column: the name, and " (not loaded)" when the file is not loaded.</summary>
     public string NameText => Entry.Source is not null ? Entry.Name : Texts.Get("Files.Row.NotLoaded", ("file", Entry.Name));
 
+    /// <summary>Whether EasyNDF exported the file before: its name then has an "edited" tag.</summary>
+    public bool WasExported => Entry.ExportStamp is not null;
+
+    /// <summary>The tag's tooltip: what the file's stamp says, and why it matters.</summary>
+    public string ExportedTip => Entry.ExportStamp is string stamp ? Texts.Get("Files.Exported.Tip", ("stamp", stamp)) : "";
+
     /// <summary>How many rows, this one included, hold a file of the same folder and name.</summary>
     public int SameFileCount { get; set; } = 1;
 

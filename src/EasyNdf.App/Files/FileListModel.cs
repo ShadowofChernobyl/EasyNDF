@@ -507,13 +507,15 @@ public sealed class FileListModel : INotifyPropertyChanged
     {
         try
         {
-            LoadSummary summary = new NdfEngine().Load(FileContent.Text(entry));
+            string text = FileContent.Text(entry);
+            LoadSummary summary = new NdfEngine().Load(text);
+            entry.ExportStamp = ExportStamp.Of(text);
             entry.Info = FileStatus.Holds(summary.Descriptors, summary.Constants, summary.Unnamed);
             entry.Lines = summary.Lines;
             entry.Message = "";
             entry.IsError = false;
             entry.Scanned = true;
-            entry.References = summary.References;
+            entry.References = SharedNames(summary.References);
             return summary;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or NdfParseException)
@@ -523,6 +525,14 @@ public sealed class FileListModel : INotifyPropertyChanged
             return null;
         }
     }
+
+    /// <summary>
+    /// A file's references, each name kept once for all files: a game's 4,000 files name the same types and descriptors
+    /// over and over, and a copy of each name for each file took some 100 MB.
+    /// </summary>
+    private static List<DeclarationReferences> SharedNames(List<DeclarationReferences> references) =>
+        [.. references.Select(declaration => new DeclarationReferences(
+            string.Intern(declaration.Name), string.Intern(declaration.Type), [.. declaration.Refers.Select(string.Intern)]))];
 
     /// <summary>A row's file as the property scans name it: its folder and name, such as "Gameplay/Gfx/Ammunition.ndf".</summary>
     public static string ScanKey(FileEntry entry) => (entry.Folder != "" ? entry.Folder + "/" : "") + entry.Name;

@@ -73,6 +73,8 @@ public partial class FilesPage : UserControl
         Model.ViewChanged += SaveView;
         AppData.Current.ModsChanged += FollowMods;
         Model.PropertyChanged += (_, _) => ShowListState();
+        Model.PropertyChanged += (_, _) => ShowSourceCount();
+        SourceBar.AddFilesRequested += AddSourceFiles;
         DataContext = Model;
         ListBox.SizeChanged += (_, _) => FitColumns();
         Loaded += (_, _) =>
@@ -190,6 +192,64 @@ public partial class FilesPage : UserControl
         await AddLooseFiles(dialog.FileNames);
     }
 
+    // ---- the source ----
+
+    /// <summary>
+    /// "Add Its Files": the source's .ndf files are added as a folder's are, so a big one asks whether to take only the
+    /// files the open mod has presets for. A mod's files are its own GameData folder; a game's are in its base.zip,
+    /// which is read only for the files taken.
+    /// </summary>
+    private async void AddSourceFiles()
+    {
+        if (SourceBar.Selection?.Chosen is not Data.Units.UnitSource source) return;
+        try
+        {
+            if (source.Mod is not null)
+            {
+                string gameData = Path.Combine(source.Mod.Folder, "GameData");
+                await AddFolderFiles(NdfFilesIn(Directory.Exists(gameData) ? gameData : source.Mod.Folder));
+                return;
+            }
+            string zip = Data.Game.GameInstall.BaseZipOf(source.GameFolder);
+            Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))));
+            List<FileToAdd> listed = await Task.Run(() => ArchiveReader.NdfFilesListedIn(zip));
+            Model.Say("");
+            List<FileToAdd>? taken = await ChooseFolderFiles(listed);
+            if (taken is null) return;
+            Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))));
+            List<FileToAdd> read = await Task.Run(() => ArchiveReader.WithContent(zip, taken));
+            Model.Say("");
+            await AddAndRead(read, fromFolder: true);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            Model.Say("");
+            await Messages.Tell(Texts.Get("Files.Source.NotRead", ("name", source.Name), ("reason", error.Message)));
+        }
+    }
+
+    /// <summary>The sources the Source bar shows, shared with the Units tab.</summary>
+    public void UseSources(SourceSelection sources)
+    {
+        SourceBar.Selection = sources;
+        sources.Changed += ShowSourceCount;
+    }
+
+    /// <summary>"✓ 17 of its files listed": how many rows hold a file from the source chosen.</summary>
+    private void ShowSourceCount()
+    {
+        if (SourceBar.Selection?.Chosen is not Data.Units.UnitSource source)
+        {
+            SourceBar.ShowListedCount(0);
+            return;
+        }
+        // a mod's files are on disk in its folder; a game's are inside its base.zip ("...\base.zip > GameData/...")
+        string start = source.Mod is not null
+            ? Path.GetFullPath(source.Mod.Folder).TrimEnd('\\', '/') + Path.DirectorySeparatorChar
+            : Path.GetFullPath(Data.Game.GameInstall.BaseZipOf(source.GameFolder)) + " > ";
+        SourceBar.ShowListedCount(Model.Entries.Count(entry => entry.Source?.StartsWith(start, StringComparison.OrdinalIgnoreCase) == true));
+    }
+
     private async void AddFolderClicked(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog { Title = Texts.Get("Files.AddFolder.Title") };
@@ -203,7 +263,17 @@ public partial class FilesPage : UserControl
     /// </summary>
     private async Task AddFolderFiles(List<FileToAdd> found)
     {
-        if (found.Count == 0) { Model.Say(Texts.Get("Files.AddFolder.NoneFound")); return; }
+        List<FileToAdd>? taken = await ChooseFolderFiles(found);
+        if (taken is not null) await AddAndRead(taken, fromFolder: true);
+    }
+
+    /// <summary>
+    /// The files to take of a folder's (the "Adding a folder" setting): every one, asking first for a big folder, or
+    /// only those the open mod has presets for. Null when there are none to take, or the user cancels.
+    /// </summary>
+    private async Task<List<FileToAdd>?> ChooseFolderFiles(List<FileToAdd> found)
+    {
+        if (found.Count == 0) { Model.Say(Texts.Get("Files.AddFolder.NoneFound")); return null; }
         // the "Adding a folder" setting: every file (asking first for a big folder), or only those with a preset
         bool onlyWithPreset = (string?)AppData.Current.Settings["folderMode"] == "matched";
         if (!onlyWithPreset && found.Count > 150)
@@ -211,7 +281,7 @@ public partial class FilesPage : UserControl
             DialogAnswer answer = await Messages.Ask(
                 Texts.Get("Files.AddFolder.BigAsk", ("count", FileStatus.Count(found.Count))),
                 new DialogOptions { Ok = Texts.Get("Files.AddFolder.AddAll"), Alternative = Texts.Get("Files.AddFolder.OnlyWithPreset"), Cancel = Texts.Get("Common.Cancel") });
-            if (answer.Choice == DialogChoice.Cancel) return;
+            if (answer.Choice == DialogChoice.Cancel) return null;
             onlyWithPreset = answer.Choice == DialogChoice.Alternative;
         }
         if (onlyWithPreset)
@@ -221,10 +291,10 @@ public partial class FilesPage : UserControl
             if (found.Count == 0)
             {
                 Model.Say(Texts.Get("Files.AddFolder.NoneWithPreset", ("count", FileStatus.Count(all))));
-                return;
+                return null;
             }
         }
-        await AddAndRead(found, fromFolder: true);
+        return found;
     }
 
     /// <summary>
@@ -394,7 +464,9 @@ public partial class FilesPage : UserControl
     private async void RunClicked(object sender, RoutedEventArgs e)
     {
         if (Model.IsBusy || !await ExportIsConfirmed() || !await WatermarksAreUpToDate()) return;
-        await Runner.Run(write: true, ChooseExportFolder);
+        HashSet<FileEntry>? skipped = await AskAboutEarlierExports();
+        if (skipped is null) return;
+        await Runner.Run(write: true, ChooseExportFolder, skipped);
         if (AppData.Current.Settings["openAfterExport"]?.GetValue<bool>() == true) OpenExportFolder();
     }
 
@@ -416,6 +488,42 @@ public partial class FilesPage : UserControl
         string question = Texts.Get("Files.ConfirmExport.Ask", ("files", FileListModel.Files(files.Count)), ("folders", Texts.Count("Files.ConfirmExport.Folders", folders)));
         if (someHaveNone) question += " " + Texts.Get("Files.ConfirmExport.SomeHaveNone");
         return await Messages.Confirm(question, Texts.Get("Files.ConfirmExport.Export"));
+    }
+
+    /// <summary>
+    /// Files EasyNDF exported before (they start with its "Edited with EasyNDF" comment) would get the rules a second
+    /// time. For each one, as Windows asks when replacing files: skip it, export it anyway, or cancel the export; the
+    /// answer can go for the rest of them too. Gives back the files to skip, or null when the export is cancelled.
+    /// </summary>
+    private async Task<HashSet<FileEntry>?> AskAboutEarlierExports()
+    {
+        List<FileEntry> exportedBefore = [.. FilesToExport().Where(entry => entry.ExportStamp is not null)];
+        var skipped = new HashSet<FileEntry>();
+        DialogChoice? forTheRest = null;
+        for (int at = 0; at < exportedBefore.Count; at++)
+        {
+            FileEntry entry = exportedBefore[at];
+            DialogChoice choice;
+            if (forTheRest is DialogChoice same) choice = same;
+            else
+            {
+                int others = exportedBefore.Count - at - 1;
+                DialogAnswer answer = await Messages.Ask(
+                    Texts.Get("Files.Exported.Ask", ("file", entry.Name), ("stamp", entry.ExportStamp!.Replace("\n", " · "))),
+                    new DialogOptions
+                    {
+                        Ok = Texts.Get("Files.Exported.Skip"),
+                        Alternative = Texts.Get("Files.Exported.ExportAnyway"),
+                        Cancel = Texts.Get("Files.Exported.CancelExport"),
+                        CheckText = others > 0 ? Texts.Count("Files.Exported.SameForOthers", others) : null,
+                    });
+                choice = answer.Choice;
+                if (answer.IsChecked && choice != DialogChoice.Cancel) forTheRest = choice;
+            }
+            if (choice == DialogChoice.Cancel) return null;
+            if (choice == DialogChoice.Ok) skipped.Add(entry);
+        }
+        return skipped;
     }
 
     /// <summary>"Open the folder after export": the folder the most files were exported to opens in File Explorer.</summary>

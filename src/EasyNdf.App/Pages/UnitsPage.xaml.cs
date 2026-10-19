@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using EasyNdf.App.Controls;
+using EasyNdf.App.Files;
 using EasyNdf.App.Text;
 using EasyNdf.App.Units;
 using EasyNdf.Data.Game;
@@ -22,19 +23,13 @@ public partial class UnitsPage : UserControl
     /// <summary>The ways the units can be shown, as the buttons at the top right choose.</summary>
     private enum UnitView { Cards, Table, Compare }
 
-    /// <summary>The sources found: each game, then its mods.</summary>
-    private List<UnitSource> sources = [];
-
     /// <summary>The units shown, with where they came from; null until a source has been read.</summary>
     private LoadedUnits? loaded;
 
     /// <summary>Counts the reads started, so a read that a newer one has overtaken is ignored when it ends.</summary>
     private int readsStarted;
 
-    /// <summary>Whether the sources have been looked for: the first time the tab is shown, not when the app starts.</summary>
-    private bool started;
-
-    /// <summary>While a list (the sources, the roles, the divisions) is being filled, its choice is not a user's.</summary>
+    /// <summary>While a list (the roles, the divisions) is being filled, its choice is not a user's.</summary>
     private bool fillingLists;
 
     private readonly UnitFilter filter = new();
@@ -59,7 +54,8 @@ public partial class UnitsPage : UserControl
         CardsList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
         TableList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
         PrepareTableHeadings();
-        view = Enum.TryParse((string?)AppData.Current.State["unitView"], out UnitView kept) ? kept : UnitView.Cards;
+        // Cards or Table, whichever was used last; Compare, kept by an earlier version, counts as Cards
+        view = (string?)AppData.Current.State["unitView"] == nameof(UnitView.Table) ? UnitView.Table : UnitView.Cards;
         ShowViewButtons();
     }
 
@@ -67,20 +63,22 @@ public partial class UnitsPage : UserControl
     public GameTitle Game => loaded?.Source.Game ?? GameTitle.Warno;
 
     /// <summary>
-    /// The tab is shown: the first time, the games are looked for; after that the Unit pane is drawn again, as files
-    /// added on the Files tab meanwhile change what its "Show in File Editor" can open.
+    /// The tab is shown: the source chosen on the Files tab is read if it is not shown yet, and the Unit pane is drawn
+    /// again, as files added on the Files tab meanwhile change what its "Show in File Editor" can open.
     /// </summary>
     private void TabShown()
     {
         if (!IsVisible) return;
-        if (!started) Start();
-        else ShowUnitPane();
+        ShowSource();
+        ReadChosenSource();
+        ShowUnitPane();
     }
 
     /// <summary>Another language: the names of sides, roles and nations are shown in it, the filters kept.</summary>
     private void LanguageChanged()
     {
         Panes.SecondTitle = Texts.Get("Units.Pane.Title");
+        ShowSource();
         if (loaded is null) return;
         FillSideChoices();
         FillRoleChoice();
@@ -88,159 +86,73 @@ public partial class UnitsPage : UserControl
         ShowAll();
     }
 
-    // ---- the sources ----
-
-    /// <summary>The first time the tab is shown: finds the games and their mods, and reads the source last shown.</summary>
-    private async void Start()
-    {
-        started = true;
-        ShowMessage(Texts.Get("Units.LookingForGames"), offerChooser: false);
-        sources = await Task.Run(() => UnitSource.FindAll(ChosenFolders()));
-        FillSourceList();
-        // nothing is read until a source is chosen: reading a game's units and pictures takes a while, and the user
-        // should know what started it
-        ShowMessage(Texts.Get(sources.Count == 0 ? "Units.NoGame" : "Units.ChooseSourceFirst"), offerChooser: sources.Count == 0);
-    }
-
-    /// <summary>The game folders the user chose with "Choose a Game Folder…", kept between sessions.</summary>
-    private static List<string> ChosenFolders() =>
-        AppData.Current.State["unitGameFolders"] is JsonArray folders ? [.. folders.Select(folder => (string?)folder).OfType<string>()] : [];
+    // ---- the source ----
 
     /// <summary>
-    /// Fills the Source list: the games, then their mods under a heading, each mod with its game dimmed after it; last,
-    /// "Choose a Game Folder…".
+    /// The game or mod chosen on the Files tab's Source bar. The units are read when it changes while this tab is
+    /// shown, or when the tab is next shown, so choosing a source on the Files tab costs nothing until its units are wanted.
     /// </summary>
-    private void FillSourceList()
+    public SourceSelection? Sources
     {
-        fillingLists = true;
-        SourceChoice.Items.Clear();
-        // until a source is chosen, the list shows "Choose a Source..."
-        if (chosen is null) SourceChoice.Items.Add(new ComboBoxItem { Content = Texts.Get("Units.ChooseSource"), Tag = "none", IsEnabled = false });
-        foreach (UnitSource game in sources.Where(source => source.Mod is null))
-            SourceChoice.Items.Add(new ComboBoxItem { Content = game.Name, Tag = game });
-        List<UnitSource> mods = [.. sources.Where(source => source.Mod is not null)];
-        if (mods.Count > 0)
+        get => sources;
+        set
         {
-            SourceChoice.Items.Add(new ComboBoxItem { Content = CategoryHeading(Texts.Get("Units.Mods")), IsEnabled = false });
-            foreach (UnitSource mod in mods)
-            {
-                var game = new System.Windows.Documents.Run("  " + mod.Game.Name);
-                game.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "muted");
-                // never bold: the box shows a picture of the chosen item, which the list draws bold while it is chosen
-                var name = new TextBlock { Inlines = { new System.Windows.Documents.Run(mod.Name), game }, FontWeight = FontWeights.Normal };
-                SourceChoice.Items.Add(new ComboBoxItem { Content = name, Tag = mod, ToolTip = mod.Folder });
-            }
+            if (sources is not null) sources.Changed -= SourceChanged;
+            sources = value;
+            if (sources is not null) sources.Changed += SourceChanged;
         }
-        SourceChoice.Items.Add(new ComboBoxItem { Content = Texts.Get("Units.ChooseGameFolder"), Tag = "choose", ToolTip = Texts.Get("Units.ChooseGameFolder.Tip") });
-        SourceChoice.SelectedItem = chosen is null ? SourceChoice.Items[0] : ItemOf(chosen);
-        fillingLists = false;
+    }
+    private SourceSelection? sources;
+
+    private void SourceChanged()
+    {
+        ShowSource();
+        if (IsVisible) ReadChosenSource();
     }
 
     /// <summary>
-    /// A category's heading in the Source list, such as "Mods": its name in the middle, bold and dim, with a dashed line
-    /// on each side reaching the list's edges, so it reads as the start of a group rather than something to choose.
+    /// Which source the units are from, in the heading: "Units in WTO x WiF", the game dimmed after a mod's name, with
+    /// the folder as its tooltip; "Units" alone while none is chosen.
     /// </summary>
-    private static Grid CategoryHeading(string name)
+    private void ShowSource()
     {
-        var heading = new Grid();
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        heading.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var text = new TextBlock { Text = name, FontWeight = FontWeights.Bold, Margin = new Thickness(8, 0, 8, 0) };
-        text.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        Grid.SetColumn(text, 1);
-        heading.Children.Add(text);
-        foreach (int column in new[] { 0, 2 })
+        TitleText.Inlines.Clear();
+        UnitSource? chosen = sources?.Chosen;
+        TitleText.ToolTip = chosen?.Folder;
+        if (chosen is null)
         {
-            var line = new System.Windows.Shapes.Rectangle { Height = 1, StrokeThickness = 1, StrokeDashArray = [3, 2], VerticalAlignment = VerticalAlignment.Center, MinWidth = 12 };
-            line.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "muted");
-            Grid.SetColumn(line, column);
-            heading.Children.Add(line);
-        }
-        return heading;
-    }
-
-    /// <summary>The source chosen in the list, read or being read; null until one is chosen, each time the app starts.</summary>
-    private UnitSource? chosen;
-
-    private ComboBoxItem? ItemOf(UnitSource source) =>
-        SourceChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => item.Tag is UnitSource listed && listed.Key == source.Key);
-
-    /// <summary>The list is opened: mods added to or taken out of the games' Mods folders since are listed as they are now.</summary>
-    private void SourceListOpened(object? sender, EventArgs e)
-    {
-        List<UnitSource> found = UnitSource.FindAll(ChosenFolders());
-        if (found.Select(source => source.Key + source.Name).SequenceEqual(sources.Select(source => source.Key + source.Name))) return;
-        sources = found;
-        FillSourceList();
-    }
-
-    private void SourceChosen(object sender, SelectionChangedEventArgs e)
-    {
-        if (fillingLists || SourceChoice.SelectedItem is not ComboBoxItem item) return;
-        if (item.Tag is UnitSource source)
-        {
-            bool first = chosen is null;
-            chosen = source;
-            // "Choose a Source..." goes once a source is chosen
-            if (first) FillSourceList();
-            if (loaded?.Source.Key != source.Key) _ = Read(source);
+            TitleText.Inlines.Add(new System.Windows.Documents.Run(Texts.Get("Main.Units")));
             return;
         }
-        if (item.Tag is "choose")
-        {
-            // the list goes back to the source shown, whether or not a folder is chosen
-            fillingLists = true;
-            SourceChoice.SelectedItem = chosen is null ? SourceChoice.Items[0] : ItemOf(chosen);
-            fillingLists = false;
-            ChooseGameFolder();
-        }
+        TitleText.Inlines.Add(new System.Windows.Documents.Run(Texts.Get("Units.Title", ("name", chosen.Name))));
+        if (chosen.Mod is null) return;
+        var game = new System.Windows.Documents.Run("  " + chosen.Game.Name) { FontWeight = FontWeights.Normal };
+        game.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "muted");
+        TitleText.Inlines.Add(game);
     }
-
-    private void SelectSource(UnitSource source)
-    {
-        chosen = source;
-        FillSourceList();
-        fillingLists = true;
-        SourceChoice.SelectedItem = ItemOf(source);
-        fillingLists = false;
-        _ = Read(source);
-    }
-
-    private void ChooseFolderClicked(object sender, RoutedEventArgs e) => ChooseGameFolder();
 
     /// <summary>
-    /// "Choose a Game Folder…": for a game Steam did not find. The folder chosen may be the game's, or a mod's inside its
-    /// Mods folder; either way the game and all its mods are listed, and kept for next time.
+    /// Reads the source chosen, unless its units are shown already. With none chosen, says to choose one on the Files
+    /// tab: reading a game's units and pictures takes a while, so it only starts when the user asks.
     /// </summary>
-    private async void ChooseGameFolder()
+    private void ReadChosenSource()
     {
-        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = Texts.Get("Units.ChooseGameFolder.Title") };
-        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        string? gameFolder = GameFolderOf(dialog.FolderName);
-        if (gameFolder is null)
+        UnitSource? chosen = sources?.Chosen;
+        if (chosen is null)
         {
-            await MainView.Of(this).Messages.Tell(Texts.Get("Units.NotAGameFolder", ("folder", dialog.FolderName)));
+            bool noGame = sources?.HasLooked == true && sources.Sources.Count == 0;
+            ShowMessage(Texts.Get(noGame ? "Units.NoGame" : "Units.ChooseSourceFirst"), offerChooser: true);
             return;
         }
-        if (AppData.Current.State["unitGameFolders"] is not JsonArray folders) AppData.Current.State["unitGameFolders"] = folders = [];
-        if (!folders.Any(folder => string.Equals((string?)folder, gameFolder, StringComparison.OrdinalIgnoreCase))) folders.Add(gameFolder);
-        AppData.Current.SaveState();
-        sources = await Task.Run(() => UnitSource.FindAll(ChosenFolders()));
-        FillSourceList();
-        UnitSource? chosen = sources.FirstOrDefault(source => string.Equals(source.Folder, dialog.FolderName.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
-            ?? sources.FirstOrDefault(source => source.Mod is null && string.Equals(source.GameFolder, gameFolder, StringComparison.OrdinalIgnoreCase));
-        if (chosen is not null) SelectSource(chosen);
+        if (loaded?.Source.Key == chosen.Key || readingKey == chosen.Key) return;
+        _ = Read(chosen);
     }
 
-    /// <summary>The game folder a chosen folder is or is in (a mod's folder is two below it, in Mods); null for neither.</summary>
-    private static string? GameFolderOf(string folder)
-    {
-        string trimmed = folder.TrimEnd('\\', '/');
-        if (GameInstall.IsGameFolder(trimmed)) return trimmed;
-        string? aboveMods = Path.GetDirectoryName(Path.GetDirectoryName(trimmed));
-        return aboveMods is not null && GameInstall.IsGameFolder(aboveMods) ? aboveMods : null;
-    }
+    /// <summary>The source being read now, so it is not read twice at once.</summary>
+    private string? readingKey;
+
+    /// <summary>"Change…": the Files tab's Source list, opened.</summary>
+    private void ChangeSourceClicked(object sender, RoutedEventArgs e) => MainView.Of(this).ShowSourceList();
 
     /// <summary>
     /// Reads a source's units in the background (a few seconds), then shows them with the filters cleared. The units
@@ -249,9 +161,8 @@ public partial class UnitsPage : UserControl
     private async Task Read(UnitSource source)
     {
         int mine = ++readsStarted;
+        readingKey = source.Key;
         ShowMessage(Texts.Get("Units.Reading", ("name", source.Name)), offerChooser: false);
-        TitleText.Text = Texts.Get("Units.Title", ("name", source.Name));
-        WhereText.Text = source.Folder;
         ProblemsText.Visibility = Visibility.Collapsed;
         string cacheRoot = AppData.Current.Folders?.Cache ?? Path.Combine(Path.GetTempPath(), "EasyNDF", "Cache");
         LoadedUnits read;
@@ -261,10 +172,13 @@ public partial class UnitsPage : UserControl
         }
         catch (Exception problem) when (problem is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            if (mine == readsStarted) ShowMessage(Texts.Get("Units.CouldNotRead", ("name", source.Name), ("problem", problem.Message)), offerChooser: true);
+            if (mine != readsStarted) return;
+            readingKey = null;
+            ShowMessage(Texts.Get("Units.CouldNotRead", ("name", source.Name), ("problem", problem.Message)), offerChooser: true);
             return;
         }
         if (mine != readsStarted) return;
+        readingKey = null;
 
         loaded = read;
         UnitPictureLibrary.Current = new UnitPictureLibrary(read.Pictures, read.Catalog.FlagSources);
@@ -278,7 +192,7 @@ public partial class UnitsPage : UserControl
         ShowAll();
     }
 
-    /// <summary>Shows a line where the units go: while reading, or when there is nothing to read; with "Choose a Game Folder…" when it helps.</summary>
+    /// <summary>Shows a line where the units go: while reading, or when there is nothing to read; with a button to the Files tab's Source list when it helps.</summary>
     private void ShowMessage(string text, bool offerChooser)
     {
         MessageText.Text = text;
@@ -483,8 +397,12 @@ public partial class UnitsPage : UserControl
     private void ViewClicked(object sender, RoutedEventArgs e)
     {
         view = sender == TableButton ? UnitView.Table : sender == CompareButton ? UnitView.Compare : UnitView.Cards;
-        AppData.Current.State["unitView"] = view.ToString();
-        AppData.Current.SaveState();
+        // only Cards or Table is kept for next time: Compare starts empty, so the app never opens on it
+        if (view != UnitView.Compare)
+        {
+            AppData.Current.State["unitView"] = view.ToString();
+            AppData.Current.SaveState();
+        }
         ShowViewButtons();
         if (loaded is not null) ShowAll();
     }

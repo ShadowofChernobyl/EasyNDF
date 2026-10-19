@@ -7,16 +7,12 @@ namespace EasyNdf.App.Pages;
 /// <summary>What the workbench's screenshots and checks use to drive the Units tab without a mouse.</summary>
 public partial class UnitsPage
 {
-    /// <summary>Reads a source at once, without looking for games first: the workbench's made-up install, and its mods.</summary>
+    /// <summary>Chooses a source and reads it at once, without looking for games first: the workbench's made-up install, and its mods.</summary>
     internal Task ReadNow(UnitSource source)
     {
-        started = true;
-        chosen = source;
-        sources = [new UnitSource(source.Game, source.GameFolder, null), .. GameInstall.ModsOf(source.GameFolder).Select(mod => new UnitSource(source.Game, source.GameFolder, mod))];
-        FillSourceList();
-        fillingLists = true;
-        SourceChoice.SelectedItem = ItemOf(source);
-        fillingLists = false;
+        List<UnitSource> found = [new UnitSource(source.Game, source.GameFolder, null), .. GameInstall.ModsOf(source.GameFolder).Select(mod => new UnitSource(source.Game, source.GameFolder, mod))];
+        sources?.UseForChecks(found, source);
+        ShowSource();
         return Read(source);
     }
 

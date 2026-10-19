@@ -24,16 +24,16 @@ public sealed class FileEntry
     public string? Source { get; set; }
 
     /// <summary>
-    /// The file's bytes when it came out of a .zip or .rar, which is not unpacked to disk; null for a file on disk.
-    /// <see cref="Source"/> then names the archive and the path inside it.
+    /// The file's bytes, packed, when it came out of a .zip or .rar, which is not unpacked to disk; null for a file on
+    /// disk. <see cref="Source"/> then names the archive and the path inside it.
     /// </summary>
-    public byte[]? ArchivedContent { get; set; }
+    public PackedBytes? ArchivedContent { get; set; }
 
     /// <summary>
     /// The file as it was first loaded, once the File Editor's "Use in file list" has given the row edited text (kept in
     /// <see cref="ArchivedContent"/>); null while the row has its own file.
     /// </summary>
-    public byte[]? FirstContent { get; set; }
+    public PackedBytes? FirstContent { get; set; }
 
     /// <summary>The file's size in bytes, when it is loaded.</summary>
     public long? Size { get; set; }
@@ -61,6 +61,12 @@ public sealed class FileEntry
 
     /// <summary>Whether the file has been read.</summary>
     public bool Scanned { get; set; }
+
+    /// <summary>
+    /// The comment lines a file starts with when EasyNDF exported it before ("// Edited with EasyNDF 1.0.0", and the
+    /// mod's watermark line when there is one), found when the file is read; null for a file EasyNDF has not exported.
+    /// </summary>
+    public string? ExportStamp { get; set; }
 
     /// <summary>What the last action on the row said, such as "Preview: 120 edits"; "" for none.</summary>
     public string Message { get; set; } = "";

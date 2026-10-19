@@ -33,6 +33,12 @@ public sealed class UnitPictureStore
     }
 
     /// <summary>
+    /// How many pictures have been taken out of the game's archives so far. Each one decodes part of a large texture,
+    /// so after a batch of them the app gives the memory that took back.
+    /// </summary>
+    public int PicturesTakenOut { get; private set; }
+
+    /// <summary>
     /// The .png file of a "GameData:/....png" picture: the mod's own, an already saved one, or one read out of the
     /// game's archives now and saved. Null when the picture cannot be found or read. Called from one task at a time is
     /// best, as reading a picture can be slow; it is safe from several.
@@ -76,6 +82,7 @@ public sealed class UnitPictureStore
                 string writing = saved + ".part";
                 File.WriteAllBytes(writing, PngFile.Write(picture));
                 File.Move(writing, saved, overwrite: true);
+                PicturesTakenOut++;
                 return saved;
             }
             catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)

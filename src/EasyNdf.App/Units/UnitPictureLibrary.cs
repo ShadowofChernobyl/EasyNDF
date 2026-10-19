@@ -86,6 +86,7 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
     private async void ReadWaiting()
     {
         readers++;
+        int takenOutBefore = store.PicturesTakenOut;
         while (waiting.Count > 0)
         {
             (string Source, int Width) key = waiting[^1];
@@ -95,10 +96,14 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
             if (reading.Remove(key, out TaskCompletionSource<ImageSource?>? asked)) asked.SetResult(picture);
         }
         readers--;
+        // taking pictures out of the game's textures leaves large blocks of memory behind; once the last reader is
+        // done, they are given back, rather than left for .NET, which can let them pile up to gigabytes
+        if (readers == 0 && store.PicturesTakenOut != takenOutBefore) Memory.GiveBack();
     }
 
     /// <summary>
-    /// Takes the picture out of the game when needed, and makes it as wide as it is drawn. Runs in the background, so
+    /// Takes the picture out of the game when needed, and makes it as wide as it is drawn, or its own width when that is
+    /// smaller. Runs in the background, so
     /// the picture is frozen, to be drawn on the screen's thread.
     /// </summary>
     private ImageSource? Read(string source, int width)
@@ -107,12 +112,15 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
         {
             string? file = store.FileFor(source);
             if (file is null) return null;
+            byte[] bytes = File.ReadAllBytes(file);
+            // never made wider than the file itself: stretched here and again on screen, it would blur twice
+            int ownWidth = BitmapDecoder.Create(new MemoryStream(bytes), BitmapCreateOptions.DelayCreation, BitmapCacheOption.None).Frames[0].PixelWidth;
             var picture = new BitmapImage();
             picture.BeginInit();
             // read now, so the file is not kept open
             picture.CacheOption = BitmapCacheOption.OnLoad;
-            picture.StreamSource = new MemoryStream(File.ReadAllBytes(file));
-            picture.DecodePixelWidth = width;
+            picture.StreamSource = new MemoryStream(bytes);
+            if (width < ownWidth) picture.DecodePixelWidth = width;
             picture.EndInit();
             picture.Freeze();
             return picture;

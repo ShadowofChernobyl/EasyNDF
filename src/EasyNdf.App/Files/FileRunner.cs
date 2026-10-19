@@ -24,11 +24,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// <param name="chooseExportFolder">
     /// Asks for an export folder for the files that have none; null when the user cancels, which stops the export.
     /// </param>
-    public async Task Run(bool write, Func<Task<string?>> chooseExportFolder)
+    /// <param name="skipped">Files left out of this run, such as files EasyNDF exported before that the user chose to skip.</param>
+    public async Task Run(bool write, Func<Task<string?>> chooseExportFolder, IReadOnlySet<FileEntry>? skipped = null)
     {
         if (model.IsBusy) return;
         bool everyFile = write && settings.ExportEveryFile;
-        List<FileEntry> list = model.Entries.Where(e => e.On && e.Source is not null && (everyFile || e.Preset is not null)).ToList();
+        List<FileEntry> list = model.Entries.Where(e => e.On && e.Source is not null && (everyFile || e.Preset is not null) && skipped?.Contains(e) != true).ToList();
         if (list.Count == 0)
         {
             model.Warn(model.Entries.Any(e => e.On && e.Source is null)

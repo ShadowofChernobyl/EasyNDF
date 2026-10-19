@@ -1,6 +1,6 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Data;
 using EasyNdf.App.Controls;
@@ -12,9 +12,12 @@ namespace EasyNdf.App.Files;
 /// <summary>
 /// One row of the file list on screen (the HTML app's <c>rowHtml</c>): a cell for each shown column, in their order,
 /// then the row's buttons. Its look follows the styles in Pages/FilesPage.xaml (selected, off, status colours).
-/// Buttons carry a <see cref="FrameworkElement.Tag"/> saying what they do; the page acts on their clicks. When the
-/// shown columns change, the list makes its rows again, so a row is built once.
+/// Buttons carry a <see cref="FrameworkElement.Tag"/> saying what they do; the page acts on their clicks.
 /// </summary>
+/// <remarks>
+/// The list reuses its rows while it scrolls, giving each another file. A row's cells are bound to its file, so they
+/// follow it without being built again; they are built again only when the columns or the language change.
+/// </remarks>
 public sealed class FileRowView : Decorator
 {
     /// <summary>The list the row belongs to: its columns, widths and preset choices.</summary>
@@ -25,17 +28,45 @@ public sealed class FileRowView : Decorator
     public const string RemoveAction = "remove", SaveAnywayAction = "save", ChooseFolderAction = "dir", ClearFolderAction = "nodir";
 
     /// <summary>Makes an empty row; it fills itself in once it has its list and its <see cref="FileRow"/>.</summary>
-    public FileRowView() => DataContextChanged += (_, _) => Build();
+    public FileRowView() => DataContextChanged += ShowOtherFile;
 
     /// <inheritdoc cref="ListProperty"/>
     public FileListModel? List { get => (FileListModel?)GetValue(ListProperty); set => SetValue(ListProperty, value); }
 
+    /// <summary>The preset dropdown, when the Preset column is shown.</summary>
+    private ComboBox? presetBox;
+
+    /// <summary>While the preset dropdown is being filled in, its choice is not the user's.</summary>
+    private bool showingPreset;
+
+    /// <summary>The list reuses the row for another file: its cells follow, and the preset dropdown is filled in again.</summary>
+    private void ShowOtherFile(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        // a weak handler: the file row lives on after the list has done with this row
+        if (e.OldValue is FileRow oldRow) PropertyChangedEventManager.RemoveHandler(oldRow, RowChanged, "");
+        if (e.NewValue is FileRow newRow) PropertyChangedEventManager.AddHandler(newRow, RowChanged, "");
+        Build();
+        ShowPreset();
+    }
+
+    private void RowChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is null or "" or nameof(FileRow.Preset) or nameof(FileRow.Choices)) ShowPreset();
+    }
+
+    /// <summary>The list, columns and language the cells were built for.</summary>
+    private (FileListModel List, string Columns, object? Language)? builtFor;
+
     private void Build()
     {
         if (List is not FileListModel list || DataContext is not FileRow) return;
+        IReadOnlyList<FileColumn> shown = list.Columns.Shown;
+        var layout = (list, string.Join(",", shown), (object?)Texts.Catalog.Language);
+        if (builtFor == layout) return;
+        builtFor = layout;
+        presetBox = null;
         var grid = new Grid();
         grid.SetResourceReference(TextElement.ForegroundProperty, "ink");
-        IReadOnlyList<FileColumn> shown = list.Columns.Shown;
         for (int place = 0; place < shown.Count; place++)
         {
             var definition = new ColumnDefinition();
@@ -54,6 +85,7 @@ public sealed class FileRowView : Decorator
         SetBinding(WidthProperty, new Binding(nameof(ColumnWidths.RowWidth)) { Source = list.Columns });
         // tbody tr: a line under it, in the selection colour when selected
         Child = new Bevel { Style = (Style)FindResource("FileListRow"), Child = grid };
+        ShowPreset();
     }
 
     private UIElement CellFor(FileColumn column, FileListModel list) => column switch
@@ -97,10 +129,23 @@ public sealed class FileRowView : Decorator
         var name = new TextBlock { Style = (Style)FindResource("FileName") };
         name.SetBinding(TextBlock.TextProperty, nameof(FileRow.NameText));
         var stack = new StackPanel { Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center };
-        stack.Children.Add(name);
+        stack.Children.Add(new DockPanel { Children = { ExportedTag(), name } });
         stack.Children.Add(SubLine(nameof(FileRow.FolderLine), nameof(FileRow.HasFolderLine)));
         stack.Children.Add(SubLine(nameof(FileRow.DuplicateLine), nameof(FileRow.HasDuplicateLine)));
         return stack;
+    }
+
+    /// <summary>"✎ edited", small, in the caution colour, after the name of a file EasyNDF exported before.</summary>
+    private static Border ExportedTag()
+    {
+        var text = new TextBlock { Text = Texts.Get("Files.Exported"), FontSize = 10.5, LineHeight = 14, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+        text.SetResourceReference(TextBlock.ForegroundProperty, "caution");
+        var tag = new Border { Child = text, BorderThickness = new Thickness(1), Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        tag.SetResourceReference(Border.BorderBrushProperty, "caution");
+        tag.SetBinding(ToolTipProperty, nameof(FileRow.ExportedTip));
+        tag.SetBinding(VisibilityProperty, new Binding(nameof(FileRow.WasExported)) { Converter = (IValueConverter)Application.Current.FindResource("ShowWhenTrue") });
+        DockPanel.SetDock(tag, Dock.Right);
+        return tag;
     }
 
     private static TextBlock SubLine(string textProperty, string showProperty)
@@ -111,12 +156,31 @@ public sealed class FileRowView : Decorator
         return line;
     }
 
-    private static UIElement PresetCell()
+    /// <remarks>
+    /// The dropdown is filled in by <see cref="ShowPreset"/> rather than bound: when a row is reused for another file,
+    /// bound choices and a bound selection change one after the other, and in between the dropdown would clear the
+    /// new file's preset.
+    /// </remarks>
+    private UIElement PresetCell()
     {
-        var choice = new ComboBox { Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center, ToolTip = Texts.Get("Files.Row.Preset.Tip") };
-        choice.SetBinding(ItemsControl.ItemsSourceProperty, nameof(FileRow.Choices));
-        choice.SetBinding(Selector.SelectedItemProperty, nameof(FileRow.Preset));
-        return choice;
+        presetBox = new ComboBox { Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center, ToolTip = Texts.Get("Files.Row.Preset.Tip") };
+        presetBox.SelectionChanged += PresetPicked;
+        return presetBox;
+    }
+
+    /// <summary>Fills the preset dropdown with the file's choices and shows its preset.</summary>
+    private void ShowPreset()
+    {
+        if (presetBox is null || DataContext is not FileRow row) return;
+        showingPreset = true;
+        presetBox.ItemsSource = row.Choices;
+        presetBox.SelectedItem = row.Preset;
+        showingPreset = false;
+    }
+
+    private void PresetPicked(object sender, SelectionChangedEventArgs e)
+    {
+        if (!showingPreset && DataContext is FileRow row && presetBox?.SelectedItem is PresetChoice choice) row.Preset = choice;
     }
 
     /// <summary>td.dir: "Browse...", the folder's name 6 pixels either side (or "Not set"), and × to clear it.</summary>

@@ -42,7 +42,7 @@ public partial class EditorPage
         try
         {
             current = typed ?? Normalised(FileContent.Text(entry));
-            first = entry.FirstContent is byte[] firstBytes ? Normalised(FileContent.TextOf(firstBytes)) : typed is not null ? file.Original : current;
+            first = entry.FirstContent is PackedBytes firstBytes ? Normalised(FileContent.TextOf(firstBytes.Unpack())) : typed is not null ? file.Original : current;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
 

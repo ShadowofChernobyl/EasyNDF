@@ -344,15 +344,15 @@ public partial class EditorPage : UserControl
         if (open.Entry is FileEntry entry && Files.Entries.Contains(entry))
         {
             // the file as it was first loaded is kept, for "Changes only" to tell the hand edits from the rules' edits
-            entry.FirstContent ??= FileContent.Bytes(entry);
-            entry.ArchivedContent = edited;
+            entry.FirstContent ??= entry.ArchivedContent ?? PackedBytes.Pack(FileContent.Bytes(entry));
+            entry.ArchivedContent = PackedBytes.Pack(edited);
             entry.ClearMessage();
             entry.Info = "";
             entry.Lines = null;
             entry.Scanned = false;
             await ReadFile(entry);
         }
-        else open.Entry = await AddFile(new FileToAdd(open.Name, "", open.Name, edited, DateTime.Now));
+        else open.Entry = await AddFile(new FileToAdd(open.Name, "", open.Name, PackedBytes.Pack(edited), DateTime.Now));
         Show();
         Note.Text = Texts.Get("Editor.Note.UsedInFileList", ("file", open.Name));
     }
