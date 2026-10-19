@@ -1,7 +1,7 @@
 <!--
   The rule window (the HTML app's #ruleDlg): the open rule's settings, centred over the dimmed app. What is inside the
-  sunken body depends on the rule's type; Rules/RuleEditor.cs builds it. Every change is saved as it is made, so there is
-  nothing to apply: Done, ×, Escape and a click outside all close it.
+  sunken body depends on the rule's type; Rules/RuleEditor.cs builds it. Done saves the changes; ×, Escape and a click
+  outside throw them away, after asking.
 -->
 <UserControl x:Class="EasyNdf.App.Dialogs.RuleWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -20,7 +20,7 @@
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                     <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
                         <Button Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.RuleWindow.AboutRules.Tip}" controls:QuickHelp.Page="rules" />
-                        <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.RuleWindow.CloseEscape.Tip}" Click="CloseClicked" />
+                        <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.RuleWindow.CloseEscape.Tip}" Click="CancelClicked" />
                     </controls:SnappedRow>
                     <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="{t:Text Rules.RuleWindow.Rule}" />
                 </DockPanel>
@@ -31,7 +31,7 @@
                     <!-- the dropdown takes the room left, up to 22rem -->
                     <ComboBox x:Name="ScanChoice" controls:FlexRow.Grow="1" MaxWidth="352" ToolTip="{t:Text Rules.RuleWindow.ScanChoice.Tip}" />
                     <Button Content="..." ToolTip="{t:Text Rules.RuleWindow.ScanAFileWithout.Tip}" Click="ScanFileClicked" />
-                    <Button Style="{StaticResource GoButton}" Content="{t:Text Rules.RuleWindow.Done}" ToolTip="{t:Text Rules.RuleWindow.Done.Tip}" Click="CloseClicked" />
+                    <Button Style="{StaticResource GoButton}" Content="{t:Text Rules.RuleWindow.Done}" ToolTip="{t:Text Rules.RuleWindow.Done.Tip}" Click="DoneClicked" />
                     <TextBlock x:Name="ScanNote" Style="{StaticResource Note}" Margin="0" controls:FlexRow.Basis="Infinity" />
                     <TextBlock x:Name="RuleMessage" Style="{StaticResource Note}" Margin="0" controls:FlexRow.Basis="Infinity" />
                 </controls:FlexRow>

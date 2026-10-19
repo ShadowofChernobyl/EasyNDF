@@ -41,6 +41,16 @@ public partial class EditorPage : UserControl
     private readonly LineShading shading = new();
     private bool showingPick;
 
+    /// <summary>The syntax check of the file shown, and its problems in the status strip.</summary>
+    private readonly SyntaxProblems syntaxProblems;
+    private readonly ProblemList problemList;
+
+    /// <summary>The syntax check, for the checks.</summary>
+    internal SyntaxProblems SyntaxCheck => syntaxProblems;
+
+    /// <summary>The problems in the status strip, for the checks.</summary>
+    internal ProblemList Problems => problemList;
+
     /// <summary>The files on the Files tab, which the dropdown offers (set by the main view).</summary>
     public FileListModel? Files { get; set; }
 
@@ -181,6 +191,11 @@ public partial class EditorPage : UserControl
         SizeChanged += (_, _) => ResultsBox.MaxHeight = Math.Max(ResultsBox.MinHeight, 0.4 * ActualHeight);
         StripHolder.Content = strip = new StatusStrip(Text);
         strip.AddTools(FoldButtons());
+        syntaxProblems = new SyntaxProblems(Text);
+        problemList = new ProblemList(syntaxProblems);
+        strip.AddAfterCaretPlace(problemList.StripText);
+        // the list of problems lies over the bottom of the text, above the strip
+        ((Grid)Text.Parent).Children.Add(problemList.Panel);
         SetTextSize(TextZoom.Saved, remember: false);
         TextZoom.Changed += size => SetTextSize(size, remember: false);
         ApplyViewSettings();
@@ -394,6 +409,8 @@ public partial class EditorPage : UserControl
         PutFoldingAway();
         foreach (IVisualLineTransformer transformer in view.LineTransformers.Where(t => t is NdfColourizer or MutedLines).ToList())
             view.LineTransformers.Remove(transformer);
+        // only the file itself is checked: an export cannot be edited
+        syntaxProblems.Watch(shown is { IsFile: true } ? shown.Document : null);
         if (shown is null)
         {
             Show();
@@ -654,6 +671,11 @@ public partial class EditorPage : UserControl
         {
             e.Handled = true;
             ShowFindBar(false, null);
+        }
+        else if (e.Key == Key.Escape && problemList.IsOpen)
+        {
+            e.Handled = true;
+            problemList.Close();
         }
     }
 

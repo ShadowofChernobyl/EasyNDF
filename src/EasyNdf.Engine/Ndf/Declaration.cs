@@ -107,4 +107,14 @@ public sealed class NdfDocument(List<Declaration> declarations, string source)
 }
 
 /// <summary>Thrown when a text is not valid NDF. The message starts with "Line N:".</summary>
-public sealed class NdfParseException(string message) : Exception(message);
+/// <param name="message">What is wrong, starting "Line N:".</param>
+/// <param name="position">Where in the text, or -1 when not known.</param>
+/// <param name="length">How many characters the wrong part takes; 0 at the end of the text.</param>
+public sealed class NdfParseException(string message, int position = -1, int length = 0) : Exception(message)
+{
+    /// <summary>Where in the text the problem is, or -1 when not known.</summary>
+    public int Position { get; } = position;
+
+    /// <summary>How many characters the wrong part takes: the token found there; 0 at the end of the text.</summary>
+    public int Length { get; } = length;
+}

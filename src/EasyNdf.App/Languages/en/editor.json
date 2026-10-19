@@ -223,5 +223,13 @@
   "Editor.Filter.Imported": "Imported {count} filter.|Imported {count} filters.",
   "Editor.Filter.NoneInFile": "No filters found in that file.",
   "Editor.Descriptors": "Descriptor Tree",
-  "Editor.Search.Searching": "Searching {number} of {total}: {file}"
+  "Editor.Search.Searching": "Searching {number} of {total}: {file}",
+  "Editor.Problems.Count": "{count} problem|{count} problems",
+  "Editor.Problems.One": "Line {line}: {problem}",
+  "Editor.Problems.Line": "Line {line}",
+  "Editor.Problems.Title": "Problems",
+  "Editor.Problems.Show.Tip": "Show where they are",
+  "Editor.Problems.GoTo.Tip": "Go to it",
+  "Editor.Problems.Close.Tip": "Close (Escape)",
+  "Editor.Export.RunFirst": "{file} has not been run yet. Press Preview or Run export on the Files tab first, then Changes only shows what changed."
 }

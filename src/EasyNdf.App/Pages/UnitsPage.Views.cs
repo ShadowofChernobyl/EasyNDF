@@ -76,6 +76,27 @@ public partial class UnitsPage
         if (CardRowView.ColumnsFor(CardsList.ActualWidth - ScrollBarWidth) != cardColumns) ShowCards();
     }
 
+    /// <summary>
+    /// In the Cards view, Ctrl+Shift+[ folds every role's tiles away and Ctrl+Shift+] brings them all back, as on the
+    /// Rules tab; not while typing in a box.
+    /// </summary>
+    private void FoldKeys(object sender, KeyEventArgs e)
+    {
+        if (view != UnitView.Cards || loaded is null || Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem) return;
+        if (RulesPage.IsCollapseAllKey(e))
+        {
+            e.Handled = true;
+            foldedRoles.UnionWith(shown.Select(unit => unit.Role));
+            ShowCards();
+        }
+        else if (RulesPage.IsExpandAllKey(e))
+        {
+            e.Handled = true;
+            foldedRoles.Clear();
+            ShowCards();
+        }
+    }
+
     /// <summary>A role's heading clicked: its tiles fold away or come back.</summary>
     private void GroupClicked(object sender, MouseButtonEventArgs e)
     {

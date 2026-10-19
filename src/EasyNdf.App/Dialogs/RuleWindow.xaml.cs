@@ -78,6 +78,9 @@ public partial class RuleWindow : UserControl
         model.ActiveRowList = null;
         ShowMessage("");
         Build();
+        // the changes are kept until Done, and nothing is filed for Undo meanwhile: Cancel is the window's undo
+        model.StartEditingRule();
+        history.IsPaused = true;
         Visibility = Visibility.Visible;
         Scroller.ScrollToTop();
         // the name takes the keys, with the caret ready to type a name when it has none
@@ -87,7 +90,7 @@ public partial class RuleWindow : UserControl
         });
     }
 
-    /// <summary>Closes the window (the HTML app's <c>ruleClose</c>).</summary>
+    /// <summary>Done: closes the window and saves its changes, as one step to undo.</summary>
     public void Close()
     {
         if (!IsOpen) return;
@@ -95,7 +98,21 @@ public partial class RuleWindow : UserControl
         Visibility = Visibility.Collapsed;
         ShowMessage("");
         shownRule = null;
+        if (history is not null) history.IsPaused = false;
+        model?.FinishEditingRule();
         Closed?.Invoke();
+    }
+
+    /// <summary>×, Escape or a click outside: closes the window and throws its changes away, asking first when there are any.</summary>
+    public async Task Cancel()
+    {
+        if (!IsOpen || model is null) return;
+        if (model.HasUnsavedRuleChanges && !await MainView.Of(this).Messages.Confirm(Texts.Get("Rules.DiscardChanges"), Texts.Get("Rules.Discard")))
+            return;
+        model.CancelEditingRule();
+        Close();
+        // a file list change made while the window was open is filed now
+        history?.MarkSoon();
     }
 
     /// <summary>The rule's name box, the first text box of the window.</summary>
@@ -112,7 +129,7 @@ public partial class RuleWindow : UserControl
         // the Add Descriptor window is wider, for the descriptor's text: 64rem, or 96% of the app
         Box.Width = kind == "Add" ? Math.Min(1024, (ActualWidth > 0 ? ActualWidth + 2 * PageBorder : 1280) * 0.96) : 480;
         ShowScan();
-        editor = new RuleEditor(model, ScanListsFor(rule), Saved, () => Dispatcher.BeginInvoke(Build));
+        editor = new RuleEditor(model, ScanListsFor(rule), Changed, () => Dispatcher.BeginInvoke(Build));
         Editor.Children.Clear();
         foreach (UIElement part in editor.Build(rule)) Editor.Children.Add(part);
         foreach (RowListView list in editor.Lists)
@@ -125,8 +142,8 @@ public partial class RuleWindow : UserControl
     /// <summary>Opens the condition or action window on a row (the HTML app's <c>rowOpen</c>).</summary>
     internal void OpenRow(string list, int index)
     {
-        if (model is null || history is null || Rows is null) return;
-        Rows.Open(model, history, list, index, NamesFor, model.OpenRule is { } rule ? ScanListsFor(rule) : null);
+        if (model is null || Rows is null) return;
+        Rows.Open(model, list, index, NamesFor, model.OpenRule is { } rule ? ScanListsFor(rule) : null);
     }
 
     /// <summary>
@@ -139,13 +156,8 @@ public partial class RuleWindow : UserControl
         Box.Margin = beside ? new Thickness(BesideGap(ActualWidth), 0, 0, 0) : new Thickness();
     }
 
-    /// <summary>A change in the window is saved; typing in one box is one step to undo.</summary>
-    private void Saved(string typingKey)
-    {
-        if (model is null) return;
-        if (typingKey != "") history?.TypingIn(typingKey);
-        model.SaveRules();
-    }
+    /// <summary>A change in the window: it shows in the window's lists, and is saved on Done.</summary>
+    private void Changed() => model?.SaveRules();
 
     /// <summary>
     /// The Rules tab's data changed: the window follows. Another rule (Undo brought back a copy of this one) builds it
@@ -289,15 +301,22 @@ public partial class RuleWindow : UserControl
         if (Box.HorizontalAlignment == HorizontalAlignment.Left) ShowBeside(true);
     }
 
-    private void CloseClicked(object sender, RoutedEventArgs e) => Close();
+    private void DoneClicked(object sender, RoutedEventArgs e) => Close();
 
-    /// <summary>A press outside the box closes the window.</summary>
-    private void BackdropPressed(object sender, MouseButtonEventArgs e)
+    private async void CancelClicked(object sender, RoutedEventArgs e) => await Cancel();
+
+    /// <summary>A press outside the box cancels the window.</summary>
+    private async void BackdropPressed(object sender, MouseButtonEventArgs e)
     {
         if (!ReferenceEquals(e.OriginalSource, Backdrop)) return;
-        // a click outside closes the row's window first, then the rule's
-        if (Rows?.IsOpen == true) Rows.Close();
-        else Close();
+        await CancelTopWindow();
+    }
+
+    /// <summary>Cancels the row's window if it is open, else this one.</summary>
+    private async Task CancelTopWindow()
+    {
+        if (Rows?.IsOpen == true) await Rows.Cancel();
+        else await Cancel();
     }
 
     /// <summary>A press in the box stays there.</summary>
@@ -310,8 +329,7 @@ public partial class RuleWindow : UserControl
         if (e.Key == Key.Escape)
         {
             e.Handled = true;
-            if (Rows?.IsOpen == true) Rows.Close();
-            else Close();
+            _ = CancelTopWindow();
             return;
         }
         if (Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem) return;

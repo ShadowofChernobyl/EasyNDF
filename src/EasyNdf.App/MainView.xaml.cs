@@ -241,10 +241,11 @@ public partial class MainView : UserControl
     {
         // the Watermark window takes its own keys
         if (Messages.IsOpen || Watermark.IsOpen || (Tabs.SelectedItem != FilesTabItem && Tabs.SelectedItem != RulesTabItem)) return;
-        // Undo and redo work on the Files and Rules tabs outside a text box, which keeps its own.
+        // Undo and redo work on the Files and Rules tabs outside a text box, which keeps its own, and not while the rule
+        // window is open: its changes are not saved yet, and its × is the way to take them back.
         bool inTextBox = Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem;
         ModifierKeys keys = Keyboard.Modifiers;
-        if (!inTextBox && keys.HasFlag(ModifierKeys.Control) && !keys.HasFlag(ModifierKeys.Alt))
+        if (!inTextBox && !RuleWindow.IsOpen && keys.HasFlag(ModifierKeys.Control) && !keys.HasFlag(ModifierKeys.Alt))
         {
             bool shift = keys.HasFlag(ModifierKeys.Shift);
             if (e.Key == Key.Z && !shift) { e.Handled = true; Undo(); return; }

@@ -17,6 +17,9 @@ public sealed class StatusStrip : Border
     private readonly TextEditor editor;
     private readonly DockPanel row = new();
     private readonly TextBlock caretPlace = new() { VerticalAlignment = VerticalAlignment.Center };
+
+    /// <summary>The caret's line and column, and what comes right after them (<see cref="AddAfterCaretPlace"/>), side by side.</summary>
+    private readonly StackPanel caretRow = new() { Orientation = Orientation.Horizontal };
     private readonly ComboBox sizeChoice = new() { MinWidth = 72, FontSize = 12, ToolTip = Texts.Get("Editor.TextSize.Tip") };
     private bool showing;
 
@@ -38,7 +41,8 @@ public sealed class StatusStrip : Border
         caretPlace.FontSize = 12;
         DockPanel.SetDock(sizeChoice, Dock.Right);
         row.Children.Add(sizeChoice);
-        row.Children.Add(caretPlace);
+        caretRow.Children.Add(caretPlace);
+        row.Children.Add(caretRow);
         Child = row;
 
         sizeChoice.SelectionChanged += SizeChosen;
@@ -53,6 +57,13 @@ public sealed class StatusStrip : Border
         DockPanel.SetDock(tools, Dock.Left);
         tools.Margin = new Thickness(0, 0, 10, 0);
         row.Children.Insert(0, tools);
+    }
+
+    /// <summary>Puts something just right of the caret's line and column, such as the File Editor's problems.</summary>
+    public void AddAfterCaretPlace(FrameworkElement element)
+    {
+        element.Margin = new Thickness(12, 0, 0, 0);
+        caretRow.Children.Add(element);
     }
 
     /// <summary>The percentage the dropdown shows.</summary>

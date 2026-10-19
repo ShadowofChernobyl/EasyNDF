@@ -10,7 +10,8 @@ namespace EasyNdf.App.Rules;
 /// <summary>
 /// The Rules tab (the HTML app's <c>#pagePresets</c>): the open mod, its presets, which are selected and which is open,
 /// and the open preset's rules. Questions to the user (names, "Delete...?") are asked by the page, which then calls
-/// these methods; every change is saved at once (see <see cref="AppData.Save"/>).
+/// these methods; every change is saved at once (see <see cref="AppData.Save"/>), except while the rule window has a
+/// rule open: its changes are saved on Done (see <see cref="StartEditingRule"/>).
 /// </summary>
 public sealed partial class RulesModel : INotifyPropertyChanged
 {
@@ -703,11 +704,62 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         if ((string?)rule["Kind"] == "Clone" && rule["Params"] is JsonObject parameters) parameters["Seed"] = RuleLoading.NewSeed();
     }
 
-    /// <summary>Saves a change to the open preset's rules, and shows it.</summary>
+    /// <summary>
+    /// Saves a change to the open preset's rules, and shows it. While the rule window has a rule open, the change is
+    /// only shown in the window: it is saved on Done.
+    /// </summary>
     public void SaveRules()
     {
+        if (IsEditingRule) { Refresh(); return; }
         Data.Save(OpenMod);
         Refresh();
+    }
+
+    // ---- the rule window: changes kept until Done ----
+
+    /// <summary>The open rule as it was when the rule window opened; null while the window is closed.</summary>
+    private JsonObject? ruleBeforeEditing;
+
+    /// <summary>
+    /// Whether the rule window has a rule open. Its changes are written into the rule as they are made, but not saved,
+    /// and the Rules tab's lists are not drawn again: saving the whole mod on every key made typing slow.
+    /// </summary>
+    public bool IsEditingRule => ruleBeforeEditing is not null;
+
+    /// <summary>Whether the rule open in the rule window differs from what it was when the window opened.</summary>
+    public bool HasUnsavedRuleChanges => OpenRule is JsonObject rule && ruleBeforeEditing is not null && !JsonNode.DeepEquals(rule, ruleBeforeEditing);
+
+    /// <summary>The rule window opens on the open rule: keeps a copy of it, so Cancel can put it back.</summary>
+    public void StartEditingRule()
+    {
+        if (OpenRule is JsonObject rule) ruleBeforeEditing = (JsonObject)rule.DeepClone();
+    }
+
+    /// <summary>Done: the rule window's changes are saved, and the Rules tab shows them.</summary>
+    public void FinishEditingRule()
+    {
+        if (!IsEditingRule) return;
+        bool isChanged = HasUnsavedRuleChanges;
+        ruleBeforeEditing = null;
+        if (isChanged) SaveRules();
+        else Refresh();
+    }
+
+    /// <summary>Cancel: the open rule is put back as it was when the rule window opened.</summary>
+    public void CancelEditingRule()
+    {
+        if (ruleBeforeEditing is not JsonObject before) return;
+        ruleBeforeEditing = null;
+        // put back in place, so the rule list and the windows still hold the same rule
+        if (OpenRule is JsonObject rule) PutBack(rule, before);
+        Refresh();
+    }
+
+    /// <summary>Makes a JSON object hold what another holds, in the same order.</summary>
+    public static void PutBack(JsonObject target, JsonObject source)
+    {
+        target.Clear();
+        foreach ((string name, JsonNode? value) in source) target[name] = value?.DeepClone();
     }
 
     // ---- showing it ----

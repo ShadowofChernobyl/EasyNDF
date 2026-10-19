@@ -50,6 +50,7 @@ public partial class UnitsPage : UserControl
             OpenUnitMenu(unit, UnitPaneContent);
         };
         IsVisibleChanged += (_, _) => TabShown();
+        PreviewKeyDown += FoldKeys;
         Texts.LanguageChanged += LanguageChanged;
         CardsList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
         TableList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
