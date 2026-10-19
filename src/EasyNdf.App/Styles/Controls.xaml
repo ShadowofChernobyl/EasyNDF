@@ -6,6 +6,36 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="clr-namespace:EasyNdf.App.Controls">
 
+    <!--
+      Emoji in colour: WPF can only draw emoji as plain symbols from Windows' fonts, so the two the app shows are
+      Microsoft's Fluent Emoji (flat style, MIT licence, see THIRD-PARTY-NOTICES.txt), copied here from their 32-pixel
+      drawings, shape by shape.
+    -->
+    <!-- hot beverage: Support on Ko-fi -->
+    <DrawingImage x:Key="HotBeverageEmoji">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#D3D3D3" Geometry="M14.5 30C20.8513 30 26 24.8513 26 18.5C26 12.1487 20.8513 7 14.5 7C8.14873 7 3 12.1487 3 18.5C3 24.8513 8.14873 30 14.5 30Z" />
+                <GeometryDrawing Brush="#9B9B9B" Geometry="M14.42 27.5C9.24998 27.5 5.03998 22.8 5.03998 17.63H23.8C23.8 22.8 19.59 27.5 14.42 27.5Z" />
+                <GeometryDrawing Brush="#E6E6E6" Geometry="M21.4 12.38C19.68 10.46 17.19 9.25 14.42 9.25C11.65 9.25 9.14998 10.46 7.42998 12.38H5.03998V17.63C5.03998 22.8 9.24998 27.01 14.42 27.01C18.798 27.01 22.4876 23.991 23.5153 19.9267L24.5742 18.8867C24.5742 18.8867 23.7869 18.2351 23.7964 17.8906C23.7988 17.804 23.8 17.7171 23.8 17.63V12.38H21.4Z" />
+                <GeometryDrawing Brush="#F4F4F4" Geometry="M23.79 12.38C23.79 17.5604 19.5905 21.76 14.41 21.76C9.2296 21.76 5.03003 17.5604 5.03003 12.38C5.03003 7.19957 9.2296 3 14.41 3C18.0116 3 21.1391 5.02982 22.7109 8.00787C22.8133 8.00265 22.9163 8 23.0199 8C26.3199 8 28.9999 10.68 28.9999 13.98C28.9999 17.1144 26.5822 19.6894 23.5119 19.94C23.6799 19.2794 23.7777 18.5911 23.7966 17.8835C25.6178 17.52 26.9999 15.9044 26.9999 13.98C26.9999 11.9492 25.4694 10.2624 23.4927 10.0279C23.6868 10.7795 23.79 11.5677 23.79 12.38Z" />
+                <GeometryDrawing Brush="#7D4533" Geometry="M14.41 20.67C18.9884 20.67 22.7 16.9584 22.7 12.38C22.7 7.80153 17.6651 5.08997 14.41 5.08997C11.6245 5.08997 6.12 7.80153 6.12 12.38C6.12 16.9584 9.83155 20.67 14.41 20.67Z" />
+                <GeometryDrawing Brush="#9B9B9B" Geometry="M6.14041 12.9663C6.44107 9.8669 10.0286 6.08997 14.41 6.08997C18.7899 6.08997 22.3765 9.91743 22.6793 12.9701C22.693 12.7752 22.7 12.5784 22.7 12.38C22.7 7.80153 18.9884 4.08997 14.41 4.08997C9.83155 4.08997 6.12 7.80153 6.12 12.38C6.12 12.5771 6.12688 12.7726 6.14041 12.9663Z" />
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+    <!-- pushpin: the unit the others on Compare are measured from -->
+    <DrawingImage x:Key="PushpinEmoji">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="#D3D3D3" Geometry="M2.3825 29.495C1.8725 28.985 1.8725 28.165 2.3825 27.655L11.3425 18.695L13.1825 20.535L4.2225 29.495C3.7125 30.005 2.8925 30.005 2.3825 29.495Z" />
+                <GeometryDrawing Brush="#CA0B4A" Geometry="M20.0329 19.174L24.6361 14.5708L23 8.5L17.2045 7.13916L12.6012 11.7424L14 17.5L20.0329 19.174Z" />
+                <GeometryDrawing Brush="#F8312F" Geometry="M17.1825 7.125L24.6525 14.585C25.6725 15.605 27.3225 15.605 28.3425 14.585L29.4525 13.475C29.8725 13.055 29.8725 12.375 29.4525 11.955L19.8125 2.315C19.3925 1.895 18.7125 1.895 18.2925 2.315L17.1825 3.425C16.1625 4.445 16.1625 6.105 17.1825 7.125Z" />
+                <GeometryDrawing Brush="#F8312F" Geometry="M6.0825 14.565L17.2025 25.685C17.7225 26.205 18.5725 26.205 19.0925 25.685L20.0025 24.775C21.5625 23.215 21.5625 20.695 20.0025 19.135L12.6325 11.765C11.0725 10.205 8.5525 10.205 6.9925 11.765L6.0825 12.675C5.5625 13.195 5.5625 14.045 6.0825 14.565Z" />
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
     <!-- true shows a control, false hides it -->
     <BooleanToVisibilityConverter x:Key="ShowWhenTrue" />
 

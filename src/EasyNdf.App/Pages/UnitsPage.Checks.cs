@@ -16,6 +16,23 @@ public partial class UnitsPage
         return lastRead;
     }
 
+    /// <summary>Shows the loading bar as it is part way through reading, for a screenshot; the units shown stay under it.</summary>
+    internal void ShowReadingBarNow(UnitReadStep step, double fraction)
+    {
+        ShowMessage(Text.Texts.Get("Units.Reading", ("name", "WARNO")), offerChooser: false);
+        StartReadingBar();
+        readingTimer.Stop();
+        ShowReadingStep(step);
+        ReadingBar.Fraction = fraction;
+    }
+
+    /// <summary>Hides the loading bar and the message again.</summary>
+    internal void HideReadingBarNow()
+    {
+        StopReadingBar();
+        MessageArea.Visibility = System.Windows.Visibility.Collapsed;
+    }
+
     /// <summary>Every unit read.</summary>
     internal IReadOnlyList<Unit> AllUnits => loaded?.Catalog.Units ?? [];
 

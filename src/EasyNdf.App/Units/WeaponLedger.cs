@@ -179,15 +179,17 @@ public static class WeaponLedger
         return cell;
     }
 
-    /// <summary>A number, right-aligned in the code font; the best range bold in the "best" colour.</summary>
+    /// <summary>
+    /// A number, right-aligned in the app's own font, as the stats above are; the best range in the "best" colour, not
+    /// bold (the font's digits are all one width, so the numbers still line up).
+    /// </summary>
     private static void AddNumber(Grid grid, int column, string text, bool narrow, bool isBest)
     {
         var number = new TextBlock
         {
             Text = text, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, FontSize = narrow ? 11 : 12,
-            Margin = narrow ? new Thickness(4, 2, 4, 2) : new Thickness(12, 2, 6, 2), FontWeight = isBest ? FontWeights.Bold : FontWeights.Normal,
+            Margin = narrow ? new Thickness(4, 2, 4, 2) : new Thickness(12, 2, 6, 2),
         };
-        number.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
         number.SetResourceReference(TextBlock.ForegroundProperty, isBest ? "ok" : "ink");
         Grid.SetColumn(number, column);
         grid.Children.Add(number);

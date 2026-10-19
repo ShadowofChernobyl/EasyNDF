@@ -13,7 +13,12 @@
         <controls:SnappedRow DockPanel.Dock="Top" Gap="6" HorizontalAlignment="Center" Margin="0,2,0,0">
             <Button x:Name="ChangeLogButton" Content="{t:Text About.ChangeLog}" MinWidth="112" ToolTip="{t:Text About.ChangeLog.Tip}" Click="ChangeLogClicked" />
             <Button Content="{t:Text About.License}" MinWidth="112" ToolTip="{t:Text About.License.Tip}" Click="LicenseClicked" />
-            <Button Style="{StaticResource GoButton}" Content="{t:Text About.Support}" MinWidth="112" ToolTip="{t:Text About.Support.Tip}" Click="SupportClicked" />
+            <Button Style="{StaticResource GoButton}" MinWidth="112" ToolTip="{t:Text About.Support.Tip}" Click="SupportClicked">
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="{StaticResource HotBeverageEmoji}" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{t:Text About.Support}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
         </controls:SnappedRow>
         <!-- the text scrolls in a sunken box, so its edge shows where it is cut off -->
         <controls:Bevel Margin="0,8,0,0" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource panel}">

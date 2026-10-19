@@ -48,6 +48,8 @@ public partial class MessageOverlay : UserControl
         AlternativeButton.Visibility = options.Alternative is null ? Visibility.Collapsed : Visibility.Visible;
         CancelButton.Content = options.Cancel;
         CancelButton.Visibility = options.InfoOnly ? Visibility.Collapsed : Visibility.Visible;
+        // the buttons are used again for every question: their row is laid out again for the new words
+        Buttons.InvalidateMeasure();
 
         answer = new TaskCompletionSource<DialogAnswer>();
         Visibility = Visibility.Visible;
