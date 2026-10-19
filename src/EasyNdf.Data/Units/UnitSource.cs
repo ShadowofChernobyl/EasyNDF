@@ -50,6 +50,19 @@ public sealed record UnitSource(GameTitle Game, string GameFolder, GameMod? Mod)
 /// <param name="Problems">What could not be read: archives, dictionaries, files.</param>
 public sealed record LoadedUnits(UnitSource Source, UnitCatalog Catalog, UnitPictureStore Pictures, IReadOnlyList<string> Problems);
 
+/// <summary>The steps of reading a source's units, in order, for a loading bar.</summary>
+public enum UnitReadStep
+{
+    /// <summary>Opening the game's archives and listing what is in them.</summary>
+    FindingFiles,
+    /// <summary>Reading the game's names for units, nations and the like.</summary>
+    ReadingNames,
+    /// <summary>Reading the units from the game's (and the mod's) files.</summary>
+    ReadingUnits,
+    /// <summary>Getting the units' pictures ready.</summary>
+    PreparingPictures,
+}
+
 /// <summary>Reads a source's units, with the game's texts and pictures. Slow (seconds): run it in the background.</summary>
 public static class UnitLibrary
 {
@@ -58,9 +71,10 @@ public static class UnitLibrary
     /// mods share them); otherwise they are opened here. Throws <see cref="IOException"/> or
     /// <see cref="InvalidDataException"/> when the game's base.zip cannot be read.
     /// </summary>
-    public static LoadedUnits Load(UnitSource source, string cacheRoot, GameArchives? archives = null)
+    public static LoadedUnits Load(UnitSource source, string cacheRoot, GameArchives? archives = null, IProgress<UnitReadStep>? progress = null)
     {
         var problems = new List<string>();
+        progress?.Report(UnitReadStep.FindingFiles);
         try
         {
             archives ??= GameArchives.Open(source.GameFolder);
@@ -69,15 +83,18 @@ public static class UnitLibrary
         {
             problems.Add(problem.Message);
         }
+        progress?.Report(UnitReadStep.ReadingNames);
         GameTexts texts = archives is null ? GameTexts.FromPairs([]) : GameTexts.Read(archives);
         if (archives is not null) problems.AddRange(archives.Problems);
         problems.AddRange(texts.Problems);
 
+        progress?.Report(UnitReadStep.ReadingUnits);
         UnitCatalog catalog;
         using (var files = new GameDataFiles(GameInstall.BaseZipOf(source.GameFolder), source.Mod?.Folder))
             catalog = UnitReader.Read(files, source.Game, texts);
         problems.AddRange(catalog.Problems);
 
+        progress?.Report(UnitReadStep.PreparingPictures);
         var pictures = new UnitPictureStore(cacheRoot, source.Game, archives?.Version ?? "", archives is null ? null : new GamePictures(archives), source.Mod?.Folder);
         return new LoadedUnits(source, catalog, pictures, problems);
     }

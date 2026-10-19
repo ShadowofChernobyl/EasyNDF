@@ -153,12 +153,15 @@ public partial class UnitsPage : UserControl
         int mine = ++readsStarted;
         readingKey = source.Key;
         ShowMessage(Texts.Get("Units.Reading", ("name", source.Name)), offerChooser: false);
+        StartReadingBar();
+        // created here, so each step is told on the screen's thread
+        var progress = new Progress<UnitReadStep>(step => { if (mine == readsStarted) ShowReadingStep(step); });
         ProblemsText.Visibility = Visibility.Collapsed;
         string cacheRoot = AppData.Current.Folders?.Cache ?? Path.Combine(Path.GetTempPath(), "EasyNDF", "Cache");
         LoadedUnits read;
         try
         {
-            read = await Task.Run(() => UnitLibrary.Load(source, cacheRoot));
+            read = await Task.Run(() => UnitLibrary.Load(source, cacheRoot, progress: progress));
         }
         catch (Exception problem) when (problem is IOException or InvalidDataException or UnauthorizedAccessException)
         {
@@ -181,6 +184,7 @@ public partial class UnitsPage : UserControl
         compared.Clear();
         pinned = null;
         selection.Selected = null;
+        StopReadingBar();
         MessageArea.Visibility = Visibility.Collapsed;
         ShowAll();
     }
@@ -188,10 +192,78 @@ public partial class UnitsPage : UserControl
     /// <summary>Shows a line where the units go: while reading, or when there is nothing to read; with "Choose a Game Folder…" when it helps.</summary>
     private void ShowMessage(string text, bool offerChooser)
     {
+        StopReadingBar();
         MessageText.Text = text;
         ChooseFolderButton.Visibility = offerChooser ? Visibility.Visible : Visibility.Collapsed;
         MessageArea.Visibility = Visibility.Visible;
         CountText.Text = "";
+    }
+
+    // ---- the loading bar ----
+
+    /// <summary>
+    /// Where each step of reading starts and ends on the bar, as shares of it. Reading the units takes the most time.
+    /// The shares are a first guess, to be tuned by timing a game's read: the steps cannot say how far through
+    /// themselves they are.
+    /// </summary>
+    private static (double Start, double End) ShareOf(UnitReadStep step) => step switch
+    {
+        UnitReadStep.FindingFiles => (0, 0.2),
+        UnitReadStep.ReadingNames => (0.2, 0.4),
+        UnitReadStep.ReadingUnits => (0.4, 0.9),
+        _ => (0.9, 1),
+    };
+
+    /// <summary>Moves the bar on a block at a time while a step runs.</summary>
+    private readonly System.Windows.Threading.DispatcherTimer readingTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+
+    /// <summary>Where the step being read ends on the bar: the bar creeps towards it but stops a block short.</summary>
+    private double readingStepEnd;
+
+    /// <summary>Shows an empty bar under the reading line and starts it creeping.</summary>
+    private void StartReadingBar()
+    {
+        ReadingBar.Fraction = 0;
+        ReadingBar.Visibility = Visibility.Visible;
+        ReadingStep.Visibility = Visibility.Visible;
+        ShowReadingStep(UnitReadStep.FindingFiles);
+        if (!readingTimerStarted)
+        {
+            readingTimer.Tick += (_, _) => CreepReadingBar();
+            readingTimerStarted = true;
+        }
+        readingTimer.Start();
+    }
+    private bool readingTimerStarted;
+
+    /// <summary>A step has begun: the bar is at least at its start, and its name shows under the bar.</summary>
+    private void ShowReadingStep(UnitReadStep step)
+    {
+        (double start, double end) = ShareOf(step);
+        ReadingBar.Fraction = Math.Max(ReadingBar.Fraction, start);
+        readingStepEnd = end;
+        ReadingStep.Text = Texts.Get(step switch
+        {
+            UnitReadStep.FindingFiles => "Units.Step.FindingFiles",
+            UnitReadStep.ReadingNames => "Units.Step.ReadingNames",
+            UnitReadStep.ReadingUnits => "Units.Step.ReadingUnits",
+            _ => "Units.Step.PreparingPictures",
+        });
+    }
+
+    /// <summary>One block more, unless that would reach the end of the step being read.</summary>
+    private void CreepReadingBar()
+    {
+        double oneBlock = 1.0 / Controls.BlockBar.Blocks;
+        if (ReadingBar.Fraction + oneBlock < readingStepEnd - oneBlock / 2) ReadingBar.Fraction += oneBlock;
+    }
+
+    /// <summary>Hides the bar: the read is done, or a message takes its place.</summary>
+    private void StopReadingBar()
+    {
+        readingTimer.Stop();
+        ReadingBar.Visibility = Visibility.Collapsed;
+        ReadingStep.Visibility = Visibility.Collapsed;
     }
 
     // ---- the filters ----

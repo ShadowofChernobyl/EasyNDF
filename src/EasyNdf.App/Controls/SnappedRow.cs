@@ -8,6 +8,11 @@ namespace EasyNdf.App.Controls;
 /// fraction of a pixel, with a gap between them, and the controls' left and right edges are then rounded to whole pixels.
 /// Without that, after a few controls the row drifts a pixel away from the HTML app's.
 /// </summary>
+/// <remarks>
+/// A control measured at its rounded width keeps that as its limit: when its words later grow, it is measured again
+/// within it and the row is not told. So whoever changes a control's words calls <see cref="UIElement.InvalidateMeasure"/>
+/// on the row, which measures every control afresh; a change of language does this by itself.
+/// </remarks>
 public sealed class SnappedRow : Panel
 {
     /// <summary>The space between two controls, like CSS <c>gap</c>.</summary>
@@ -28,7 +33,18 @@ public sealed class SnappedRow : Panel
     public bool Wrap { get => (bool)GetValue(WrapProperty); set => SetValue(WrapProperty, value); }
 
     /// <summary>The row's controls report their exact widths, so it does not round them.</summary>
-    public SnappedRow() => UseLayoutRounding = false;
+    public SnappedRow()
+    {
+        UseLayoutRounding = false;
+        // another language gives the controls other words: the row is laid out again while it is shown
+        Loaded += (_, _) =>
+        {
+            // Loaded can come twice without Unloaded between: the row listens once
+            Text.Texts.LanguageChanged -= InvalidateMeasure;
+            Text.Texts.LanguageChanged += InvalidateMeasure;
+        };
+        Unloaded += (_, _) => Text.Texts.LanguageChanged -= InvalidateMeasure;
+    }
 
     /// <summary>
     /// Each control fills its whole-pixel slot exactly. One left at its own fractional width would draw its right edge

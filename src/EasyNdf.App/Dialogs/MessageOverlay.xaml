@@ -22,7 +22,7 @@
                 <!-- a web page sets this checkbox and its text on a line of text, which puts it about a pixel lower -->
                 <CheckBox x:Name="Check" ToolTip="{t:Text Common.Message.Check.Tip}" Style="{StaticResource Tick}" Margin="0,0.94,0,10" HorizontalAlignment="Left" />
                 <!-- .bar: the buttons, at the right -->
-                <controls:SnappedRow Gap="6" HorizontalAlignment="Right">
+                <controls:SnappedRow x:Name="Buttons" Gap="6" HorizontalAlignment="Right">
                     <Button x:Name="OkButton" ToolTip="{t:Text Common.Message.Ok.Tip}" Style="{StaticResource GoButton}" Click="OkClicked" />
                     <Button x:Name="AlternativeButton" ToolTip="{t:Text Common.Message.Alternative.Tip}" Click="AlternativeClicked" />
                     <Button x:Name="CancelButton" ToolTip="{t:Text Common.Message.Cancel.Tip}" Click="CancelClicked" />

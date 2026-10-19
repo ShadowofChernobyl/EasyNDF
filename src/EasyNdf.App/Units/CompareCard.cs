@@ -133,8 +133,12 @@ public sealed class CompareCard : Grid
         TextBlock comparedTo;
         if (isPinned)
         {
-            comparedTo = new TextBlock { Text = Texts.Get("Units.Compare.Pinned"), FontSize = 11, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap };
+            comparedTo = new TextBlock { FontSize = 11, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap };
             comparedTo.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+            // the pushpin emoji, in colour, before the words
+            var pin = new Image { Source = (System.Windows.Media.ImageSource)Application.Current.FindResource("PushpinEmoji"), Width = 14, Height = 14, Margin = new Thickness(0, 0, 4, -2) };
+            comparedTo.Inlines.Add(new System.Windows.Documents.InlineUIContainer(pin) { BaselineAlignment = BaselineAlignment.Center });
+            comparedTo.Inlines.Add(new System.Windows.Documents.Run(Texts.Get("Units.Compare.Pinned")));
         }
         else comparedTo = Small(Texts.Get("Units.Compare.ComparedTo", ("unit", pinned.Name)));
         comparedTo.Margin = new Thickness(0, 2, 0, 0);
@@ -173,11 +177,11 @@ public sealed class CompareCard : Grid
             label.TextWrapping = TextWrapping.NoWrap;
             label.TextTrimming = TextTrimming.CharacterEllipsis;
             label.ToolTip = UnitNames.Stat(stat.Key);
-            var number = new TextBlock { Text = UnitNumbers.Of(value), TextAlignment = TextAlignment.Right, FontSize = 12, FontWeight = isBest ? FontWeights.Bold : FontWeights.Normal };
-            number.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
+            // in the app's own font, not bold: the best value shows by its colour (the font's digits are all one width, so
+            // the numbers still line up)
+            var number = new TextBlock { Text = UnitNumbers.Of(value), TextAlignment = TextAlignment.Right, FontSize = 12 };
             number.SetResourceReference(TextBlock.ForegroundProperty, isBest ? "ok" : "ink");
             var difference = new TextBlock { Text = UnitNumbers.Difference(value, pinnedValue), TextAlignment = TextAlignment.Right, FontSize = 11, Margin = new Thickness(6, 0, 0, 0) };
-            difference.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
             difference.SetResourceReference(TextBlock.ForegroundProperty, FeelColour(stat, value, pinnedValue));
             var meter = new BlockMeter { Value = value, FullBar = stat.FullBar, Blocks = MeterBlocks, IsBest = isBest, Marker = pinnedValue, Margin = new Thickness(6, 0, 0, 0) };
             if (pinned is not null && pinnedValue is not null) meter.ToolTip = pinned.Name + ": " + UnitNumbers.Of(pinnedValue);
