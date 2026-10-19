@@ -154,43 +154,46 @@
     </Style>
 
     <!--
-      a setting: its name at the left, its control at the right, its note under both, and a line under the row. Without a
-      name (buttons that name themselves, such as Data's), the control sits at the left, over its note.
+      a setting, as a line of a properties list: its name in a column 250 pixels wide (less in a narrow list, see
+      SettingGrid), its control just beside it. Every
+      other row is shaded (a little darker, in any theme), and the row under the mouse is lit. Its description is its
+      tooltip (SettingRow.cs); only a warning shows under it. Without a name, the control starts at the left.
     -->
     <Style TargetType="controls:SettingRow">
         <Setter Property="Focusable" Value="False" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="controls:SettingRow">
-                    <Border BorderBrush="{DynamicResource line}" BorderThickness="0,0,0,1" Padding="0,7,0,7">
-                        <Grid>
+                    <Border x:Name="RowBack" Background="Transparent" Padding="6,2,6,2" MinHeight="26">
+                        <Grid VerticalAlignment="Center">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="{Binding NameWidth, RelativeSource={RelativeSource TemplatedParent}}" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <TextBlock x:Name="LabelText" Text="{TemplateBinding Label}" Foreground="{DynamicResource ink}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,12,0" />
-                            <ContentPresenter x:Name="Control" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                            <TextBlock x:Name="NoteText" Grid.Row="1" Grid.ColumnSpan="2" Text="{TemplateBinding Note}" Foreground="{DynamicResource muted}"
-                                       FontSize="11.5" LineHeight="15.5" TextWrapping="Wrap" Margin="0,2,0,0" />
+                            <ContentPresenter x:Name="Control" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                            <TextBlock x:Name="NoteText" Grid.Row="1" Grid.Column="1" Text="{TemplateBinding Note}" Foreground="{DynamicResource warn}"
+                                       FontSize="11.5" LineHeight="15.5" TextWrapping="Wrap" Margin="0,2,0,2" Visibility="Collapsed" />
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
-                        <Trigger Property="Note" Value="">
-                            <Setter TargetName="NoteText" Property="Visibility" Value="Collapsed" />
+                        <Trigger Property="IsShaded" Value="True">
+                            <Setter TargetName="RowBack" Property="Background" Value="#14000000" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="RowBack" Property="Background" Value="{DynamicResource sel}" />
                         </Trigger>
                         <Trigger Property="NoteIsWarning" Value="True">
-                            <Setter TargetName="NoteText" Property="Foreground" Value="{DynamicResource warn}" />
+                            <Setter TargetName="NoteText" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="Label" Value="">
                             <Setter TargetName="LabelText" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="Control" Property="Grid.Column" Value="0" />
                             <Setter TargetName="Control" Property="Grid.ColumnSpan" Value="2" />
-                            <Setter TargetName="Control" Property="HorizontalAlignment" Value="Left" />
-                            <Setter TargetName="NoteText" Property="Margin" Value="0,4,0,0" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

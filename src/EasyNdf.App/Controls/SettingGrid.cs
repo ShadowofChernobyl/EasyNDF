@@ -4,60 +4,49 @@ using System.Windows.Controls;
 namespace EasyNdf.App.Controls;
 
 /// <summary>
-/// The settings of one card on the Settings tab, in as many columns as fit (each at least <see cref="SmallestColumn"/>
-/// wide), filled row by row as CSS's <c>grid-template-columns: repeat(auto-fill, minmax(...))</c> does. Each row is as
-/// tall as the tallest setting in it, so the settings beside each other line up. A new setting is one more child.
+/// The settings of one card on the Settings tab, one under the other, like a list of properties: each name in a
+/// column at the left with its control just beside it, so the eye runs straight down, and the rows shaded in turn
+/// across the whole card. A new setting is one more child.
 /// </summary>
 public sealed class SettingGrid : Panel
 {
-    /// <summary>The narrowest a column can be.</summary>
-    private const double SmallestColumn = 340;
-
-    /// <summary>The space between two columns.</summary>
-    private const double ColumnGap = 18;
-
-    /// <summary>How many columns fit in a width: one at the least.</summary>
-    private static int ColumnsFor(double width) =>
-        double.IsInfinity(width) ? 1 : Math.Max(1, (int)((width + ColumnGap) / (SmallestColumn + ColumnGap)));
-
-    private static double ColumnWidth(double width, int columns) => (width - ColumnGap * (columns - 1)) / columns;
-
-    private List<UIElement> Shown => [.. InternalChildren.OfType<UIElement>().Where(c => c.Visibility != Visibility.Collapsed)];
+    /// <summary>The names' column: 250 pixels, or 40% of a narrow list, so its controls keep room beside it.</summary>
+    private const double NameWidth = 250, NameShareWhenNarrow = 0.4;
 
     /// <inheritdoc/>
     protected override Size MeasureOverride(Size availableSize)
     {
-        int columns = ColumnsFor(availableSize.Width);
-        double width = double.IsInfinity(availableSize.Width) ? SmallestColumn : availableSize.Width;
-        double columnWidth = ColumnWidth(width, columns);
-        foreach (UIElement child in InternalChildren) child.Measure(new Size(columnWidth, double.PositiveInfinity));
-        double height = RowHeights(Shown, columns).Sum();
-        return new Size(width, height);
+        double width = availableSize.Width;
+        double height = 0;
+        int shownIndex = 0;
+        var nameWidth = new GridLength(double.IsInfinity(width) ? NameWidth : Math.Min(NameWidth, Math.Floor(width * NameShareWhenNarrow)));
+        foreach (UIElement child in InternalChildren)
+        {
+            if (child.Visibility == Visibility.Collapsed) continue;
+            // every other row shaded, counting only those shown, so a search's results stay shaded in turn too
+            if (child is SettingRow row)
+            {
+                row.IsShaded = shownIndex % 2 == 1;
+                row.NameWidth = nameWidth;
+            }
+            shownIndex++;
+            child.Measure(new Size(width, double.PositiveInfinity));
+            height += child.DesiredSize.Height;
+        }
+        return new Size(double.IsInfinity(width) ? 0 : width, height);
     }
 
     /// <inheritdoc/>
     protected override Size ArrangeOverride(Size finalSize)
     {
-        int columns = ColumnsFor(finalSize.Width);
-        double columnWidth = ColumnWidth(finalSize.Width, columns);
-        List<UIElement> shown = Shown;
-        List<double> rowHeights = RowHeights(shown, columns);
+        double width = finalSize.Width;
         double top = 0;
-        for (int index = 0; index < shown.Count; index++)
+        foreach (UIElement child in InternalChildren)
         {
-            int row = index / columns, column = index % columns;
-            if (column == 0 && row > 0) top += rowHeights[row - 1];
-            shown[index].Arrange(new Rect(column * (columnWidth + ColumnGap), top, columnWidth, rowHeights[row]));
+            if (child.Visibility == Visibility.Collapsed) continue;
+            child.Arrange(new Rect(0, top, width, child.DesiredSize.Height));
+            top += child.DesiredSize.Height;
         }
         return finalSize;
-    }
-
-    /// <summary>Each row's height: its tallest setting's.</summary>
-    private static List<double> RowHeights(List<UIElement> shown, int columns)
-    {
-        var heights = new List<double>();
-        for (int start = 0; start < shown.Count; start += columns)
-            heights.Add(shown.Skip(start).Take(columns).Max(c => c.DesiredSize.Height));
-        return heights;
     }
 }

@@ -116,13 +116,9 @@ public static class UnitPane
         protected override Size MeasureOverride(Size available)
         {
             bool showWide = available.Width >= WidestStacked;
-            Visibility wideVisibility = showWide ? Visibility.Visible : Visibility.Collapsed;
-            // only when it changes, as each change asks for another measure
-            if (wide.Visibility != wideVisibility)
-            {
-                wide.Visibility = wideVisibility;
-                stacked.Visibility = showWide ? Visibility.Collapsed : Visibility.Visible;
-            }
+            // both start shown, so each is set; setting the value it already has asks for no other measure
+            wide.Visibility = showWide ? Visibility.Visible : Visibility.Collapsed;
+            stacked.Visibility = showWide ? Visibility.Collapsed : Visibility.Visible;
             return base.MeasureOverride(available);
         }
     }

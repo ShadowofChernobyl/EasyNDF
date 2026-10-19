@@ -4547,11 +4547,6 @@
       "text": "Modifications répertoriées par règle",
       "machine": true
     },
-    "Settings.CapBox.Tip": {
-      "english": "Edits listed per rule in Details",
-      "text": "Modifications répertoriées par règle dans « Détails »",
-      "machine": true
-    },
     "Settings.Export": {
       "english": "Export",
       "text": "Exporter",
@@ -4567,11 +4562,6 @@
       "text": "Désactivé : seuls les commentaires générés par des règles sont exportés.",
       "machine": true
     },
-    "Settings.CommentsSwitch.Tip": {
-      "english": "Keep comments from the source file",
-      "text": "Conserver les commentaires du fichier source",
-      "machine": true
-    },
     "Settings.LineEndings": {
       "english": "Line endings",
       "text": "Fins de ligne",
@@ -4580,11 +4570,6 @@
     "Settings.LineEndings.Note": {
       "english": "The game's own files use LF.",
       "text": "Les fichiers du jeu utilisent le format LF.",
-      "machine": true
-    },
-    "Settings.LineEndChoice.Tip": {
-      "english": "Line endings of exported files",
-      "text": "Fin de ligne des fichiers exportés",
       "machine": true
     },
     "Settings.CRLFWindows": {
@@ -4607,11 +4592,6 @@
       "text": "Tous les fichiers : les fichiers inchangés et ceux ne comportant aucun préréglage sont copiés tels quels. Opération lente et gourmande en mémoire pour les dossiers volumineux.",
       "machine": true
     },
-    "Settings.ScopeChoice.Tip": {
-      "english": "Files Run export includes",
-      "text": "Les fichiers que « Lancer l'export » inclut",
-      "machine": true
-    },
     "Settings.ChangedFiles": {
       "english": "Changed files",
       "text": "Fichiers modifiés",
@@ -4627,11 +4607,6 @@
       "text": "Décimales",
       "machine": true
     },
-    "Settings.DecimalsBox.Tip": {
-      "english": "Maximum decimal places written by arithmetic",
-      "text": "Nombre maximal de décimales affichées par les opérations arithmétiques",
-      "machine": true
-    },
     "Settings.ConfirmBeforeRunExport": {
       "english": "Confirm before Run export",
       "text": "Confirmer avant de lancer l’export",
@@ -4640,11 +4615,6 @@
     "Settings.ConfirmBeforeRunExport.Note": {
       "english": "Says how many files will be written, and where, before writing them.",
       "text": "Indique le nombre de fichiers qui seront enregistrés, ainsi que leur emplacement, avant de les enregistrer.",
-      "machine": true
-    },
-    "Settings.ConfirmExportSwitch.Tip": {
-      "english": "Ask before Run export writes files",
-      "text": "Demander avant que « Lancer l'export » n'écrive des fichiers",
       "machine": true
     },
     "Settings.BackUpOverwrittenFiles": {
@@ -4657,11 +4627,6 @@
       "text": "Un fichier remplacé par une exportation est d'abord conservé à côté, en .bak.",
       "machine": true
     },
-    "Settings.BackupSwitch.Tip": {
-      "english": "Keep a .bak copy of each file an export replaces",
-      "text": "Conservez une copie .bak de chaque fichier remplacé par une exportation",
-      "machine": true
-    },
     "Settings.OpenTheFolderAfter": {
       "english": "Open the folder after export",
       "text": "Ouvrir le dossier après l’exportation",
@@ -4672,11 +4637,6 @@
       "text": "Ouvre le dossier d'exportation dans l'Explorateur de fichiers à la fin de « Lancer l'export ».",
       "machine": true
     },
-    "Settings.OpenFolderSwitch.Tip": {
-      "english": "Open the export folder when Run export finishes",
-      "text": "Ouvrir le dossier d'exportation à la fin de « Lancer l'export »",
-      "machine": true
-    },
     "Settings.EditedWithEasyNDFComment": {
       "english": "\"Edited with EasyNDF\" comment",
       "text": "Commentaire « Modifié avec EasyNDF »",
@@ -4685,11 +4645,6 @@
     "Settings.EditedWithEasyNDFComment.Note": {
       "english": "First line of each edited file, with the version.",
       "text": "Première ligne de chaque fichier modifié, avec la version.",
-      "machine": true
-    },
-    "Settings.StampSwitch.Tip": {
-      "english": "Start each edited file with a comment naming EasyNDF and its version",
-      "text": "Commencez chaque fichier modifié par un commentaire mentionnant EasyNDF et sa version",
       "machine": true
     },
     "Settings.StampOff.Ask": {
@@ -4717,11 +4672,6 @@
       "text": "Les sous-dossiers sont inclus. Le fichier ZIP d'exportation conserve la structure des dossiers.",
       "machine": true
     },
-    "Settings.FolderChoice.Tip": {
-      "english": "Files listed when a folder is added",
-      "text": "Fichiers répertoriés lors de l’ajout d’un dossier",
-      "machine": true
-    },
     "Settings.AllNdfFiles": {
       "english": "All .ndf files",
       "text": "Tous les fichiers .ndf",
@@ -4740,11 +4690,6 @@
     "Settings.DuplicateFiles.Note": {
       "english": "Same name and folder. Replace keeps the row's preset and export folder.",
       "text": "Même nom et même dossier. La fonction « Remplacer » conserve le préréglage de la ligne et le dossier d’exportation.",
-      "machine": true
-    },
-    "Settings.DuplicateChoice.Tip": {
-      "english": "When an added file is already listed",
-      "text": "Lorsqu’un fichier ajouté figure déjà dans la liste",
       "machine": true
     },
     "Settings.Ask": {
@@ -4772,11 +4717,6 @@
       "text": "Listes de fichiers, de détails, de préréglages et de règles.",
       "machine": true
     },
-    "Settings.WrapSwitch.Tip": {
-      "english": "Wrap long text in list rows",
-      "text": "Renvoyer à la ligne le texte long des lignes de liste",
-      "machine": true
-    },
     "Settings.AutoFitFileList": {
       "english": "Auto-fit file list columns",
       "text": "Ajustement automatique des colonnes de la liste des fichiers",
@@ -4785,11 +4725,6 @@
     "Settings.AutoFitFileList.Note": {
       "english": "Resizing a column by hand overrides this until Reset column widths.",
       "text": "Le redimensionnement manuel d’une colonne remplace ce paramètre jusqu’à ce que vous réinitialisiez les largeurs des colonnes.",
-      "machine": true
-    },
-    "Settings.FitSwitch.Tip": {
-      "english": "Size file list columns to their content",
-      "text": "Adaptez la largeur des colonnes de la liste des fichiers en fonction de leur contenu",
       "machine": true
     },
     "Settings.AutoAssignPresetsBy": {
@@ -4802,11 +4737,6 @@
       "text": "S'applique lorsqu'un seul et unique nom de préréglage contient le nom complet du fichier, majuscules comprises.",
       "machine": true
     },
-    "Settings.AssignSwitch.Tip": {
-      "english": "Assign the preset whose name contains the file's whole name, capitals included",
-      "text": "Attribuez le préréglage dont le nom contient le nom complet du fichier, majuscules comprises",
-      "machine": true
-    },
     "Settings.ReopenTheLastFiles": {
       "english": "Reopen the last files",
       "text": "Rouvrir les derniers fichiers",
@@ -4815,11 +4745,6 @@
     "Settings.ReopenTheLastFiles.Note": {
       "english": "When the app starts, the file list comes back as it was left, with the files that are still where they were.",
       "text": "Au démarrage de l’application, la liste des fichiers s’affiche telle qu’elle avait été laissée, avec les fichiers toujours à leur emplacement d’origine.",
-      "machine": true
-    },
-    "Settings.SessionSwitch.Tip": {
-      "english": "Open the file list as it was left",
-      "text": "Ouvrez la liste des fichiers telle qu’elle a été laissée",
       "machine": true
     },
     "Settings.Editing": {
@@ -4837,11 +4762,6 @@
       "text": "Les préréglages demandent toujours confirmation.",
       "machine": true
     },
-    "Settings.ConfirmSwitch.Tip": {
-      "english": "Confirm before deleting a rule",
-      "text": "Confirmez avant de supprimer une règle",
-      "machine": true
-    },
     "Settings.UndoSteps": {
       "english": "Undo steps",
       "text": "Étapes d'annulation",
@@ -4850,11 +4770,6 @@
     "Settings.UndoSteps.Note": {
       "english": "How many changes to rules and the file list Ctrl+Z can take back.",
       "text": "Nombre de modifications apportées aux règles et à la liste des fichiers que la combinaison Ctrl+Z permet d’annuler.",
-      "machine": true
-    },
-    "Settings.UndoChoice.Tip": {
-      "english": "How many changes can be undone",
-      "text": "Nombre de modifications pouvant être annulées",
       "machine": true
     },
     "Settings.FileEditor": {
@@ -4870,11 +4785,6 @@
     "Settings.TextSize.Note": {
       "english": "Ctrl+scroll in the text changes it too.",
       "text": "Ctrl+molette dans le texte la modifie aussi.",
-      "machine": true
-    },
-    "Settings.TextSizeChoice.Tip": {
-      "english": "The File Editor's text size",
-      "text": "La taille du texte dans l’éditeur de fichiers",
       "machine": true
     },
     "Settings.LineNumbers": {
@@ -4897,11 +4807,6 @@
       "text": "Les lignes longues reviennent à la ligne au lieu de défiler horizontalement.",
       "machine": true
     },
-    "Settings.WordWrapSwitch.Tip": {
-      "english": "Wrap long lines",
-      "text": "Renvoi à la ligne des lignes longues",
-      "machine": true
-    },
     "Settings.ScopeLines": {
       "english": "Scope lines",
       "text": "Lignes de portée",
@@ -4910,11 +4815,6 @@
     "Settings.ScopeLines.Note": {
       "english": "Thin lines down each level of indentation in the File Editor.",
       "text": "Des lignes fines descendent à chaque niveau d’indentation dans l’éditeur de fichiers.",
-      "machine": true
-    },
-    "Settings.GuidesSwitch.Tip": {
-      "english": "Show lines down each level of indentation",
-      "text": "Afficher les lignes à chaque niveau d’indentation",
       "machine": true
     },
     "Settings.CloseBracketsAndQuotes": {
@@ -4927,11 +4827,6 @@
       "text": "La saisie de ( [ { \" ou ' entraîne également l’insertion de son correspondant, le curseur se trouvant entre les deux.",
       "machine": true
     },
-    "Settings.PairsSwitch.Tip": {
-      "english": "Type the closing bracket or quote too",
-      "text": "Saisissez également la parenthèse fermante ou le guillemet",
-      "machine": true
-    },
     "Settings.ShowEverythingInThe": {
       "english": "Show everything in the descriptor tree",
       "text": "Afficher tout le contenu de l’arborescence des descripteurs",
@@ -4942,11 +4837,6 @@
       "text": "Désactivé : un descripteur s’ouvre sur les descripteurs qu’il nomme dans d’autres fichiers, afin de montrer comment les fichiers sont reliés. Activé : s’ouvre également sur ses objets, ses listes et les descripteurs qu’il nomme dans son propre fichier.",
       "machine": true
     },
-    "Settings.TreeAllSwitch.Tip": {
-      "english": "Show objects, lists and same-file descriptors in the tree",
-      "text": "Afficher les objets, les listes et les descripteurs du même fichier dans l'arborescence",
-      "machine": true
-    },
     "Settings.ReopenTheLastFile": {
       "english": "Reopen the last file",
       "text": "Rouvrir le dernier fichier",
@@ -4955,11 +4845,6 @@
     "Settings.ReopenTheLastFile.Note": {
       "english": "When the app starts, the file last open in the File Editor opens again, where it was left.",
       "text": "Au démarrage de l’application, le dernier fichier ouvert dans l’éditeur de fichiers s’ouvre à nouveau, là où il avait été laissé.",
-      "machine": true
-    },
-    "Settings.ReopenFileSwitch.Tip": {
-      "english": "Open the last file again when the app starts",
-      "text": "Rouvrir le dernier fichier au démarrage de l’application",
       "machine": true
     },
     "Settings.Appearance": {
@@ -4975,11 +4860,6 @@
     "Settings.Theme.Note": {
       "english": "Colors and fonts. Automatic follows the system.",
       "text": "Couleurs et polices. Les paramètres automatiques suivent ceux du système.",
-      "machine": true
-    },
-    "Settings.ThemeChoice.Tip": {
-      "english": "Colors and fonts",
-      "text": "Couleurs et polices",
       "machine": true
     },
     "Settings.Fonts": {
@@ -5012,11 +4892,6 @@
       "text": "Boutons en relief et zones en creux, quel que soit le thème.",
       "machine": true
     },
-    "Settings.BevelSwitch.Tip": {
-      "english": "Raised buttons and sunken boxes",
-      "text": "Boutons en relief et cases en creux",
-      "machine": true
-    },
     "Settings.InterfaceSize": {
       "english": "Interface size",
       "text": "Taille de l'interface",
@@ -5025,11 +4900,6 @@
     "Settings.InterfaceSize.Note": {
       "english": "Makes everything in the window larger or smaller.",
       "text": "Agrandit ou réduit tout le contenu de la fenêtre.",
-      "machine": true
-    },
-    "Settings.ScaleChoice.Tip": {
-      "english": "The size of everything in the window",
-      "text": "La taille de tous les éléments dans la fenêtre",
       "machine": true
     },
     "Settings.Tooltips": {
@@ -5042,11 +4912,6 @@
       "text": "Les notes qui s’affichent lorsque la souris se trouve sur un élément de contrôle.",
       "machine": true
     },
-    "Settings.TooltipsSwitch.Tip": {
-      "english": "Show tooltips",
-      "text": "Afficher les infobulles",
-      "machine": true
-    },
     "Settings.RememberTheWindow": {
       "english": "Remember the window",
       "text": "Mémoriser la fenêtre",
@@ -5055,11 +4920,6 @@
     "Settings.RememberTheWindow.Note": {
       "english": "The window opens where it was, at the size it was.",
       "text": "La fenêtre s’ouvre à l’emplacement où elle se trouvait, avec la même taille.",
-      "machine": true
-    },
-    "Settings.WindowSwitch.Tip": {
-      "english": "Open the window where and as large as it was left",
-      "text": "Ouvrez la fenêtre à l’endroit et à la taille où elle a été laissée",
       "machine": true
     },
     "Settings.TreadScrollbars": {
@@ -5072,11 +4932,6 @@
       "text": "Un curseur en relief avec une prise, dans une glissière en creux, quel que soit le thème.",
       "machine": true
     },
-    "Settings.TreadSwitch.Tip": {
-      "english": "Raised thumb with a grip, in a sunken track",
-      "text": "Pouce levé avec une prise, dans une rainure en creux",
-      "machine": true
-    },
     "Settings.PanesGrowWithThe": {
       "english": "Panes grow with the window",
       "text": "Les volets s’agrandissent en même temps que la fenêtre",
@@ -5085,11 +4940,6 @@
     "Settings.PanesGrowWithThe.Note": {
       "english": "Details and Descriptors keep their share of the window as it is resized. Off, they keep the size they were dragged to.",
       "text": "Les détails et les descripteurs conservent leur part de la fenêtre lorsque celle-ci est redimensionnée. Lorsqu’ils sont désactivés, ils conservent la taille à laquelle ils ont été déplacés.",
-      "machine": true
-    },
-    "Settings.PanesScaleSwitch.Tip": {
-      "english": "Resize Details and Descriptors with the window",
-      "text": "Redimensionner Détails et Descripteurs avec la fenêtre",
       "machine": true
     },
     "Settings.ColumnWidths": {
@@ -5120,6 +4970,16 @@
     "Settings.Data": {
       "english": "Data",
       "text": "Données",
+      "machine": true
+    },
+    "Settings.Backup": {
+      "english": "Backup",
+      "text": "Sauvegarde",
+      "machine": true
+    },
+    "Settings.Reset": {
+      "english": "Reset",
+      "text": "Réinitialisation",
       "machine": true
     },
     "Settings.OneFileWithAll.Note": {
@@ -5385,11 +5245,6 @@
     "Settings.Language": {
       "english": "Language",
       "text": "Langue",
-      "machine": true
-    },
-    "Settings.LanguageChoice.Tip": {
-      "english": "The language of the app's text",
-      "text": "La langue du texte de l’application",
       "machine": true
     },
     "Settings.LanguageChoice.Note": {

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace EasyNdf.App.Controls;
 
@@ -87,6 +88,43 @@ public sealed class PixelSnapping
 
     /// <summary>A drag starts (a pane's bar, a list's grip): edges are not checked until it ends.</summary>
     public static void PauseForDrag() => pausedForDrag++;
+
+    // ---- pausing while something scrolls ----
+
+    /// <summary>How long a scrolled box must stand still before its edges are checked again.</summary>
+    private static readonly TimeSpan StillAfterScrolling = TimeSpan.FromMilliseconds(120);
+
+    /// <summary>Whether edges are paused for a scroll (counted once among the drags, however long it goes on).</summary>
+    private static bool pausedForScroll;
+
+    /// <summary>Started at each move of a scroll, so it fires once the scrolling has stopped.</summary>
+    private static DispatcherTimer? scrollStill;
+
+    /// <summary>
+    /// A list or page scrolled: edges are not checked until it has stood still for a moment, then all once, as after a
+    /// drag. Checking every card's and row's edges after each frame took more than half of each frame while the Units
+    /// tab's cards scrolled (the more cards in view, the more so). A scroll by the wheel moves by whole pixels, so
+    /// nothing goes out of line meanwhile; one by the scrollbar can leave an edge half a pixel off until it stops.
+    /// </summary>
+    public static void ScrollMoved()
+    {
+        if (!pausedForScroll)
+        {
+            pausedForScroll = true;
+            PauseForDrag();
+        }
+        scrollStill ??= new DispatcherTimer(StillAfterScrolling, DispatcherPriority.Background, ScrollStopped, Dispatcher.CurrentDispatcher) { IsEnabled = false };
+        scrollStill.Stop();
+        scrollStill.Start();
+    }
+
+    private static void ScrollStopped(object? sender, EventArgs e)
+    {
+        scrollStill?.Stop();
+        if (!pausedForScroll) return;
+        pausedForScroll = false;
+        ResumeAfterDrag();
+    }
 
     /// <summary>The drag has ended: every edge is checked once, where it is now.</summary>
     public static void ResumeAfterDrag()

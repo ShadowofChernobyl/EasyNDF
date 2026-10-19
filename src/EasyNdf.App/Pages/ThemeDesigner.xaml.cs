@@ -24,9 +24,10 @@ public partial class ThemeDesigner : UserControl
 {
     /// <summary>
     /// Below this width the colours go above the preview instead of beside it: the colours' 432 pixels, the gap, and
-    /// room for a preview of about 450 pixels.
+    /// room for a preview of about 375 pixels, whose sample controls wrap to fit (its widest, the dropdown, is 176). At
+    /// the Settings tab's widest, laid out as the Help tab, the Designer has about 830.
     /// </summary>
-    private const double NarrowestSideBySide = 900;
+    private const double NarrowestSideBySide = 820;
 
     /// <summary>The page's scroll box, which the preview keeps 8 pixels under the top of while the colours scroll past.</summary>
     private ScrollViewer? pageScroller;

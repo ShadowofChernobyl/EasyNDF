@@ -42,10 +42,21 @@ public static class SmoothScrolling
     public static void SetScrollsOnceClicked(DependencyObject element, bool value) => element.SetValue(ScrollsOnceClickedProperty, value);
 
     /// <summary>Starts smooth scrolling for every scrolling box of the app; called once at start-up.</summary>
-    public static void Register() =>
+    public static void Register()
+    {
         // Wheel events tunnel down from the window, so the outermost box hears them first; it finds the box that
         // should move and marks the event as handled, so no other box moves too.
         EventManager.RegisterClassHandler(typeof(ScrollViewer), UIElement.PreviewMouseWheelEvent, new MouseWheelEventHandler(WheelTurned));
+        // while any box scrolls, by the wheel, its scrollbar, the keyboard or a touchpad, edges are not checked on each
+        // frame (see PixelSnapping.ScrollMoved)
+        EventManager.RegisterClassHandler(typeof(ScrollViewer), ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler(BoxScrolled));
+    }
+
+    private static void BoxScrolled(object sender, ScrollChangedEventArgs e)
+    {
+        // only a move: a box growing or shrinking also raises this, with nothing moved
+        if (e.VerticalChange != 0 || e.HorizontalChange != 0) PixelSnapping.ScrollMoved();
+    }
 
     private static void WheelTurned(object sender, MouseWheelEventArgs e)
     {

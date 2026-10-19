@@ -1,5 +1,7 @@
 <!--
-  The Settings tab (the HTML app's #pageSettings): cards of settings, each saved as soon as it is changed. The browser's
+  The Settings tab (the HTML app's #pageSettings): cards of settings, each saved as soon as it is changed. Each card
+  lists its settings one under the other, names at the left and controls beside them; a setting's description is
+  its tooltip, so the controls in a row with one have none of their own. The browser's
   own rows (downloads, themed dropdowns) are left out. The Language card is the desktop app's own.
   SettingsPage.xaml.cs reads and writes the settings.
 -->
@@ -9,41 +11,45 @@
              xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              xmlns:pages="clr-namespace:EasyNdf.App.Pages">
-    <!-- every category on one page that scrolls; the list on the left jumps to each and marks the one in view -->
-    <DockPanel>
-        <!-- .bar.qtop: the ? at the right -->
-        <Button DockPanel.Dock="Top" Style="{StaticResource HelpButton}" HorizontalAlignment="Right" Margin="0,0,0,6" controls:QuickHelp.Page="tab-settings" />
-
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="180" />
-                <ColumnDefinition Width="14" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                    <!-- the search box above the list, as on the Help tab; it hides the settings that do not match -->
-                    <StackPanel Margin="8">
-                        <TextBox x:Name="SettingsSearch" Margin="0,0,0,8" Tag="{t:Text Settings.SettingsSearch.Hint}" ToolTip="{t:Text Settings.SettingsSearch.Tip}"
-                                 TextChanged="SearchChanged" KeyDown="SearchKeyDown" />
-                        <TextBlock x:Name="NoMatch" Style="{StaticResource Note}" Margin="4,0,0,0" Text="{t:Text Settings.NoSettingsMatch}" Visibility="Collapsed" />
-                        <StackPanel x:Name="Categories" />
-                    </StackPanel>
-                </ScrollViewer>
-            </controls:Bevel>
+    <!--
+      every category on one page that scrolls; the list on the left jumps to each and marks the one in view. Laid out as
+      the Help tab is: in the middle of the tab, the list 240 wide down the left, the ? in a row above the page, and the
+      cards across the whole page. At most 2304 pixels wide, twice Help's, which gives the Theme Designer room for its
+      colours beside its preview.
+    -->
+    <Grid MaxWidth="2304" HorizontalAlignment="Stretch">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240" />
+            <ColumnDefinition Width="14" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <!-- the search box above the list, as on the Help tab; it hides the settings that do not match -->
+                <StackPanel Margin="8">
+                    <TextBox x:Name="SettingsSearch" Margin="0,0,0,8" Tag="{t:Text Settings.SettingsSearch.Hint}" ToolTip="{t:Text Settings.SettingsSearch.Tip}"
+                             TextChanged="SearchChanged" KeyDown="SearchKeyDown" />
+                    <TextBlock x:Name="NoMatch" Style="{StaticResource Note}" Margin="4,0,0,0" Text="{t:Text Settings.NoSettingsMatch}" Visibility="Collapsed" />
+                    <StackPanel x:Name="Categories" />
+                </StackPanel>
+            </ScrollViewer>
+        </controls:Bevel>
+        <DockPanel Grid.Column="2">
+            <!-- .bar.qtop: the ? at the right, in a row above the page, as Help's Back and Forward are -->
+            <Button DockPanel.Dock="Top" Style="{StaticResource HelpButton}" HorizontalAlignment="Right" Margin="0,0,0,6" controls:QuickHelp.Page="tab-settings" />
             <!-- the cards scroll in a sunken box, like the list on the left, so its edge shows where they are cut off -->
-            <controls:Bevel Grid.Column="2" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
             <ScrollViewer x:Name="CardScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
                           ScrollChanged="CardsScrolled">
         <!-- one card per category, all on the page; SettingsPage.xaml.cs lists them on the left by their headings -->
-        <StackPanel x:Name="Cards" Margin="8,8,8,0">
+        <StackPanel x:Name="Cards" Margin="12,6,12,0">
             <!-- Results -->
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Results">
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Results}" /></controls:Bevel>
-                    <controls:SettingGrid Margin="12,2,12,8">
+                    <controls:SettingGrid Margin="6,4,6,6">
                         <controls:SettingRow x:Name="CapRow" Label="{t:Text Settings.EditsListedPerRule}">
-                            <TextBox x:Name="CapBox" Style="{StaticResource MonoBox}" Width="172" ToolTip="{t:Text Settings.CapBox.Tip}"
+                            <TextBox x:Name="CapBox" Style="{StaticResource MonoBox}" Width="172"
                                      LostKeyboardFocus="CapLeft" KeyDown="BoxKeyDown" />
                         </controls:SettingRow>
                     </controls:SettingGrid>
@@ -54,38 +60,38 @@
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Export">
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Export}" /></controls:Bevel>
-                    <controls:SettingGrid Margin="12,2,12,8">
+                    <controls:SettingGrid Margin="6,4,6,6">
                         <controls:SettingRow Label="{t:Text Settings.KeepSourceComments}" Note="{t:Text Settings.KeepSourceComments.Note}">
-                            <CheckBox x:Name="CommentsSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.CommentsSwitch.Tip}" Click="SwitchClicked" Tag="keepComments" />
+                            <CheckBox x:Name="CommentsSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="keepComments" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.LineEndings}" Note="{t:Text Settings.LineEndings.Note}">
-                            <ComboBox x:Name="LineEndChoice" MinWidth="144" ToolTip="{t:Text Settings.LineEndChoice.Tip}" SelectionChanged="ChoiceChanged" Tag="eol">
+                            <ComboBox x:Name="LineEndChoice" MinWidth="144" SelectionChanged="ChoiceChanged" Tag="eol">
                                 <ComboBoxItem Content="LF" Tag="lf" />
                                 <ComboBoxItem Content="{t:Text Settings.CRLFWindows}" Tag="crlf" />
                                 <ComboBoxItem Content="{t:Text Settings.SameAsSource}" Tag="keep" />
                             </ComboBox>
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.FilesToExport}" Note="{t:Text Settings.FilesToExport.Note}">
-                            <ComboBox x:Name="ScopeChoice" MinWidth="144" ToolTip="{t:Text Settings.ScopeChoice.Tip}" SelectionChanged="ChoiceChanged" Tag="exportScope">
+                            <ComboBox x:Name="ScopeChoice" MinWidth="144" SelectionChanged="ChoiceChanged" Tag="exportScope">
                                 <ComboBoxItem Content="{t:Text Settings.ChangedFiles}" Tag="changed" />
                                 <ComboBoxItem Content="{t:Text Settings.AllFilesThatAre}" Tag="all" />
                             </ComboBox>
                         </controls:SettingRow>
                         <controls:SettingRow x:Name="DecimalsRow" Label="{t:Text Settings.DecimalPlaces}">
-                            <TextBox x:Name="DecimalsBox" Style="{StaticResource MonoBox}" Width="172" ToolTip="{t:Text Settings.DecimalsBox.Tip}"
+                            <TextBox x:Name="DecimalsBox" Style="{StaticResource MonoBox}" Width="172"
                                      LostKeyboardFocus="DecimalsLeft" KeyDown="BoxKeyDown" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ConfirmBeforeRunExport}" Note="{t:Text Settings.ConfirmBeforeRunExport.Note}">
-                            <CheckBox x:Name="ConfirmExportSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.ConfirmExportSwitch.Tip}" Click="SwitchClicked" Tag="confirmExport" />
+                            <CheckBox x:Name="ConfirmExportSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="confirmExport" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.BackUpOverwrittenFiles}" Note="{t:Text Settings.BackUpOverwrittenFiles.Note}">
-                            <CheckBox x:Name="BackupSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.BackupSwitch.Tip}" Click="SwitchClicked" Tag="backupOverwritten" />
+                            <CheckBox x:Name="BackupSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="backupOverwritten" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.OpenTheFolderAfter}" Note="{t:Text Settings.OpenTheFolderAfter.Note}">
-                            <CheckBox x:Name="OpenFolderSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.OpenFolderSwitch.Tip}" Click="SwitchClicked" Tag="openAfterExport" />
+                            <CheckBox x:Name="OpenFolderSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="openAfterExport" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.EditedWithEasyNDFComment}" Note="{t:Text Settings.EditedWithEasyNDFComment.Note}">
-                            <CheckBox x:Name="StampSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.StampSwitch.Tip}" Click="SwitchClicked" Tag="stamp" />
+                            <CheckBox x:Name="StampSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="stamp" />
                         </controls:SettingRow>
                     </controls:SettingGrid>
                 </StackPanel>
@@ -95,31 +101,31 @@
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Files">
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Files}" /></controls:Bevel>
-                    <controls:SettingGrid Margin="12,2,12,8">
+                    <controls:SettingGrid Margin="6,4,6,6">
                         <controls:SettingRow Label="{t:Text Settings.AddFolderLists}" Note="{t:Text Settings.AddFolderLists.Note}">
-                            <ComboBox x:Name="FolderChoice" MinWidth="144" ToolTip="{t:Text Settings.FolderChoice.Tip}" SelectionChanged="ChoiceChanged" Tag="folderMode">
+                            <ComboBox x:Name="FolderChoice" MinWidth="144" SelectionChanged="ChoiceChanged" Tag="folderMode">
                                 <ComboBoxItem Content="{t:Text Settings.AllNdfFiles}" Tag="all" />
                                 <ComboBoxItem Content="{t:Text Settings.FilesWithAPreset}" Tag="matched" />
                             </ComboBox>
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.DuplicateFiles}" Note="{t:Text Settings.DuplicateFiles.Note}">
-                            <ComboBox x:Name="DuplicateChoice" MinWidth="144" ToolTip="{t:Text Settings.DuplicateChoice.Tip}" SelectionChanged="ChoiceChanged" Tag="dupes">
+                            <ComboBox x:Name="DuplicateChoice" MinWidth="144" SelectionChanged="ChoiceChanged" Tag="dupes">
                                 <ComboBoxItem Content="{t:Text Settings.Ask}" Tag="ask" />
                                 <ComboBoxItem Content="{t:Text Settings.Replace}" Tag="replace" />
                                 <ComboBoxItem Content="{t:Text Settings.Skip}" Tag="skip" />
                             </ComboBox>
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.WrapTextInLists}" Note="{t:Text Settings.WrapTextInLists.Note}">
-                            <CheckBox x:Name="WrapSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.WrapSwitch.Tip}" Click="SwitchClicked" Tag="wrapRows" />
+                            <CheckBox x:Name="WrapSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="wrapRows" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.AutoFitFileList}" Note="{t:Text Settings.AutoFitFileList.Note}">
-                            <CheckBox x:Name="FitSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.FitSwitch.Tip}" Click="SwitchClicked" Tag="autoFit" />
+                            <CheckBox x:Name="FitSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="autoFit" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.AutoAssignPresetsBy}" Note="{t:Text Settings.AutoAssignPresetsBy.Note}">
-                            <CheckBox x:Name="AssignSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.AssignSwitch.Tip}" Click="SwitchClicked" Tag="autoAssign" />
+                            <CheckBox x:Name="AssignSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="autoAssign" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ReopenTheLastFiles}" Note="{t:Text Settings.ReopenTheLastFiles.Note}">
-                            <CheckBox x:Name="SessionSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.SessionSwitch.Tip}" Click="SwitchClicked" Tag="restoreSession" />
+                            <CheckBox x:Name="SessionSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="restoreSession" />
                         </controls:SettingRow>
                     </controls:SettingGrid>
                 </StackPanel>
@@ -129,12 +135,12 @@
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Editing">
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Editing}" /></controls:Bevel>
-                    <controls:SettingGrid Margin="12,2,12,8">
+                    <controls:SettingGrid Margin="6,4,6,6">
                         <controls:SettingRow Label="{t:Text Settings.ConfirmRuleDeletion}" Note="{t:Text Settings.ConfirmRuleDeletion.Note}">
-                            <CheckBox x:Name="ConfirmSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.ConfirmSwitch.Tip}" Click="SwitchClicked" Tag="confirmDelete" />
+                            <CheckBox x:Name="ConfirmSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="confirmDelete" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.UndoSteps}" Note="{t:Text Settings.UndoSteps.Note}">
-                            <ComboBox x:Name="UndoChoice" MinWidth="144" ToolTip="{t:Text Settings.UndoChoice.Tip}" SelectionChanged="ChoiceChanged" Tag="undoSteps">
+                            <ComboBox x:Name="UndoChoice" MinWidth="144" SelectionChanged="ChoiceChanged" Tag="undoSteps">
                                 <ComboBoxItem Content="30" Tag="30" />
                                 <ComboBoxItem Content="60" Tag="60" />
                                 <ComboBoxItem Content="100" Tag="100" />
@@ -150,27 +156,27 @@
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="FileEditor">
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.FileEditor}" /></controls:Bevel>
-                    <controls:SettingGrid Margin="12,2,12,8">
+                    <controls:SettingGrid Margin="6,4,6,6">
                         <controls:SettingRow Label="{t:Text Settings.TextSize}" Note="{t:Text Settings.TextSize.Note}">
-                            <ComboBox x:Name="TextSizeChoice" MinWidth="144" ToolTip="{t:Text Settings.TextSizeChoice.Tip}" SelectionChanged="TextSizeChosen" />
+                            <ComboBox x:Name="TextSizeChoice" MinWidth="144" SelectionChanged="TextSizeChosen" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.LineNumbers}">
                             <CheckBox x:Name="LineNumbersSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.LineNumbersSwitch.Tip}" Click="SwitchClicked" Tag="lineNumbers" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.WordWrap}" Note="{t:Text Settings.WordWrap.Note}">
-                            <CheckBox x:Name="WordWrapSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.WordWrapSwitch.Tip}" Click="SwitchClicked" Tag="wordWrap" />
+                            <CheckBox x:Name="WordWrapSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="wordWrap" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ScopeLines}" Note="{t:Text Settings.ScopeLines.Note}">
-                            <CheckBox x:Name="GuidesSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.GuidesSwitch.Tip}" Click="SwitchClicked" Tag="indentGuides" />
+                            <CheckBox x:Name="GuidesSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="indentGuides" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.CloseBracketsAndQuotes}" Note="{t:Text Settings.CloseBracketsAndQuotes.Note}">
-                            <CheckBox x:Name="PairsSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.PairsSwitch.Tip}" Click="SwitchClicked" Tag="autoPairs" />
+                            <CheckBox x:Name="PairsSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="autoPairs" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ShowEverythingInThe}" Note="{t:Text Settings.ShowEverythingInThe.Note}">
-                            <CheckBox x:Name="TreeAllSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.TreeAllSwitch.Tip}" Click="SwitchClicked" Tag="treeShowsAll" />
+                            <CheckBox x:Name="TreeAllSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="treeShowsAll" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ReopenTheLastFile}" Note="{t:Text Settings.ReopenTheLastFile.Note}">
-                            <CheckBox x:Name="ReopenFileSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.ReopenFileSwitch.Tip}" Click="SwitchClicked" Tag="reopenFile" />
+                            <CheckBox x:Name="ReopenFileSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="reopenFile" />
                         </controls:SettingRow>
                     </controls:SettingGrid>
                 </StackPanel>
@@ -180,18 +186,22 @@
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Appearance">
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Appearance}" /></controls:Bevel>
-                    <controls:SettingGrid Margin="12,2,12,8">
+                    <controls:SettingGrid Margin="6,4,6,6">
                         <controls:SettingRow Label="{t:Text Settings.Theme}" Note="{t:Text Settings.Theme.Note}">
-                            <ComboBox x:Name="ThemeChoice" MinWidth="144" ToolTip="{t:Text Settings.ThemeChoice.Tip}" SelectionChanged="ThemeChosen" />
+                            <ComboBox x:Name="ThemeChoice" MinWidth="144" SelectionChanged="ThemeChosen" />
                         </controls:SettingRow>
-                        <controls:SettingRow x:Name="FontsRow" Label="{t:Text Settings.Fonts}" Note="{t:Text Settings.FontsRow.Note}">
-                            <Button Content="{t:Text Settings.FontsButton}" ToolTip="{t:Text Settings.FontsButton.Tip}" Click="FontsClicked" />
+                        <controls:SettingRow x:Name="FontsRow" Label="{t:Text Settings.Fonts}">
+                            <!-- the fonts in use, as a value beside the button -->
+                            <DockPanel>
+                                <Button Content="{t:Text Settings.FontsButton}" ToolTip="{t:Text Settings.FontsButton.Tip}" Click="FontsClicked" VerticalAlignment="Center" />
+                                <TextBlock x:Name="FontsValue" Foreground="{DynamicResource muted}" Margin="8,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </DockPanel>
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.BeveledEdges}" Note="{t:Text Settings.BeveledEdges.Note}">
-                            <CheckBox x:Name="BevelSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.BevelSwitch.Tip}" Click="BevelClicked" />
+                            <CheckBox x:Name="BevelSwitch" Style="{StaticResource Toggle}" Click="BevelClicked" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.InterfaceSize}" Note="{t:Text Settings.InterfaceSize.Note}">
-                            <ComboBox x:Name="ScaleChoice" MinWidth="144" ToolTip="{t:Text Settings.ScaleChoice.Tip}" SelectionChanged="ChoiceChanged" Tag="uiScale">
+                            <ComboBox x:Name="ScaleChoice" MinWidth="144" SelectionChanged="ChoiceChanged" Tag="uiScale">
                                 <ComboBoxItem Content="90%" Tag="90" />
                                 <ComboBoxItem Content="100%" Tag="100" />
                                 <ComboBoxItem Content="110%" Tag="110" />
@@ -200,22 +210,22 @@
                             </ComboBox>
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.Tooltips}" Note="{t:Text Settings.Tooltips.Note}">
-                            <CheckBox x:Name="TooltipsSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.TooltipsSwitch.Tip}" Click="SwitchClicked" Tag="tooltips" />
+                            <CheckBox x:Name="TooltipsSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="tooltips" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.RememberTheWindow}" Note="{t:Text Settings.RememberTheWindow.Note}">
-                            <CheckBox x:Name="WindowSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.WindowSwitch.Tip}" Click="SwitchClicked" Tag="rememberWindow" />
+                            <CheckBox x:Name="WindowSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="rememberWindow" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.TreadScrollbars}" Note="{t:Text Settings.TreadScrollbars.Note}">
-                            <CheckBox x:Name="TreadSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.TreadSwitch.Tip}" Click="TreadClicked" />
+                            <CheckBox x:Name="TreadSwitch" Style="{StaticResource Toggle}" Click="TreadClicked" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.PanesGrowWithThe}" Note="{t:Text Settings.PanesGrowWithThe.Note}">
-                            <CheckBox x:Name="PanesScaleSwitch" Style="{StaticResource Toggle}" ToolTip="{t:Text Settings.PanesScaleSwitch.Tip}" Click="SwitchClicked" Tag="panesScale" />
+                            <CheckBox x:Name="PanesScaleSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="panesScale" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ColumnWidths}" Note="{t:Text Settings.ColumnWidths.Note}">
-                            <StackPanel Orientation="Horizontal">
-                                <Button Content="{t:Text Settings.ResetColumnWidths}" ToolTip="{t:Text Settings.ResetColumnWidths.Tip}" Click="ResetColumnsClicked" />
-                                <TextBlock x:Name="ColumnsNote" Style="{StaticResource Note}" Margin="4,0,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <DockPanel>
+                                <Button Content="{t:Text Settings.ResetColumnWidths}" ToolTip="{t:Text Settings.ResetColumnWidths.Tip}" Click="ResetColumnsClicked" VerticalAlignment="Center" />
+                                <TextBlock x:Name="ColumnsNote" Style="{StaticResource Note}" Margin="4,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            </DockPanel>
                         </controls:SettingRow>
                     </controls:SettingGrid>
                     <!-- the Theme Designer (the HTML app's .tdz): under a line, with a bold heading of its own -->
@@ -232,16 +242,16 @@
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Language">
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Language}" /></controls:Bevel>
-                    <controls:SettingGrid Margin="12,2,12,8">
+                    <controls:SettingGrid Margin="6,4,6,6">
                         <controls:SettingRow Label="{t:Text Settings.Language}" Note="{t:Text Settings.LanguageChoice.Note}">
-                            <ComboBox x:Name="LanguageChoice" MinWidth="144" ToolTip="{t:Text Settings.LanguageChoice.Tip}" SelectionChanged="LanguageChosen" />
+                            <ComboBox x:Name="LanguageChoice" MinWidth="144" SelectionChanged="LanguageChosen" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.LanguagePacks}" Note="{t:Text Settings.LanguagePacks.Note}">
-                            <controls:SnappedRow Gap="6">
+                            <controls:WrapRow Gap="6">
                                 <Button Content="{t:Text Settings.ImportLanguage}" ToolTip="{t:Text Settings.ImportLanguage.Tip}" Click="ImportLanguageClicked" />
                                 <Button Content="{t:Text Settings.ExportLanguage}" ToolTip="{t:Text Settings.ExportLanguage.Tip}" Click="ExportLanguageClicked" />
                                 <Button x:Name="RemoveLanguageButton" Content="{t:Text Settings.RemoveLanguage}" ToolTip="{t:Text Settings.RemoveLanguage.Tip}" Click="RemoveLanguageClicked" />
-                            </controls:SnappedRow>
+                            </controls:WrapRow>
                         </controls:SettingRow>
                     </controls:SettingGrid>
                     <TextBlock x:Name="LanguageNote" Style="{StaticResource Note}" Margin="12,0,12,8" Visibility="Collapsed" TextWrapping="Wrap" />
@@ -252,18 +262,18 @@
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Data">
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Data}" /></controls:Bevel>
-                    <controls:SettingGrid Margin="12,2,12,8">
-                        <controls:SettingRow Note="{t:Text Settings.OneFileWithAll.Note}">
-                            <controls:SnappedRow Gap="6">
+                    <controls:SettingGrid Margin="6,4,6,6">
+                        <controls:SettingRow Label="{t:Text Settings.Backup}" Note="{t:Text Settings.OneFileWithAll.Note}">
+                            <controls:WrapRow Gap="6">
                                 <Button Content="{t:Text Settings.BackUpAllMods}" ToolTip="{t:Text Settings.BackUpAllMods.Tip}" Click="BackupClicked" />
                                 <Button Content="{t:Text Settings.RestoreBackup}" ToolTip="{t:Text Settings.RestoreBackup.Tip}" Click="RestoreClicked" />
-                            </controls:SnappedRow>
+                            </controls:WrapRow>
                         </controls:SettingRow>
-                        <controls:SettingRow Note="{t:Text Settings.ResetSettingsKeepsYour.Note}">
-                            <controls:SnappedRow Gap="6">
+                        <controls:SettingRow Label="{t:Text Settings.Reset}" Note="{t:Text Settings.ResetSettingsKeepsYour.Note}">
+                            <controls:WrapRow Gap="6">
                                 <Button Content="{t:Text Settings.ResetSettings}" ToolTip="{t:Text Settings.ResetSettings.Tip}" Click="ResetClicked" />
                                 <Button Content="{t:Text Settings.ClearAllData}" ToolTip="{t:Text Settings.ClearAllData.Tip}" Click="ClearClicked" />
-                            </controls:SnappedRow>
+                            </controls:WrapRow>
                         </controls:SettingRow>
                     </controls:SettingGrid>
                     <TextBlock x:Name="DataNote" Style="{StaticResource Note}" Margin="12,0,12,8" />
@@ -272,6 +282,6 @@
         </StackPanel>
             </ScrollViewer>
             </controls:Bevel>
-        </Grid>
-    </DockPanel>
+        </DockPanel>
+    </Grid>
 </UserControl>

@@ -260,11 +260,8 @@ public partial class RulesPage : UserControl
 
     // ---- rules ----
 
-    /// <summary>The rule clicked last and when, so a second click on it soon after opens it, as a double-click.</summary>
-    private (int Index, DateTime At)? lastRuleClick;
-
-    /// <summary>How soon a second click on a rule opens it.</summary>
-    private static readonly TimeSpan RuleDoubleClickTime = TimeSpan.FromMilliseconds(500);
+    /// <summary>The rule clicked last, so a second click on it, as part of a double-click, opens it.</summary>
+    private int? lastClickedRule;
 
     /// <summary>
     /// The line the left button went down on. A click counts only when it is let go on the same line: a press that
@@ -272,8 +269,18 @@ public partial class RulesPage : UserControl
     /// </summary>
     private int? pressedRuleIndex;
 
-    private void RulePressed(object sender, MouseButtonEventArgs e) =>
+    /// <summary>
+    /// Whether that press was the second of a double-click, as Windows counts it (by its own double-click time, from
+    /// one press to the next): timing the clicks here instead, as they were handled, missed double-clicks while the
+    /// app was busy.
+    /// </summary>
+    private bool pressedTwice;
+
+    private void RulePressed(object sender, MouseButtonEventArgs e)
+    {
         pressedRuleIndex = sender is FrameworkElement { DataContext: RuleRow row } ? row.Index : null;
+        pressedTwice = e.ClickCount == 2;
+    }
 
     private void RuleClicked(object sender, MouseButtonEventArgs e)
     {
@@ -283,8 +290,8 @@ public partial class RulesPage : UserControl
         if (!pressedHere) return;
         ModifierKeys keys = Keyboard.Modifiers;
         bool control = keys.HasFlag(ModifierKeys.Control), shift = keys.HasFlag(ModifierKeys.Shift);
-        bool twice = !control && !shift && lastRuleClick is { } last && last.Index == row.Index && DateTime.UtcNow - last.At < RuleDoubleClickTime;
-        lastRuleClick = twice || control || shift ? null : (row.Index, DateTime.UtcNow);
+        bool twice = !control && !shift && pressedTwice && lastClickedRule == row.Index;
+        lastClickedRule = twice || control || shift ? null : row.Index;
         Model.ClickRule(row.Index, control, shift);
         // the click selects the line, which draws the list's lines anew, the one under the mouse too: WPF is told to
         // look again at what the mouse is over, or the second click of a double-click goes to the line that is gone
