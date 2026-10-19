@@ -41,6 +41,7 @@ public sealed class UnitTile : Grid
     private readonly NationMark nationMark;
     private readonly TextBlock nation = new() { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5, 0, 0, 0) };
     private readonly TextBlock cost = new() { FontSize = 11, FontWeight = FontWeights.Bold };
+    private readonly TextBlock detail = new() { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 2, 0, 0), Visibility = Visibility.Collapsed };
     private readonly Bevel costBadge;
     private readonly UnitSelection selection;
 
@@ -61,7 +62,8 @@ public sealed class UnitTile : Grid
         nation.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         nationMark = new NationMark(unit.Nation, firstSide);
         var nationLine = new DockPanel { Margin = new Thickness(0, 2, 0, 0), Children = { nationMark, nation } };
-        tile.Child = new StackPanel { Children = { picture, name, nationLine } };
+        detail.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        tile.Child = new StackPanel { Children = { picture, name, nationLine, detail } };
         Children.Add(tile);
         costBadge = CostBadge(cost);
         Children.Add(costBadge);
@@ -90,6 +92,17 @@ public sealed class UnitTile : Grid
         cost.Text = unit.Cost is null ? "" : UnitNumbers.Of(unit.Cost);
         costBadge.Visibility = unit.Cost is null ? Visibility.Collapsed : Visibility.Visible;
         ShowState();
+    }
+
+    /// <summary>
+    /// A line under the nation, dim, such as how many cards of the unit a division has; none when empty. Its tooltip
+    /// says it in full.
+    /// </summary>
+    public void ShowDetail(string text, string tip)
+    {
+        detail.Text = text;
+        detail.ToolTip = tip == "" ? null : tip;
+        detail.Visibility = text == "" ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>The cost, small and bold in a sunken box, 7 pixels in from the tile's top right corner.</summary>

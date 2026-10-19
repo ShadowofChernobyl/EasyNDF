@@ -55,15 +55,14 @@ public partial class UnitsPage
     /// </summary>
     private void ApplyZoom(UnitView zoomed)
     {
+        if (zoomed == UnitView.Table)
+        {
+            TableList.SetScale(ScaleOf(zoomed));
+            return;
+        }
         var scale = new ScaleTransform(ScaleOf(zoomed), ScaleOf(zoomed));
         scale.Freeze();
-        var rowStyle = new Style(typeof(ContentPresenter)) { Setters = { new Setter(LayoutTransformProperty, scale) } };
-        if (zoomed == UnitView.Cards) CardsList.ItemContainerStyle = rowStyle;
-        else
-        {
-            TableList.ItemContainerStyle = rowStyle;
-            tableHeadings.LayoutTransform = scale;
-        }
+        CardsList.ItemContainerStyle = new Style(typeof(ContentPresenter)) { Setters = { new Setter(LayoutTransformProperty, scale) } };
     }
 
     /// <summary>Shows the zoom of the view shown in the dropdown; on Compare, which has none, the dropdown is hidden.</summary>

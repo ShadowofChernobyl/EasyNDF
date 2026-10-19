@@ -13,7 +13,8 @@ namespace EasyNdf.Data;
 public static class ModFiles
 {
     /// <summary>
-    /// The text "Export mod" saves: <c>{ModName, FormatVersion, Watermark?, Presets: [{PresetName, Rules}]}</c>.
+    /// The text "Export mod" saves: <c>{ModName, FormatVersion, Watermark?, Presets: [{PresetName, Rules}], Divisions?}</c>.
+    /// The HTML app reads such a file but leaves out its Divisions.
     /// Conditions and actions without a name get one made from what they do, as in the HTML app.
     /// </summary>
     public static string ExportText(Mod mod) => JsonFiles.ToText(ToJson(mod, nameRows: true));
@@ -42,6 +43,8 @@ public static class ModFiles
                     ["Rules"] = mod.Presets[i].Rules.DeepClone(),
                 };
                 if (i == 0 && mod.Watermark is not null) entry["Watermark"] = mod.Watermark.ToJson();
+                // the divisions ride with the first preset, as the watermark does
+                if (i == 0 && mod.Divisions.Count > 0) entry["Divisions"] = DivisionsToJson(mod);
                 all.Add(entry);
             }
         }
@@ -75,6 +78,7 @@ public static class ModFiles
         if (name == "") name = fileBaseName;
         Mod mod = ModWithPresets(name, presets);
         if (modFile["Watermark"] is JsonObject watermark) mod.Watermark = ModWatermark.FromJson(watermark);
+        mod.Divisions = DivisionsFromJson(modFile["Divisions"]);
         return mod;
     }
 
@@ -96,6 +100,8 @@ public static class ModFiles
             Mod mod = ModWithPresets(name, new JsonArray(byMod[name].Select(e => (JsonNode)e.DeepClone()).ToArray()));
             JsonObject? withWatermark = byMod[name].FirstOrDefault(e => e["Watermark"] is JsonObject);
             if (withWatermark is not null) mod.Watermark = ModWatermark.FromJson((JsonObject)withWatermark["Watermark"]!);
+            JsonObject? withDivisions = byMod[name].FirstOrDefault(e => e["Divisions"] is JsonArray);
+            if (withDivisions is not null) mod.Divisions = DivisionsFromJson(withDivisions["Divisions"]);
             mods.Add(mod);
         }
         return mods;
@@ -152,8 +158,16 @@ public static class ModFiles
             ["PresetName"] = p.Name,
             ["Rules"] = nameRows ? RulesWithRowNames(p.Rules) : p.Rules.DeepClone(),
         }).ToArray());
+        if (mod.Divisions.Count > 0) json["Divisions"] = DivisionsToJson(mod);
         return json;
     }
+
+    /// <summary>A mod's divisions as the mod file keeps them.</summary>
+    private static JsonArray DivisionsToJson(Mod mod) => new([.. mod.Divisions.Select(division => (JsonNode)division.ToJson())]);
+
+    /// <summary>The divisions a mod file keeps; none when it has none.</summary>
+    private static List<Divisions.ModDivision> DivisionsFromJson(JsonNode? divisions) =>
+        [.. (divisions as JsonArray ?? []).OfType<JsonObject>().Select(Divisions.ModDivision.FromJson)];
 
     /// <summary>
     /// A copy of the rules in which every condition and action has a name: an unnamed one is named from what it does,

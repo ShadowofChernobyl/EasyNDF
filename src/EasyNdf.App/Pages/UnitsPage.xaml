@@ -13,50 +13,6 @@
              xmlns:units="clr-namespace:EasyNdf.App.Units"
              Foreground="{DynamicResource ink}">
     <UserControl.Resources>
-        <!--
-          .factories button: a factory's tab, bold, raised with no edge at the bottom. The one chosen is sunk on the box
-          colour, in the accent colour, and covers the line under the tabs, so it opens into the list below.
-        -->
-        <Style x:Key="FactoryTab" TargetType="ToggleButton">
-            <Setter Property="Foreground" Value="{DynamicResource ink}" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Padding" Value="11,3" />
-            <Setter Property="Margin" Value="0,0,2,-1" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToggleButton">
-                        <Grid>
-                            <controls:Bevel x:Name="Edge" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Edges="1,1,1,0"
-                                            Background="{DynamicResource panel}" Padding="{TemplateBinding Padding}">
-                                <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False" />
-                            </controls:Bevel>
-                            <!-- the chosen tab's foot, over the line under the tabs -->
-                            <Rectangle x:Name="Foot" Height="1" VerticalAlignment="Bottom" Margin="1,0" Fill="{DynamicResource well}" Visibility="Collapsed" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="{DynamicResource accent}" />
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Edge" Property="Background" Value="{DynamicResource well}" />
-                                <Setter TargetName="Edge" Property="TopLeft" Value="{DynamicResource lo}" />
-                                <Setter TargetName="Edge" Property="BottomRight" Value="{DynamicResource hi}" />
-                                <Setter TargetName="Foot" Property="Visibility" Value="Visible" />
-                                <Setter Property="Foreground" Value="{DynamicResource accent}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!-- the small buttons in headings, such as All: 20 pixels high, 7 pixels each side -->
-        <Style x:Key="HeadingButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="MinHeight" Value="20" />
-            <Setter Property="Padding" Value="7,0" />
-            <Setter Property="FontWeight" Value="Normal" />
-        </Style>
         <!-- a sunken box that scrolls -->
         <Style x:Key="SunkenBox" TargetType="controls:Bevel">
             <Setter Property="TopLeft" Value="{DynamicResource lo}" />
@@ -110,16 +66,6 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Button x:Name="AddUnitsButton" Style="{StaticResource HeadingButton}" Content="{t:Text Units.AddUnits}" ToolTip="{t:Text Units.AddUnits.Tip}"
                                 Margin="0,0,8,0" Click="AddUnitsClicked" />
-                        <!-- Cards and Table as icons, as the pane buttons beside Details; their names are for screen readers -->
-                        <ToggleButton x:Name="CardsButton" Style="{StaticResource PressedToggle}" Padding="5,4" AutomationProperties.Name="{t:Text Units.Cards}"
-                                      ToolTip="{t:Text Units.Cards.Tip}" Click="ViewClicked">
-                            <controls:ViewIcon Shape="Cards" />
-                        </ToggleButton>
-                        <ToggleButton x:Name="TableButton" Style="{StaticResource PressedToggle}" Padding="5,4" Margin="-1,0,0,0" AutomationProperties.Name="{t:Text Units.Table}"
-                                      ToolTip="{t:Text Units.Table.Tip}" Click="ViewClicked">
-                            <controls:ViewIcon Shape="Table" />
-                        </ToggleButton>
-                        <ToggleButton x:Name="CompareButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Margin="-1,0,0,0" Content="{t:Text Units.Compare}" ToolTip="{t:Text Units.Compare.Tip}" Click="ViewClicked" />
                         <Button Style="{StaticResource HelpButton}" Margin="8,0,0,0" FontWeight="Bold" controls:QuickHelp.Page="tab-units" />
                     </StackPanel>
                 </controls:FlexRow>
@@ -147,6 +93,21 @@
                                 <DockPanel>
                                     <!-- 3 pixels above the line, as in a heading, so the buttons never sit on it -->
                                     <ContentControl x:Name="PaneSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Bottom" Margin="0,0,0,3" />
+                                    <!-- Cards, Table and Compare, at the list's top right; while Compare is shown, the code moves them above it -->
+                                    <ContentControl x:Name="ViewButtonsSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Bottom" Margin="8,0,0,3">
+                                        <StackPanel x:Name="ViewButtons" Orientation="Horizontal">
+                                            <!-- Cards and Table as icons, as the pane buttons beside Details; their names are for screen readers -->
+                                            <ToggleButton x:Name="CardsButton" Style="{StaticResource PressedToggle}" Padding="5,4" AutomationProperties.Name="{t:Text Units.Cards}"
+                                                          ToolTip="{t:Text Units.Cards.Tip}" Click="ViewClicked">
+                                                <controls:ViewIcon Shape="Cards" />
+                                            </ToggleButton>
+                                            <ToggleButton x:Name="TableButton" Style="{StaticResource PressedToggle}" Padding="5,4" Margin="-1,0,0,0" AutomationProperties.Name="{t:Text Units.Table}"
+                                                          ToolTip="{t:Text Units.Table.Tip}" Click="ViewClicked">
+                                                <controls:ViewIcon Shape="Table" />
+                                            </ToggleButton>
+                                            <ToggleButton x:Name="CompareButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Margin="-1,0,0,0" Content="{t:Text Units.Compare}" ToolTip="{t:Text Units.Compare.Tip}" Click="ViewClicked" />
+                                        </StackPanel>
+                                    </ContentControl>
                                     <WrapPanel x:Name="FactoryTabs" VerticalAlignment="Bottom" />
                                 </DockPanel>
                             </controls:Bevel>
@@ -191,31 +152,8 @@
                                     </ItemsControl>
 
                                     <!-- the Table view: its headings above the rows, moving sideways with them -->
-                                    <ItemsControl x:Name="TableList" Focusable="False" Visibility="Collapsed" SizeChanged="TableListResized"
-                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True"
-                                                  MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked">
-                                        <ItemsControl.Template>
-                                            <ControlTemplate TargetType="ItemsControl">
-                                                <ScrollViewer x:Name="TableScroller" Style="{StaticResource ListScroller}" Focusable="False"
-                                                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" CanContentScroll="True">
-                                                    <ItemsPresenter />
-                                                </ScrollViewer>
-                                            </ControlTemplate>
-                                        </ItemsControl.Template>
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <VirtualizingStackPanel />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.Resources>
-                                            <DataTemplate DataType="{x:Type units:EmptyLine}">
-                                                <TextBlock Text="{Binding Text}" Foreground="{DynamicResource muted}" Margin="10" TextWrapping="Wrap" />
-                                            </DataTemplate>
-                                            <DataTemplate DataType="{x:Type units:TableRowLine}">
-                                                <units:UnitTableRowView />
-                                            </DataTemplate>
-                                        </ItemsControl.Resources>
-                                    </ItemsControl>
+                                    <units:UnitTableList x:Name="TableList" WidthsKey="unitColumns" Visibility="Collapsed"
+                                                         MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked" />
                                 </Grid>
                             </controls:Bevel>
                         </DockPanel>
@@ -231,11 +169,15 @@
                 </controls:PanePair>
 
                 <!-- Compare: a card a unit, across the width, the pinned unit first -->
-                <controls:Bevel x:Name="CompareBox" Style="{StaticResource SunkenBox}" Visibility="Collapsed">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                        <StackPanel x:Name="CompareList" Margin="8,8,8,0" />
-                    </ScrollViewer>
-                </controls:Bevel>
+                <DockPanel x:Name="CompareBox" Visibility="Collapsed">
+                    <!-- the view buttons, at the same place as above the cards -->
+                    <ContentControl x:Name="CompareButtonsSlot" DockPanel.Dock="Top" HorizontalAlignment="Right" Focusable="False" Margin="0,0,0,3" />
+                    <controls:Bevel Style="{StaticResource SunkenBox}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                            <StackPanel x:Name="CompareList" Margin="8,8,8,0" />
+                        </ScrollViewer>
+                    </controls:Bevel>
+                </DockPanel>
 
                 <!-- while the units are read, or when there are none to read -->
                 <controls:Bevel x:Name="MessageArea" Style="{StaticResource SunkenBox}" Visibility="Collapsed">

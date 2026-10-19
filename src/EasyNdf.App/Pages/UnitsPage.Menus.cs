@@ -16,7 +16,7 @@ public partial class UnitsPage : IUnitActions
 {
     /// <summary>
     /// A unit's menu: show it or its weapon set in the File Editor; on Compare, pin it; compare it; new rules for it or
-    /// for the units shown; copy its name.
+    /// for the units shown; copy its name; add it to a division.
     /// </summary>
     public ContextMenu OpenUnitMenu(Unit unit, FrameworkElement at)
     {
@@ -24,17 +24,25 @@ public partial class UnitsPage : IUnitActions
         MenuChoice?[] items =
         [
             Menus.Heading(unit.Name),
-            ShowInEditorChoice(Texts.Get("Units.Menu.ShowUnit"), unit.Descriptor, UnitFiles.Units),
-            unit.WeaponSet is null ? null : ShowInEditorChoice(Texts.Get("Units.Menu.ShowWeaponSet"), unit.WeaponSet, UnitFiles.WeaponSets),
+            .. ShowInEditorChoices(unit),
             Menus.Line,
             onCompare && compared.Contains(unit) && !ReferenceEquals(unit, pinned) ? new MenuChoice(Texts.Get("Units.Menu.Pin"), () => Pin(unit)) : null,
             new MenuChoice(Texts.Get("Units.Menu.Compare"), () => Compare(unit), IsEnabled: !compared.Contains(unit)),
             new MenuChoice(Texts.Get("Units.Menu.NewRuleForUnit"), () => NewRuleFor(unit)),
             new MenuChoice(Texts.Get("Units.Menu.NewRuleForShown"), () => _ = NewRuleForShown(), IsEnabled: !onCompare && shown.Count > 0),
             new MenuChoice(Texts.Get("Units.Menu.CopyName"), () => Copy(unit.Descriptor), Key: unit.Descriptor),
+            Menus.Line,
+            .. MainView.Of(this).DivisionsTab.AddToDivisionChoices(unit),
         ];
         return at is Button ? Menus.ShowBelow(at, items) : Menus.Show(at, items);
     }
+
+    /// <summary>"Show Unit in File Editor" and, when the unit has one, "Show Weapon Set in File Editor".</summary>
+    internal MenuChoice?[] ShowInEditorChoices(Unit unit) =>
+    [
+        ShowInEditorChoice(Texts.Get("Units.Menu.ShowUnit"), unit.Descriptor, UnitFiles.Units),
+        unit.WeaponSet is null ? null : ShowInEditorChoice(Texts.Get("Units.Menu.ShowWeaponSet"), unit.WeaponSet, UnitFiles.WeaponSets),
+    ];
 
     /// <summary>The menu of the list's empty room: a new rule for the units shown.</summary>
     private void OpenListMenu(FrameworkElement at) =>
@@ -104,9 +112,9 @@ public partial class UnitsPage : IUnitActions
     }
 
     /// <summary>A new Edit rule on the Rules tab for some descriptors, opened to choose what it changes.</summary>
-    private void NewRule(string name, IReadOnlyList<string> descriptors) => MainView.Of(this).RulesTab.AddRuleFor(name, descriptors);
+    internal void NewRule(string name, IReadOnlyList<string> descriptors) => MainView.Of(this).RulesTab.AddRuleFor(name, descriptors);
 
-    private static void Copy(string text)
+    internal static void Copy(string text)
     {
         try { Clipboard.SetText(text); }
         catch (System.Runtime.InteropServices.COMException) { } // the clipboard is busy with another program

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using EasyNdf.Data.Divisions;
 using EasyNdf.Data.Game;
 using EasyNdf.Engine.Ndf;
 using static EasyNdf.Data.Units.NdfValues;
@@ -20,7 +21,8 @@ public static class UnitReader
         var problems = new List<string>();
         Dictionary<string, List<(string Ammunition, int Count)>> weaponSets = ReadWeaponSets(files, problems);
         Dictionary<string, AmmunitionStats> ammunition = ReadAmmunition(files, problems);
-        Dictionary<string, List<string>> divisions = ReadDivisions(files, texts, problems);
+        List<Division> allDivisions = DivisionReader.Read(files, texts, problems);
+        Dictionary<string, List<string>> divisions = DivisionsOfEachUnit(allDivisions);
         Dictionary<string, string> pictures = ReadPictureSources(files);
         Dictionary<string, string> flags = ReadFlagSources(files);
 
@@ -30,7 +32,7 @@ public static class UnitReader
             if (declaration.Value is not ObjectValue unit) continue;
             units.Add(ReadUnit(declaration.Name, unit, texts, weaponSets, ammunition, divisions, pictures));
         }
-        return new UnitCatalog(game, units, flags, problems);
+        return new UnitCatalog(game, units, flags, problems, allDivisions);
     }
 
     // ---- one unit ----
@@ -210,41 +212,18 @@ public static class UnitReader
     // ---- divisions ----
 
     /// <summary>
-    /// The multiplayer divisions each unit is in (by the unit's descriptor): the divisions in Divisions.ndf tagged
-    /// DEFAULT, named as the game names them, and their units from DivisionRules.ndf. WARNO gives each division a
-    /// rule of its own (DivisionRule = ..._Rule); Steel Division 2 keeps them all in one MAP, by division.
+    /// The multiplayer divisions each unit is in (by the unit's descriptor), by their names as the game shows them,
+    /// sorted: the divisions tagged DEFAULT, and the units their rules list.
     /// </summary>
-    private static Dictionary<string, List<string>> ReadDivisions(GameDataFiles files, GameTexts texts, List<string> problems)
+    private static Dictionary<string, List<string>> DivisionsOfEachUnit(List<Division> divisions)
     {
-        var namesByDivision = new Dictionary<string, string>(StringComparer.Ordinal);
-        var namesByRule = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (Declaration declaration in Declarations(files, "Generated/Gameplay/Decks/Divisions.ndf", _ => true, problems))
-        {
-            if (declaration.Value is not ObjectValue { TypeName: "TDeckDivisionDescriptor" } division) continue;
-            bool forMultiplayer = ItemsOf(Own(division, "DivisionTags")).Select(Text).Contains("DEFAULT");
-            if (!forMultiplayer) continue;
-            string name = texts.Get(Text(Own(division, "DivisionName"))) ?? texts.Get(Text(Own(division, "DivisionNickname")))
-                ?? DivisionNameFromDescriptor(Text(Own(division, "CfgName")) ?? declaration.Name);
-            namesByDivision[declaration.Name] = name;
-            if (Text(Own(division, "DivisionRule")) is string rule) namesByRule[rule] = name;
-        }
-
         var unitsIn = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        void AddUnits(NdfValue rule, string divisionName)
-        {
-            foreach (ObjectValue unitRule in AllObjects(rule))
-                if (Text(Own(unitRule, "UnitDescriptor")) is string unit)
-                {
-                    if (!unitsIn.TryGetValue(unit, out List<string>? list)) unitsIn[unit] = list = [];
-                    if (!list.Contains(divisionName)) list.Add(divisionName);
-                }
-        }
-        foreach (Declaration declaration in Declarations(files, "Generated/Gameplay/Decks/DivisionRules.ndf", _ => true, problems))
-        {
-            if (namesByRule.TryGetValue(declaration.Name, out string? divisionName)) AddUnits(declaration.Value, divisionName);
-            foreach (var (key, rule) in PairsOf(Find(declaration.Value, "DivisionRules")))
-                if (Text(key) is string division && namesByDivision.TryGetValue(division, out string? name)) AddUnits(rule, name);
-        }
+        foreach (Division division in divisions.Where(d => d.IsForMultiplayer))
+            foreach (DivisionUnit unit in division.Units)
+            {
+                if (!unitsIn.TryGetValue(unit.Unit, out List<string>? list)) unitsIn[unit.Unit] = list = [];
+                if (!list.Contains(division.Name)) list.Add(division.Name);
+            }
         foreach (List<string> list in unitsIn.Values) list.Sort(StringComparer.CurrentCultureIgnoreCase);
         return unitsIn;
     }
@@ -313,7 +292,7 @@ public static class UnitReader
     /// A declaration that is not valid NDF is noted in <paramref name="problems"/> and left out. Nothing, with a
     /// problem noted, when the file is missing and <paramref name="mustExist"/>.
     /// </summary>
-    private static IEnumerable<Declaration> Declarations(GameDataFiles files, string endOfPath, Func<string, bool> wanted, List<string> problems, bool mustExist = true)
+    internal static IEnumerable<Declaration> Declarations(GameDataFiles files, string endOfPath, Func<string, bool> wanted, List<string> problems, bool mustExist = true)
     {
         using TextReader? reader = files.Open(endOfPath);
         if (reader is null)
@@ -363,8 +342,4 @@ public static class UnitReader
         }
         if (name is not null) yield return (name, text.ToString());
     }
-
-    /// <summary>An object's own property of this name (not one inside it); null when it has none.</summary>
-    private static NdfValue? Own(ObjectValue o, string name) =>
-        o.Properties.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.Ordinal))?.Value;
 }

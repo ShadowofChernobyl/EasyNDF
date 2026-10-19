@@ -25,6 +25,12 @@ public partial class UnitsPage : UserControl
     /// <summary>The units shown, with where they came from; null until a source has been read.</summary>
     private LoadedUnits? loaded;
 
+    /// <summary>The units read last, with their divisions, for the Divisions tab; null until a source has been read.</summary>
+    public LoadedUnits? Units => loaded;
+
+    /// <summary>Raised when a source's units have been read and shown, so the Divisions tab shows its divisions.</summary>
+    public event Action? UnitsRead;
+
     /// <summary>Counts the reads started, so a read that a newer one has overtaken is ignored when it ends.</summary>
     private int readsStarted;
 
@@ -49,15 +55,12 @@ public partial class UnitsPage : UserControl
             OpenUnitMenu(unit, UnitPaneContent);
         };
         IsVisibleChanged += (_, _) => TabShown();
-        sources.Changed += SourceChanged;
-        SourceChoice.Selection = sources;
         ShowSource();
         PreviewKeyDown += FoldKeys;
         PreviewKeyDown += ZoomKeys;
         Texts.LanguageChanged += LanguageChanged;
         CardsList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
         TableList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
-        PrepareTableHeadings();
         PrepareZoom();
         // Cards or Table, whichever was used last; Compare, kept by an earlier version, counts as Cards
         view = (string?)AppData.Current.State["unitView"] == nameof(UnitView.Table) ? UnitView.Table : UnitView.Cards;
@@ -92,8 +95,18 @@ public partial class UnitsPage : UserControl
 
     // ---- the source ----
 
-    /// <summary>The games and mods found, and the one chosen in the Source list.</summary>
-    private readonly SourceSelection sources = new();
+    /// <summary>The games and mods found, and the one chosen in a Source list: the main window's, shared with the Files and Divisions tabs.</summary>
+    private SourceSelection sources = new();
+
+    /// <summary>Shows and reads the main window's source, which the Files and Divisions tabs' lists choose too.</summary>
+    public void UseSources(SourceSelection shared)
+    {
+        sources.Changed -= SourceChanged;
+        sources = shared;
+        sources.Changed += SourceChanged;
+        SourceChoice.Selection = shared;
+        ShowSource();
+    }
 
     /// <summary>Whether the games have been looked for: the first time the tab is shown, not when the app starts.</summary>
     private bool started;
@@ -104,12 +117,16 @@ public partial class UnitsPage : UserControl
     /// <summary>The source being read now, so it is not read twice at once.</summary>
     private string? readingKey;
 
-    /// <summary>The first time the tab is shown: finds the games and their mods. Nothing is read until a source is chosen.</summary>
+    /// <summary>
+    /// The first time the tab is shown: finds the games and their mods, unless another tab has already. Nothing is read
+    /// until a source is chosen; one chosen on the Files or Divisions tab is being read already.
+    /// </summary>
     private async Task LookForGames()
     {
         started = true;
-        ShowMessage(Texts.Get("Units.LookingForGames"), offerChooser: false);
-        await sources.LookAsync();
+        if (sources.Chosen is not null) return;
+        if (!sources.HasLooked) ShowMessage(Texts.Get("Units.LookingForGames"), offerChooser: false);
+        await sources.LookOnceAsync();
         // reading a game's units and pictures takes a while, and the user should know what started it
         if (sources.Chosen is null)
             ShowMessage(Texts.Get(sources.Sources.Count == 0 ? "Units.NoGame" : "Units.ChooseSourceFirst"), offerChooser: sources.Sources.Count == 0);
@@ -189,6 +206,7 @@ public partial class UnitsPage : UserControl
         StopReadingBar();
         MessageArea.Visibility = Visibility.Collapsed;
         ShowAll();
+        UnitsRead?.Invoke();
     }
 
     /// <summary>Shows a line where the units go: while reading, or when there is nothing to read; with "Choose a Game Folder…" when it helps.</summary>
@@ -222,6 +240,16 @@ public partial class UnitsPage : UserControl
     /// <summary>Where the step being read ends on the bar: the bar creeps towards it but stops a block short.</summary>
     private double readingStepEnd;
 
+    /// <summary>
+    /// Raised whenever the loading bar moves, shows or goes, with how far it is (null once it is hidden) and the step
+    /// under it, so the Divisions tab can show the same bar while the source is read.
+    /// </summary>
+    public event Action<double?, string>? ReadingBarChanged;
+
+    /// <summary>Tells the Divisions tab where the bar is now.</summary>
+    private void TellReadingBar() =>
+        ReadingBarChanged?.Invoke(ReadingBar.Visibility == Visibility.Visible ? ReadingBar.Fraction : null, ReadingStep.Text);
+
     /// <summary>Shows an empty bar under the reading line and starts it creeping.</summary>
     private void StartReadingBar()
     {
@@ -251,6 +279,7 @@ public partial class UnitsPage : UserControl
             UnitReadStep.ReadingUnits => "Units.Step.ReadingUnits",
             _ => "Units.Step.PreparingPictures",
         });
+        TellReadingBar();
     }
 
     /// <summary>One block more, unless that would reach the end of the step being read.</summary>
@@ -258,6 +287,7 @@ public partial class UnitsPage : UserControl
     {
         double oneBlock = 1.0 / Controls.BlockBar.Blocks;
         if (ReadingBar.Fraction + oneBlock < readingStepEnd - oneBlock / 2) ReadingBar.Fraction += oneBlock;
+        TellReadingBar();
     }
 
     /// <summary>Hides the bar: the read is done, or a message takes its place.</summary>
@@ -266,6 +296,7 @@ public partial class UnitsPage : UserControl
         readingTimer.Stop();
         ReadingBar.Visibility = Visibility.Collapsed;
         ReadingStep.Visibility = Visibility.Collapsed;
+        TellReadingBar();
     }
 
     // ---- the filters ----
@@ -481,7 +512,22 @@ public partial class UnitsPage : UserControl
         TableButton.IsChecked = view == UnitView.Table;
         CompareButton.IsChecked = view == UnitView.Compare;
         AddUnitsButton.Visibility = view == UnitView.Compare ? Visibility.Visible : Visibility.Collapsed;
+        PlaceViewButtons();
         ShowZoom();
+    }
+
+    /// <summary>
+    /// The view buttons sit at the list's top right, in the row of factory tabs; Compare has no such row (the list and
+    /// its pane are hidden), so while it is shown they move to a row of their own above it.
+    /// </summary>
+    private void PlaceViewButtons()
+    {
+        bool compare = view == UnitView.Compare;
+        ContentControl from = compare ? ViewButtonsSlot : CompareButtonsSlot;
+        ContentControl to = compare ? CompareButtonsSlot : ViewButtonsSlot;
+        if (to.Content == ViewButtons) return;
+        from.Content = null;
+        to.Content = ViewButtons;
     }
 
     /// <summary>Shows everything again after a filter, the view or the source changed: the nations, the factory tabs and the view.</summary>

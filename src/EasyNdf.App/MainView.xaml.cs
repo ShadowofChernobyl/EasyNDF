@@ -35,6 +35,12 @@ public partial class MainView : UserControl
             return FilesTab.Model.Entries.LastOrDefault(entry => entry.Name == added.Name);
         };
         FilesTab.OpenInEditor = entry => _ = EditorTab.Open(entry);
+        // one source for the Files, Units and Divisions tabs: choosing it on any of them chooses it on all
+        UnitsTab.UseSources(Sources);
+        DivisionsTab.UseSources(Sources);
+        FilesTab.UseSources(Sources);
+        // the Divisions tab shows the divisions of the source read on the Units tab
+        DivisionsTab.Connect(UnitsTab);
         // the Editor tab's list of files follows the Files tab
         Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs) && Tabs.SelectedItem == EditorTabItem) EditorTab.Refresh(); };
         Watermark.AppVersion = AppVersion;
@@ -137,6 +143,9 @@ public partial class MainView : UserControl
 
     /// <summary>"Paste" in a menu of the rule window: what is on the clipboard goes where the Rules tab's Paste puts it.</summary>
     public void PasteFromClipboard() => RulesTab.PasteFromClipboard();
+
+    /// <summary>The game or mod the app works with, chosen in the Source list of the Files, Units or Divisions tab.</summary>
+    public Units.SourceSelection Sources { get; } = new();
 
     /// <summary>Undo and Redo, for the changes on the Files and Rules tabs.</summary>
     public UndoHistory History { get; }

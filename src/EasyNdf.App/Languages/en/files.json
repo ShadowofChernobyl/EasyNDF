@@ -196,5 +196,10 @@
   "Files.Exported.Skip": "Skip This File",
   "Files.Exported.ExportAnyway": "Export It Anyway",
   "Files.Exported.CancelExport": "Cancel Export",
-  "Files.Exported.SameForOthers": "Do this for the other file already exported|Do this for the other {count} files already exported"
+  "Files.Exported.SameForOthers": "Do this for the other file already exported|Do this for the other {count} files already exported",
+  "Files.Source": "Source",
+  "Files.Source.AddItsFiles": "Add Its Files",
+  "Files.Source.AddItsFiles.Tip": "List the source's .ndf files: a mod's own GameData, or the game's clean files from its base.zip",
+  "Files.Source.Listed": "✓ {count} of its files listed|✓ {count} of its files listed",
+  "Files.Source.NotRead": "The files of {name} could not be read: {reason}"
 }

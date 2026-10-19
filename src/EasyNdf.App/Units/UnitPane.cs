@@ -201,7 +201,7 @@ public static class UnitPane
     }
 
     /// <summary>A cell of the overview: 2 by 7 pixels in, a line under it unless it is on the last row.</summary>
-    private static Bevel Cell(string text, int row, int column, bool isName, bool lastRow)
+    internal static Bevel Cell(string text, int row, int column, bool isName, bool lastRow)
     {
         var block = new TextBlock { Text = text };
         if (isName) block.SetResourceReference(TextBlock.ForegroundProperty, "muted");
@@ -247,7 +247,7 @@ public static class UnitPane
     }
 
     /// <summary>Small boxed words, wrapping: the specialties, the divisions; <paramref name="none"/> when there are none.</summary>
-    private static FrameworkElement Tags(IEnumerable<string> words, string none)
+    internal static FrameworkElement Tags(IEnumerable<string> words, string none)
     {
         var row = new WrapRow();
         foreach (string word in words)
@@ -266,7 +266,7 @@ public static class UnitPane
     private static string SpecialtyName(string specialty) => specialty.TrimStart('_').Replace('_', ' ');
 
     /// <summary>A section: its heading in the accent colour with a line under it (and a count, dim), then its content.</summary>
-    private static StackPanel Section(string title, int? count, FrameworkElement content)
+    internal static StackPanel Section(string title, int? count, FrameworkElement content)
     {
         var heading = new TextBlock { Text = title };
         if (count is int number)
@@ -280,7 +280,7 @@ public static class UnitPane
     }
 
     /// <summary>A grid in a box of lines.</summary>
-    private static Bevel Boxed(UIElement content)
+    internal static Bevel Boxed(UIElement content)
     {
         var box = new Bevel { Child = content };
         box.SetResourceReference(Bevel.TopLeftProperty, "line");
@@ -288,7 +288,7 @@ public static class UnitPane
         return box;
     }
 
-    private static TextBlock Muted(string text, Thickness margin)
+    internal static TextBlock Muted(string text, Thickness margin)
     {
         var block = new TextBlock { Text = text, Margin = margin, TextWrapping = TextWrapping.Wrap };
         block.SetResourceReference(TextBlock.ForegroundProperty, "muted");

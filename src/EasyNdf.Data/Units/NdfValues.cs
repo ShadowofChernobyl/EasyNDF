@@ -98,6 +98,10 @@ public static class NdfValues
         return slash < 0 ? text : text[(slash + 1)..];
     }
 
+    /// <summary>An object's own property of this name (not one inside it); null when it has none.</summary>
+    public static NdfValue? Own(ObjectValue o, string name) =>
+        o.Properties.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.Ordinal))?.Value;
+
     /// <summary>The items of a list (a MAP is a list of pairs); none for anything else.</summary>
     public static IReadOnlyList<NdfValue> ItemsOf(NdfValue? value) => value is ListValue list ? list.Items : [];
 

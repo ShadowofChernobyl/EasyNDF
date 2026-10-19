@@ -55,6 +55,9 @@ public partial class UnitsPage
     /// <summary>Selects a unit, as a click on it does.</summary>
     internal void SelectNow(Unit unit) => selection.Selected = unit;
 
+    /// <summary>The unit selected, shown in the Unit pane.</summary>
+    internal Unit? SelectedNow => selection.Selected;
+
     /// <summary>Compares units, as their Compare does.</summary>
     internal void CompareNow(IEnumerable<Unit> units) => AddToCompare(units);
 
