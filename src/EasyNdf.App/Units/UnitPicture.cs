@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using EasyNdf.App.Controls;
 
 namespace EasyNdf.App.Units;
@@ -35,6 +36,8 @@ public sealed class UnitPicture : FrameworkElement
         SetResourceReference(LoProperty, "lo");
         SetResourceReference(HiProperty, "hi");
         SetResourceReference(MutedProperty, "muted");
+        // the best of WPF's ways to resize a picture, for those drawn smaller or larger than their own pixels
+        RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
         // a picture is read when the frame is first drawn, and again if it was made smaller than now needed
         SizeChanged += (_, _) => Load();
     }
@@ -44,6 +47,15 @@ public sealed class UnitPicture : FrameworkElement
 
     /// <inheritdoc cref="FactoryProperty"/>
     public string Factory { get => (string)GetValue(FactoryProperty); set => SetValue(FactoryProperty, value); }
+
+    /// <summary>
+    /// Whether a picture shown larger than its own pixels (the Unit pane's) is first made that size with
+    /// <see cref="PictureResizer"/>, then drawn one pixel for one, so WPF's own enlarging does not blur it.
+    /// </summary>
+    public bool EnlargesSharply { get; set; }
+
+    /// <summary>The picture made larger for this frame's size on this screen, and that size, so it is made once.</summary>
+    private (ImageSource From, int Width, int Height, BitmapSource Picture)? enlarged;
 
     /// <summary>As wide as it is given, or its own Width, and five eighths of that high.</summary>
     protected override Size MeasureOverride(Size availableSize)
@@ -97,13 +109,32 @@ public sealed class UnitPicture : FrameworkElement
     }
 
     /// <summary>The picture scaled to fill the frame, its middle kept and the overhang cut off (CSS's object-fit: cover).</summary>
-    private static void DrawFilling(DrawingContext drawing, ImageSource image, Rect frame)
+    /// <remarks>The picture is put on whole screen pixels: one between two pixels is blurred across both.</remarks>
+    private void DrawFilling(DrawingContext drawing, ImageSource image, Rect frame)
     {
         double scale = Math.Max(frame.Width / image.Width, frame.Height / image.Height);
         double width = image.Width * scale, height = image.Height * scale;
         drawing.PushClip(new RectangleGeometry(frame));
-        drawing.DrawImage(image, new Rect(frame.X + (frame.Width - width) / 2, frame.Y + (frame.Height - height) / 2, width, height));
+        drawing.DrawImage(SharpFor(image, width, height), snapping.Snap(frame.X + (frame.Width - width) / 2, frame.Y + (frame.Height - height) / 2, width, height));
         drawing.Pop();
+    }
+
+    /// <summary>
+    /// The picture to draw at a size: with <see cref="EnlargesSharply"/>, when that is larger than its own pixels on
+    /// this screen, a copy made exactly that many pixels; otherwise the picture itself.
+    /// </summary>
+    private ImageSource SharpFor(ImageSource image, double width, double height)
+    {
+        if (!EnlargesSharply || image is not BitmapSource bitmap) return image;
+        DpiScale screen = VisualTreeHelper.GetDpi(this);
+        int pixelsWide = (int)Math.Round(width * screen.DpiScaleX), pixelsHigh = (int)Math.Round(height * screen.DpiScaleY);
+        if (pixelsWide <= bitmap.PixelWidth || pixelsHigh <= 0) return image;
+        if (enlarged is not var (from, madeWidth, madeHeight, made) || !ReferenceEquals(from, image) || madeWidth != pixelsWide || madeHeight != pixelsHigh)
+        {
+            made = PictureResizer.Resize(bitmap, pixelsWide, pixelsHigh);
+            enlarged = (image, pixelsWide, pixelsHigh, made);
+        }
+        return made;
     }
 
     /// <summary>The factory's outline, faint, in the middle of the frame: 16% in from each side, 18% from the top, 22% from the bottom.</summary>

@@ -7,15 +7,30 @@ namespace EasyNdf.Data.Game;
 public static class BlockTextures
 {
     /// <summary>The picture's pixels in the order red, green, blue, alpha.</summary>
-    public static byte[] Decode(byte[] blocks, int width, int height, bool hasAlphaBlock)
+    public static byte[] Decode(byte[] blocks, int width, int height, bool hasAlphaBlock) =>
+        DecodePart(blocks, width, height, hasAlphaBlock, 0, 0, width, height);
+
+    /// <summary>
+    /// The pixels of one part of the picture, in the order red, green, blue, alpha: only the blocks it covers are
+    /// decoded, so a small picture cut from a large atlas costs little.
+    /// </summary>
+    /// <param name="blocks">The whole picture's blocks.</param>
+    /// <param name="width">The whole picture's width.</param>
+    /// <param name="height">The whole picture's height.</param>
+    /// <param name="hasAlphaBlock">Whether each block has an alpha block first (DXT5).</param>
+    /// <param name="left">The part's left edge.</param>
+    /// <param name="top">The part's top edge.</param>
+    /// <param name="partWidth">The part's width.</param>
+    /// <param name="partHeight">The part's height.</param>
+    public static byte[] DecodePart(byte[] blocks, int width, int height, bool hasAlphaBlock, int left, int top, int partWidth, int partHeight)
     {
-        var rgba = new byte[width * height * 4];
+        var rgba = new byte[partWidth * partHeight * 4];
         int blockBytes = hasAlphaBlock ? 16 : 8;
         int blocksAcross = Math.Max(1, (width + 3) / 4);
-        int blocksDown = Math.Max(1, (height + 3) / 4);
-        for (int blockY = 0; blockY < blocksDown; blockY++)
+        int right = Math.Min(width, left + partWidth), bottom = Math.Min(height, top + partHeight);
+        for (int blockY = top / 4; blockY * 4 < bottom; blockY++)
         {
-            for (int blockX = 0; blockX < blocksAcross; blockX++)
+            for (int blockX = left / 4; blockX * 4 < right; blockX++)
             {
                 int at = (blockY * blocksAcross + blockX) * blockBytes;
                 byte[] alphas = hasAlphaBlock ? AlphaBlock(blocks, at) : [];
@@ -23,9 +38,9 @@ public static class BlockTextures
                 for (int pixel = 0; pixel < 16; pixel++)
                 {
                     int x = blockX * 4 + pixel % 4, y = blockY * 4 + pixel / 4;
-                    if (x >= width || y >= height) continue;
+                    if (x < left || y < top || x >= right || y >= bottom) continue;
                     int choice = (int)(choices >> (pixel * 2)) & 3;
-                    int to = (y * width + x) * 4;
+                    int to = ((y - top) * partWidth + (x - left)) * 4;
                     rgba[to] = colours[choice][0];
                     rgba[to + 1] = colours[choice][1];
                     rgba[to + 2] = colours[choice][2];

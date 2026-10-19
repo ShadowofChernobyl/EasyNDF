@@ -8,8 +8,9 @@ public sealed class GamePictures(GameArchives archives)
 {
     // where each small picture is inside the interface's atlases; read the first time a picture is not a texture of its own
     private Dictionary<string, AtlasPart>? atlasParts;
-    // the last few atlas textures read: atlases are large, and pictures next to each other share them
-    private readonly Dictionary<string, Picture> recentTextures = new(StringComparer.OrdinalIgnoreCase);
+    // the last few atlas textures read, kept as stored (a quarter of their decoded size or less): pictures next to
+    // each other share them, and only the part a picture needs is decoded
+    private readonly Dictionary<string, Texture> recentTextures = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The atlases that could not be read, each with what went wrong.</summary>
     public List<string> Problems { get; } = [];
@@ -23,7 +24,7 @@ public sealed class GamePictures(GameArchives archives)
         if (archives.Find(OwnTexturePath(source)) is ArchiveFile own) return Textures.ReadTgv(own.Read());
         atlasParts ??= ReadAtlases();
         if (!atlasParts.TryGetValue(Normalised(source), out AtlasPart? part)) return null;
-        Picture? texture = TextureOf(part);
+        Texture? texture = TextureOf(part);
         return texture?.Crop(part.X, part.Y, part.Width, part.Height);
     }
 
@@ -42,12 +43,12 @@ public sealed class GamePictures(GameArchives archives)
     }
 
     /// <summary>An atlas's texture, kept with the last few read.</summary>
-    private Picture? TextureOf(AtlasPart part)
+    private Texture? TextureOf(AtlasPart part)
     {
-        if (recentTextures.TryGetValue(part.Texture, out Picture? kept)) return kept;
+        if (recentTextures.TryGetValue(part.Texture, out Texture? kept)) return kept;
         if (archives.Find(part.Texture) is not ArchiveFile file) return null;
         if (recentTextures.Count >= 4) recentTextures.Clear();
-        Picture texture = Textures.ReadTgv(file.Read());
+        Texture texture = Textures.ReadTexture(file.Read());
         recentTextures[part.Texture] = texture;
         return texture;
     }

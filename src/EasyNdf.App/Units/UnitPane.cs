@@ -24,8 +24,9 @@ public static class UnitPane
     {
         if (unit is null) return Muted(Texts.Get("Units.Pane.ClickAUnit"), new Thickness(10));
         var pane = new StackPanel { Margin = new Thickness(10) };
-        // as wide as the pane beside the list, but no wider when the pane is below it and spans the window
-        pane.Children.Add(new UnitPicture { Source = unit.PictureSource, Factory = unit.Factory, MaxWidth = PictureWidth, HorizontalAlignment = HorizontalAlignment.Left });
+        // as wide as the pane beside the list, but no wider when the pane is below it and spans the window; larger than
+        // the game's picture, so it is enlarged sharply
+        pane.Children.Add(new UnitPicture { Source = unit.PictureSource, Factory = unit.Factory, MaxWidth = PictureWidth, EnlargesSharply = true, HorizontalAlignment = HorizontalAlignment.Left });
         pane.Children.Add(Title(unit));
         pane.Children.Add(Buttons(unit, actions));
         pane.Children.Add(Section(Texts.Get("Units.Pane.Overview"), null, Overview(unit, actions.Game)));

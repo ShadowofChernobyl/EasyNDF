@@ -44,6 +44,12 @@ public sealed class PropertyScans(IReadOnlyDictionary<string, ScanInfo> scans, I
     public static string BaseName(string file) => file[(file.LastIndexOf('/') + 1)..];
 
     /// <summary>
+    /// Every scanned or loaded file, by its name without folders, in any capitals: made once, as a game's 4,000 files
+    /// would otherwise each be compared with every other.
+    /// </summary>
+    private ILookup<string, string>? filesByName;
+
+    /// <summary>
     /// The folder a list shows for a file (the HTML app's <c>fileDir</c>): none when no other scanned or loaded file has
     /// the same name; otherwise the folder it sits in, with folders above it added only while two files still look alike.
     /// </summary>
@@ -51,7 +57,8 @@ public sealed class PropertyScans(IReadOnlyDictionary<string, ScanInfo> scans, I
     {
         string name = BaseName(file);
         if (file == name) return "";
-        var sameName = AllFiles().Where(other => other != file && BaseName(other).Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
+        filesByName ??= AllFiles().ToLookup(BaseName, StringComparer.OrdinalIgnoreCase);
+        var sameName = filesByName[name].Where(other => other != file).ToList();
         if (sameName.Count == 0) return "";
         string[] mine = file[..(file.Length - name.Length - 1)].Split('/');
         List<string[]> others = [.. sameName.Select(o => o[..Math.Max(0, o.Length - name.Length - 1)].ToLowerInvariant().Split('/', StringSplitOptions.RemoveEmptyEntries))];

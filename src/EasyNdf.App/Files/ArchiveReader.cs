@@ -1,5 +1,6 @@
 using System.IO;
 using System.IO.Compression;
+using EasyNdf.Data.FileList;
 using SharpCompress.Archives.Rar;
 using SharpCompress.Common;
 using EasyNdf.App.Text;
@@ -76,17 +77,48 @@ public static class ArchiveReader
     }
 
     /// <summary>A .ndf file, leaving out the copies macOS puts in a "__MACOSX" folder.</summary>
+    /// <summary>
+    /// The .ndf files in a .zip, without reading them: for a big archive such as a game's base.zip, where only some of
+    /// thousands of files are wanted. <see cref="WithContent"/> then reads those.
+    /// </summary>
+    public static List<FileToAdd> NdfFilesListedIn(string zipPath)
+    {
+        using ZipArchive zip = ZipFile.OpenRead(zipPath);
+        return [.. zip.Entries.Where(entry => IsWanted(entry.FullName) && !entry.IsEncrypted)
+            .Select(entry => Item(zipPath, entry.FullName, null, entry.LastWriteTime.LocalDateTime))];
+    }
+
+    /// <summary>Files listed by <see cref="NdfFilesListedIn"/>, read out of the .zip.</summary>
+    public static List<FileToAdd> WithContent(string zipPath, IReadOnlyList<FileToAdd> files)
+    {
+        using ZipArchive zip = ZipFile.OpenRead(zipPath);
+        // by their paths as the list writes them (forward slashes, no leading slash)
+        Dictionary<string, ZipArchiveEntry> entries = zip.Entries.GroupBy(entry => entry.FullName.Replace('\\', '/').TrimStart('/'), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var read = new List<FileToAdd>();
+        foreach (FileToAdd file in files)
+        {
+            string pathInArchive = file.Source[(file.Source.IndexOf(" > ", StringComparison.Ordinal) + 3)..];
+            if (!entries.TryGetValue(pathInArchive, out ZipArchiveEntry? entry)) continue;
+            using Stream stream = entry.Open();
+            using var memory = new MemoryStream();
+            stream.CopyTo(memory);
+            read.Add(file with { ArchivedContent = PackedBytes.Pack(memory.ToArray()) });
+        }
+        return read;
+    }
+
     private static bool IsWanted(string pathInArchive) =>
         pathInArchive.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase)
         && !("/" + pathInArchive.Replace('\\', '/')).Contains("/__MACOSX/", StringComparison.Ordinal);
 
     /// <summary>One file from an archive, with the folders it sits in (the HTML app's <c>arcItem</c>).</summary>
-    private static FileToAdd Item(string archivePath, string pathInArchive, byte[] bytes, DateTime modified)
+    private static FileToAdd Item(string archivePath, string pathInArchive, byte[]? bytes, DateTime modified)
     {
         string path = pathInArchive.Replace('\\', '/').TrimStart('/');
         int lastSlash = path.LastIndexOf('/');
         string name = path[(lastSlash + 1)..], folder = lastSlash > 0 ? path[..lastSlash] : "";
-        return new FileToAdd(name, folder, Path.GetFullPath(archivePath) + " > " + path, bytes, modified);
+        return new FileToAdd(name, folder, Path.GetFullPath(archivePath) + " > " + path, bytes is null ? null : PackedBytes.Pack(bytes), modified);
     }
 }
 

@@ -100,6 +100,7 @@ public partial class UnitsPage
         tableHeadings.RenderTransform = headingsOffset;
         scroller.ScrollChanged += (_, _) => headingsOffset.X = -scroller.HorizontalOffset;
         tableHeadings.SortClicked += SortBy;
+        tableHeadings.ResizeStarted += KeepUnitColumnWidth;
         tableHeadings.ColumnResized += ResizeColumn;
         tableHeadings.ResizeEnded += () => { AppData.Current.SaveState(); ShowTable(); };
         tableHeadings.ColumnReset += key =>
@@ -115,6 +116,17 @@ public partial class UnitsPage
         AppData.Current.State["unitColumns"] is JsonObject widths
             ? widths.Where(width => width.Value is JsonValue).ToDictionary(width => width.Key, width => width.Value!.GetValue<double>())
             : [];
+
+    /// <summary>
+    /// A drag starts: the Unit column, which fills the room until now, keeps the width it has, so widening another
+    /// column moves the columns after it rather than shrinking the Unit column. A double-click on its edge lets it fill again.
+    /// </summary>
+    private void KeepUnitColumnWidth()
+    {
+        if (AppData.Current.State["unitColumns"] is not JsonObject widths) AppData.Current.State["unitColumns"] = widths = [];
+        string unitKey = UnitTableColumn.All[0].Key;
+        if (!widths.ContainsKey(unitKey) && tableWidths.Length > 0) widths[unitKey] = Math.Round(UnitTableColumn.All[0].Fit(tableWidths[0]));
+    }
 
     /// <summary>A column's edge dragged: the column takes the width, within its limits, and the rows follow at once.</summary>
     private void ResizeColumn(string key, double width)
@@ -265,8 +277,6 @@ public partial class UnitsPage
         foreach (Unit unit in units)
             if (!compared.Contains(unit)) compared.Add(unit);
         view = UnitView.Compare;
-        AppData.Current.State["unitView"] = view.ToString();
-        AppData.Current.SaveState();
         ShowViewButtons();
         ShowAll();
     }

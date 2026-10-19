@@ -16,6 +16,35 @@ public sealed record Picture(int Width, int Height, byte[] Rgba)
     }
 }
 
+/// <summary>
+/// A texture's full-size pixels as the game stores them: still in blocks for DXT1 and DXT5, which take a quarter or
+/// an eighth of the memory of plain pixels. Atlases are kept this way, and only the part a picture needs is decoded.
+/// </summary>
+/// <param name="Width">Its width in pixels.</param>
+/// <param name="Height">Its height in pixels.</param>
+/// <param name="Format">Its format's name, such as "DXT5_SRGB" or "A8B8G8R8_SRGB".</param>
+/// <param name="Pixels">Its pixels in that format.</param>
+public sealed record Texture(int Width, int Height, string Format, byte[] Pixels)
+{
+    /// <summary>The whole texture as a picture.</summary>
+    public Picture Decode() => Crop(0, 0, Width, Height);
+
+    /// <summary>The part of the texture at x, y, of the given size, as a picture.</summary>
+    public Picture Crop(int x, int y, int width, int height)
+    {
+        if (x < 0 || y < 0 || x + width > Width || y + height > Height) throw new InvalidDataException("the crop runs past the picture");
+        if (Format.StartsWith("DXT1", StringComparison.Ordinal) || Format.StartsWith("BC1", StringComparison.Ordinal))
+            return new Picture(width, height, BlockTextures.DecodePart(Pixels, Width, Height, hasAlphaBlock: false, x, y, width, height));
+        if (Format.StartsWith("DXT5", StringComparison.Ordinal) || Format.StartsWith("BC3", StringComparison.Ordinal))
+            return new Picture(width, height, BlockTextures.DecodePart(Pixels, Width, Height, hasAlphaBlock: true, x, y, width, height));
+        Picture part = new Picture(Width, Height, Pixels).Crop(x, y, width, height);
+        // these two keep blue before red in memory
+        if (Format.StartsWith("A8R8G8B8", StringComparison.Ordinal) || Format.StartsWith("B8G8R8A8", StringComparison.Ordinal))
+            for (int i = 0; i < part.Rgba.Length; i += 4) (part.Rgba[i], part.Rgba[i + 2]) = (part.Rgba[i + 2], part.Rgba[i]);
+        return part;
+    }
+}
+
 /// <summary>Where a small picture sits inside a bigger texture, as an atlas says.</summary>
 /// <param name="Source">The small picture's own path, as the game's NDF names it: "GameData:/Assets/2D/....png".</param>
 /// <param name="Texture">The texture it is a part of, inside the archives: "PC/Atlas/....tgv".</param>
@@ -29,7 +58,10 @@ public static class Textures
     /// with Zstandard ("ZSTD", WARNO), with zlib ("ZIPO", Steel Division 2) or not packed. The one whose size is the
     /// texture's full size is taken.
     /// </summary>
-    public static Picture ReadTgv(byte[] data)
+    public static Picture ReadTgv(byte[] data) => ReadTexture(data).Decode();
+
+    /// <summary>A .tgv texture's full-size pixels, as stored (see <see cref="ReadTgv"/>), to decode only a part of later.</summary>
+    public static Texture ReadTexture(byte[] data)
     {
         if (data.Length < 64 || BitConverter.ToInt32(data, 0) is not (2 or 3)) throw new InvalidDataException("a .tgv of a version not known");
         int width = BitConverter.ToInt32(data, 8);
@@ -53,7 +85,7 @@ public static class Textures
                 int length = BitConverter.ToInt32(data, table + sizes * 4 + i * 4);
                 if (at < 0 || length < 8 || at + (long)length > data.Length) continue;
                 byte[]? pixels = Unpack(data, at, length, fullSize);
-                if (pixels is not null) return new Picture(width, height, ToRgba(format, width, height, pixels));
+                if (pixels is not null) return new Texture(width, height, format, pixels);
             }
         }
         throw new InvalidDataException("no full-size pixels found in a .tgv");
@@ -101,17 +133,6 @@ public static class Textures
     private static bool IsFourBytesPerPixel(string format) =>
         format.StartsWith("A8B8G8R8", StringComparison.Ordinal) || format.StartsWith("A8R8G8B8", StringComparison.Ordinal)
         || format.StartsWith("R8G8B8A8", StringComparison.Ordinal) || format.StartsWith("B8G8R8A8", StringComparison.Ordinal);
-
-    /// <summary>The pixels in the order red, green, blue, alpha, whatever the format keeps them in.</summary>
-    private static byte[] ToRgba(string format, int width, int height, byte[] pixels)
-    {
-        if (format.StartsWith("DXT1", StringComparison.Ordinal) || format.StartsWith("BC1", StringComparison.Ordinal)) return BlockTextures.Decode(pixels, width, height, hasAlphaBlock: false);
-        if (format.StartsWith("DXT5", StringComparison.Ordinal) || format.StartsWith("BC3", StringComparison.Ordinal)) return BlockTextures.Decode(pixels, width, height, hasAlphaBlock: true);
-        // these two keep blue before red in memory
-        if (format.StartsWith("A8R8G8B8", StringComparison.Ordinal) || format.StartsWith("B8G8R8A8", StringComparison.Ordinal))
-            for (int i = 0; i < pixels.Length; i += 4) (pixels[i], pixels[i + 2]) = (pixels[i + 2], pixels[i]);
-        return pixels;
-    }
 
     /// <summary>
     /// The small pictures an .atlas file places inside its textures. An atlas is a small binary NDF file ("EUG0",

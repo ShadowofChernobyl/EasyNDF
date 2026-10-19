@@ -64,6 +64,8 @@
     <!-- the bars stay at the top; the file list and Details share the rest of the window, beside or below each other -->
     <DockPanel>
         <StackPanel DockPanel.Dock="Top">
+            <!-- the game or mod the app works with: its files can be added here, and the Units tab reads its units -->
+            <files:SourceBar x:Name="SourceBar" />
 
             <!-- .jobbar: adding and removing files on the left, running the rules on the right; in a narrow window the
                  running buttons go on a second line -->
@@ -168,7 +170,7 @@
                               sit above them in the list's scrolling frame (Styles/Controls.xaml, ListScroller), set in FilesPage.xaml.cs.
                             -->
                             <ItemsControl x:Name="Rows" ItemsSource="{Binding ListItems}" Focusable="False"
-                                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True">
+                                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True">
                                 <ItemsControl.Template>
                                     <ControlTemplate TargetType="ItemsControl">
                                         <ScrollViewer x:Name="ListScroller" Style="{StaticResource ListScroller}" Focusable="False"

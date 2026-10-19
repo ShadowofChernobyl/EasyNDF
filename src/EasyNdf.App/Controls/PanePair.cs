@@ -170,7 +170,13 @@ public sealed class PanePair : Grid
     /// <summary>Whether the second pane is folded away, with only its heading showing.</summary>
     public bool IsFolded => isFolded;
 
-    private bool Beside => PaneArrangement.IsBeside;
+    /// <summary>
+    /// Whether the second pane stays beside while the window's size decides for the other tabs (the Units tab's Unit
+    /// pane, which is a narrow column of details). Pressing ▥ or ▤ still decides for it too.
+    /// </summary>
+    public bool BesideWhenAutomatic { get; set; }
+
+    private bool Beside => PaneArrangement.IsBeside || (BesideWhenAutomatic && PaneArrangement.IsAutomatic);
 
     private double DefaultSize => Beside ? DefaultBeside : DefaultBelow;
 

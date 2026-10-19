@@ -101,7 +101,7 @@ public partial class EditorPage
     private readonly Dictionary<string, DescriptorRows> rowsRead = [];
 
     /// <summary>Another file's text and descriptors, read when one of its descriptors is opened; the last few are kept.</summary>
-    private sealed record OtherFile(string Text, Dictionary<string, OutlineEntry> ByName, List<OutlineEntry> Outline, string? Source, byte[]? Content);
+    private sealed record OtherFile(string Text, Dictionary<string, OutlineEntry> ByName, List<OutlineEntry> Outline, string? Source, PackedBytes? Content);
     private readonly Dictionary<FileEntry, OtherFile> otherFiles = [];
 
     /// <summary>Counts the tree's rebuilds, so a later one wins.</summary>

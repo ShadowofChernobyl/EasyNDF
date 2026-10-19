@@ -492,14 +492,20 @@
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Cursor" Value="Hand" />
-        <!-- a plain list of items, laid out in full, so the scroll box above can scroll it by pixels -->
+        <!--
+          only the items in sight are made, scrolled by pixels: the File Editor's list can hold a game's 4,000 files,
+          which laid out in full took seconds and hundreds of MB
+        -->
         <Setter Property="ItemsPanel">
             <Setter.Value>
                 <ItemsPanelTemplate>
-                    <StackPanel />
+                    <VirtualizingStackPanel />
                 </ItemsPanelTemplate>
             </Setter.Value>
         </Setter>
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+        <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
@@ -528,10 +534,10 @@
                             <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource well}" Padding="2"
                                             MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                                 <!--
-                                  scrolled by pixels, as every other box is: WPF's own dropdown scrolls by whole items,
-                                  and the wheel's 100 pixels a notch then jumped 100 items, to the end of a long list
+                                  scrolled by pixels (ScrollUnit above), as every other box is: by whole items, the
+                                  wheel's 100 pixels a notch jumped 100 items, to the end of a long list
                                 -->
-                                <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto" CanContentScroll="False">
+                                <ScrollViewer MaxHeight="400" VerticalScrollBarVisibility="Auto" CanContentScroll="True">
                                     <ItemsPresenter />
                                 </ScrollViewer>
                             </controls:Bevel>

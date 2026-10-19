@@ -196,9 +196,16 @@ public partial class SettingsPage : UserControl
     // ---- switches and dropdowns ----
 
     /// <summary>A switch: its setting (named in its Tag) is saved; what depends on it follows.</summary>
-    private void SwitchClicked(object sender, RoutedEventArgs e)
+    private async void SwitchClicked(object sender, RoutedEventArgs e)
     {
         if (showing || sender is not CheckBox { Tag: string key } toggle) return;
+        // every time the "Edited with EasyNDF" comment is turned off, the user is told what it costs, and can keep it
+        if (key == "stamp" && toggle.IsChecked != true
+            && !await View.Messages.Confirm(Texts.Get("Settings.StampOff.Ask"), Texts.Get("Settings.StampOff.TurnOff")))
+        {
+            toggle.IsChecked = true;
+            return;
+        }
         Settings[key] = toggle.IsChecked == true;
         AppData.Current.SaveSettings();
         if (key == "wrapRows") Controls.ListText.ApplySaved();
