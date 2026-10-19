@@ -19,24 +19,51 @@ public sealed class PixelSnapping
     {
         this.element = element;
         // Moving an element does not redraw it, so its rounding would go stale; this redraws it when its position changes.
-        // WPF raises LayoutUpdated on every element after any layout anywhere (each frame of a scroll, for one), so this
-        // is kept cheap: an element hidden in the window is skipped (drawn without a window, nothing counts as shown), and
-        // one moved by whole pixels rounds the same as before.
-        element.LayoutUpdated += (_, _) =>
+        // WPF raises LayoutUpdated on every element listening after any layout anywhere (each frame of a scroll, each
+        // key typed), so this is kept cheap: only an element in a window listens (see CheckPosition), and one moved by
+        // whole pixels rounds the same as before.
+        layoutDone = (_, _) =>
         {
             // while a bar or grip is dragged, the panes are laid out again on every move of the mouse: checking a few
             // thousand edges each time halved the frame rate, so they are checked once, when the drag ends
             if (pausedForDrag > 0) return;
             CheckPosition();
         };
+        element.Loaded += (_, _) => Listen(true);
+        element.Unloaded += (_, _) => Listen(false);
+        if (DrawsWithoutWindow || element.IsLoaded) Listen(true);
         element.IsVisibleChanged += ShownAgain;
         Remember(this);
     }
 
+    /// <summary>What the element does after each layout.</summary>
+    private readonly EventHandler layoutDone;
+
+    /// <summary>Whether the element listens to layouts now.</summary>
+    private bool isListening;
+
+    /// <summary>Starts or stops listening to layouts: an element taken out of its window (a list's old row) stops.</summary>
+    private void Listen(bool listen)
+    {
+        if (listen == isListening || (!listen && DrawsWithoutWindow)) return;
+        isListening = listen;
+        if (listen) element.LayoutUpdated += layoutDone;
+        else element.LayoutUpdated -= layoutDone;
+    }
+
+    /// <summary>
+    /// Whether elements in no window are drawn: the workbench's screenshots draw the app without one. In the app, an
+    /// element in no window (not shown yet, put away, or thrown away and not yet cleared from memory) is not drawn, so
+    /// it is not checked: thousands of them, such as a long list's old rows and cards, each walking up to the window
+    /// after every layout, made every key typed and every step of a scroll slower.
+    /// </summary>
+    internal static bool DrawsWithoutWindow { get; set; }
+
     /// <summary>Redraws the element when it has moved by a fraction of a pixel since it was last drawn.</summary>
     private void CheckPosition()
     {
-        if (element.IsLoaded && !element.IsVisible) return;
+        // only an element shown is checked: in a window and not hidden there
+        if (element.IsLoaded ? !element.IsVisible : !DrawsWithoutWindow) return;
         Point now = OffsetOnWindow();
         bool sameFractions = Fraction(now.X) == Fraction(offset.X) && Fraction(now.Y) == Fraction(offset.Y);
         offset = now;

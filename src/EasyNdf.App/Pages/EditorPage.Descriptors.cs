@@ -30,8 +30,11 @@ public partial class EditorPage
     /// <summary>The descriptors of the text in the editor, and where each is (the HTML app's <c>dv.list</c>).</summary>
     private List<OutlineEntry> outline = [];
 
-    /// <summary>The text they were read from (the HTML app's <c>dv.text</c>).</summary>
-    private string outlineText = "";
+    /// <summary>
+    /// The text they were read from (the HTML app's <c>dv.text</c>): a snapshot of the editor's text, which shares the
+    /// editor's memory rather than copying a large file's tens of MB.
+    /// </summary>
+    private ITextSource outlineText = StringTextSource.Empty;
 
     /// <summary>Why the descriptors could not be read, or "".</summary>
     private string outlineError = "";
@@ -180,7 +183,10 @@ public partial class EditorPage
     }
 
     /// <summary>The whole text the descriptors are read from: with "Changes only" shown, the whole export.</summary>
-    private string WholeText() => shown is null ? "" : (shown.Parent ?? shown).Document.Text;
+    private ITextSource WholeText() => shown is null ? StringTextSource.Empty : (shown.Parent ?? shown).Document.CreateSnapshot();
+
+    /// <summary>A stretch of the text the descriptors were read from, such as one descriptor's.</summary>
+    private string OutlineText(int start, int end) => outlineText.GetText(start, end - start);
 
     /// <summary>Whether values can be typed over: the file itself is shown (the HTML app's <c>dvCanEdit</c>).</summary>
     private bool CanChangeValues => shown is { IsFile: true };
@@ -209,7 +215,7 @@ public partial class EditorPage
             selectedDescriptor = -1;
             propertyRows = [];
             outlineError = "";
-            outlineText = "";
+            outlineText = StringTextSource.Empty;
             descriptorsStale = false;
             _ = RebuildTree();
             ShowProperties();
@@ -221,11 +227,12 @@ public partial class EditorPage
         OutlineEntry? oldDescriptor = selectedDescriptor >= 0 && selectedDescriptor < outline.Count ? outline[selectedDescriptor] : null;
         List<PropertyRow> oldRows = propertyRows;
         bool oldCut = propertiesCut;
-        string text = WholeText();
+        ITextSource text = WholeText();
         SayDescriptors(Texts.Get("Editor.Viewer.Reading"));
         List<OutlineEntry> list = [];
         string error = "";
-        try { list = await Task.Run(() => DescriptorViewer.Outline(text)); }
+        // the snapshot is made into one string away from the screen's thread, and let go of once read
+        try { list = await Task.Run(() => DescriptorViewer.Outline(text.Text)); }
         catch (Exception problem) when (problem is NdfParseException or ArgumentException) { error = problem.Message; }
         if (mine != outlineReading) return;
 
@@ -256,6 +263,8 @@ public partial class EditorPage
         bool same = before == shown && keep is not null && chosen >= 0 && DescriptorKey(chosen) == keep;
         selectedDescriptor = -1;
         _ = RebuildTree();
+        // the first read of a file just opened: opening and reading a large file left a lot behind, which is given back
+        if (before != shown) Memory.GiveBack();
         if (chosen >= 0) await SelectDescriptor(chosen, reveal: false, keepClosed: same);
         else
         {
@@ -285,7 +294,7 @@ public partial class EditorPage
         ShowTree();
         if (reveal) RevealAt(descriptor.Start);
         int mine = ++propertiesReading;
-        string text = outlineText[descriptor.Start..descriptor.End];
+        string text = OutlineText(descriptor.Start, descriptor.End);
         PropertyList? read = null;
         string error = "";
         try { read = await Task.Run(() => DescriptorViewer.Properties(text)); }
@@ -366,7 +375,7 @@ public partial class EditorPage
         string key = (local ? "L\u0001" + descriptor!.Start : node.Entry!.Id.ToString(CultureInfo.InvariantCulture)) + "\u0001" + node.Name;
         if (rowsRead.TryGetValue(key, out DescriptorRows? known)) return known;
         string text;
-        if (local) text = outlineText[descriptor!.Start..descriptor.End];
+        if (local) text = OutlineText(descriptor!.Start, descriptor.End);
         else
         {
             OtherFile file = await ReadOtherFile(node.Entry!);
@@ -475,7 +484,7 @@ public partial class EditorPage
                 roots = tree.OfOtherFile(null, pin, declared, null, filter);
                 if (Filter.IsOn && otherFiles.TryGetValue(pin, out OtherFile? read))
                 {
-                    Dictionary<string, IndexEntry> index = await FilterIndex(IndexKey(pin), read.Text);
+                    Dictionary<string, IndexEntry> index = await OtherFileFilterIndex(pin, read);
                     if (mine != treeBuild) return;
                     roots = Passing(roots, index);
                 }
@@ -486,7 +495,7 @@ public partial class EditorPage
                 roots = tree.OfOpenFile(null, null, filter);
                 if (Filter.IsOn && shown is not null)
                 {
-                    Dictionary<string, IndexEntry> index = await FilterIndex("open", outlineText);
+                    Dictionary<string, IndexEntry> index = await OpenFileFilterIndex();
                     if (mine != treeBuild) return;
                     roots = Passing(roots, index);
                 }
@@ -534,7 +543,7 @@ public partial class EditorPage
         {
             if (shown is not null)
             {
-                Dictionary<string, IndexEntry>? openIndex = filtering ? await FilterIndex("open", outlineText) : null;
+                Dictionary<string, IndexEntry>? openIndex = filtering ? await OpenFileFilterIndex() : null;
                 if (build != treeBuild) return null;
                 foreach (TreeNode row in descriptors.OfOpenFile(null, null, filter))
                 {
@@ -551,7 +560,7 @@ public partial class EditorPage
                 Dictionary<string, IndexEntry>? fileIndex = null;
                 if (filtering)
                 {
-                    try { fileIndex = await FilterIndex(IndexKey(entry), (await ReadOtherFile(entry)).Text); }
+                    try { fileIndex = await OtherFileFilterIndex(entry, await ReadOtherFile(entry)); }
                     catch (Exception problem) when (problem is NdfParseException or IOException or UnauthorizedAccessException) { continue; }
                     if (build != treeBuild) return null;
                 }
@@ -888,6 +897,8 @@ public partial class EditorPage
         ScanButton.Content = Texts.Get("Editor.Scan.Stop");
         int done = 0, failed = 0;
         DateTime lastSaid = DateTime.MinValue;
+        // every file is read, as the Files tab reads its files: smoothly, and giving back what that left behind
+        using IDisposable longWork = Memory.DuringLongWork();
         try
         {
             foreach (FileEntry entry in waiting)
@@ -1294,8 +1305,8 @@ public partial class EditorPage
         }
         TextDocument document = shown!.Document;
         int start = descriptor.Start + row.Start, end = descriptor.Start + row.End;
-        bool Fresh() => !descriptorsStale && CanChangeValues && ReferenceEquals(Text.Document, document) && document.TextLength == outlineText.Length
-            && outlineText[start..end] == row.Value && outline.Contains(descriptor);
+        bool Fresh() => !descriptorsStale && CanChangeValues && ReferenceEquals(Text.Document, document) && document.TextLength == outlineText.TextLength
+            && OutlineText(start, end) == row.Value && outline.Contains(descriptor);
         if (!Fresh())
         {
             // the text moved on: it is listed again first
@@ -1306,7 +1317,7 @@ public partial class EditorPage
         committing = true;
         try
         {
-            string old = outlineText[descriptor.Start..descriptor.End];
+            string old = OutlineText(descriptor.Start, descriptor.End);
             string changed = old[..row.Start] + typed + old[row.End..];
             PropertyList read;
             try { read = DescriptorViewer.Properties(changed); }
@@ -1329,7 +1340,8 @@ public partial class EditorPage
             finally { changingOwnText = false; }
             int line = document.GetLineByOffset(start).LineNumber - 1;
             int delta = typed.Length - (end - start);
-            outlineText = outlineText[..start] + typed + outlineText[end..];
+            // the text the descriptors were read from was the editor's text before this change, so now it is the editor's text
+            outlineText = document.CreateSnapshot();
             int at = outline.IndexOf(descriptor);
             outline[at] = descriptor with { End = descriptor.End + delta };
             for (int k = at + 1; k < outline.Count; k++) outline[k] = outline[k] with { Start = outline[k].Start + delta, End = outline[k].End + delta };

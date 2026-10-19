@@ -27,15 +27,21 @@ public sealed class NationMark : Grid
         frame.SetResourceReference(Bevel.BottomRightProperty, "hi");
         frame.SetResourceReference(Bevel.BackgroundProperty, "well");
         code.SetResourceReference(TextBlock.ForegroundProperty, "ink");
-        sideStripe.SetResourceReference(Shape.FillProperty, firstSide ? "side-a" : "side-b");
         frame.Child = new Grid { Children = { flag, code } };
         Children.Add(frame);
         Children.Add(sideStripe);
-        Show(nation);
+        Show(nation, firstSide);
+    }
+
+    /// <summary>Shows another nation, on a side: a card reused for another unit shows that unit's.</summary>
+    public void Show(string nation, bool firstSide)
+    {
+        sideStripe.SetResourceReference(Shape.FillProperty, firstSide ? "side-a" : "side-b");
+        ShowNation(nation);
     }
 
     /// <summary>Shows a nation: the code at once, the flag when it has been read.</summary>
-    private async void Show(string nation)
+    private async void ShowNation(string nation)
     {
         shownNation = nation;
         code.Text = nation;

@@ -53,15 +53,15 @@ public static class FileSession
 
     /// <summary>
     /// The files of the rows kept that are still there, each with its row; read in the background, as each archive is
-    /// opened only once.
+    /// opened only once, and only the files kept are taken out of a .zip.
     /// </summary>
     public static List<(FileToAdd File, KeptRow Row)> StillThere(IReadOnlyList<KeptRow> rows)
     {
         var found = new List<(FileToAdd, KeptRow)>();
-        var archives = new Dictionary<string, List<FileToAdd>>(StringComparer.OrdinalIgnoreCase);
+        // a file from an archive is kept as "C:\path\to\mod.zip > folder/name.ndf"
+        var fromArchives = new Dictionary<string, List<KeptRow>>(StringComparer.OrdinalIgnoreCase);
         foreach (KeptRow row in rows)
         {
-            // a file from an archive is kept as "C:\path\to\mod.zip > folder/name.ndf"
             int inside = row.Source.IndexOf(" > ", StringComparison.Ordinal);
             if (inside < 0)
             {
@@ -69,14 +69,37 @@ public static class FileSession
                 continue;
             }
             string archive = row.Source[..inside];
-            if (!archives.TryGetValue(archive, out List<FileToAdd>? files))
-            {
-                try { files = File.Exists(archive) ? ArchiveReader.NdfFilesIn(archive) : []; }
-                catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException) { files = []; }
-                archives[archive] = files;
-            }
-            if (files.FirstOrDefault(f => f.Source == row.Source) is FileToAdd file) found.Add((file, row));
+            if (!fromArchives.TryGetValue(archive, out List<KeptRow>? kept)) fromArchives[archive] = kept = [];
+            kept.Add(row);
+        }
+        foreach ((string archive, List<KeptRow> kept) in fromArchives)
+        {
+            Dictionary<string, FileToAdd> files = KeptFilesOf(archive, kept);
+            foreach (KeptRow row in kept)
+                if (files.TryGetValue(row.Source, out FileToAdd? file)) found.Add((file, row));
         }
         return found;
+    }
+
+    /// <summary>
+    /// The files of an archive that rows were kept for, by where they are: from a .zip only those (a game's base.zip
+    /// holds thousands); from a .rar, which cannot be listed without reading it, all of them.
+    /// </summary>
+    private static Dictionary<string, FileToAdd> KeptFilesOf(string archive, IReadOnlyList<KeptRow> kept)
+    {
+        try
+        {
+            if (!File.Exists(archive)) return [];
+            List<FileToAdd> files;
+            if (archive.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                var wanted = new HashSet<string>(kept.Select(row => row.Source), StringComparer.Ordinal);
+                files = ArchiveReader.WithContent(archive, [.. ArchiveReader.NdfFilesListedIn(archive).Where(file => wanted.Contains(file.Source))]);
+            }
+            else files = ArchiveReader.NdfFilesIn(archive);
+            return files.GroupBy(file => file.Source, StringComparer.Ordinal).ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        }
+        // an archive that can no longer be opened leaves its rows out, as a file no longer there does
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or ArchiveProblem) { return []; }
     }
 }

@@ -6,6 +6,7 @@ using EasyNdf.Data.FileList;
 using EasyNdf.Engine.Ndf;
 using EasyNdf.Engine.Viewer;
 using EasyNdf.App.Text;
+using ICSharpCode.AvalonEdit.Document;
 
 namespace EasyNdf.App.Pages;
 
@@ -18,8 +19,12 @@ public partial class EditorPage : IDescriptorFilterOwner
     /// <summary>The filter, as it was left last time.</summary>
     public DescriptorFilterState Filter { get; set; } = DescriptorFilterState.Load();
 
-    /// <summary>Each text's filter index, by "open" or a file's number, kept while the text is the same.</summary>
-    private readonly Dictionary<string, (string Text, Dictionary<string, IndexEntry> ByName)> filterIndexes = [];
+    /// <summary>
+    /// Each text's filter index, by "open" or a file's number, kept while the text is the same: the same snapshot of the
+    /// editor's text, or the same text of another file. That is held weakly: with "All files", a strong hold would keep
+    /// every read file's text in memory as long as the app runs.
+    /// </summary>
+    private readonly Dictionary<string, (WeakReference<object> Text, Dictionary<string, IndexEntry> ByName)> filterIndexes = [];
 
     /// <summary>The tree is filtered again a moment after the filter stops changing.</summary>
     private readonly DispatcherTimer filterLater = new() { Interval = TimeSpan.FromMilliseconds(150) };
@@ -66,14 +71,28 @@ public partial class EditorPage : IDescriptorFilterOwner
         else _ = window.Open(this);
     }
 
-    /// <summary>A text's filter index (the HTML app's <c>dfIndex</c>): its descriptors and their properties at every depth, the first of each name.</summary>
-    private async Task<Dictionary<string, IndexEntry>> FilterIndex(string key, string text)
+    /// <summary>The filter index of the text the descriptors of the open file were read from.</summary>
+    private Task<Dictionary<string, IndexEntry>> OpenFileFilterIndex()
     {
-        if (filterIndexes.TryGetValue(key, out var known) && known.Text == text) return known.ByName;
-        List<IndexEntry> entries = await Task.Run(() => DescriptorViewer.Index(text));
+        ITextSource text = outlineText;
+        return FilterIndex("open", text, () => text.Text);
+    }
+
+    /// <summary>The filter index of another file's text.</summary>
+    private Task<Dictionary<string, IndexEntry>> OtherFileFilterIndex(FileEntry entry, OtherFile file) =>
+        FilterIndex(IndexKey(entry), file.Text, () => file.Text);
+
+    /// <summary>
+    /// A text's filter index (the HTML app's <c>dfIndex</c>): its descriptors and their properties at every depth, the
+    /// first of each name. It is made again only when <paramref name="text"/> is no longer the same object.
+    /// </summary>
+    private async Task<Dictionary<string, IndexEntry>> FilterIndex(string key, object text, Func<string> wholeText)
+    {
+        if (filterIndexes.TryGetValue(key, out var known) && known.Text.TryGetTarget(out object? indexed) && ReferenceEquals(indexed, text)) return known.ByName;
+        List<IndexEntry> entries = await Task.Run(() => DescriptorViewer.Index(wholeText()));
         var byName = new Dictionary<string, IndexEntry>(StringComparer.Ordinal);
         foreach (IndexEntry entry in entries) byName.TryAdd(entry.Name, entry);
-        filterIndexes[key] = (text, byName);
+        filterIndexes[key] = (new WeakReference<object>(text), byName);
         return byName;
     }
 
@@ -96,11 +115,11 @@ public partial class EditorPage : IDescriptorFilterOwner
         try
         {
             FileEntry? pin = pinnedFile is not null && !IsLocal(pinnedFile) ? pinnedFile : null;
-            if (!showsAllFiles && pin is not null) AddAll(await FilterIndex(IndexKey(pin), (await ReadOtherFile(pin)).Text));
-            else if (shown is not null && outlineText != "") AddAll(await FilterIndex("open", outlineText));
+            if (!showsAllFiles && pin is not null) AddAll(await OtherFileFilterIndex(pin, await ReadOtherFile(pin)));
+            else if (shown is not null && outlineText.TextLength > 0) AddAll(await OpenFileFilterIndex());
             if (showsAllFiles)
                 foreach (FileEntry entry in ReferenceIndex.Of([.. Files?.Entries ?? []]).Files)
-                    if (!IsLocal(entry)) AddAll(await FilterIndex(IndexKey(entry), (await ReadOtherFile(entry)).Text));
+                    if (!IsLocal(entry)) AddAll(await OtherFileFilterIndex(entry, await ReadOtherFile(entry)));
         }
         catch (Exception problem) when (problem is NdfParseException or IOException or UnauthorizedAccessException) { }
         return ["(Name)", "(Type)", .. found.Order(StringComparer.CurrentCulture)];

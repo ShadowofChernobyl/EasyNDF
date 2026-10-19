@@ -508,14 +508,14 @@ public sealed class FileListModel : INotifyPropertyChanged
         try
         {
             string text = FileContent.Text(entry);
-            LoadSummary summary = new NdfEngine().Load(text);
+            LoadSummary summary = SharedNames(new NdfEngine().Load(text));
             entry.ExportStamp = ExportStamp.Of(text);
             entry.Info = FileStatus.Holds(summary.Descriptors, summary.Constants, summary.Unnamed);
             entry.Lines = summary.Lines;
             entry.Message = "";
             entry.IsError = false;
             entry.Scanned = true;
-            entry.References = SharedNames(summary.References);
+            entry.References = summary.References;
             return summary;
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or NdfParseException)
@@ -527,12 +527,20 @@ public sealed class FileListModel : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// A file's references, each name kept once for all files: a game's 4,000 files name the same types and descriptors
-    /// over and over, and a copy of each name for each file took some 100 MB.
+    /// What a file holds, with each name kept once for all files: a game's 4,000 files name the same types, properties
+    /// and descriptors over and over, and a copy of each name for each file took some 100 MB. The references stay with
+    /// the file's row; the other lists fill the property scan.
     /// </summary>
-    private static List<DeclarationReferences> SharedNames(List<DeclarationReferences> references) =>
-        [.. references.Select(declaration => new DeclarationReferences(
-            string.Intern(declaration.Name), string.Intern(declaration.Type), [.. declaration.Refers.Select(string.Intern)]))];
+    private static LoadSummary SharedNames(LoadSummary summary) => summary with
+    {
+        Names = Shared(summary.Names),
+        Titles = Shared(summary.Titles),
+        Types = Shared(summary.Types),
+        References = [.. summary.References.Select(declaration =>
+            new DeclarationReferences(string.Intern(declaration.Name), string.Intern(declaration.Type), Shared(declaration.Refers)))],
+    };
+
+    private static List<string> Shared(List<string> names) => [.. names.Select(string.Intern)];
 
     /// <summary>A row's file as the property scans name it: its folder and name, such as "Gameplay/Gfx/Ammunition.ndf".</summary>
     public static string ScanKey(FileEntry entry) => (entry.Folder != "" ? entry.Folder + "/" : "") + entry.Name;

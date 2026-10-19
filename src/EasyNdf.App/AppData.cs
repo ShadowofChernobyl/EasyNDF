@@ -43,11 +43,24 @@ public sealed class AppData
         if (scanSaving is null)
         {
             scanSaving = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
-            scanSaving.Tick += (_, _) => { scanSaving.Stop(); Saving(Scans.Save); };
+            scanSaving.Tick += (_, _) => { scanSaving.Stop(); SaveScansInBackground(); };
         }
         scanSaving.Stop();
         scanSaving.Start();
         ScansChanged?.Invoke();
+    }
+
+    /// <summary>The scans' saves, one after another.</summary>
+    private Task scansSaved = Task.CompletedTask;
+
+    /// <summary>
+    /// Saves the scans away from the screen's thread: a whole game's scans take a moment to write, and a long read of
+    /// files saves them after every pause. They are copied here first, so the scans can go on changing meanwhile.
+    /// </summary>
+    private void SaveScansInBackground()
+    {
+        KeyValuePair<string, ScanInfo>[] scans = Scans.Copy();
+        scansSaved = scansSaved.ContinueWith(_ => Saving(() => Scans.Write(scans)), TaskScheduler.Default);
     }
 
     /// <summary>The scanned file the user picked for a preset in the rule window's Property scan, or null.</summary>

@@ -4,6 +4,8 @@ namespace EasyNdf.Data.Game;
 /// Every file in a game's archives (its Data\PC\...\ZZ_*.dat files), by its path inside them. Each game update adds
 /// archives in a newer version folder; a newer archive's file replaces an older one of the same path. Steel Division
 /// 2 keeps its interface textures in packs (pc/texture/pack/*.ppk) inside the archives; their files are listed too.
+/// Only the kinds of file the app reads are listed (see <see cref="IsUsed"/>): the archives hold hundreds of thousands
+/// of models, sounds and maps besides.
 /// </summary>
 public sealed class GameArchives
 {
@@ -20,7 +22,17 @@ public sealed class GameArchives
     /// <summary>The archives that could not be read, each with what went wrong.</summary>
     public List<string> Problems { get; } = [];
 
-    /// <summary>All the files, by path.</summary>
+    /// <summary>
+    /// Whether the app reads this kind of file: the texts' dictionaries (.dic), the interface's atlases (.atlas), texture
+    /// packs (.ppk) and the textures (.tgv) other than the 3D models'.
+    /// </summary>
+    private static bool IsUsed(ArchiveFile file) =>
+        HasExtension(file, ".dic") || HasExtension(file, ".atlas") || HasExtension(file, ".ppk")
+        || (HasExtension(file, ".tgv") && !file.Name.Contains("/Assets/3D/", StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasExtension(ArchiveFile file, string extension) => file.Name.EndsWith(extension, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The files the app reads (see <see cref="IsUsed"/>), by path.</summary>
     public IReadOnlyDictionary<string, ArchiveFile> Files => files;
 
     /// <summary>Reads the file lists of all of a game's archives; the files themselves are read when they are needed.</summary>
@@ -35,7 +47,7 @@ public sealed class GameArchives
         {
             try
             {
-                foreach (ArchiveFile file in EdatArchive.ListFiles(archive, out _, out _)) opened.files[file.Name] = file;
+                foreach (ArchiveFile file in EdatArchive.ListFiles(archive, out _, out _).Where(IsUsed)) opened.files[file.Name] = file;
             }
             catch (Exception problem) when (problem is InvalidDataException or IOException or UnauthorizedAccessException)
             {
@@ -62,7 +74,7 @@ public sealed class GameArchives
         {
             try
             {
-                foreach (ArchiveFile file in EdatArchive.ListFiles(pack.Archive, pack.Offset, out _, out _)) files[file.Name] = file;
+                foreach (ArchiveFile file in EdatArchive.ListFiles(pack.Archive, pack.Offset, out _, out _).Where(IsUsed)) files[file.Name] = file;
             }
             catch (Exception problem) when (problem is InvalidDataException or IOException or UnauthorizedAccessException)
             {

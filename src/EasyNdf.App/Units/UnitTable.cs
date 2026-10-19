@@ -108,14 +108,23 @@ public sealed class UnitTableRowView : Bevel
     private readonly Grid cells = new();
     private TableRowLine? line;
 
-    /// <summary>Builds the row's cells when the list gives it its line.</summary>
+    // the cells, made once and filled in for each unit shown: the list reuses rows while it scrolls
+    private readonly UnitPicture picture = new() { Width = 54, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock name = new() { FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis, LineHeight = 14.4, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+    private readonly TextBlock nation = new() { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, LineHeight = 12.7, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+    private readonly NationMark nationMark = new("", firstSide: true) { Margin = new Thickness(6, 0, 6, 0) };
+    private readonly TextBlock role = new() { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+    private readonly List<(TextBlock Number, BlockMeter Meter)> numbers = [];
+
+    /// <summary>Builds the row's cells; they show a unit when the list gives the row its line.</summary>
     public UnitTableRowView()
     {
         Edges = new Thickness(0, 0, 0, 1);
         SetResourceReference(BottomRightProperty, "line");
         Child = cells;
         Cursor = Cursors.Hand;
-        DataContextChanged += (_, _) => Build();
+        BuildCells();
+        DataContextChanged += (_, _) => Show();
         MouseEnter += (_, _) => ShowState();
         MouseLeave += (_, _) => ShowState();
         Loaded += (_, _) => { if (line is not null) line.Selection.Changed += ShowState; ShowState(); };
@@ -125,55 +134,67 @@ public sealed class UnitTableRowView : Bevel
     /// <summary>The unit shown.</summary>
     public Unit? Unit => line?.Unit;
 
-    private void Build()
+    /// <summary>
+    /// The cells in their columns: the picture with the name and nation, the nation's mark, the role, then each
+    /// number over a small six-block bar.
+    /// </summary>
+    private void BuildCells()
+    {
+        DockPanel.SetDock(picture, Dock.Left);
+        nation.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        Add(0, new DockPanel { Margin = new Thickness(6, 2, 6, 2), Children = { picture, new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { name, nation } } } });
+        Add(1, nationMark);
+        Add(2, role);
+        for (int column = 3; column < UnitTableColumn.All.Count; column++)
+        {
+            var number = new TextBlock { TextAlignment = TextAlignment.Right, LineHeight = 14.4, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
+            var meter = new BlockMeter { Blocks = 6, IsThin = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 1, 0, 0) };
+            numbers.Add((number, meter));
+            Add(column, new StackPanel { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, Children = { number, meter } });
+        }
+    }
+
+    /// <summary>Shows the unit of the line the list gave the row, in columns as wide as the table's.</summary>
+    private void Show()
     {
         if (line is not null && IsLoaded) line.Selection.Changed -= ShowState;
-        cells.Children.Clear();
-        cells.ColumnDefinitions.Clear();
         line = DataContext as TableRowLine;
         if (line is null) return;
         if (IsLoaded) line.Selection.Changed += ShowState;
-        foreach (double width in line.Widths) cells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(width) });
+        SetWidths(line.Widths);
         Unit unit = line.Unit;
-        Add(0, WhoCell(unit));
-        Add(1, new NationMark(unit.Nation, line.Actions.IsFirstSide(unit)) { Margin = new Thickness(6, 0, 6, 0) });
-        Add(2, Words(UnitNames.RoleOf(unit)));
+        picture.Source = unit.PictureSource;
+        picture.Factory = unit.Factory;
+        name.Text = unit.Name;
+        name.ToolTip = unit.Name;
+        nation.Text = UnitNames.Nation(unit.Nation);
+        nationMark.Show(unit.Nation, line.Actions.IsFirstSide(unit));
+        role.Text = UnitNames.RoleOf(unit);
+        role.ToolTip = role.Text;
         for (int column = 3; column < UnitTableColumn.All.Count; column++)
         {
-            UnitTableColumn number = UnitTableColumn.All[column];
-            Add(column, NumberCell(number.Number!(unit), line.Most.GetValueOrDefault(number.Key)));
+            UnitTableColumn shown = UnitTableColumn.All[column];
+            double? value = shown.Number!(unit);
+            (TextBlock number, BlockMeter meter) = numbers[column - 3];
+            number.Text = UnitNumbers.Of(value);
+            meter.Value = value;
+            meter.FullBar = line.Most.GetValueOrDefault(shown.Key);
         }
         ShowState();
+    }
+
+    /// <summary>Gives the columns the table's widths, changing only those that differ.</summary>
+    private void SetWidths(IReadOnlyList<double> widths)
+    {
+        while (cells.ColumnDefinitions.Count < widths.Count) cells.ColumnDefinitions.Add(new ColumnDefinition());
+        for (int column = 0; column < widths.Count; column++)
+            if (cells.ColumnDefinitions[column].Width.Value != widths[column]) cells.ColumnDefinitions[column].Width = new GridLength(widths[column]);
     }
 
     private void Add(int column, FrameworkElement cell)
     {
         Grid.SetColumn(cell, column);
         cells.Children.Add(cell);
-    }
-
-    /// <summary>The picture, 54 pixels wide, with the name in bold and the nation under it, dim.</summary>
-    private static DockPanel WhoCell(Unit unit)
-    {
-        var picture = new UnitPicture { Source = unit.PictureSource, Factory = unit.Factory, Width = 54, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
-        DockPanel.SetDock(picture, Dock.Left);
-        var name = new TextBlock { Text = unit.Name, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis, LineHeight = 14.4, LineStackingStrategy = LineStackingStrategy.BlockLineHeight, ToolTip = unit.Name };
-        var nation = new TextBlock { Text = UnitNames.Nation(unit.Nation), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, LineHeight = 12.7, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        nation.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        return new DockPanel { Margin = new Thickness(6, 2, 6, 2), Children = { picture, new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { name, nation } } } };
-    }
-
-    private static TextBlock Words(string text) => new()
-    {
-        Text = text, Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = text,
-    };
-
-    /// <summary>A number, right-aligned, over a thin six-block bar filled as far as the biggest number listed.</summary>
-    private static StackPanel NumberCell(double? value, double most)
-    {
-        var number = new TextBlock { Text = UnitNumbers.Of(value), TextAlignment = TextAlignment.Right, LineHeight = 14.4, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-        var meter = new BlockMeter { Value = value, FullBar = most, Blocks = 6, IsThin = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 1, 0, 0) };
-        return new StackPanel { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, Children = { number, meter } };
     }
 
     /// <summary>The hover colour when selected, the selection colour under the mouse, else none.</summary>

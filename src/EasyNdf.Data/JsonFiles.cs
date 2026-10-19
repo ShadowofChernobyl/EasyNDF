@@ -46,4 +46,18 @@ public static class JsonFiles
         File.WriteAllText(temporary, ToText(value));
         File.Move(temporary, path, overwrite: true);
     }
+
+    /// <summary>
+    /// Writes a large file straight from what <paramref name="write"/> writes, as <see cref="Write"/> writes one (indented,
+    /// through a temporary file so a cut-off save leaves the old file whole), without building it in memory first.
+    /// </summary>
+    public static void WriteStreamed(string path, Action<Utf8JsonWriter> write)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        string temporary = path + ".saving";
+        using (FileStream file = File.Create(temporary))
+        using (var writer = new Utf8JsonWriter(file, new JsonWriterOptions { Indented = true, IndentSize = Options.IndentSize, Encoder = Options.Encoder }))
+            write(writer);
+        File.Move(temporary, path, overwrite: true);
+    }
 }

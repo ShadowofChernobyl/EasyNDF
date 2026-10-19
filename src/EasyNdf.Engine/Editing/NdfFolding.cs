@@ -74,13 +74,23 @@ public static class NdfFolding
     /// <param name="lines">The text's lines.</param>
     /// <param name="blocks">The block each line starts inside (see <see cref="NdfColouring.BlocksOfLines"/>).</param>
     /// <param name="index">The line.</param>
-    public static int BlockEnd(IReadOnlyList<string> lines, IReadOnlyList<int> blocks, int index) => Block(lines, blocks, index, startOnly: false);
+    public static int BlockEnd(IReadOnlyList<string> lines, IReadOnlyList<int> blocks, int index) => Block(lines, blocks, index, startOnly: false, int.MaxValue);
+
+    /// <summary>What <see cref="BlockEnd(IReadOnlyList{string}, IReadOnlyList{int}, int, int)"/> gives when the block goes on past the lines it may look at.</summary>
+    public const int FurtherThanLooked = -2;
+
+    /// <summary>
+    /// As <see cref="BlockEnd(IReadOnlyList{string}, IReadOnlyList{int}, int)"/>, looking at most <paramref name="mostLines"/>
+    /// lines past <paramref name="index"/>: <see cref="FurtherThanLooked"/> when the block goes on past them. An editor
+    /// asks this while keys are typed, as a block left open (a quote or bracket not closed yet) runs to the file's end.
+    /// </summary>
+    public static int BlockEnd(IReadOnlyList<string> lines, IReadOnlyList<int> blocks, int index, int mostLines) => Block(lines, blocks, index, startOnly: false, mostLines);
 
     /// <summary>
     /// Whether line <paramref name="index"/> starts a block (the HTML app's <c>edCanFold</c>): only its start is looked at,
     /// not whether it closes, so a read-only view can tell quickly.
     /// </summary>
-    public static bool StartsBlock(IReadOnlyList<string> lines, IReadOnlyList<int> blocks, int index) => Block(lines, blocks, index, startOnly: true) >= 0;
+    public static bool StartsBlock(IReadOnlyList<string> lines, IReadOnlyList<int> blocks, int index) => Block(lines, blocks, index, startOnly: true, int.MaxValue) >= 0;
 
     /// <summary>
     /// Every block that starts at the top level, which is every descriptor, as "Fold all" folds them: each one's first
@@ -103,7 +113,7 @@ public static class NdfFolding
     /// Where the block line <paramref name="index"/> starts would end. With <paramref name="startOnly"/>, the line after
     /// its opening bracket, without looking for its end.
     /// </summary>
-    private static int Block(IReadOnlyList<string> lines, IReadOnlyList<int> blocks, int index, bool startOnly)
+    private static int Block(IReadOnlyList<string> lines, IReadOnlyList<int> blocks, int index, bool startOnly, int mostLines)
     {
         int count = lines.Count;
         (int depth, FirstCode first) = Depth(lines[index], blocks[index]);
@@ -125,6 +135,7 @@ public static class NdfFolding
         if (startOnly) return next < count ? next : -1;
         for (int k = next; k < count; k++)
         {
+            if (k - index > mostLines) return FurtherThanLooked;
             depth += Depth(lines[k], blocks[k]).Depth;
             if (depth <= 0) return k;
         }

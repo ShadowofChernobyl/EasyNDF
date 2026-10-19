@@ -61,22 +61,43 @@ public sealed class CardRowView : Grid
         DataContextChanged += (_, _) => Build();
     }
 
+    /// <summary>
+    /// Shows the row's line. The list reuses rows while it scrolls: a row with as many columns keeps its tiles and
+    /// shows the new units in them, so scrolling makes no new tiles.
+    /// </summary>
     private void Build()
     {
-        Children.Clear();
-        ColumnDefinitions.Clear();
-        if (DataContext is not CardRowLine line) return;
-        Margin = new Thickness(Gap, Gap, Gap, line.IsLast ? Gap : 0);
-        for (int column = 0; column < line.Columns; column++)
+        if (DataContext is not CardRowLine line)
         {
-            if (column > 0) ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Gap) });
-            ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Children.Clear();
+            ColumnDefinitions.Clear();
+            return;
         }
+        Margin = new Thickness(Gap, Gap, Gap, line.IsLast ? Gap : 0);
+        if (ColumnDefinitions.Count != 2 * line.Columns - 1)
+        {
+            Children.Clear();
+            ColumnDefinitions.Clear();
+            for (int column = 0; column < line.Columns; column++)
+            {
+                if (column > 0) ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Gap) });
+                ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            }
+        }
+        // the last row may have fewer units than columns
+        while (Children.Count > line.Units.Count) Children.RemoveAt(Children.Count - 1);
         for (int at = 0; at < line.Units.Count; at++)
         {
-            var tile = new UnitTile(line.Units[at], line.Actions.IsFirstSide(line.Units[at]), line.Selection);
+            Unit unit = line.Units[at];
+            bool firstSide = line.Actions.IsFirstSide(unit);
+            if (at < Children.Count && Children[at] is UnitTile kept)
+            {
+                kept.Show(unit, firstSide);
+                continue;
+            }
+            var tile = new UnitTile(unit, firstSide, line.Selection);
             SetColumn(tile, at * 2);
-            Children.Add(tile);
+            Children.Insert(at, tile);
         }
     }
 }

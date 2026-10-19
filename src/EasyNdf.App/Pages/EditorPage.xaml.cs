@@ -66,8 +66,23 @@ public partial class EditorPage : UserControl
         /// <summary>Whether the file had Windows line ends, which saving puts back.</summary>
         public bool HasWindowsLineEnds;
 
-        /// <summary>The text as opened (or as last handed to the file list), which "Discard changes" goes back to.</summary>
-        public string Original = "";
+        /// <summary>
+        /// The text as opened (or as last handed to the file list), which "Discard changes" goes back to. It is kept
+        /// packed, as a large file's text takes tens of MB, so each read unpacks it.
+        /// </summary>
+        public string Original
+        {
+            get => original.UnpackText();
+            set
+            {
+                original = PackedBytes.PackText(value);
+                OriginalLength = value.Length;
+            }
+        }
+        private PackedBytes original = PackedBytes.PackText("");
+
+        /// <summary>How long <see cref="Original"/> is, so a text of another length is known to differ without unpacking it.</summary>
+        public int OriginalLength { get; private set; }
 
         /// <summary>Whether the file was edited since.</summary>
         public bool IsEdited;
@@ -360,7 +375,9 @@ public partial class EditorPage : UserControl
     /// <summary>The first edit of a file marks it as edited: Discard changes and Use in file list can be used.</summary>
     private void TextEdited(object? sender, EventArgs e)
     {
-        if (shown is not { IsFile: true, IsEdited: false } open || Text.Text == open.Original) return;
+        if (shown is not { IsFile: true, IsEdited: false } open) return;
+        // a text of another length differs: only one as long as the original is compared with it, character for character
+        if (Text.Document.TextLength == open.OriginalLength && Text.Text == open.Original) return;
         open.IsEdited = true;
         Show();
     }

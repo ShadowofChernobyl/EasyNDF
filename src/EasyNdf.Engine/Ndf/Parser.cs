@@ -12,17 +12,13 @@ namespace EasyNdf.Engine.Ndf;
 public sealed class Parser
 {
     private readonly string source;
-    private readonly List<Token> tokens;
-    private readonly List<(int TokenIndex, List<SourceComment> Comments)> commentGroups;
-    private int nextCommentGroup; // the first comment group not handed out yet
-    private int i;                // the token being read
+    private readonly Tokenizer.TokenStream tokens;
+    private int i; // the token being read
 
     private Parser(string source)
     {
         this.source = source;
-        var (readTokens, commentsBefore) = Tokenizer.Read(source);
-        tokens = readTokens;
-        commentGroups = commentsBefore.Select(kv => (kv.Key, kv.Value)).ToList();
+        tokens = new Tokenizer.TokenStream(source);
     }
 
     /// <summary>Reads a whole NDF text. Throws <see cref="NdfParseException"/> when the text is not valid NDF.</summary>
@@ -30,7 +26,7 @@ public sealed class Parser
 
     // ---- small helpers over the token list ----
 
-    private bool IsKind(int index, TokenKind kind) => index < tokens.Count && tokens[index].Kind == kind;
+    private bool IsKind(int index, TokenKind kind) => tokens.Has(index) && tokens[index].Kind == kind;
 
     private bool IsWord(int index, string word) => IsKind(index, TokenKind.Identifier) && tokens[index].Text == word;
 
@@ -65,9 +61,12 @@ public sealed class Parser
 
     private NdfParseException Error(string message)
     {
-        bool atEnd = i >= tokens.Count;
+        bool atEnd = !tokens.Has(i);
         int line = JsText.LineNumberAt(source, atEnd ? source.Length : tokens[i].Position);
-        return new NdfParseException("Line " + line + ": " + message + (atEnd ? " (end of file)" : " (found \"" + tokens[i].Text + "\")"));
+        var error = new NdfParseException("Line " + line + ": " + message + (atEnd ? " (end of file)" : " (found \"" + tokens[i].Text + "\")"));
+        // text further on that is not NDF at all is the error reported, as when the whole file was split into tokens first
+        tokens.CheckRest();
+        return error;
     }
 
     private void Expect(string punctuation)
@@ -80,10 +79,12 @@ public sealed class Parser
     private List<SourceComment>? ClaimComments(int tokenIndex)
     {
         List<SourceComment>? claimed = null;
-        while (nextCommentGroup < commentGroups.Count && commentGroups[nextCommentGroup].TokenIndex <= tokenIndex)
+        // the comments before that token are filed once it is read
+        tokens.Has(tokenIndex);
+        while (tokens.CommentGroups.TryPeek(out var group) && group.TokenIndex <= tokenIndex)
         {
-            var group = commentGroups[nextCommentGroup++].Comments;
-            claimed = claimed is null ? group : [.. claimed, .. group];
+            tokens.CommentGroups.Dequeue();
+            claimed = claimed is null ? group.Comments : [.. claimed, .. group.Comments];
         }
         return claimed;
     }
@@ -93,10 +94,12 @@ public sealed class Parser
     private NdfDocument ReadDocument()
     {
         var declarations = new List<Declaration>();
-        while (i < tokens.Count)
+        while (tokens.Has(i))
         {
+            // a declaration's tokens are not looked at once the next one starts
+            tokens.ForgetBefore(i);
             var leadingComments = ClaimComments(i);
-            int first = i;
+            int start = tokens[i].Position;
             bool exported = false;
             if (IsWord(i, "export")) { exported = true; i++; }
 
@@ -109,7 +112,7 @@ public sealed class Parser
                     IsUnnamed = true,
                     Value = value,
                     LeadingComments = leadingComments,
-                    Start = tokens[first].Position,
+                    Start = start,
                     End = EndOfPreviousToken,
                     Source = source,
                 });
@@ -147,7 +150,7 @@ public sealed class Parser
                 LeadingComments = leadingComments,
                 Prefix = prefix,
                 TemplateParameters = templateParameters,
-                Start = tokens[first].Position,
+                Start = start,
                 End = EndOfPreviousToken,
                 NameStart = nameStart,
                 NameLength = name.Length,
@@ -160,14 +163,14 @@ public sealed class Parser
     /// <summary>A template's parameter list, copied as written. The comments inside it stay inside it.</summary>
     private string ReadTemplateParameters()
     {
-        int open = i, depth = 0;
-        for (; i < tokens.Count; i++)
+        int openAt = tokens[i].Position, depth = 0;
+        for (; tokens.Has(i); i++)
         {
             if (IsPunct(i, "[")) depth++;
             else if (IsPunct(i, "]") && --depth == 0) break;
         }
-        if (i >= tokens.Count) throw Error("expected \"]\"");
-        string text = source[tokens[open].Position..(tokens[i].Position + 1)].Replace("\r", "");
+        if (!tokens.Has(i)) throw Error("expected \"]\"");
+        string text = source[openAt..(tokens[i].Position + 1)].Replace("\r", "");
         ClaimComments(i);
         i++;
         return text;
@@ -224,11 +227,12 @@ public sealed class Parser
     /// <summary>A single value, with its position. A value in brackets keeps the position of what is inside them.</summary>
     private NdfValue ReadPrimary()
     {
-        int first = i;
+        // at the end of the text there is no value, which ReadPrimaryValue reports
+        int firstAt = tokens.Has(i) ? tokens[i].Position : source.Length;
         NdfValue value = ReadPrimaryValue();
         if (value.Start is null)
         {
-            value.Start = tokens[first].Position;
+            value.Start = firstAt;
             value.End = EndOfPreviousToken;
         }
         // Object.Member and Name[2]: a member of another object, or an item of a list, kept as written. A plain name
@@ -288,7 +292,7 @@ public sealed class Parser
 
     private NdfValue ReadPrimaryValue()
     {
-        if (i >= tokens.Count) throw Error("unexpected token");
+        if (!tokens.Has(i)) throw Error("unexpected token");
         var token = tokens[i];
         switch (token.Kind)
         {

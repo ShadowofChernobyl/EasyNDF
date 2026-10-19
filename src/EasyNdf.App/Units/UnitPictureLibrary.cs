@@ -13,8 +13,14 @@ namespace EasyNdf.App.Units;
 /// </summary>
 public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictionary<string, string> flagSources)
 {
-    /// <summary>How many pictures are kept in memory: a few screens of cards.</summary>
-    private const int PicturesKept = 400;
+    /// <summary>
+    /// How much memory the pictures kept may take: a few screens of cards. A picture takes 4 bytes a pixel, so a card's
+    /// takes about 100 to 400 KB, by the screen's scaling.
+    /// </summary>
+    private const long BytesKept = 32L * 1024 * 1024;
+
+    /// <summary>How much memory the pictures kept take now.</summary>
+    private long bytesInUse;
 
     /// <summary>The pictures of the source the Units tab shows; null until one is read.</summary>
     public static UnitPictureLibrary? Current { get; set; }
@@ -132,15 +138,24 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
         }
     }
 
+    /// <summary>Keeps a picture, letting go of the ones used longest ago while those kept take more than <see cref="BytesKept"/>.</summary>
     private void Keep((string, int) key, ImageSource? picture)
     {
         if (kept.ContainsKey(key)) return;
         kept[key] = picture;
         lastUsed.AddLast(key);
-        if (lastUsed.Count <= PicturesKept) return;
-        kept.Remove(lastUsed.First!.Value);
-        lastUsed.RemoveFirst();
+        bytesInUse += BytesOf(picture);
+        while (bytesInUse > BytesKept && lastUsed.Count > 1)
+        {
+            (string, int) oldest = lastUsed.First!.Value;
+            lastUsed.RemoveFirst();
+            bytesInUse -= BytesOf(kept[oldest]);
+            kept.Remove(oldest);
+        }
     }
+
+    /// <summary>The memory a picture takes: 4 bytes a pixel; none for a picture the game does not have.</summary>
+    private static long BytesOf(ImageSource? picture) => picture is BitmapSource bitmap ? 4L * bitmap.PixelWidth * bitmap.PixelHeight : 0;
 
     private void MarkUsed((string, int) key)
     {

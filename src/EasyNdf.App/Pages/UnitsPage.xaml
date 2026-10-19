@@ -141,7 +141,7 @@
                                 <Grid>
                                     <!-- the Cards view: role headings and rows of tiles, of which only those in view are made -->
                                     <ItemsControl x:Name="CardsList" Focusable="False" SizeChanged="CardsListResized"
-                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True"
+                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True"
                                                   MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked">
                                         <ItemsControl.Template>
                                             <ControlTemplate TargetType="ItemsControl">
@@ -178,7 +178,7 @@
 
                                     <!-- the Table view: its headings above the rows, moving sideways with them -->
                                     <ItemsControl x:Name="TableList" Focusable="False" Visibility="Collapsed" SizeChanged="TableListResized"
-                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True"
+                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True"
                                                   MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked">
                                         <ItemsControl.Template>
                                             <ControlTemplate TargetType="ItemsControl">

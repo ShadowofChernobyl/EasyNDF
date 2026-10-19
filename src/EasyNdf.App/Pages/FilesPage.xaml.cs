@@ -72,8 +72,9 @@ public partial class FilesPage : UserControl
         Model.LoadView(AppData.Current.Settings, AppData.Current.State);
         Model.ViewChanged += SaveView;
         AppData.Current.ModsChanged += FollowMods;
-        Model.PropertyChanged += (_, _) => ShowListState();
-        Model.PropertyChanged += (_, _) => ShowSourceCount();
+        // once a burst: reading a thousand files tells of a thousand changes
+        var showState = new RunOnceSoon(() => { ShowListState(); ShowSourceCount(); });
+        Model.PropertyChanged += (_, _) => showState.Ask();
         SourceBar.AddFilesRequested += AddSourceFiles;
         DataContext = Model;
         ListBox.SizeChanged += (_, _) => FitColumns();
@@ -108,8 +109,7 @@ public partial class FilesPage : UserControl
         IReadOnlyList<FileEntry> rows = await Model.AddFiles([.. found.Select(f => f.File)], fromFolder: false, (_, _) => Task.FromResult(new DuplicateAnswer(DuplicateChoice.KeepBoth, false)));
         for (int i = 0; i < rows.Count && i < found.Count; i++) Model.Restore(rows[i], found[i].Row);
         if (found.Count < kept.Count) Model.Say(Texts.Get("Files.Restore.Missing", ("files", FileListModel.Files(kept.Count - found.Count))));
-        foreach (FileEntry entry in rows) await ReadInBackground(entry);
-        if (rows.Count > 0) Memory.GiveBack();
+        await ReadAll(rows);
     }
 
     /// <summary>
@@ -121,9 +121,19 @@ public partial class FilesPage : UserControl
     {
         bool several = files.Count > 1;
         IReadOnlyList<FileEntry> toRead = await Model.AddFiles(files, fromFolder, (listed, picked) => AskAboutDuplicate(listed, picked, several));
-        // One file at a time, as the HTML app reads them, so the first ones are ready soonest.
-        foreach (FileEntry entry in toRead) await ReadInBackground(entry);
-        if (toRead.Count > 0) Memory.GiveBack();
+        await ReadAll(toRead);
+    }
+
+    /// <summary>
+    /// Reads rows one at a time, as the HTML app reads them, so the first ones are ready soonest. While thousands are
+    /// read, the window stays smooth (<see cref="Memory.DuringLongWork"/>), and what reading left behind is given back
+    /// at the end.
+    /// </summary>
+    private async Task ReadAll(IReadOnlyList<FileEntry> rows)
+    {
+        if (rows.Count == 0) return;
+        using (Memory.DuringLongWork())
+            foreach (FileEntry entry in rows) await ReadInBackground(entry);
     }
 
     /// <summary>
@@ -788,8 +798,7 @@ public partial class FilesPage : UserControl
     private async void FollowMods(ModsChange change)
     {
         IReadOnlyList<FileEntry> toRead = Model.FollowMods(AppData.Current.Mods, AppData.Current.OpenMod, change);
-        foreach (FileEntry entry in toRead) await ReadInBackground(entry);
-        if (toRead.Count > 0) Memory.GiveBack();
+        await ReadAll(toRead);
     }
 
     /// <summary>Saves the list's columns, sort and grouping, for next time.</summary>
