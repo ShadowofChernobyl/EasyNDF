@@ -35,7 +35,9 @@ public sealed class WrapRow : Panel
                 y += lineHeight + Gap;
                 lineHeight = 0;
             }
-            double left = Snap(x), right = Snap(x + size.Width);
+            // the right edge on a whole pixel too, but never left of where the control ends: rounded down, the control
+            // would get less than its own width, and WPF would cut off its right edge
+            double left = Snap(x), right = Math.Max(Snap(x + size.Width), left + Math.Ceiling(size.Width));
             places.Add(new Rect(left, y, right - left, size.Height));
             x += size.Width + Gap;
             lineHeight = Math.Max(lineHeight, size.Height);
