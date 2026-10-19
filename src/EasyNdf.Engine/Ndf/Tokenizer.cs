@@ -56,50 +56,142 @@ public static class Tokenizer
     /// </summary>
     public static (List<Token> Tokens, SortedDictionary<int, List<SourceComment>> CommentsBefore) Read(string text)
     {
-        var tokens = new List<Token>();
-        var commentsBefore = new SortedDictionary<int, List<SourceComment>>();
-        List<SourceComment>? waiting = null; // comments waiting for the next token
-        bool newLineSeen = true;             // a line break has been seen since the last token
+        var stream = new TokenStream(text);
+        List<Token> tokens = stream.ReadAll();
+        return (tokens, new SortedDictionary<int, List<SourceComment>>(stream.CommentGroups.ToDictionary(group => group.TokenIndex, group => group.Comments)));
+    }
 
-        int at = 0;
-        while (at < text.Length)
+    /// <summary>
+    /// A text's tokens, read as the parser comes to them rather than all at once: a large game file has nearly two
+    /// million, and the parser looks at most a token back and two ahead. The tokens it may still look at are kept;
+    /// it lets go of the ones before with <see cref="ForgetBefore"/>. Comments are filed as <see cref="Read"/> files them.
+    /// </summary>
+    internal sealed class TokenStream(string text)
+    {
+        private readonly List<Token> kept = [];
+        private readonly TextPool texts = new();
+        private int firstKept;              // the index of the first token kept
+        private int at;                     // where reading goes on in the text
+        private bool newLineSeen = true;    // a line break has been seen since the last token
+        private List<SourceComment>? waiting; // comments waiting for the next token
+
+        /// <summary>The comments before each token read so far, by the token's index, oldest first; at the end, those after the last token.</summary>
+        public Queue<(int TokenIndex, List<SourceComment> Comments)> CommentGroups { get; } = new();
+
+        /// <summary>Whether the whole text has been read.</summary>
+        public bool IsFinished { get; private set; }
+
+        /// <summary>How many tokens have been read so far.</summary>
+        private int Count => firstKept + kept.Count;
+
+        /// <summary>Whether the text has a token at this index, reading on as far as needed.</summary>
+        public bool Has(int index)
         {
-            int spaces = SpacesAt(text, at);
-            if (spaces > 0)
-            {
-                if (!newLineSeen && text.AsSpan(at, spaces).Contains('\n')) newLineSeen = true;
-                at += spaces;
-                continue;
-            }
-
-            int comment = CommentAt(text, at);
-            if (comment > 0)
-            {
-                (waiting ??= []).Add(new SourceComment(text.Substring(at, comment), SameLine: !newLineSeen));
-                at += comment;
-                continue;
-            }
-
-            var (kind, length) = TokenAt(text, at);
-            if (length == 0)
-            {
-                string snippet = JsText.Slice(text, at, at + 20);
-                int nl = snippet.IndexOf('\n');
-                if (nl >= 0) snippet = snippet[..(nl > 0 && snippet[nl - 1] == '\r' ? nl - 1 : nl)];
-                throw new NdfParseException("Line " + JsText.LineNumberAt(text, at) + ": unrecognized text \"" + snippet + "\"");
-            }
-
-            if (waiting is not null)
-            {
-                commentsBefore[tokens.Count] = waiting;
-                waiting = null;
-            }
-            tokens.Add(new Token(kind, text.Substring(at, length), at));
-            newLineSeen = false;
-            at += length;
+            while (Count <= index && !IsFinished) ReadNext();
+            return index < Count;
         }
-        if (waiting is not null) commentsBefore[tokens.Count] = waiting;
-        return (tokens, commentsBefore);
+
+        /// <summary>The token at this index, which must be there and not let go of yet.</summary>
+        public Token this[int index] => Has(index) && index >= firstKept ? kept[index - firstKept] : throw new ArgumentOutOfRangeException(nameof(index));
+
+        /// <summary>Lets go of the tokens before this index: the parser will not look at them again.</summary>
+        public void ForgetBefore(int index)
+        {
+            int forgotten = Math.Min(index - firstKept, kept.Count);
+            if (forgotten <= 0) return;
+            kept.RemoveRange(0, forgotten);
+            firstKept += forgotten;
+        }
+
+        /// <summary>
+        /// Reads the rest of the text, only to check it: text that is not NDF anywhere in a file is the error reported
+        /// for it, as when a file was read whole before parsing. The tokens read are let go of as it goes.
+        /// </summary>
+        public void CheckRest()
+        {
+            while (!IsFinished)
+            {
+                ReadNext();
+                ForgetBefore(Count);
+            }
+        }
+
+        /// <summary>Every token, for <see cref="Read"/>.</summary>
+        public List<Token> ReadAll()
+        {
+            while (!IsFinished) ReadNext();
+            return kept;
+        }
+
+        /// <summary>Reads the next token and the comments before it; at the end of the text, files the last comments.</summary>
+        private void ReadNext()
+        {
+            while (at < text.Length)
+            {
+                int spaces = SpacesAt(text, at);
+                if (spaces > 0)
+                {
+                    if (!newLineSeen && text.AsSpan(at, spaces).Contains('\n')) newLineSeen = true;
+                    at += spaces;
+                    continue;
+                }
+
+                int comment = CommentAt(text, at);
+                if (comment > 0)
+                {
+                    (waiting ??= []).Add(new SourceComment(text.Substring(at, comment), SameLine: !newLineSeen));
+                    at += comment;
+                    continue;
+                }
+
+                var (kind, length) = TokenAt(text, at);
+                if (length == 0)
+                {
+                    string snippet = JsText.Slice(text, at, at + 20);
+                    int nl = snippet.IndexOf('\n');
+                    if (nl >= 0) snippet = snippet[..(nl > 0 && snippet[nl - 1] == '\r' ? nl - 1 : nl)];
+                    throw new NdfParseException("Line " + JsText.LineNumberAt(text, at) + ": unrecognized text \"" + snippet + "\"");
+                }
+
+                FileWaitingComments();
+                kept.Add(new Token(kind, texts.Get(text.AsSpan(at, length)), at));
+                newLineSeen = false;
+                at += length;
+                return;
+            }
+            FileWaitingComments();
+            IsFinished = true;
+        }
+
+        /// <summary>Files the comments read since the last token under the index of the token that comes next.</summary>
+        private void FileWaitingComments()
+        {
+            if (waiting is null) return;
+            CommentGroups.Enqueue((Count, waiting));
+            waiting = null;
+        }
+    }
+
+    /// <summary>
+    /// The tokens' texts, each kept once. A large game file has nearly two million tokens but only some tens of
+    /// thousands of different ones (property names, brackets, common numbers), so its tokens and the values read from
+    /// them share one string each instead of holding a copy apiece.
+    /// </summary>
+    private sealed class TextPool
+    {
+        private readonly HashSet<string> texts = new(StringComparer.Ordinal);
+        private readonly HashSet<string>.AlternateLookup<ReadOnlySpan<char>> bySpan;
+
+        public TextPool() => bySpan = texts.GetAlternateLookup<ReadOnlySpan<char>>();
+
+        /// <summary>The text of a span: the one kept already, or a new one kept from now on.</summary>
+        public string Get(ReadOnlySpan<char> span)
+        {
+            if (bySpan.TryGetValue(span, out string? kept)) return kept;
+            string text = span.ToString();
+            texts.Add(text);
+            return text;
+        }
     }
 
     // Each scanner below returns how many characters it matches at a position, or 0 when it does not match there.

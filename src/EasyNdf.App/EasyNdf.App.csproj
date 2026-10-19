@@ -13,12 +13,18 @@
     <!-- lets the app build on Linux too; it only runs on Windows -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!--
-      Memory is cleaned up on every processor core, not one: the rules run about a third faster on large files
-      (UniteDescriptor.ndf: 2.6 to 1.7 seconds to load and export). .NET keeps the extra memory this takes small by
-      itself (its "DATAS"), about 350 MB more at the peak on that file.
+      Memory is cleaned up the way a desktop app's usually is (one heap, cleaned up alongside the app), not with a heap
+      per processor core: that ran the rules a little faster (about a sixth on the game's 17 files) but held hundreds of
+      MB more, the more so the more cores the computer has. Leftover memory is also given back more readily
+      (ConserveMemory), at a small cost in speed.
     -->
-    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" />
+  </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Assets\EasyNDF.ico" />

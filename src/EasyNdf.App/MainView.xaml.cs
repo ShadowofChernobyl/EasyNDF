@@ -22,7 +22,7 @@ public partial class MainView : UserControl
         // the preset list says how many listed files use each preset
         RulesTab.FilesUsing = preset => FilesTab.Model.Entries.Count(entry => ReferenceEquals(entry.Preset, preset));
         History = new UndoHistory(AppData.Current, FilesTab.Model);
-        FilesTab.Model.PropertyChanged += (_, _) => History.Mark();
+        FilesTab.Model.PropertyChanged += (_, _) => History.MarkSoon();
         AppData.Current.ModsChanged += _ => History.ModsChanged();
         RulesTab.History = History;
         RuleWindow.Closed += RulesTab.RuleWindowClosed;

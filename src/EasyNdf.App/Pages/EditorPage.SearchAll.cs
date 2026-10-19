@@ -79,6 +79,8 @@ public partial class EditorPage
         var names = new PropertyScans(AppData.Current.Scans.Scans, [.. files.Select(FileListModel.ScanKey)]);
         var results = new List<SearchResult>();
         int total = 0, filesWithLines = 0, unreadable = 0;
+        // every file's text is read once: the window stays smooth meanwhile, and what that left behind is given back
+        using IDisposable longWork = Memory.DuringLongWork();
         for (int n = 0; n < files.Count; n++)
         {
             FileEntry entry = files[n];

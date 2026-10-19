@@ -36,11 +36,16 @@ public sealed class UnitSelection
 public sealed class UnitTile : Grid
 {
     private readonly Bevel tile = new() { Padding = new Thickness(4) };
-    private readonly TextBlock name;
+    private readonly UnitPicture picture = new();
+    private readonly TextBlock name = new() { FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 3, 0, 0) };
+    private readonly NationMark nationMark;
+    private readonly TextBlock nation = new() { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5, 0, 0, 0) };
+    private readonly TextBlock cost = new() { FontSize = 11, FontWeight = FontWeights.Bold };
+    private readonly Bevel costBadge;
     private readonly UnitSelection selection;
 
     /// <summary>The unit shown.</summary>
-    public Unit Unit { get; }
+    public Unit Unit { get; private set; }
 
     /// <summary>Builds the tile of a unit.</summary>
     /// <param name="unit">The unit.</param>
@@ -53,15 +58,15 @@ public sealed class UnitTile : Grid
         Cursor = Cursors.Hand;
         Background = System.Windows.Media.Brushes.Transparent;
 
-        name = new TextBlock { Text = unit.Name, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 3, 0, 0), ToolTip = unit.Name };
-        var nation = new TextBlock { Text = UnitNames.Nation(unit.Nation), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(5, 0, 0, 0) };
         nation.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        var nationLine = new DockPanel { Margin = new Thickness(0, 2, 0, 0), Children = { new NationMark(unit.Nation, firstSide), nation } };
-        tile.Child = new StackPanel { Children = { new UnitPicture { Source = unit.PictureSource, Factory = unit.Factory }, name, nationLine } };
+        nationMark = new NationMark(unit.Nation, firstSide);
+        var nationLine = new DockPanel { Margin = new Thickness(0, 2, 0, 0), Children = { nationMark, nation } };
+        tile.Child = new StackPanel { Children = { picture, name, nationLine } };
         Children.Add(tile);
-        if (unit.Cost is not null) Children.Add(CostBadge(unit.Cost));
+        costBadge = CostBadge(cost);
+        Children.Add(costBadge);
+        Show(unit, firstSide);
 
-        ShowState();
         MouseEnter += (_, _) => ShowState();
         MouseLeave += (_, _) => ShowState();
         // the tile follows the selection while it is on screen
@@ -69,10 +74,27 @@ public sealed class UnitTile : Grid
         Unloaded += (_, _) => selection.Changed -= ShowState;
     }
 
-    /// <summary>The cost, small and bold in a sunken box, 7 pixels in from the tile's top right corner.</summary>
-    private static Bevel CostBadge(double? cost)
+    /// <summary>
+    /// Shows a unit in the tile. The list reuses its rows while it scrolls, so a tile shows one unit after another
+    /// instead of a new tile being built for each.
+    /// </summary>
+    public void Show(Unit unit, bool firstSide)
     {
-        var text = new TextBlock { Text = UnitNumbers.Of(cost), FontSize = 11, FontWeight = FontWeights.Bold };
+        Unit = unit;
+        picture.Source = unit.PictureSource;
+        picture.Factory = unit.Factory;
+        name.Text = unit.Name;
+        name.ToolTip = unit.Name;
+        nationMark.Show(unit.Nation, firstSide);
+        nation.Text = UnitNames.Nation(unit.Nation);
+        cost.Text = unit.Cost is null ? "" : UnitNumbers.Of(unit.Cost);
+        costBadge.Visibility = unit.Cost is null ? Visibility.Collapsed : Visibility.Visible;
+        ShowState();
+    }
+
+    /// <summary>The cost, small and bold in a sunken box, 7 pixels in from the tile's top right corner.</summary>
+    private static Bevel CostBadge(TextBlock text)
+    {
         var badge = new Bevel { Child = text, Padding = new Thickness(5, 0, 5, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 7, 7, 0), ToolTip = Texts.Get("Units.Stat.Cost") };
         badge.SetResourceReference(Bevel.TopLeftProperty, "lo");
         badge.SetResourceReference(Bevel.BottomRightProperty, "hi");

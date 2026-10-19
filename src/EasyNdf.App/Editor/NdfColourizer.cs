@@ -9,14 +9,25 @@ namespace EasyNdf.App.Editor;
 /// <summary>
 /// Colours NDF text in an AvalonEdit editor with the HTML app's rules (see <see cref="NdfColouring"/>), in the theme's
 /// "s-" colours. It keeps, for every line, the block the line starts inside, and works it out again after each change
-/// only as far as it changes, so a keystroke in a long file costs little. Only the lines on screen are coloured.
+/// only as far as it changes, so a keystroke in a long file costs little. A quote or bracket left open changes every
+/// line below it, so a change is followed for a few thousand lines at most, and the lines further down are worked out
+/// when they are drawn or read. Only the lines on screen are coloured.
 /// </summary>
 public sealed class NdfColourizer : DocumentColorizingTransformer
 {
     private readonly TextDocument document;
 
-    /// <summary>The block each line starts inside, by line number from 0, and one more for after the last line.</summary>
+    /// <summary>
+    /// The block each line starts inside, by line number from 0, and one more for after the last line. Those after
+    /// <see cref="knownUntil"/> are not worked out yet (see <see cref="BlockOf"/>).
+    /// </summary>
     private readonly List<int> blocks = [];
+
+    /// <summary>The last place in <see cref="blocks"/> that is worked out.</summary>
+    private int knownUntil;
+
+    /// <summary>How many lines below a change are worked out at once.</summary>
+    private const int LinesFollowedAtOnce = 2000;
 
     /// <summary>The editor's view of the text, which is told to draw again the lines whose colours a change moves.</summary>
     private TextView? view;
@@ -40,10 +51,37 @@ public sealed class NdfColourizer : DocumentColorizingTransformer
     {
         this.document = document;
         blocks.AddRange(givenBlocks);
+        knownUntil = blocks.Count - 1;
     }
 
-    /// <summary>The block each line starts inside (the folding reads them too).</summary>
-    public IReadOnlyList<int> Blocks => blocks;
+    /// <summary>The block each line starts inside (the folding reads them too), each worked out when it is read.</summary>
+    public IReadOnlyList<int> Blocks => new BlockList(this);
+
+    /// <summary>The block line <paramref name="index"/> starts inside, working out the lines above it first if needed.</summary>
+    public int BlockOf(int index)
+    {
+        while (knownUntil < index)
+        {
+            blocks[knownUntil + 1] = NdfColouring.LineEndsInside(LineText(knownUntil), blocks[knownUntil]);
+            knownUntil++;
+        }
+        return blocks[index];
+    }
+
+    /// <summary>The blocks as a list whose items are worked out as they are read.</summary>
+    private sealed class BlockList(NdfColourizer owner) : IReadOnlyList<int>
+    {
+        public int this[int index] => owner.BlockOf(index);
+
+        public int Count => owner.blocks.Count;
+
+        public IEnumerator<int> GetEnumerator()
+        {
+            for (int i = 0; i < Count; i++) yield return this[i];
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
 
     /// <summary>The lines' texts, from 0.</summary>
     public string LineText(int index) => document.GetText(document.GetLineByNumber(index + 1));
@@ -52,7 +90,9 @@ public sealed class NdfColourizer : DocumentColorizingTransformer
     private void Recount()
     {
         blocks.Clear();
-        blocks.AddRange(NdfColouring.BlocksOfLines([.. document.Lines.Select(line => document.GetText(line))]));
+        // each line's text is made as it is read, rather than all of them first: a large file has some 700,000 lines
+        blocks.AddRange(NdfColouring.BlocksOfLines(new DocumentLines(document)));
+        knownUntil = blocks.Count - 1;
     }
 
     /// <summary>
@@ -70,18 +110,30 @@ public sealed class NdfColourizer : DocumentColorizingTransformer
         int difference = lineCount + 1 - blocks.Count;
         if (difference > 0) blocks.InsertRange(first + 1, Enumerable.Repeat(-1, difference));
         else if (difference < 0) blocks.RemoveRange(first + 1, -difference);
+        if (knownUntil > first) knownUntil = Math.Max(first, knownUntil + difference);
 
-        int block = blocks[first], last = first;
+        int block = BlockOf(first), last = first;
+        bool reachedRest = false;
         for (int i = first; i < lineCount; i++)
         {
             last = i;
             block = NdfColouring.LineEndsInside(LineText(i), block);
-            if (i >= lastOfChange && blocks[i + 1] == block) break;
+            // below the change, a line that starts inside the same block as before leaves everything below as it was
+            if (i >= lastOfChange && i + 1 <= knownUntil && blocks[i + 1] == block) break;
             blocks[i + 1] = block;
+            knownUntil = Math.Max(knownUntil, i + 1);
+            if (i >= lastOfChange && i - first >= LinesFollowedAtOnce)
+            {
+                // a quote or bracket left open: the lines further down are worked out when they are needed
+                knownUntil = i + 1;
+                reachedRest = true;
+                break;
+            }
         }
         if (view is null) return;
         int start = document.GetLineByNumber(first + 1).Offset;
-        int end = document.GetLineByNumber(Math.Min(last + 2, lineCount)).EndOffset;
+        int end = reachedRest ? document.TextLength : document.GetLineByNumber(Math.Min(last + 2, lineCount)).EndOffset;
+        // only the lines on screen are drawn again, however long the stretch
         view.Redraw(start, end - start, System.Windows.Threading.DispatcherPriority.Normal);
     }
 
@@ -93,11 +145,12 @@ public sealed class NdfColourizer : DocumentColorizingTransformer
         int index = line.LineNumber - 1;
         if (index >= blocks.Count) return;
         string text = document.GetText(line);
-        var key = (blocks[index], text);
+        int block = BlockOf(index);
+        var key = (block, text);
         if (!coloured.TryGetValue(key, out List<ColouredPart>? parts))
         {
             if (coloured.Count > 20000) coloured.Clear();
-            parts = NdfColouring.ColourLine(text, blocks[index]).Parts;
+            parts = NdfColouring.ColourLine(text, block).Parts;
             coloured[key] = parts;
         }
         foreach (ColouredPart part in parts)

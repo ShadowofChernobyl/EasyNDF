@@ -47,6 +47,7 @@ public sealed class UndoHistory
         this.data = data;
         this.files = files;
         now = Here();
+        marking = new RunOnceSoon(Mark);
     }
 
     /// <summary>Raised when <see cref="CanUndo"/> or <see cref="CanRedo"/> may have changed.</summary>
@@ -72,6 +73,14 @@ public sealed class UndoHistory
     }
 
     /// <summary>
+    /// <see cref="Mark"/> once for a burst of changes to the file list: comparing the whole list after each of a
+    /// thousand files read took seconds. Undo and Redo mark first if one is waiting.
+    /// </summary>
+    public void MarkSoon() => marking.Ask();
+
+    private readonly RunOnceSoon marking;
+
+    /// <summary>
     /// Files the state before a change, if the mods or the file list differ from the last state filed (the HTML app's
     /// <c>histMark</c>). Call it after every change; nothing is filed when nothing changed.
     /// </summary>
@@ -79,6 +88,8 @@ public sealed class UndoHistory
     {
         if (isPuttingBack) return;
         modsText ??= ModsText(data.Mods);
+        // most changes to the list are not the user's (a file read, a status shown): this check needs no copying
+        if (modsText == now.ModsText && RowsAreAsFiled()) return;
         List<UndoRow> rows = [.. files.Entries.Select(entry => UndoRow.Of(entry, data))];
         string rowsText = RowsText(rows);
         if (modsText == now.ModsText && rowsText == now.RowsText) return;
@@ -109,6 +120,7 @@ public sealed class UndoHistory
     /// <summary>Undo: puts back the state before the last change.</summary>
     public UndoResult Undo()
     {
+        marking.RunIfAsked();
         if (files.IsBusy) return new UndoResult(Texts.Get("Main.Undo.Busy"), IsDone: false);
         if (undoSteps.Count == 0) return new UndoResult(Texts.Get("Main.Undo.Nothing"), IsDone: false);
         UndoState was = now;
@@ -123,6 +135,7 @@ public sealed class UndoHistory
     /// <summary>Redo: puts back the state an Undo took away.</summary>
     public UndoResult Redo()
     {
+        marking.RunIfAsked();
         if (files.IsBusy) return new UndoResult(Texts.Get("Main.Undo.Busy"), IsDone: false);
         if (redoSteps.Count == 0) return new UndoResult(Texts.Get("Main.Redo.Nothing"), IsDone: false);
         UndoState was = now;
@@ -202,6 +215,27 @@ public sealed class UndoHistory
     }
 
     /// <summary>The file rows as one text, to tell whether they changed.</summary>
+    /// <summary>
+    /// Whether the file list is still as last filed: the same rows in the same order, each with the same preset, On box
+    /// and export folder. When it says no, the rows are compared in full: a preset put back by Undo is a copy, so it is
+    /// a different object with the same name.
+    /// </summary>
+    private bool RowsAreAsFiled()
+    {
+        IReadOnlyList<FileEntry> entries = files.Entries;
+        IReadOnlyList<UndoRow> filed = now.Rows;
+        if (entries.Count != filed.Count) return false;
+        for (int i = 0; i < filed.Count; i++)
+        {
+            FileEntry entry = entries[i];
+            UndoRow row = filed[i];
+            if (!ReferenceEquals(entry, row.Entry) || !ReferenceEquals(entry.Preset, row.Preset) || entry.MissingPreset != row.MissingPreset
+                || entry.On != row.On || entry.ExportFolder != row.ExportFolder)
+                return false;
+        }
+        return true;
+    }
+
     private static string RowsText(IEnumerable<UndoRow> rows) =>
         string.Join("\n", rows.Select(r => r.Entry.Id + "|" + r.ModName + "|" + r.PresetName + "|" + r.MissingPreset + "|" + (r.On ? 1 : 0) + "|" + r.ExportFolder));
 
@@ -209,15 +243,16 @@ public sealed class UndoHistory
     private sealed record UndoState(string ModsText, IReadOnlyList<Mod> Mods, IReadOnlyList<UndoRow> Rows, string RowsText);
 
     /// <summary>
-    /// A file row as filed. Its preset is kept by name, since putting the mods back makes new presets.
+    /// A file row as filed. Its preset is kept by name, since putting the mods back makes new presets; the preset itself
+    /// is kept too, only to tell quickly that the row has not changed.
     /// </summary>
-    private sealed record UndoRow(FileEntry Entry, string? ModName, string? PresetName, string? MissingPreset, bool On, string? ExportFolder)
+    private sealed record UndoRow(FileEntry Entry, ModPreset? Preset, string? ModName, string? PresetName, string? MissingPreset, bool On, string? ExportFolder)
     {
         /// <summary>The row as it is now.</summary>
         public static UndoRow Of(FileEntry entry, AppData data)
         {
             Mod? mod = entry.Preset is null ? null : data.ModOf(entry.Preset);
-            return new UndoRow(entry, mod?.Name, mod is null ? null : entry.Preset!.Name, entry.MissingPreset, entry.On, entry.ExportFolder);
+            return new UndoRow(entry, entry.Preset, mod?.Name, mod is null ? null : entry.Preset!.Name, entry.MissingPreset, entry.On, entry.ExportFolder);
         }
 
         /// <summary>The row with its preset found again among the mods put back.</summary>

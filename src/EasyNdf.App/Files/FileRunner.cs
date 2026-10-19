@@ -52,6 +52,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         }
 
         model.IsBusy = true;
+        // the window stays smooth while the files run, and what running them left behind is given back at the end
+        using IDisposable longWork = Memory.DuringLongWork();
         try
         {
             model.Say("");
@@ -79,7 +81,6 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         finally
         {
             model.IsBusy = false;
-            Memory.GiveBack();
         }
     }
 
@@ -126,8 +127,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             entry.Info = FileStatus.Holds(info.Descriptors, info.Constants, info.Unnamed);
             entry.LastRun = new RunRecord
             {
-                Result = result,
-                Info = info,
+                Result = ForDetails(result),
+                // Details shows only the counts; the names the file declares are not kept with every file run
+                Info = info with { Names = [], Titles = [], Types = [], References = [] },
                 Milliseconds = clock.ElapsedMilliseconds,
                 Preset = preset,
                 Held = write && result.ParseError != "",
@@ -245,6 +247,13 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         }
         return found;
     }
+
+    /// <summary>
+    /// A run's result as a file's Details shows it: its counts, edits, warnings and any error, without the exported
+    /// text, which is saved or held already and would otherwise stay in memory for every file run.
+    /// </summary>
+    private static RunResult ForDetails(RunResult result) =>
+        new() { Stats = result.Stats, Logs = result.Logs, Warnings = result.Warnings, ParseError = result.ParseError };
 
     /// <summary>A mod's watermark as the engine takes it, or null when it has none.</summary>
     private static Watermark? WatermarkOf(Mod? mod) =>

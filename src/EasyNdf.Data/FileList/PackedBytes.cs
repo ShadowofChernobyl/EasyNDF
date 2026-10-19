@@ -1,5 +1,6 @@
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 
 namespace EasyNdf.Data.FileList;
 
@@ -21,13 +22,19 @@ public sealed class PackedBytes
     public long Length { get; }
 
     /// <summary>Packs bytes. The quickest packing is used: it still makes game files about 30 times smaller.</summary>
-    public static PackedBytes Pack(byte[] bytes)
+    public static PackedBytes Pack(ReadOnlySpan<byte> bytes)
     {
         using var output = new MemoryStream();
         using (var packer = new BrotliStream(output, CompressionLevel.Fastest))
             packer.Write(bytes);
-        return new PackedBytes(output.ToArray(), bytes.LongLength);
+        return new PackedBytes(output.ToArray(), bytes.Length);
     }
+
+    /// <summary>Packs a text exactly as it is, character for character.</summary>
+    public static PackedBytes PackText(string text) => Pack(MemoryMarshal.AsBytes(text.AsSpan()));
+
+    /// <summary>A text packed with <see cref="PackText"/>.</summary>
+    public string UnpackText() => new(MemoryMarshal.Cast<byte, char>(Unpack()));
 
     /// <summary>The bytes as they were before packing.</summary>
     public byte[] Unpack()

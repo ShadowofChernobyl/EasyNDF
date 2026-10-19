@@ -31,6 +31,21 @@ public partial class EditorPage
     /// <summary>Where the block each line starts ends, as worked out since the text last changed, by line from 0.</summary>
     private readonly Dictionary<int, int> blockEnds = [];
 
+    /// <summary>
+    /// The ends worked out before the text last changed. A block too long to look through on a key typed keeps the arrow
+    /// it had until its end is found again (see <see cref="ArrowEndOf"/>).
+    /// </summary>
+    private readonly Dictionary<int, int> blockEndsBefore = [];
+
+    /// <summary>The lines whose block's end is being looked for away from the screen's thread.</summary>
+    private readonly HashSet<int> endsBeingFound = [];
+
+    /// <summary>Counts the changes to the text, so an end found in an older text is not kept.</summary>
+    private int textChanges;
+
+    /// <summary>How many lines below a line are looked through for its block's end while drawing its arrow.</summary>
+    private const int LinesLookedAtOnce = 3000;
+
     /// <summary>Sets up folding when the page is built.</summary>
     private void StartFolding()
     {
@@ -60,6 +75,8 @@ public partial class EditorPage
     private void BringFoldingBack()
     {
         blockEnds.Clear();
+        blockEndsBefore.Clear();
+        textChanges++;
         if (shown is null || shown.IsChangesOnly) return;
         folding = FoldingManager.Install(Text.TextArea);
         // AvalonEdit's own margin is taken off: the mark column draws the arrows as the HTML app does. Its own marker stays,
@@ -75,7 +92,12 @@ public partial class EditorPage
         markColumn.ArrowsLightUp = shown.IsExport;
     }
 
-    private void ForgetBlockEnds(object? sender, DocumentChangeEventArgs e) => blockEnds.Clear();
+    private void ForgetBlockEnds(object? sender, DocumentChangeEventArgs e)
+    {
+        textChanges++;
+        foreach ((int line, int end) in blockEnds) blockEndsBefore[line] = end;
+        blockEnds.Clear();
+    }
 
     /// <summary>The lines of the text shown, and the block each starts inside, as the folding reads them.</summary>
     private (DocumentLines Lines, IReadOnlyList<int> Blocks) LinesAndBlocks() => (new DocumentLines(shown!.Document), shown.Colourizer!.Blocks);
@@ -91,7 +113,41 @@ public partial class EditorPage
         if (folding.GetFoldingsAt(line.EndOffset).Any(f => f.IsFolded)) return FoldArrow.Shut;
         (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks();
         if (shown.IsExport) return NdfFolding.StartsBlock(lines, blocks, index) ? FoldArrow.Open : FoldArrow.None;
-        return BlockEndOf(index) > index ? FoldArrow.Open : FoldArrow.None;
+        return ArrowEndOf(index) > index ? FoldArrow.Open : FoldArrow.None;
+    }
+
+    /// <summary>
+    /// Where the block a line starts ends, for its arrow, which is drawn again on every key typed. Only a few thousand
+    /// lines are looked through at once: for a block that goes on further (one a quote or bracket left open runs to the
+    /// file's end), the end known before is shown while the real one is found away from the screen's thread.
+    /// </summary>
+    private int ArrowEndOf(int index)
+    {
+        if (blockEnds.TryGetValue(index, out int end)) return end;
+        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks();
+        end = NdfFolding.BlockEnd(lines, blocks, index, LinesLookedAtOnce);
+        if (end != NdfFolding.FurtherThanLooked)
+        {
+            blockEnds[index] = end;
+            return end;
+        }
+        FindFarEndLater(index, blocks[index]);
+        return blockEndsBefore.GetValueOrDefault(index, -1);
+    }
+
+    /// <summary>Finds a long block's end in a snapshot of the text, then draws its arrow again, unless the text changed meanwhile.</summary>
+    private async void FindFarEndLater(int index, int startsInside)
+    {
+        if (shown is null || !endsBeingFound.Add(index)) return;
+        int changes = textChanges;
+        TextDocument document = shown.Document;
+        ITextSource text = document.CreateSnapshot();
+        int lineStart = document.GetLineByNumber(index + 1).Offset;
+        int linesOn = await Task.Run(() => FarBlockEnd.Find(text, lineStart, startsInside));
+        endsBeingFound.Remove(index);
+        if (changes != textChanges || shown?.Document != document) return;
+        blockEnds[index] = linesOn < 0 ? -1 : index + linesOn;
+        markColumn.InvalidateVisual();
     }
 
     /// <summary>Where the block a line starts ends, or -1; remembered until the text changes.</summary>

@@ -22,26 +22,72 @@ public sealed record SourceComment(string Text, bool SameLine);
 /// </remarks>
 public abstract class NdfValue
 {
+    // A large game file has over half a million values, so each holds as little as it can: its place in the file as two
+    // plain numbers (NoPosition for none), and what only rules and a few list items need in an object of its own,
+    // made only for the values that have any of it.
+    private const int NoPosition = int.MinValue;
+    private int start = NoPosition, end = NoPosition;
+    private RareParts? rare;
+
+    /// <summary>What few values have: a rule's changes, and comments kept with a list item.</summary>
+    private sealed class RareParts
+    {
+        public int? ReplacedStart, ReplacedEnd;
+        public string? AddedComment, TrailingLineComment;
+        public List<SourceComment>? LeadingComments;
+    }
+
+    /// <summary>The value's rare parts, made the first time one is set to something.</summary>
+    private RareParts Rare => rare ??= new RareParts();
+
     /// <summary>Where the value starts in the source text, or null for a value a rule wrote.</summary>
-    public int? Start { get; set; }
+    public int? Start
+    {
+        get => start == NoPosition ? null : start;
+        set => start = value ?? NoPosition;
+    }
 
     /// <summary>Where the value ends in the source text (one past its last character).</summary>
-    public int? End { get; set; }
+    public int? End
+    {
+        get => end == NoPosition ? null : end;
+        set => end = value ?? NoPosition;
+    }
 
     /// <summary>For a value a rule wrote in place of one from the file: where the replaced text starts.</summary>
-    public int? ReplacedStart { get; set; }
+    public int? ReplacedStart
+    {
+        get => rare?.ReplacedStart;
+        set { if (value is not null || rare is not null) Rare.ReplacedStart = value; }
+    }
 
     /// <summary>For a value a rule wrote in place of one from the file: where the replaced text ends.</summary>
-    public int? ReplacedEnd { get; set; }
+    public int? ReplacedEnd
+    {
+        get => rare?.ReplacedEnd;
+        set { if (value is not null || rare is not null) Rare.ReplacedEnd = value; }
+    }
 
     /// <summary>Comment text a rule adds after the value, such as " /* Multiplied by 2 */". Null when there is none.</summary>
-    public string? AddedComment { get; set; }
+    public string? AddedComment
+    {
+        get => rare?.AddedComment;
+        set { if (value is not null || rare is not null) Rare.AddedComment = value; }
+    }
 
     /// <summary>Comments from the file that stand above this value, when it is a list item.</summary>
-    public List<SourceComment>? LeadingComments { get; set; }
+    public List<SourceComment>? LeadingComments
+    {
+        get => rare?.LeadingComments;
+        set { if (value is not null || rare is not null) Rare.LeadingComments = value; }
+    }
 
     /// <summary>A // comment a rule wrote after a list item it inserted. It goes at the end of that item's line.</summary>
-    public string? TrailingLineComment { get; set; }
+    public string? TrailingLineComment
+    {
+        get => rare?.TrailingLineComment;
+        set { if (value is not null || rare is not null) Rare.TrailingLineComment = value; }
+    }
 
     /// <summary>Where the value starts: in the file, or in the text it replaced.</summary>
     public int? StartOrReplaced => Start ?? ReplacedStart;

@@ -3,6 +3,7 @@ using EasyNdf.Data.FileList;
 using EasyNdf.Engine;
 using EasyNdf.Engine.Viewer;
 using EasyNdf.App.Text;
+using ICSharpCode.AvalonEdit.Document;
 
 namespace EasyNdf.App.Editor;
 
@@ -102,7 +103,7 @@ public sealed class TreeNode
 /// <param name="localOutline">The descriptors of the file open in the editor.</param>
 /// <param name="localText">That file's text.</param>
 /// <param name="index">What the read files declare and refer to.</param>
-public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOnlyList<OutlineEntry> localOutline, string localText, ReferenceIndex index)
+public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOnlyList<OutlineEntry> localOutline, ITextSource localText, ReferenceIndex index)
 {
     /// <summary>The open file's descriptors by name: the first of each name.</summary>
     public Dictionary<string, OutlineEntry> LocalByName { get; } = ByName(localOutline);
@@ -146,7 +147,7 @@ public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOn
         if (name == "") return null;
         if (hasLocal && LocalByName.TryGetValue(name, out OutlineEntry? local))
             return (localEntry, local.Kind == OutlineKind.Constant ? "" : local.Type, local);
-        if (index.Names.TryGetValue(name, out ReferenceIndex.Declared? declared) && !IsLocal(declared.Entry)) return (declared.Entry, declared.Type, null);
+        if (index.Names.TryGetValue(name, out ReferenceIndex.Declared declared) && !IsLocal(declared.Entry)) return (declared.Entry, declared.Type, null);
         return null;
     }
 
@@ -154,8 +155,8 @@ public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOn
     public bool IsDeep(OutlineEntry? entry)
     {
         if (entry is null || entry.Kind != OutlineKind.Constant) return true;
-        for (int i = entry.Start; i < entry.End && i < localText.Length; i++)
-            if (localText[i] is '(' or '[') return true;
+        for (int i = entry.Start; i < entry.End && i < localText.TextLength; i++)
+            if (localText.GetCharAt(i) is '(' or '[') return true;
         return false;
     }
 

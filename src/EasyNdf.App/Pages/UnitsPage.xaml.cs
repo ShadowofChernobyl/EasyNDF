@@ -181,7 +181,10 @@ public partial class UnitsPage : UserControl
         readingKey = null;
 
         loaded = read;
+        // the source before is let go of, and what reading this one left behind (the game's archive lists, its
+        // dictionaries, its unit files) is given back
         UnitPictureLibrary.Current = new UnitPictureLibrary(read.Pictures, read.Catalog.FlagSources);
+        Memory.GiveBack();
         ProblemsText.Visibility = read.Problems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ProblemsText.ToolTip = string.Join("\n", read.Problems.Take(20));
         ResetFilters();

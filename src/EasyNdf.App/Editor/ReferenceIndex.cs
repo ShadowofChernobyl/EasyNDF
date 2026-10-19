@@ -11,11 +11,14 @@ namespace EasyNdf.App.Editor;
 /// </summary>
 public sealed class ReferenceIndex
 {
-    /// <summary>A file that declares a name, and the name's type ("" for a constant).</summary>
-    public sealed record Declared(FileEntry Entry, string Type);
+    /// <summary>A file that declares a name, and the name's type ("" for a constant). A struct: a game has some hundred thousand names.</summary>
+    public readonly record struct Declared(FileEntry Entry, string Type);
 
-    /// <summary>A descriptor that uses a name: its file, its name and its type.</summary>
-    public sealed record User(FileEntry Entry, string Name, string Type);
+    /// <summary>
+    /// A descriptor that uses a name: its file, its name and its type. A struct, as the read files of a whole game hold
+    /// about a million references.
+    /// </summary>
+    public readonly record struct User(FileEntry Entry, string Name, string Type);
 
     /// <summary>The files read, by folder and name.</summary>
     public IReadOnlyList<FileEntry> Files { get; }
@@ -26,7 +29,6 @@ public sealed class ReferenceIndex
     /// <summary>The names some other declaration refers to.</summary>
     private readonly HashSet<string> used = new(StringComparer.Ordinal);
 
-    private Dictionary<string, List<User>>? users;
     private Chains? chains;
 
     private ReferenceIndex(IReadOnlyList<FileEntry> entries)
@@ -65,42 +67,46 @@ public sealed class ReferenceIndex
         return last = new ReferenceIndex(entries);
     }
 
-    private Dictionary<FileEntry, Dictionary<string, List<string>>>? refersByFile;
+    /// <summary>Each file's descriptors by name, made for a file the first time one of its descriptors is asked about.</summary>
+    private readonly Dictionary<FileEntry, Dictionary<string, List<string>>> refersByFile = [];
 
     /// <summary>The names a descriptor of a read file refers to; null when the file declares no descriptor of that name.</summary>
     public IReadOnlyList<string>? RefersOf(FileEntry entry, string name)
     {
-        refersByFile ??= Files.ToDictionary(file => file, file =>
+        if (!refersByFile.TryGetValue(entry, out var byName))
         {
-            var byName = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-            foreach (DeclarationReferences declaration in file.References!) byName.TryAdd(declaration.Name, declaration.Refers);
-            return byName;
-        });
-        return refersByFile.TryGetValue(entry, out var byName) && byName.TryGetValue(name, out List<string>? refers) ? refers : null;
+            if (entry.References is null || !Files.Contains(entry)) return null;
+            byName = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            foreach (DeclarationReferences declaration in entry.References) byName.TryAdd(declaration.Name, declaration.Refers);
+            refersByFile[entry] = byName;
+        }
+        return byName.TryGetValue(name, out List<string>? refers) ? refers : null;
     }
 
-    /// <summary>The descriptors, in the read files, that refer to a name (the HTML app's <c>refUsers</c>).</summary>
+    /// <summary>The last name <see cref="UsersOf"/> was asked about, and what it found.</summary>
+    private (string Name, List<User> Users)? lastUsers;
+
+    /// <summary>
+    /// The descriptors, in the read files, that refer to a name (the HTML app's <c>refUsers</c>). They are looked for
+    /// each time a descriptor is shown, through every reference (a few milliseconds even for a whole game), rather than
+    /// kept for every name, which took over a hundred MB.
+    /// </summary>
     public IReadOnlyList<User> UsersOf(string name)
     {
-        if (name == "") return [];
-        if (users is null)
+        if (name == "" || !Names.ContainsKey(name)) return [];
+        if (lastUsers is (string asked, List<User> found) && asked == name) return found;
+        var users = new List<User>();
+        foreach (FileEntry entry in Files)
         {
-            users = new Dictionary<string, List<User>>(StringComparer.Ordinal);
-            foreach (FileEntry entry in Files)
+            foreach (DeclarationReferences declaration in entry.References!)
             {
-                foreach (DeclarationReferences declaration in entry.References!)
-                {
-                    if (declaration.Name == "") continue;
-                    foreach (string refers in declaration.Refers)
-                    {
-                        if (refers == declaration.Name || !Names.ContainsKey(refers)) continue;
-                        if (!users.TryGetValue(refers, out List<User>? list)) users[refers] = list = [];
-                        list.Add(new User(entry, declaration.Name, declaration.Type));
-                    }
-                }
+                if (declaration.Name == "" || declaration.Name == name) continue;
+                foreach (string refers in declaration.Refers)
+                    if (refers == name) users.Add(new User(entry, declaration.Name, declaration.Type));
             }
         }
-        return users.TryGetValue(name, out List<User>? found) ? found : [];
+        lastUsers = (name, users);
+        return users;
     }
 
     /// <summary>
