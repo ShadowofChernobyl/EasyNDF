@@ -125,8 +125,10 @@
                 </controls:FlexRow>
             </controls:Bevel>
 
-            <!-- what the view shows: how to use it, and how many units -->
+            <!-- what the view shows: how to use it, how many units, and its zoom -->
             <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                <!-- the zoom of Cards or Table, at the far right, as the File Editor's text size -->
+                <ComboBox x:Name="ZoomChoice" DockPanel.Dock="Right" MinWidth="72" FontSize="12" Margin="12,0,0,0" ToolTip="{t:Text Units.Zoom.Tip}" />
                 <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" Margin="12,0,0,0" />
                 <!-- shown when some of the source's files could not be read; its tooltip says which -->
                 <TextBlock x:Name="ProblemsText" DockPanel.Dock="Right" Foreground="{DynamicResource caution}" Margin="12,0,0,0"

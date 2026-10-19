@@ -53,10 +53,12 @@ public partial class UnitsPage : UserControl
         SourceChoice.Selection = sources;
         ShowSource();
         PreviewKeyDown += FoldKeys;
+        PreviewKeyDown += ZoomKeys;
         Texts.LanguageChanged += LanguageChanged;
         CardsList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
         TableList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
         PrepareTableHeadings();
+        PrepareZoom();
         // Cards or Table, whichever was used last; Compare, kept by an earlier version, counts as Cards
         view = (string?)AppData.Current.State["unitView"] == nameof(UnitView.Table) ? UnitView.Table : UnitView.Cards;
         ShowViewButtons();
@@ -479,6 +481,7 @@ public partial class UnitsPage : UserControl
         TableButton.IsChecked = view == UnitView.Table;
         CompareButton.IsChecked = view == UnitView.Compare;
         AddUnitsButton.Visibility = view == UnitView.Compare ? Visibility.Visible : Visibility.Collapsed;
+        ShowZoom();
     }
 
     /// <summary>Shows everything again after a filter, the view or the source changed: the nations, the factory tabs and the view.</summary>

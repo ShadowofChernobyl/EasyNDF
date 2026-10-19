@@ -69,7 +69,8 @@ public sealed class UnitPicture : FrameworkElement
     {
         string? source = Source;
         UnitPictureLibrary? library = UnitPictureLibrary.Current;
-        double width = ActualWidth > 0 ? ActualWidth : Width;
+        // as wide as it is drawn on screen: wider than its own width in a list that is zoomed in
+        double width = (ActualWidth > 0 ? ActualWidth : Width) * DrawnScale();
         if (source is null || library is null || double.IsNaN(width) || width <= 0)
         {
             Show(null);
@@ -84,6 +85,16 @@ public sealed class UnitPicture : FrameworkElement
         ImageSource? read = await library.GetAsync(source, width);
         // the frame may show another unit by now, as the list's rows are reused while it scrolls
         if (Source == source) Show(read);
+    }
+
+    /// <summary>Reads the picture again, for the size it is drawn at now: a list's zoom changed.</summary>
+    internal void Reload() => Load();
+
+    /// <summary>How many times larger than its own size the frame is drawn on the window: 1, unless a list is zoomed.</summary>
+    private double DrawnScale()
+    {
+        if (PresentationSource.FromVisual(this)?.RootVisual is not Visual window || !window.IsAncestorOf(this)) return 1;
+        return TransformToAncestor(window).TransformBounds(new Rect(0, 0, 1, 1)).Width;
     }
 
     private void Show(ImageSource? shown)
