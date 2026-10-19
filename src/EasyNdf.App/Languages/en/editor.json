@@ -231,5 +231,7 @@
   "Editor.Problems.Show.Tip": "Show where they are",
   "Editor.Problems.GoTo.Tip": "Go to it",
   "Editor.Problems.Close.Tip": "Close (Escape)",
-  "Editor.Export.RunFirst": "{file} has not been run yet. Press Preview or Run export on the Files tab first, then Changes only shows what changed."
+  "Editor.Export.RunFirst": "{file} has not been run yet. Press Preview or Run export on the Files tab first, then Changes only shows what changed.",
+  "Editor.NotInFile": "{name} is not in the {file} on the Files tab. If it comes from a mod, check that the mod's own {file} is the one listed there.",
+  "Editor.NotInFile.ShowFiles": "Show Files Tab"
 }

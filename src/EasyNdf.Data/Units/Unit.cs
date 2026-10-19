@@ -97,5 +97,7 @@ public sealed class Unit
 /// <param name="Units">The units, in the order of UniteDescriptor.ndf.</param>
 /// <param name="FlagSources">Each nation's flag picture, by the nation's code.</param>
 /// <param name="Problems">What could not be read, each with what went wrong.</param>
+/// <param name="Divisions">Every division, in the order of Divisions.ndf, multiplayer or not.</param>
 public sealed record UnitCatalog(
-    Game.GameTitle Game, IReadOnlyList<Unit> Units, IReadOnlyDictionary<string, string> FlagSources, IReadOnlyList<string> Problems);
+    Game.GameTitle Game, IReadOnlyList<Unit> Units, IReadOnlyDictionary<string, string> FlagSources, IReadOnlyList<string> Problems,
+    IReadOnlyList<Divisions.Division> Divisions);

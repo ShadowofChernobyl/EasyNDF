@@ -7,8 +7,9 @@ using EasyNdf.Data.Units;
 namespace EasyNdf.App.Units;
 
 /// <summary>
-/// The Units tab's Source list: "Choose a Source…" until one is chosen, then the games, the mods under a heading of
-/// their own, and "Choose a Game Folder…" for a game Steam did not find.
+/// The Source list of the Files, Units and Divisions tabs: "Choose a Source…" until one is chosen, then the games, the
+/// mods under a heading of their own, and "Choose a Game Folder…" for a game Steam did not find. Every list shows the
+/// main window's one <see cref="SourceSelection"/>, so choosing in one chooses in all.
 /// </summary>
 public sealed class SourceChoice : ComboBox
 {
@@ -24,6 +25,8 @@ public sealed class SourceChoice : ComboBox
         SetResourceReference(StyleProperty, typeof(ComboBox));
         SelectionChanged += Chosen;
         DropDownOpened += (_, _) => selection?.LookAgain();
+        // the games are looked for the first time any Source list is shown
+        IsVisibleChanged += (_, _) => { if (IsVisible) _ = selection?.LookOnceAsync(); };
         ToolTip = Texts.Get("Units.SourceChoice.Tip");
         Texts.LanguageChanged += () => { ToolTip = Texts.Get("Units.SourceChoice.Tip"); Fill(); };
     }

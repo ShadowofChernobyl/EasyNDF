@@ -4,7 +4,8 @@
 -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:controls="clr-namespace:EasyNdf.App.Controls">
+                    xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+                    xmlns:units="clr-namespace:EasyNdf.App.Units">
 
     <!--
       Emoji in colour: WPF can only draw emoji as plain symbols from Windows' fonts, so the two the app shows are
@@ -222,6 +223,51 @@
         <Setter Property="TextElement.FontWeight" Value="Bold" />
     </Style>
 
+    <!-- the small buttons in headings, such as the Units tab's All and the Divisions tab's +: 20 pixels high, 7 pixels each side -->
+    <Style x:Key="HeadingButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="MinHeight" Value="20" />
+        <Setter Property="Padding" Value="7,0" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+
+    <!--
+      .factories button: a factory's tab on the Units and Divisions tabs, bold, raised with no edge at the bottom. The one chosen is sunk on the box
+      colour, in the accent colour, and covers the line under the tabs, so it opens into the list below.
+    -->
+    <Style x:Key="FactoryTab" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Padding" Value="11,3" />
+        <Setter Property="Margin" Value="0,0,2,-1" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid>
+                        <controls:Bevel x:Name="Edge" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Edges="1,1,1,0"
+                                        Background="{DynamicResource panel}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False" />
+                        </controls:Bevel>
+                        <!-- the chosen tab's foot, over the line under the tabs -->
+                        <Rectangle x:Name="Foot" Height="1" VerticalAlignment="Bottom" Margin="1,0" Fill="{DynamicResource well}" Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Edge" Property="Background" Value="{DynamicResource well}" />
+                            <Setter TargetName="Edge" Property="TopLeft" Value="{DynamicResource lo}" />
+                            <Setter TargetName="Edge" Property="BottomRight" Value="{DynamicResource hi}" />
+                            <Setter TargetName="Foot" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
     <!-- button.go: the main action of a bar, such as Run export -->
     <Style x:Key="GoButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="FontWeight" Value="Bold" />
@@ -1078,16 +1124,43 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
-                    <Border x:Name="Item" Background="Transparent" Padding="14,4">
-                        <DockPanel>
-                            <!-- #ctx .mk: the item's key, floated right, 2.5em after the label -->
-                            <TextBlock x:Name="Key" DockPanel.Dock="Right" Margin="31.25,0,0,0" Text="{TemplateBinding InputGestureText}" Foreground="{DynamicResource muted}" />
-                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="False" />
-                        </DockPanel>
-                    </Border>
+                    <Grid>
+                        <Border x:Name="Item" Background="Transparent" Padding="14,4">
+                            <!-- the label always whole; a long key (a descriptor's name after Copy Name) is cut short instead -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter ContentSource="Header" RecognizesAccessKey="False" />
+                                <!-- #ctx .mk: the item's key, floated right, 2.5em after the label; its tooltip gives it whole -->
+                                <TextBlock x:Name="Key" Grid.Column="1" Margin="31.25,0,0,0" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"
+                                           Text="{TemplateBinding InputGestureText}" ToolTip="{TemplateBinding InputGestureText}" Foreground="{DynamicResource muted}" />
+                                <!-- an item with a menu of its own: ▸ at its right -->
+                                <TextBlock x:Name="Arrow" Grid.Column="2" Margin="12,0,0,0" Text="▸" Foreground="{DynamicResource muted}" Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+                        <!-- its own menu, at its right, drawn as the menu it is in -->
+                        <Popup IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" Placement="Right" HorizontalOffset="3" VerticalOffset="-4"
+                               AllowsTransparency="True" Focusable="False" PopupAnimation="None">
+                            <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                                            Padding="3" MinWidth="192" MaxWidth="384">
+                                <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                </ScrollViewer>
+                            </controls:Bevel>
+                        </Popup>
+                    </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="InputGestureText" Value="">
                             <Setter TargetName="Key" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                        <Trigger Property="HasItems" Value="True">
+                            <Setter TargetName="Arrow" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsSubmenuOpen" Value="True">
+                            <Setter TargetName="Item" Property="Background" Value="{DynamicResource hover}" />
                         </Trigger>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="Item" Property="Background" Value="{DynamicResource hover}" />
@@ -1152,6 +1225,41 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <!--
+      The Units table (Units/UnitTableList.cs), on the Units and Divisions tabs: one row a unit, of which only those in
+      view are made, in a frame whose headings sit above the rows and move sideways with them.
+    -->
+    <Style x:Key="UnitTableList" TargetType="units:UnitTableList">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+        <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+        <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="units:UnitTableList">
+                    <ScrollViewer x:Name="TableScroller" Style="{StaticResource ListScroller}" Focusable="False"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" CanContentScroll="True">
+                        <ItemsPresenter />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="ItemsPanel">
+            <Setter.Value>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <DataTemplate DataType="{x:Type units:TableRowLine}">
+        <units:UnitTableRowView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type units:EmptyLine}">
+        <TextBlock Text="{Binding Text}" Foreground="{DynamicResource muted}" Margin="10" TextWrapping="Wrap" />
+    </DataTemplate>
 
     <!--
       Every other scrolling box: WPF's own layout, with the corner where the two bars meet in the box colour rather than

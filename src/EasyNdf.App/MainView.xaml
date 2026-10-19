@@ -77,6 +77,9 @@
                     <TabItem x:Name="UnitsTabItem" Header="{t:Text Main.Units}" ToolTip="{t:Text Main.Units.Tip}">
                         <pages:UnitsPage x:Name="UnitsTab" />
                     </TabItem>
+                    <TabItem x:Name="DivisionsTabItem" Header="{t:Text Main.Divisions}" ToolTip="{t:Text Main.Divisions.Tip}">
+                        <pages:DivisionsPage x:Name="DivisionsTab" />
+                    </TabItem>
                     <TabItem x:Name="SettingsTabItem" Header="{t:Text Main.Settings}" ToolTip="{t:Text Main.Settings.Tip}">
                         <pages:SettingsPage x:Name="SettingsTab" />
                     </TabItem>

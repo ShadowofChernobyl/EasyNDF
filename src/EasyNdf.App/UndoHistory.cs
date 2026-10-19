@@ -164,9 +164,13 @@ public sealed class UndoHistory
         {
             var hadMods = data.Mods.Select(m => m.Name).ToHashSet();
             List<Mod> mods = [.. state.Mods.Select(m => m.DeepCopy())];
-            // the watermarks stay as they are now
+            // the watermarks and divisions stay as they are now: Undo is for the rules and the files
             foreach (Mod mod in mods)
-                if (data.ModStore.Find(mod.Name) is Mod current) mod.Watermark = current.Watermark;
+                if (data.ModStore.Find(mod.Name) is Mod current)
+                {
+                    mod.Watermark = current.Watermark;
+                    mod.Divisions = current.Divisions;
+                }
             data.ModStore.Restore(mods);
 
             string? cameBack = data.Mods.Select(m => m.Name).FirstOrDefault(name => !hadMods.Contains(name));

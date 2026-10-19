@@ -14,6 +14,9 @@ public sealed class Mod
     /// <summary>The mod's presets. Each preset's rules apply to the files it is chosen for.</summary>
     public List<ModPreset> Presets { get; set; } = [];
 
+    /// <summary>The mod's divisions: its new ones, and its changes to the game's, made on the Divisions tab.</summary>
+    public List<Divisions.ModDivision> Divisions { get; set; } = [];
+
     /// <summary>
     /// A preset name in this mod that no other preset of the mod has: the name itself, or "name (2)", "name (3)"...
     /// </summary>
@@ -33,6 +36,7 @@ public sealed class Mod
         Name = Name,
         Watermark = Watermark,
         Presets = [.. Presets.Select(p => new ModPreset { Name = p.Name, Rules = (JsonArray)p.Rules.DeepClone() })],
+        Divisions = [.. Divisions.Select(division => Data.Divisions.ModDivision.FromJson(division.ToJson()))],
     };
 }
 

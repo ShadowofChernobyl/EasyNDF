@@ -276,7 +276,11 @@ public partial class EditorPage
         {
             wanted = null;
             int found = outline.FindIndex(d => d.Name == want.Name);
-            if (found < 0) return;
+            if (found < 0)
+            {
+                if (!want.Quiet && shown?.Entry is FileEntry opened) await TellNotInFile(want.Name, opened);
+                return;
+            }
             otherDescriptor = null;
             await SelectDescriptor(found, reveal: false, keepClosed: false);
             if (!want.Quiet) RevealAt(outline[found].Start + want.Offset);
@@ -1148,7 +1152,11 @@ public partial class EditorPage
         if (IsLocal(entry))
         {
             int index = outline.FindIndex(descriptor => descriptor.Name == name);
-            if (index < 0) return;
+            if (index < 0)
+            {
+                await TellNotInFile(name, entry);
+                return;
+            }
             otherDescriptor = null;
             await SelectDescriptor(index, reveal: true, keepClosed: false);
             ShowTree();
@@ -1158,6 +1166,19 @@ public partial class EditorPage
         wanted = new Wanted(name, 0, -1, Quiet: false);
         await Open(entry);
         if (shown?.Entry != entry) wanted = null;
+    }
+
+    /// <summary>
+    /// A descriptor asked for (a unit, its weapon set, an ammunition) is not in the file listed: most often one of a
+    /// mod's own, looked for in the game's file of that name. The user is told, and offered the Files tab to check
+    /// which file is listed.
+    /// </summary>
+    private async Task TellNotInFile(string name, FileEntry entry)
+    {
+        MainView view = MainView.Of(this);
+        string question = Texts.Get("Editor.NotInFile", ("name", name), ("file", entry.Name));
+        if (await view.Messages.Confirm(question, Texts.Get("Editor.NotInFile.ShowFiles")))
+            view.Tabs.SelectedItem = view.FilesTabItem;
     }
 
     /// <summary>A descriptor in "Used by" as a tree row, so it can be picked and shown like one.</summary>

@@ -12,7 +12,14 @@ namespace EasyNdf.App.Controls;
 /// <param name="Symbol">A symbol before the text, such as a rule type's; "" for none.</param>
 /// <param name="SymbolColour">The theme colour the symbol is drawn in.</param>
 /// <param name="IsHeading">A heading at the top of the menu rather than an item (see <see cref="Menus.Heading"/>).</param>
-public sealed record MenuChoice(string Label, Action Run, bool IsEnabled = true, string Key = "", string Tip = "", string Symbol = "", string SymbolColour = "ink", bool IsHeading = false);
+/// <param name="Choices">The items of a menu of its own, opened at its right; null for an item that does something.</param>
+public sealed record MenuChoice(string Label, Action Run, bool IsEnabled = true, string Key = "", string Tip = "", string Symbol = "", string SymbolColour = "ink", bool IsHeading = false,
+    IReadOnlyList<MenuChoice?>? Choices = null)
+{
+    /// <summary>An item that opens a menu of its own, at its right, with <paramref name="choices"/>.</summary>
+    public static MenuChoice Submenu(string label, IReadOnlyList<MenuChoice?> choices) =>
+        new(label, () => { }, IsEnabled: choices.Any(choice => choice is not null), Choices: choices);
+}
 
 /// <summary>
 /// Right-click menus (the HTML app's <c>showMenu</c>), drawn by the ContextMenu style in Styles/Controls.xaml. A null
@@ -66,18 +73,25 @@ public static class Menus
     public static ContextMenu Build(IEnumerable<MenuChoice?> items)
     {
         var menu = new ContextMenu();
+        AddItems(menu.Items, items);
+        return menu;
+    }
+
+    /// <summary>Adds the items to a menu, or to an item's own menu.</summary>
+    private static void AddItems(ItemCollection into, IEnumerable<MenuChoice?> items)
+    {
         foreach (MenuChoice item in items.OfType<MenuChoice>())
         {
-            if (ReferenceEquals(item, Line)) { menu.Items.Add(new Separator()); continue; }
-            if (item.IsHeading) { menu.Items.Add(HeadingItem(item.Label)); continue; }
+            if (ReferenceEquals(item, Line)) { into.Add(new Separator()); continue; }
+            if (item.IsHeading) { into.Add(HeadingItem(item.Label)); continue; }
             var entry = new MenuItem { Header = HeaderOf(item), IsEnabled = item.IsEnabled, InputGestureText = Text.KeyNames.Of(item.Key) };
             if (item.Tip != "") entry.ToolTip = item.Tip;
             // a dim item's tip says why it is dim, such as which file to add first
             ToolTipService.SetShowOnDisabled(entry, true);
-            entry.Click += (_, _) => item.Run();
-            menu.Items.Add(entry);
+            if (item.Choices is not null) AddItems(entry.Items, item.Choices);
+            else entry.Click += (_, _) => item.Run();
+            into.Add(entry);
         }
-        return menu;
     }
 
     /// <summary>A heading's line: 11 pixels, dim, on one line; the mouse and the keys pass over it.</summary>

@@ -6,11 +6,16 @@ using EasyNdf.Data.Units;
 namespace EasyNdf.App.Units;
 
 /// <summary>
-/// The game or mod whose units the Units tab shows (its Source list): the games found on this computer and their mods,
-/// and the one chosen. Nothing is chosen when the app starts, so nothing slow happens before the user asks for it.
+/// The game or mod the app works with, chosen in the Source list of the Files, Units or Divisions tab: the games found
+/// on this computer and their mods, and the one chosen. The main window has one (<see cref="MainView.Sources"/>) and
+/// gives it to the three tabs, so their lists always show the same choice. Nothing is chosen when the app starts, so nothing slow happens before the
+/// user asks for it.
 /// </summary>
 public sealed class SourceSelection
 {
+    /// <summary>The first look for the games, started by whichever Source list is shown first.</summary>
+    private Task? firstLook;
+
     /// <summary>The games found, each followed by its mods.</summary>
     public IReadOnlyList<UnitSource> Sources { get; private set; } = [];
 
@@ -22,6 +27,9 @@ public sealed class SourceSelection
 
     /// <summary>Raised when the sources found or the one chosen change.</summary>
     public event Action? Changed;
+
+    /// <summary>Looks for the games once, the first time a Source list is shown; later calls wait for that same look.</summary>
+    public Task LookOnceAsync() => firstLook ??= LookAsync();
 
     /// <summary>Looks for the games and their mods, in the background (Steam's libraries and the folders chosen before).</summary>
     public async Task LookAsync()

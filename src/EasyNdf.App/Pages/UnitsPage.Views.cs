@@ -27,15 +27,6 @@ public partial class UnitsPage
     /// <summary>How many tiles a row of the Cards view had when it was last filled.</summary>
     private int cardColumns;
 
-    /// <summary>The Table view's sort: the column's key, and which way.</summary>
-    private string sortKey = "Cost";
-    private bool sortAscending;
-
-    /// <summary>The Table view's column widths when it was last filled.</summary>
-    private double[] tableWidths = [];
-
-    private readonly UnitTableHeadings tableHeadings = new();
-
     /// <summary>The units on Compare, in the order they were added.</summary>
     private readonly List<Unit> compared = [];
 
@@ -111,100 +102,60 @@ public partial class UnitsPage
 
     // ---- Table ----
 
-    /// <summary>The headings sit in the table's scrolling frame, above the rows, and move sideways with them.</summary>
-    private void PrepareTableHeadings()
+    /// <summary>The Table view: one row a unit, with the Units table's own columns.</summary>
+    private void ShowTable() =>
+        TableList.Show(shown, UnitTableColumn.All, Game, selection, this, Texts.Get("Units.NoneMatch"));
+
+    // ---- a unit shown from another tab ----
+
+    /// <summary>
+    /// "Show in Units Tab" on the Divisions tab: the unit selected in Cards or Table, and scrolled to. When the filters
+    /// hide it, they are cleared, with its category's tab chosen; its role's tiles are unfolded.
+    /// </summary>
+    public void ShowUnit(Unit unit)
     {
-        TableList.ApplyTemplate();
-        var scroller = (ScrollViewer)TableList.Template.FindName("TableScroller", TableList);
-        scroller.Tag = tableHeadings;
-        scroller.ApplyTemplate();
-        if (scroller.Template.FindName("HeadingsClip", scroller) is Border headingsClip)
-            headingsClip.SizeChanged += (_, _) => headingsClip.Clip = new RectangleGeometry(new Rect(0, -1, headingsClip.ActualWidth, headingsClip.ActualHeight + 2));
-        var headingsOffset = new TranslateTransform();
-        tableHeadings.RenderTransform = headingsOffset;
-        // the offset is inside the headings' zoom, so it is made smaller by it to move as far as the rows on screen
-        scroller.ScrollChanged += (_, _) => headingsOffset.X = -scroller.HorizontalOffset / ScaleOf(UnitView.Table);
-        tableHeadings.SortClicked += SortBy;
-        tableHeadings.ResizeStarted += KeepUnitColumnWidth;
-        tableHeadings.ColumnResized += ResizeColumn;
-        tableHeadings.ResizeEnded += () => { AppData.Current.SaveState(); ShowTable(); };
-        tableHeadings.ColumnReset += key =>
+        if (loaded is null) return;
+        if (view == UnitView.Compare)
         {
-            (AppData.Current.State["unitColumns"] as JsonObject)?.Remove(key);
-            AppData.Current.SaveState();
-            ShowTable();
-        };
-    }
-
-    /// <summary>The columns' widths as the user dragged them, by key, kept between sessions.</summary>
-    private static Dictionary<string, double> ChosenColumnWidths() =>
-        AppData.Current.State["unitColumns"] is JsonObject widths
-            ? widths.Where(width => width.Value is JsonValue).ToDictionary(width => width.Key, width => width.Value!.GetValue<double>())
-            : [];
-
-    /// <summary>
-    /// A drag starts: the Unit column, which fills the room until now, keeps the width it has, so widening another
-    /// column moves the columns after it rather than shrinking the Unit column. A double-click on its edge lets it fill again.
-    /// </summary>
-    private void KeepUnitColumnWidth()
-    {
-        if (AppData.Current.State["unitColumns"] is not JsonObject widths) AppData.Current.State["unitColumns"] = widths = [];
-        string unitKey = UnitTableColumn.All[0].Key;
-        if (!widths.ContainsKey(unitKey) && tableWidths.Length > 0) widths[unitKey] = Math.Round(UnitTableColumn.All[0].Fit(tableWidths[0]));
-    }
-
-    /// <summary>A column's edge dragged: the column takes the width, within its limits, and the rows follow at once.</summary>
-    private void ResizeColumn(string key, double width)
-    {
-        if (AppData.Current.State["unitColumns"] is not JsonObject widths) AppData.Current.State["unitColumns"] = widths = [];
-        widths[key] = Math.Round(UnitTableColumn.All.First(column => column.Key == key).Fit(width));
-        ShowTable(keepHeadings: true);
-    }
-
-    /// <summary>
-    /// The Table view: one row a unit, sorted by the column chosen. Each number's bar is filled as far as the biggest
-    /// number of its column among the units listed.
-    /// </summary>
-    /// <param name="keepHeadings">While a column's edge is dragged: the headings only change their widths.</param>
-    private void ShowTable(bool keepHeadings = false)
-    {
-        tableWidths = UnitTableColumn.Widths(TableRoom(), ChosenColumnWidths());
-        if (keepHeadings) tableHeadings.SetWidths(tableWidths);
-        else tableHeadings.Show(Game, tableWidths, sortKey, sortAscending);
-        UnitTableColumn sortColumn = UnitTableColumn.All.First(column => column.Key == sortKey);
-        List<Unit> sorted = sortColumn.Sort(shown, sortAscending);
-        var most = new Dictionary<string, double>();
-        foreach (UnitTableColumn column in UnitTableColumn.All.Where(column => column.IsNumber))
-            most[column.Key] = sorted.Select(column.Number!).Where(value => value > 0).Select(value => value!.Value).DefaultIfEmpty(0).Max();
-        List<object> lines = [.. sorted.Select(unit => new TableRowLine(unit, tableWidths, most, selection, this))];
-        if (lines.Count == 0) lines.Add(new EmptyLine(Texts.Get("Units.NoneMatch")));
-        TableList.ItemsSource = lines;
-    }
-
-    /// <summary>The width the table's columns have across, beside the scrollbar, in the rows' own units: less when zoomed in.</summary>
-    private double TableRoom() => (TableList.ActualWidth - ScrollBarWidth) / ScaleOf(UnitView.Table);
-
-    /// <summary>The table was resized: the columns are laid out again when the Unit column's width changes.</summary>
-    private void TableListResized(object sender, SizeChangedEventArgs e)
-    {
-        if (loaded is null || view != UnitView.Table) return;
-        double[] widths = UnitTableColumn.Widths(TableRoom(), ChosenColumnWidths());
-        if (tableWidths.Length == 0 || Math.Abs(widths[0] - tableWidths[0]) >= 1) ShowTable();
-    }
-
-    /// <summary>
-    /// A heading clicked: the table is sorted by its column; clicked again, the other way. Words sort A to Z first,
-    /// numbers biggest first.
-    /// </summary>
-    private void SortBy(string key)
-    {
-        if (key == sortKey) sortAscending = !sortAscending;
-        else
-        {
-            sortKey = key;
-            sortAscending = !UnitTableColumn.All.First(column => column.Key == key).IsNumber;
+            view = UnitView.Cards;
+            ShowViewButtons();
         }
-        ShowTable();
+        if (!filter.Apply(loaded.Catalog.Units).Contains(unit))
+        {
+            ResetFilters();
+            // a unit in none of the game's divisions (one a mod adds) shows only with "Only units in a division" off
+            filter.OnlyInDivision = unit.Divisions.Count > 0;
+            OnlyInDivision.IsChecked = filter.OnlyInDivision;
+            filter.Factory = unit.Factory;
+        }
+        foldedRoles.Remove(unit.Role);
+        ShowAll();
+        selection.Selected = unit;
+        // once the tab is on screen and the list laid out
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => ScrollTo(unit));
+    }
+
+    /// <summary>Scrolls Cards or Table to the line that holds the unit.</summary>
+    private void ScrollTo(Unit unit)
+    {
+        ItemsControl list = view == UnitView.Table ? TableList : CardsList;
+        if (list.ItemsSource is not System.Collections.IList lines) return;
+        int index = -1;
+        for (int at = 0; at < lines.Count && index < 0; at++)
+            if (lines[at] is CardRowLine row && row.Units.Contains(unit) || lines[at] is TableRowLine tableRow && ReferenceEquals(tableRow.Unit, unit)) index = at;
+        if (index >= 0 && FindPanel(list) is VirtualizingStackPanel panel) panel.BringIndexIntoViewPublic(index);
+    }
+
+    /// <summary>The panel that lays out a list's lines, found in what the list drew.</summary>
+    private static VirtualizingStackPanel? FindPanel(DependencyObject inside)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(inside); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(inside, i);
+            if (child is VirtualizingStackPanel panel) return panel;
+            if (FindPanel(child) is VirtualizingStackPanel found) return found;
+        }
+        return null;
     }
 
     // ---- clicks on the lists ----

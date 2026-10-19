@@ -15,7 +15,12 @@ namespace EasyNdf.App.Units;
 /// <param name="Number">How to read a unit's number; null for a column of words.</param>
 /// <param name="Smallest">The narrowest it can be dragged to.</param>
 /// <param name="Largest">The widest it can be dragged to.</param>
-public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double?>? Number, double Smallest = 56, double Largest = 160)
+/// <param name="Editor">
+/// For a column whose values can be changed in the table (the Divisions tab's cards, units per card and veterancy): the
+/// boxes to change a unit's value in, shown instead of its number; null for a column that only shows.
+/// </param>
+public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double?>? Number, double Smallest = 56, double Largest = 160,
+    Func<Unit, FrameworkElement?>? Editor = null)
 {
     /// <summary>The columns, in order: who the unit is, then its numbers, each with a small bar.</summary>
     public static IReadOnlyList<UnitTableColumn> All { get; } =
@@ -47,6 +52,10 @@ public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double
         "Speed" => Texts.Get("Units.Stat.Speed"),
         "Optics" => Texts.Get("Units.Stat.Optics"),
         "Range" => Texts.Get("Units.Weapons.RangeIn", ("unit", game.RangeUnit)),
+        // the Divisions tab's own columns
+        "Cards" => Texts.Get("Divisions.Column.Cards"),
+        "PerCard" => Texts.Get("Divisions.Column.PerCard"),
+        "Veterancy" => Texts.Get("Divisions.Column.Veterancy"),
         _ => Texts.Get("Units.Weapons"),
     };
 
@@ -54,15 +63,16 @@ public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double
     public double Fit(double width) => Math.Clamp(width, Smallest, Largest);
 
     /// <summary>
-    /// The widths of all the columns: each as the user dragged it (by key in <paramref name="chosen"/>), else as at
-    /// first. Until the user drags a column, the Unit column also takes any room the others leave in a list this wide.
+    /// The widths of the columns: each as the user dragged it (by key in <paramref name="chosen"/>), else as at
+    /// first. Until the user drags a column, the Unit column (the first) also takes any room the others leave in a list
+    /// this wide.
     /// </summary>
-    public static double[] Widths(double listWidth, IReadOnlyDictionary<string, double> chosen)
+    public static double[] Widths(IReadOnlyList<UnitTableColumn> columns, double listWidth, IReadOnlyDictionary<string, double> chosen)
     {
-        double[] widths = [.. All.Select(column => column.Fit(chosen.TryGetValue(column.Key, out double width) ? width : column.Width))];
+        double[] widths = [.. columns.Select(column => column.Fit(chosen.TryGetValue(column.Key, out double width) ? width : column.Width))];
         // the Unit column fills the room until a column is dragged; from then on every column keeps its own width, and
         // dragging an edge moves only that edge
-        if (!chosen.ContainsKey(All[0].Key)) widths[0] = Math.Max(widths[0], listWidth - widths.Skip(1).Sum());
+        if (!chosen.ContainsKey(columns[0].Key)) widths[0] = Math.Max(widths[0], listWidth - widths.Skip(1).Sum());
         return widths;
     }
 
@@ -92,11 +102,12 @@ public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double
 
 /// <summary>A row of the Table view.</summary>
 /// <param name="Unit">The unit.</param>
+/// <param name="Columns">The table's columns: the first three are the unit, its nation and its role; the rest are numbers.</param>
 /// <param name="Widths">The columns' widths.</param>
 /// <param name="Most">Each number column's biggest number among the units listed, which fills its bar.</param>
 /// <param name="Selection">Which unit is selected.</param>
 /// <param name="Actions">The tab the row is on.</param>
-public sealed record TableRowLine(Unit Unit, double[] Widths, IReadOnlyDictionary<string, double> Most, UnitSelection Selection, IUnitActions Actions);
+public sealed record TableRowLine(Unit Unit, IReadOnlyList<UnitTableColumn> Columns, double[] Widths, IReadOnlyDictionary<string, double> Most, UnitSelection Selection, IUnitActions Actions);
 
 /// <summary>
 /// A unit's row in the Table view, about 38 pixels high: its picture with its name and nation, its nation's mark, its
@@ -114,7 +125,7 @@ public sealed class UnitTableRowView : Bevel
     private readonly TextBlock nation = new() { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, LineHeight = 12.7, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
     private readonly NationMark nationMark = new("", firstSide: true) { Margin = new Thickness(6, 0, 6, 0) };
     private readonly TextBlock role = new() { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly List<(TextBlock Number, BlockMeter Meter)> numbers = [];
+    private readonly List<(StackPanel Cell, TextBlock Number, BlockMeter Meter, ContentControl EditorSlot)> numbers = [];
 
     /// <summary>Builds the row's cells; they show a unit when the list gives the row its line.</summary>
     public UnitTableRowView()
@@ -134,10 +145,7 @@ public sealed class UnitTableRowView : Bevel
     /// <summary>The unit shown.</summary>
     public Unit? Unit => line?.Unit;
 
-    /// <summary>
-    /// The cells in their columns: the picture with the name and nation, the nation's mark, the role, then each
-    /// number over a small six-block bar.
-    /// </summary>
+    /// <summary>The first cells in their columns: the picture with the name and nation, the nation's mark, the role.</summary>
     private void BuildCells()
     {
         DockPanel.SetDock(picture, Dock.Left);
@@ -145,14 +153,29 @@ public sealed class UnitTableRowView : Bevel
         Add(0, new DockPanel { Margin = new Thickness(6, 2, 6, 2), Children = { picture, new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { name, nation } } } });
         Add(1, nationMark);
         Add(2, role);
-        for (int column = 3; column < UnitTableColumn.All.Count; column++)
+    }
+
+    /// <summary>
+    /// A cell for each column after the role, until there is one for each: a number over a small six-block bar, and in
+    /// the same place a slot for the boxes of a column whose values can be changed.
+    /// </summary>
+    private void BuildNumberCells(int numberColumns)
+    {
+        while (numbers.Count < numberColumns)
         {
             var number = new TextBlock { TextAlignment = TextAlignment.Right, LineHeight = 14.4, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
             var meter = new BlockMeter { Blocks = 6, IsThin = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 1, 0, 0) };
-            numbers.Add((number, meter));
-            Add(column, new StackPanel { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, Children = { number, meter } });
+            var cell = new StackPanel { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, Children = { number, meter } };
+            var editorSlot = new ContentControl { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, Focusable = false };
+            int column = FirstNumberColumn + numbers.Count;
+            numbers.Add((cell, number, meter, editorSlot));
+            Add(column, cell);
+            Add(column, editorSlot);
         }
     }
+
+    /// <summary>The first column of numbers: after the unit, its nation and its role.</summary>
+    private const int FirstNumberColumn = 3;
 
     /// <summary>Shows the unit of the line the list gave the row, in columns as wide as the table's.</summary>
     private void Show()
@@ -171,11 +194,16 @@ public sealed class UnitTableRowView : Bevel
         nationMark.Show(unit.Nation, line.Actions.IsFirstSide(unit));
         role.Text = UnitNames.RoleOf(unit);
         role.ToolTip = role.Text;
-        for (int column = 3; column < UnitTableColumn.All.Count; column++)
+        BuildNumberCells(line.Columns.Count - FirstNumberColumn);
+        for (int column = FirstNumberColumn; column < line.Columns.Count; column++)
         {
-            UnitTableColumn shown = UnitTableColumn.All[column];
-            double? value = shown.Number!(unit);
-            (TextBlock number, BlockMeter meter) = numbers[column - 3];
+            UnitTableColumn shown = line.Columns[column];
+            (StackPanel cell, TextBlock number, BlockMeter meter, ContentControl editorSlot) = numbers[column - FirstNumberColumn];
+            // a column to change values in shows its boxes instead of the number
+            FrameworkElement? editor = shown.Editor?.Invoke(unit);
+            editorSlot.Content = editor;
+            cell.Visibility = editor is null ? Visibility.Visible : Visibility.Collapsed;
+            double? value = shown.Number?.Invoke(unit);
             number.Text = UnitNumbers.Of(value);
             meter.Value = value;
             meter.FullBar = line.Most.GetValueOrDefault(shown.Key);
@@ -252,13 +280,13 @@ public sealed class UnitTableHeadings : Bevel
     }
 
     /// <summary>Shows the headings at the columns' widths, marking the one sorted by.</summary>
-    public void Show(GameTitle game, double[] widths, string sortKey, bool ascending)
+    public void Show(GameTitle game, IReadOnlyList<UnitTableColumn> columns, double[] widths, string sortKey, bool ascending)
     {
         cells.Children.Clear();
         cells.ColumnDefinitions.Clear();
-        for (int column = 0; column < UnitTableColumn.All.Count; column++)
+        for (int column = 0; column < columns.Count; column++)
         {
-            UnitTableColumn heading = UnitTableColumn.All[column];
+            UnitTableColumn heading = columns[column];
             cells.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(widths[column]) });
             bool sorted = heading.Key == sortKey;
             var text = new TextBlock { Text = heading.Heading(game), TextTrimming = TextTrimming.CharacterEllipsis };
