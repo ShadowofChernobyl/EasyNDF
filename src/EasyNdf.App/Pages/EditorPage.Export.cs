@@ -102,6 +102,12 @@ public partial class EditorPage
         }
         if (!shown.IsExport)
         {
+            // the changes are those of a run made on the Files tab: until there is one, the user is told how to make it
+            if (shown.Entry is { LastRun: null } notRun)
+            {
+                Say(Texts.Get("Editor.Export.RunFirst", ("file", notRun.Name)), "caution");
+                return;
+            }
             await ShowExportOrSource();
             if (shown is not { IsExport: true }) return;
         }

@@ -42,4 +42,15 @@ public partial class AboutPage : UserControl
     public void ShowLicense() => View.TextWindow.Open(Texts.Get("About.License"), Dialogs.TextWindow.PlainText(ReadText("LICENSE.txt").TrimEnd()));
 
     private void ChangeLogClicked(object sender, RoutedEventArgs e) => View.ShowChangeLog();
+
+    /// <summary>EasyNDF's Ko-fi page, where people who like the app can support it.</summary>
+    public const string SupportPage = "https://ko-fi.com/shadowofchernobyl";
+
+    /// <summary>"Support on Ko-fi": opens the Ko-fi page in the browser.</summary>
+    private void SupportClicked(object sender, RoutedEventArgs e)
+    {
+        // a browser that cannot be started (none set, or blocked) leaves the app as it was
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(SupportPage) { UseShellExecute = true }); }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException) { }
+    }
 }

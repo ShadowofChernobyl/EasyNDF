@@ -14,7 +14,8 @@ namespace EasyNdf.App.Dialogs;
 
 /// <summary>
 /// The condition or action window (the HTML app's <c>rowOpen</c>, <c>rowDraw</c> and <c>rowClose</c>): one row of the
-/// open rule. Every change is written into the row and saved straight away.
+/// open rule. Every change is written into the row straight away; the rule window saves the rule on its Done. The
+/// window's × or Escape puts the row back as it was when the window opened, after asking.
 /// </summary>
 public partial class RowWindow : UserControl
 {
@@ -30,12 +31,14 @@ public partial class RowWindow : UserControl
     private const double CodeLineHeight = 17.390625;
 
     private RulesModel? model;
-    private UndoHistory? history;
     private Func<string, IReadOnlyList<string>> namesFor = _ => [];
     private ScanLists scan = ScanLists.None;
     private string list = RulesModel.Conditions;
     private int index;
     private JsonObject? row;
+
+    /// <summary>The row as it was when the window opened on it, for Cancel.</summary>
+    private JsonObject? rowBeforeEditing;
     private JsonObject? ruleOfRow;
     private TextBox? commentText;
 
@@ -55,12 +58,11 @@ public partial class RowWindow : UserControl
 
     /// <summary>Opens the window on a row of a list of the open rule; the row becomes the list's selection.</summary>
     /// <param name="rules">The Rules tab's data.</param>
-    /// <param name="undo">The undo history, so typing in one box is one step.</param>
     /// <param name="rowList">Which list.</param>
     /// <param name="place">The row's place in it.</param>
     /// <param name="names">The scanned property names that fill the Operand or Target dropdown, for a list.</param>
     /// <param name="scanned">The scanned descriptor names and types, suggested in a condition's Value; none when left out.</param>
-    public void Open(RulesModel rules, UndoHistory undo, string rowList, int place, Func<string, IReadOnlyList<string>> names, ScanLists? scanned = null)
+    public void Open(RulesModel rules, string rowList, int place, Func<string, IReadOnlyList<string>> names, ScanLists? scanned = null)
     {
         scan = scanned ?? ScanLists.None;
         if (rules.RowsOf(rowList) is not JsonArray rows || place < 0 || place >= rows.Count) return;
@@ -70,11 +72,11 @@ public partial class RowWindow : UserControl
             model = rules;
             model.PropertyChanged += ModelChanged;
         }
-        history = undo;
         namesFor = names;
         list = rowList;
         index = place;
         row = rows[place] as JsonObject;
+        rowBeforeEditing = row?.DeepClone() as JsonObject;
         ruleOfRow = rules.OpenRule;
         bool wasOpen = IsOpen;
         Visibility = Visibility.Visible;
@@ -90,18 +92,31 @@ public partial class RowWindow : UserControl
         });
     }
 
-    /// <summary>Closes the window; its list keeps the keys.</summary>
+    /// <summary>Done: closes the window, keeping its changes; its list keeps the keys.</summary>
     public void Close()
     {
         if (!IsOpen) return;
         Visibility = Visibility.Collapsed;
         row = null;
+        rowBeforeEditing = null;
         OpenChanged?.Invoke(false);
         if (model is not null)
         {
             model.ActiveRowList = list;
             model.Refresh();
         }
+    }
+
+    /// <summary>×, Escape or a click outside: puts the row back as it was when the window opened, asking first, and closes the window.</summary>
+    public async Task Cancel()
+    {
+        if (!IsOpen) return;
+        if (row is not null && rowBeforeEditing is not null && !JsonNode.DeepEquals(row, rowBeforeEditing))
+        {
+            if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Rules.DiscardChanges"), Texts.Get("Rules.Discard"))) return;
+            RulesModel.PutBack(row, rowBeforeEditing);
+        }
+        Close();
     }
 
     /// <summary>The window sits right of the middle, as far from it as the rule window is left of it (see <see cref="RuleWindow.BesideGap"/>).</summary>
@@ -206,7 +221,7 @@ public partial class RowWindow : UserControl
     {
         var box = new TextBox { Text = JsonValues.AsText(row![field]), Tag = placeholder, ToolTip = placeholder, Name = field, Margin = new Thickness(0, 3, 0, 0) };
         if (mono) box.SetResourceReference(StyleProperty, "MonoBox");
-        box.TextChanged += (_, _) => Changed(field, box.Text, typing: true);
+        box.TextChanged += (_, _) => Changed(field, box.Text);
         Form.Children.Add(box);
         return box;
     }
@@ -227,7 +242,7 @@ public partial class RowWindow : UserControl
         box.TextChanged += (_, _) =>
         {
             FitLines();
-            Changed("Value", box.Text, typing: true);
+            Changed("Value", box.Text);
         };
         Form.Children.Add(box);
     }
@@ -259,7 +274,7 @@ public partial class RowWindow : UserControl
         {
             if (choice.SelectedItem is not ChoiceOption picked) return;
             if (field != "Operator") choice.ToolTip = NameOrNone(picked.Value);
-            Changed(field, picked.Value, typing: false);
+            Changed(field, picked.Value);
         };
         Form.Children.Add(choice);
     }
@@ -276,7 +291,7 @@ public partial class RowWindow : UserControl
         {
             commentText = new TextBox { Text = JsonValues.AsText(comment["Text"]), Name = "CommentText", Margin = new Thickness(0, 3, 0, 0) };
             ShowAutomaticComment();
-            commentText.TextChanged += (_, _) => CommentChanged(comment, "Text", commentText.Text, typing: true);
+            commentText.TextChanged += (_, _) => CommentChanged(comment, "Text", commentText.Text);
             Form.Children.Add(commentText);
 
             // .cmt: what the comment includes, 16 pixels in, wrapping with 6 by 14 pixels between
@@ -326,7 +341,7 @@ public partial class RowWindow : UserControl
         text.Inlines.AddRange(label);
         var tick = new CheckBox { Content = text, IsChecked = JsonValues.IsTruthy(comment[field]), Name = "Comment" + field, ToolTip = CommentTips.GetValueOrDefault(field) };
         tick.SetResourceReference(StyleProperty, "Tick");
-        tick.Click += (_, _) => CommentChanged(comment, field, tick.IsChecked == true, typing: false);
+        tick.Click += (_, _) => CommentChanged(comment, field, tick.IsChecked == true);
         return tick;
     }
 
@@ -345,12 +360,11 @@ public partial class RowWindow : UserControl
         commentText.Tag = automatic != "" ? automatic : Texts.Get("Rules.Row.CommentText.Hint");
     }
 
-    /// <summary>A field of the row was changed: it is written and saved; typing in one box is one step to undo.</summary>
-    private void Changed(string field, object value, bool typing)
+    /// <summary>A field of the row was changed: it is written into the row, and the rule window's list shows it.</summary>
+    private void Changed(string field, object value)
     {
         if (row is null || model is null) return;
         row[field] = value is bool flag ? JsonValue.Create(flag) : JsonValue.Create((string)value);
-        if (typing) history?.TypingIn("f|" + model.OpenPreset?.Name + "|" + model.CurrentRule + "|" + list + "|" + index + "|" + field);
         model.SaveRules();
         if (field is "Value" or "Operator") ShowAutomaticComment();
     }
@@ -367,11 +381,10 @@ public partial class RowWindow : UserControl
         Draw();
     }
 
-    private void CommentChanged(JsonObject comment, string field, object value, bool typing)
+    private void CommentChanged(JsonObject comment, string field, object value)
     {
         if (model is null) return;
         comment[field] = value is bool flag ? JsonValue.Create(flag) : JsonValue.Create((string)value);
-        if (typing) history?.TypingIn("f|" + model.OpenPreset?.Name + "|" + model.CurrentRule + "|" + list + "|" + index + "|m" + field);
         model.SaveRules();
         if (field == "Enabled") Draw();
     }
@@ -395,8 +408,10 @@ public partial class RowWindow : UserControl
 
     private void Step(int direction)
     {
-        if (model is not null && history is not null) Open(model, history, list, index + direction, namesFor, scan);
+        if (model is not null) Open(model, list, index + direction, namesFor, scan);
     }
 
-    private void CloseClicked(object sender, RoutedEventArgs e) => Close();
+    private void DoneClicked(object sender, RoutedEventArgs e) => Close();
+
+    private async void CancelClicked(object sender, RoutedEventArgs e) => await Cancel();
 }

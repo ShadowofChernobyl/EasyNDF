@@ -150,7 +150,7 @@ public static class Tokenizer
                     string snippet = JsText.Slice(text, at, at + 20);
                     int nl = snippet.IndexOf('\n');
                     if (nl >= 0) snippet = snippet[..(nl > 0 && snippet[nl - 1] == '\r' ? nl - 1 : nl)];
-                    throw new NdfParseException("Line " + JsText.LineNumberAt(text, at) + ": unrecognized text \"" + snippet + "\"");
+                    throw new NdfParseException("Line " + JsText.LineNumberAt(text, at) + ": unrecognized text \"" + snippet + "\"", at, Math.Max(1, snippet.Length));
                 }
 
                 FileWaitingComments();

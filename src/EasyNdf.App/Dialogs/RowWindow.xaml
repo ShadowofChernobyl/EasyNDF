@@ -1,6 +1,6 @@
 <!--
   The condition or action window (the HTML app's #subDlg): one row of the open rule, beside the rule window, which moves
-  to the left while it is open. Changes are saved as they are made. It has no backdrop of its own: the rule window's
+  to the left while it is open. Done keeps the changes, × throws them away; the rule window's Done saves them. It has no backdrop of its own: the rule window's
   dims the app, and the rule window stays usable beside it.
 -->
 <UserControl x:Class="EasyNdf.App.Dialogs.RowWindow"
@@ -20,15 +20,14 @@
                     <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2039;" ToolTip="{t:Text Rules.Row.Previous.Tip}" Click="PreviousClicked" />
                     <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x203A;" ToolTip="{t:Text Rules.Row.Next.Tip}" Click="NextClicked" />
                     <Button x:Name="HelpButton" Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.Row.Help.Tip}" controls:QuickHelp.Page="conditions" />
-                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.Row.CloseEscape.Tip}" Click="CloseClicked" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.Row.CloseEscape.Tip}" Click="CancelClicked" />
                 </controls:SnappedRow>
                 <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="{t:Text Rules.Row.Condition}" />
             </DockPanel>
 
-            <!-- .bar: the note, and Done at the right -->
+            <!-- .bar: Done at the right -->
             <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                <Button DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="{t:Text Rules.Row.Done}" ToolTip="{t:Text Rules.Row.Done.Tip}" Click="CloseClicked" />
-                <TextBlock Style="{StaticResource Note}" Margin="0" VerticalAlignment="Center" Text="{t:Text Rules.Row.ChangesAreSavedAs}" />
+                <Button DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="{t:Text Rules.Row.Done}" ToolTip="{t:Text Rules.Row.Done.Tip}" Click="DoneClicked" />
             </DockPanel>
 
             <!-- #subForm: sunken, in the panel colour, 10 by 12 pixels in; it scrolls when the row does not fit -->

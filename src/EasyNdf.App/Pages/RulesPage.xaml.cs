@@ -50,6 +50,8 @@ public partial class RulesPage : UserControl
     /// <summary>Fills in what the model does not bind: the Mod box, the lists, and which buttons can be used.</summary>
     private void Show()
     {
+        // the rule window's changes show once Done saves them: drawing the lists again on every key made typing slow
+        if (Model.IsEditingRule) return;
         showing = true;
         ModChoice.ItemsSource = Model.ModNames;
         ModChoice.SelectedItem = Model.OpenMod.Name;

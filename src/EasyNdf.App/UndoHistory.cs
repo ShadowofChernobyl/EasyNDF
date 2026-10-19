@@ -19,9 +19,6 @@ public sealed class UndoHistory
     /// <summary>How many changes can be undone ("Undo steps", 60 unless set); older ones are forgotten.</summary>
     public static int MaximumSteps => int.TryParse(AppData.Current.Settings["undoSteps"]?.ToString(), out int steps) && steps > 0 ? steps : 60;
 
-    /// <summary>Typing in one box within this time of the last key counts as the same change.</summary>
-    private static readonly TimeSpan TypingPause = TimeSpan.FromMilliseconds(1500);
-
     private readonly AppData data;
     private readonly FileListModel files;
     private readonly List<UndoState> undoSteps = [];
@@ -33,10 +30,6 @@ public sealed class UndoHistory
 
     /// <summary>While a filed state is put back, the changes that makes are not filed.</summary>
     private bool isPuttingBack;
-
-    /// <summary>The box being typed in (see <see cref="TypingIn"/>), and the one typed in last, and when.</summary>
-    private string typingKey = "", lastTypingKey = "";
-    private DateTime lastTypingAt;
 
     /// <summary>Set while one action is being filed: what it changes until the app next rests is one step.</summary>
     private bool isInOneAction;
@@ -60,10 +53,10 @@ public sealed class UndoHistory
     public bool CanRedo => redoSteps.Count > 0;
 
     /// <summary>
-    /// Says which box the next change is typed in, such as a rule's name: keys typed into one box, one after another,
-    /// are one change to undo, not one per key.
+    /// Set while the rule window is open: its changes are not saved until Done, so nothing is filed meanwhile. Done
+    /// files them as one step.
     /// </summary>
-    public void TypingIn(string key) => typingKey = key;
+    public bool IsPaused { get; set; }
 
     /// <summary>The mods have changed: the next <see cref="Mark"/> compares them again.</summary>
     public void ModsChanged()
@@ -86,7 +79,7 @@ public sealed class UndoHistory
     /// </summary>
     public void Mark()
     {
-        if (isPuttingBack) return;
+        if (isPuttingBack || IsPaused) return;
         modsText ??= ModsText(data.Mods);
         // most changes to the list are not the user's (a file read, a status shown): this check needs no copying
         if (modsText == now.ModsText && RowsAreAsFiled()) return;
@@ -94,12 +87,8 @@ public sealed class UndoHistory
         string rowsText = RowsText(rows);
         if (modsText == now.ModsText && rowsText == now.RowsText) return;
 
-        string key = typingKey;
-        typingKey = "";
-        DateTime time = DateTime.UtcNow;
-        bool sameTyping = key != "" && key == lastTypingKey && time - lastTypingAt < TypingPause;
         // one action is one step, even when it saves in several parts
-        if (!sameTyping && !isInOneAction)
+        if (!isInOneAction)
         {
             undoSteps.Add(now);
             while (undoSteps.Count > MaximumSteps) undoSteps.RemoveAt(0);
@@ -109,8 +98,6 @@ public sealed class UndoHistory
             isInOneAction = true;
             Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, () => isInOneAction = false);
         }
-        lastTypingKey = key;
-        lastTypingAt = time;
         redoSteps.Clear();
         // the mods are copied only now that they are filed: a click that changes nothing copies nothing
         now = new UndoState(modsText, [.. data.Mods.Select(m => m.DeepCopy())], rows, rowsText);
@@ -189,8 +176,6 @@ public sealed class UndoHistory
 
             files.PutBack([.. state.Rows.Select(row => row.ToSaved(data))]);
             modsText = state.ModsText;
-            // typing after Undo or Redo is a new step, even in the box typed in before
-            lastTypingKey = "";
             // not as another mod opened: the rows keep the presets they had
             data.TellModsChanged();
         }

@@ -11,7 +11,8 @@ namespace EasyNdf.App.Rules;
 /// <summary>
 /// Builds what the rule window shows for a rule (the HTML app's <c>renderEditor</c>): its name and switch, then the
 /// settings of its type, one method per type, and its lists of conditions and actions. Every change is written into the
-/// rule straight away and saved; a change that alters what is shown (another scope, another position) builds it again.
+/// rule straight away (the window saves it on Done); a change that alters what is shown (another scope, another
+/// position) builds it again.
 /// </summary>
 public sealed class RuleEditor
 {
@@ -20,7 +21,7 @@ public sealed class RuleEditor
 
     private readonly RulesModel model;
     private readonly ScanLists scan;
-    private readonly Action<string> saved;
+    private readonly Action changed;
     private readonly Action rebuild;
     private readonly List<UIElement> parts = [];
     private JsonObject rule = [];
@@ -31,13 +32,13 @@ public sealed class RuleEditor
 
     /// <param name="model">The Rules tab's data.</param>
     /// <param name="scan">The property names, descriptor names and types of the scanned file, for the "Pick from scan..." dropdowns.</param>
-    /// <param name="saved">Saves a change; it is given the box typed in ("" for a click), so keys typed into one box are one step to undo.</param>
+    /// <param name="changed">Tells the window the rule was changed.</param>
     /// <param name="rebuild">Builds the window again, after a change that alters what it shows.</param>
-    public RuleEditor(RulesModel model, ScanLists scan, Action<string> saved, Action rebuild)
+    public RuleEditor(RulesModel model, ScanLists scan, Action changed, Action rebuild)
     {
         this.model = model;
         this.scan = scan;
-        this.saved = saved;
+        this.changed = changed;
         this.rebuild = rebuild;
     }
 
@@ -125,7 +126,7 @@ public sealed class RuleEditor
             ToolTip = Texts.Get("Rules.Editor.Add.Text.Tip"),
             MinHeight = 192,
         };
-        text.TextChanged += typed => { parameters["Text"] = typed; saved(TypingKey("p", "Text")); };
+        text.TextChanged += typed => { parameters["Text"] = typed; changed(); };
         FlexColumn.SetGrowBasis(text, 192);
         parts.Add(text);
         AddNote(Note("Rules.Editor.Add.Note"));
@@ -226,14 +227,14 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     {
         var enabled = new CheckBox { Content = Texts.Get("Rules.Editor.Enabled"), IsChecked = !JsonValues.IsFalse(rule["Enabled"]), ToolTip = Texts.Get("Rules.Editor.Enabled.Tip") };
         enabled.SetResourceReference(FrameworkElement.StyleProperty, "Toggle");
-        enabled.Click += (_, _) => { rule["Enabled"] = enabled.IsChecked == true; saved(""); };
+        enabled.Click += (_, _) => { rule["Enabled"] = enabled.IsChecked == true; changed(); };
         var label = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
         DockPanel.SetDock(enabled, Dock.Right);
         label.Children.Add(enabled);
         label.Children.Add(Label(Texts.Get("Rules.Editor.Name")));
 
         var name = new TextBox { Text = JsonValues.AsText(rule["Name"]), Tag = Texts.Get("Rules.Editor.RuleName.Hint"), ToolTip = null };
-        name.TextChanged += (_, _) => { rule["Name"] = name.Text; saved(TypingKey("", "Name")); };
+        name.TextChanged += (_, _) => { rule["Name"] = name.Text; changed(); };
         var header = new StackPanel();
         header.Children.Add(label);
         header.Children.Add(name);
@@ -289,7 +290,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         gate.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Gate.Any"), Tag = "Any" });
         gate.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Gate.All"), Tag = "All" });
         gate.SelectedIndex = JsonValues.AsText(owner[field]) == "All" ? 1 : 0;
-        gate.SelectionChanged += (_, _) => { owner[field] = (string)((ComboBoxItem)gate.SelectedItem).Tag; saved(""); };
+        gate.SelectionChanged += (_, _) => { owner[field] = (string)((ComboBoxItem)gate.SelectedItem).Tag; changed(); };
         return gate;
     }
 
@@ -302,7 +303,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         if (mono) box.SetResourceReference(FrameworkElement.StyleProperty, "MonoBox");
         FlexRow.SetGrow(box, 1);
         FlexRow.SetBasis(box, 144);
-        box.TextChanged += (_, _) => { parameters[key] = box.Text; saved(TypingKey("p", key)); };
+        box.TextChanged += (_, _) => { parameters[key] = box.Text; changed(); };
         return box;
     }
 
@@ -322,7 +323,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     {
         var box = new TextBox { Text = JsonValues.AsText(parameters[key]), Tag = placeholder, ToolTip = TipOrNone(placeholder) };
         box.SetResourceReference(FrameworkElement.StyleProperty, "TextArea");
-        box.TextChanged += (_, _) => { parameters[key] = box.Text; saved(TypingKey("p", key)); };
+        box.TextChanged += (_, _) => { parameters[key] = box.Text; changed(); };
         return box;
     }
 
@@ -342,7 +343,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         choice.SelectionChanged += (_, _) =>
         {
             parameters[key] = ((ChoiceOption)choice.SelectedItem).Value;
-            saved("");
+            changed();
             if (rebuildAfter) rebuild();
         };
         return choice;
@@ -353,7 +354,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     {
         var tick = new CheckBox { Content = label, IsChecked = JsonValues.IsTruthy(parameters[key]), ToolTip = label };
         tick.SetResourceReference(FrameworkElement.StyleProperty, "Tick");
-        tick.Click += (_, _) => { parameters[key] = tick.IsChecked == true; saved(""); };
+        tick.Click += (_, _) => { parameters[key] = tick.IsChecked == true; changed(); };
         return tick;
     }
 
@@ -369,15 +370,11 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         {
             if (fill.SelectedItem is not ComboBoxItem { Tag: string name } || name == "") return;
             parameters[key] = name;
-            saved("");
+            changed();
             rebuild();
         };
         return fill;
     }
-
-    /// <summary>The name of the box typed in, so keys typed into one box are one step to undo.</summary>
-    private string TypingKey(string where, string field) =>
-        "f|" + model.OpenPreset?.Name + "|" + model.CurrentRule + "|" + where + "||" + field;
 
     // ---- text ----
 

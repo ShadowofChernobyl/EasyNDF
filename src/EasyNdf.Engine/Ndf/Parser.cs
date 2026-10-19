@@ -15,6 +15,15 @@ public sealed class Parser
     private readonly Tokenizer.TokenStream tokens;
     private int i; // the token being read
 
+    /// <summary>Whether the declarations read are kept: <see cref="Check"/> only wants to know whether they read.</summary>
+    private bool KeepsDeclarations { get; init; } = true;
+
+    /// <summary>
+    /// Whether an error reads the rest of the text first, so that text further on that is not NDF is the error reported.
+    /// <see cref="Check"/> wants the place the reading stopped instead.
+    /// </summary>
+    private bool ChecksRestOnError { get; init; } = true;
+
     private Parser(string source)
     {
         this.source = source;
@@ -23,6 +32,12 @@ public sealed class Parser
 
     /// <summary>Reads a whole NDF text. Throws <see cref="NdfParseException"/> when the text is not valid NDF.</summary>
     public static NdfDocument Parse(string text) => new Parser(text).ReadDocument();
+
+    /// <summary>
+    /// Reads a text only to check it, keeping nothing. Throws <see cref="NdfParseException"/> at the first problem, which
+    /// is where the reading stopped: unlike <see cref="Parse"/>, the text after it is not looked at.
+    /// </summary>
+    internal static void Check(string text) => new Parser(text) { KeepsDeclarations = false, ChecksRestOnError = false }.ReadDocument();
 
     // ---- small helpers over the token list ----
 
@@ -62,10 +77,12 @@ public sealed class Parser
     private NdfParseException Error(string message)
     {
         bool atEnd = !tokens.Has(i);
-        int line = JsText.LineNumberAt(source, atEnd ? source.Length : tokens[i].Position);
-        var error = new NdfParseException("Line " + line + ": " + message + (atEnd ? " (end of file)" : " (found \"" + tokens[i].Text + "\")"));
+        int position = atEnd ? source.Length : tokens[i].Position;
+        int line = JsText.LineNumberAt(source, position);
+        var error = new NdfParseException("Line " + line + ": " + message + (atEnd ? " (end of file)" : " (found \"" + tokens[i].Text + "\")"),
+            position, atEnd ? 0 : tokens[i].Text.Length);
         // text further on that is not NDF at all is the error reported, as when the whole file was split into tokens first
-        tokens.CheckRest();
+        if (ChecksRestOnError) tokens.CheckRest();
         return error;
     }
 
@@ -107,7 +124,7 @@ public sealed class Parser
             {
                 i++;
                 var value = ReadValue();
-                declarations.Add(new Declaration
+                if (KeepsDeclarations) declarations.Add(new Declaration
                 {
                     IsUnnamed = true,
                     Value = value,
@@ -142,7 +159,7 @@ public sealed class Parser
             i++;
 
             var declarationValue = ReadValue();
-            declarations.Add(new Declaration
+            if (KeepsDeclarations) declarations.Add(new Declaration
             {
                 IsExported = exported,
                 Name = name,
