@@ -23,9 +23,17 @@ public static class UnitPane
     public static FrameworkElement Build(Unit? unit, IUnitActions actions)
     {
         if (unit is null) return Muted(Texts.Get("Units.Pane.ClickAUnit"), new Thickness(10));
-        var pane = new StackPanel { Margin = new Thickness(10) };
-        // as wide as the pane beside the list, but no wider when the pane is below it and spans the window; larger than
-        // the game's picture, so it is enlarged sharply
+        return new WideOrStacked(Stacked(unit, actions), Wide(unit, actions)) { Margin = new Thickness(10) };
+    }
+
+    /// <summary>
+    /// The pane beside the list, or below it when it is narrow: everything one under the other, the picture as wide as
+    /// the pane (up to <see cref="PictureWidth"/>).
+    /// </summary>
+    private static StackPanel Stacked(Unit unit, IUnitActions actions)
+    {
+        var pane = new StackPanel();
+        // larger than the game's picture, so it is enlarged sharply
         pane.Children.Add(new UnitPicture { Source = unit.PictureSource, Factory = unit.Factory, MaxWidth = PictureWidth, EnlargesSharply = true, HorizontalAlignment = HorizontalAlignment.Left });
         pane.Children.Add(Title(unit));
         pane.Children.Add(Buttons(unit, actions));
@@ -33,14 +41,107 @@ public static class UnitPane
         pane.Children.Add(Section(Texts.Get("Units.Pane.Armor"), null, Armor(unit.Armor)));
         pane.Children.Add(Section(Texts.Get("Units.Weapons"), unit.Weapons.Count,
             WeaponLedger.Build(unit, actions.Game.RangeUnit, narrow: true, bestRange: null, (weapon, at) => actions.OpenWeaponMenu(unit, weapon, at))));
+        AddSpecialtiesAndDivisions(pane, unit);
+        pane.Children.Add(DescriptorName(unit));
+        return pane;
+    }
+
+    /// <summary>
+    /// The pane below the list when it is wide, laid out as a card on Compare: the picture, name and buttons at the
+    /// left; the stats with their bars in the middle; the weapons across the rest, with the specialties and divisions
+    /// under them.
+    /// </summary>
+    private static Grid Wide(Unit unit, IUnitActions actions)
+    {
+        var identity = new StackPanel
+        {
+            Children =
+            {
+                new UnitPicture { Source = unit.PictureSource, Factory = unit.Factory, EnlargesSharply = true },
+                Title(unit),
+                Buttons(unit, actions),
+                DescriptorName(unit),
+            },
+        };
+        // no unit is compared to it, so no value is marked best and no bar carries another unit's mark
+        var stats = Section(Texts.Get("Units.Compare.Stats"), null, CompareCard.Stats(unit, pinned: null, best: new Dictionary<string, double?>()));
+        // the stats' heading lines up with the top of the picture
+        stats.Margin = new Thickness(WideGap, 0, 0, 0);
+        var rest = new StackPanel { Margin = new Thickness(WideGap, 0, 0, 0) };
+        var weapons = Section(Texts.Get("Units.Weapons"), unit.Weapons.Count,
+            WeaponLedger.Build(unit, actions.Game.RangeUnit, narrow: false, bestRange: null, (weapon, at) => actions.OpenWeaponMenu(unit, weapon, at)));
+        weapons.Margin = new Thickness(0);
+        rest.Children.Add(weapons);
+        AddSpecialtiesAndDivisions(rest, unit);
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(WideIdentityWidth) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(WideStatsWidth + WideGap) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(stats, 1);
+        Grid.SetColumn(rest, 2);
+        grid.Children.Add(identity);
+        grid.Children.Add(stats);
+        grid.Children.Add(rest);
+        return grid;
+    }
+
+    /// <summary>The wide pane's left column (picture, name, buttons), its stats column, and the gap after each.</summary>
+    private const double WideIdentityWidth = 220, WideStatsWidth = 330, WideGap = 16;
+
+    /// <summary>The pane is this wide at least to be laid out wide: room for the weapons beside the stats, as on Compare.</summary>
+    private const double WidestStacked = 900;
+
+    /// <summary>
+    /// Shows the wide layout or the stacked one, by the width the pane gives (never by the content's own size, so it
+    /// cannot flip back and forth). Both are built, and the one not shown is hidden.
+    /// </summary>
+    internal sealed class WideOrStacked : Grid
+    {
+        private readonly FrameworkElement stacked, wide;
+
+        /// <summary>Holds the two layouts of the same unit.</summary>
+        public WideOrStacked(FrameworkElement stacked, FrameworkElement wide)
+        {
+            this.stacked = stacked;
+            this.wide = wide;
+            Children.Add(stacked);
+            Children.Add(wide);
+        }
+
+        /// <summary>Whether the wide layout is the one shown.</summary>
+        internal bool IsWide => wide.Visibility == Visibility.Visible;
+
+        /// <summary>Chooses the layout for the width given, then measures as a grid does.</summary>
+        protected override Size MeasureOverride(Size available)
+        {
+            bool showWide = available.Width >= WidestStacked;
+            Visibility wideVisibility = showWide ? Visibility.Visible : Visibility.Collapsed;
+            // only when it changes, as each change asks for another measure
+            if (wide.Visibility != wideVisibility)
+            {
+                wide.Visibility = wideVisibility;
+                stacked.Visibility = showWide ? Visibility.Collapsed : Visibility.Visible;
+            }
+            return base.MeasureOverride(available);
+        }
+    }
+
+    /// <summary>The unit's specialties (when it has any) and divisions, as sections at the foot of a column.</summary>
+    private static void AddSpecialtiesAndDivisions(Panel column, Unit unit)
+    {
         if (unit.Specialties.Count > 0)
-            pane.Children.Add(Section(Texts.Get("Units.Pane.Specialties"), null, Tags(unit.Specialties.Select(SpecialtyName), "")));
-        pane.Children.Add(Section(Texts.Get("Units.Pane.Divisions"), unit.Divisions.Count, Tags(unit.Divisions, Texts.Get("Units.Pane.InNoDivision"))));
+            column.Children.Add(Section(Texts.Get("Units.Pane.Specialties"), null, Tags(unit.Specialties.Select(SpecialtyName), "")));
+        column.Children.Add(Section(Texts.Get("Units.Pane.Divisions"), unit.Divisions.Count, Tags(unit.Divisions, Texts.Get("Units.Pane.InNoDivision"))));
+    }
+
+    /// <summary>The unit's descriptor's name, small, dim, in the code font.</summary>
+    private static TextBlock DescriptorName(Unit unit)
+    {
         var foot = new TextBlock { Text = unit.Descriptor, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 0) };
         foot.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
         foot.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        pane.Children.Add(foot);
-        return pane;
+        return foot;
     }
 
     /// <summary>The name, 14 pixels and bold, and under it the nation, side, factory and role, dim.</summary>

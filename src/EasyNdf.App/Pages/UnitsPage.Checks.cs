@@ -33,6 +33,18 @@ public partial class UnitsPage
         MessageArea.Visibility = System.Windows.Visibility.Collapsed;
     }
 
+    /// <summary>Sets the zoom of the view shown, as the dropdown does.</summary>
+    internal void SetZoomNow(int percent) => SetZoom(percent);
+
+    /// <summary>The zoom the dropdown shows, such as "150%".</summary>
+    internal string ZoomShownNow => (ZoomChoice.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content as string ?? "";
+
+    /// <summary>The number of tiles a row of Cards holds now.</summary>
+    internal int CardColumnsNow => cardColumns;
+
+    /// <summary>What the Unit pane shows.</summary>
+    internal System.Windows.FrameworkElement? UnitPaneNow => UnitPaneContent.Content as System.Windows.FrameworkElement;
+
     /// <summary>Every unit read.</summary>
     internal IReadOnlyList<Unit> AllUnits => loaded?.Catalog.Units ?? [];
 

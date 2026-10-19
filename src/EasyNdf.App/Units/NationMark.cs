@@ -47,11 +47,45 @@ public sealed class NationMark : Grid
         code.Text = nation;
         ToolTip = UnitNames.Nation(nation);
         ShowCode(true);
-        if (UnitPictureLibrary.Current is not { } library || library.FlagSourceOf(nation) is not string source) return;
+        if (UnitPictureLibrary.Current is not { } library) return;
+        if (library.FlagSourceOf(nation) is not string source)
+        {
+            ShowDrawnFlag(nation);
+            return;
+        }
         ImageSource? picture = library.TryGetKept(source, flag.Width, out ImageSource? kept) ? kept : await library.GetAsync(source, flag.Width);
-        if (picture is null || shownNation != nation) return;
+        // the card may show another nation by now, as the list's rows are reused while it scrolls
+        if (shownNation != nation) return;
+        if (picture is null)
+        {
+            ShowDrawnFlag(nation);
+            return;
+        }
         flag.Source = picture;
         ShowCode(false);
+    }
+
+    /// <summary>
+    /// The flag of a nation whose flag picture the game lacks or the app cannot read, drawn here: Poland in Steel
+    /// Division 2, whose only flag is an animation the app cannot read. Other nations keep their code.
+    /// </summary>
+    private void ShowDrawnFlag(string nation)
+    {
+        if (!string.Equals(nation, "POL", StringComparison.OrdinalIgnoreCase)) return;
+        flag.Source = PolishFlag;
+        ShowCode(false);
+    }
+
+    /// <summary>Poland's flag: white over red, in the flag's official red.</summary>
+    private static readonly ImageSource PolishFlag = DrawPolishFlag();
+
+    private static DrawingImage DrawPolishFlag()
+    {
+        var white = new GeometryDrawing(Brushes.White, null, new RectangleGeometry(new Rect(0, 0, 8, 2.5)));
+        var red = new GeometryDrawing(new SolidColorBrush(Color.FromRgb(0xDC, 0x14, 0x3C)), null, new RectangleGeometry(new Rect(0, 2.5, 8, 2.5)));
+        var picture = new DrawingImage(new DrawingGroup { Children = { white, red } });
+        picture.Freeze();
+        return picture;
     }
 
     /// <summary>The code and its side stripe, or the flag.</summary>

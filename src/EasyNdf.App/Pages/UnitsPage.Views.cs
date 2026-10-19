@@ -50,7 +50,7 @@ public partial class UnitsPage
     /// </summary>
     private void ShowCards()
     {
-        cardColumns = CardRowView.ColumnsFor(CardsList.ActualWidth - ScrollBarWidth);
+        cardColumns = CardRowView.ColumnsFor(CardsRoom());
         var lines = new List<CardLine>();
         IEnumerable<IGrouping<string, Unit>> groups = shown.GroupBy(unit => unit.Role).OrderByDescending(group => group.Count());
         foreach (IGrouping<string, Unit> group in groups)
@@ -69,11 +69,14 @@ public partial class UnitsPage
         CardsList.ItemsSource = lines;
     }
 
+    /// <summary>The width the cards have across, beside the scrollbar, in the rows' own units: less when zoomed in.</summary>
+    private double CardsRoom() => (CardsList.ActualWidth - ScrollBarWidth) / ScaleOf(UnitView.Cards);
+
     /// <summary>The list was resized: the rows are made again when a different number of tiles fits across.</summary>
     private void CardsListResized(object sender, SizeChangedEventArgs e)
     {
         if (loaded is null || view != UnitView.Cards) return;
-        if (CardRowView.ColumnsFor(CardsList.ActualWidth - ScrollBarWidth) != cardColumns) ShowCards();
+        if (CardRowView.ColumnsFor(CardsRoom()) != cardColumns) ShowCards();
     }
 
     /// <summary>
@@ -119,7 +122,8 @@ public partial class UnitsPage
             headingsClip.SizeChanged += (_, _) => headingsClip.Clip = new RectangleGeometry(new Rect(0, -1, headingsClip.ActualWidth, headingsClip.ActualHeight + 2));
         var headingsOffset = new TranslateTransform();
         tableHeadings.RenderTransform = headingsOffset;
-        scroller.ScrollChanged += (_, _) => headingsOffset.X = -scroller.HorizontalOffset;
+        // the offset is inside the headings' zoom, so it is made smaller by it to move as far as the rows on screen
+        scroller.ScrollChanged += (_, _) => headingsOffset.X = -scroller.HorizontalOffset / ScaleOf(UnitView.Table);
         tableHeadings.SortClicked += SortBy;
         tableHeadings.ResizeStarted += KeepUnitColumnWidth;
         tableHeadings.ColumnResized += ResizeColumn;
@@ -164,7 +168,7 @@ public partial class UnitsPage
     /// <param name="keepHeadings">While a column's edge is dragged: the headings only change their widths.</param>
     private void ShowTable(bool keepHeadings = false)
     {
-        tableWidths = UnitTableColumn.Widths(TableList.ActualWidth - ScrollBarWidth, ChosenColumnWidths());
+        tableWidths = UnitTableColumn.Widths(TableRoom(), ChosenColumnWidths());
         if (keepHeadings) tableHeadings.SetWidths(tableWidths);
         else tableHeadings.Show(Game, tableWidths, sortKey, sortAscending);
         UnitTableColumn sortColumn = UnitTableColumn.All.First(column => column.Key == sortKey);
@@ -177,11 +181,14 @@ public partial class UnitsPage
         TableList.ItemsSource = lines;
     }
 
+    /// <summary>The width the table's columns have across, beside the scrollbar, in the rows' own units: less when zoomed in.</summary>
+    private double TableRoom() => (TableList.ActualWidth - ScrollBarWidth) / ScaleOf(UnitView.Table);
+
     /// <summary>The table was resized: the columns are laid out again when the Unit column's width changes.</summary>
     private void TableListResized(object sender, SizeChangedEventArgs e)
     {
         if (loaded is null || view != UnitView.Table) return;
-        double[] widths = UnitTableColumn.Widths(TableList.ActualWidth - ScrollBarWidth, ChosenColumnWidths());
+        double[] widths = UnitTableColumn.Widths(TableRoom(), ChosenColumnWidths());
         if (tableWidths.Length == 0 || Math.Abs(widths[0] - tableWidths[0]) >= 1) ShowTable();
     }
 

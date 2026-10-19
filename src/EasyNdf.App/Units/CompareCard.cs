@@ -160,7 +160,8 @@ public sealed class CompareCard : Grid
     /// The stats, one a row: the name, dim; the value, bold in the "best" colour when it is the best; how far it is from
     /// the pinned unit's (better in "ok", worse in "warn"); and its bar, with the pinned unit's mark.
     /// </summary>
-    private static StackPanel Stats(Unit unit, Unit? pinned, IReadOnlyDictionary<string, double?> best)
+    /// <remarks>The Unit pane's wide layout shows them too, with no pinned unit and no best values.</remarks>
+    internal static StackPanel Stats(Unit unit, Unit? pinned, IReadOnlyDictionary<string, double?> best)
     {
         var rows = new StackPanel();
         foreach (UnitStat stat in UnitStat.All)

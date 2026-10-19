@@ -17,6 +17,7 @@
   "Units.Step.PreparingPictures": "Getting the pictures ready...",
   "Units.CouldNotRead": "The units of {name} could not be read: {problem}",
   "Units.SomeNotRead": "Some of the source's files could not be read.",
+  "Units.Zoom.Tip": "Zoom, kept for Cards and Table each (Ctrl+scroll, Ctrl+plus, Ctrl+minus; Ctrl+0 for 100%)",
   "Units.Title": "Units in {name}",
   "Units.Find": "Find",
   "Units.SearchBox.Hint": "Find a unit",
