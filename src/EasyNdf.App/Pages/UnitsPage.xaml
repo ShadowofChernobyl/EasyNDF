@@ -138,7 +138,7 @@
 
             <Grid>
                 <!-- Cards and Table, with the Unit pane beside or below -->
-                <controls:PanePair x:Name="Panes" Key="units" BesideWhenAutomatic="True" DefaultBeside="350" DefaultBelow="300"
+                <controls:PanePair x:Name="Panes" Key="units" DefaultBeside="350" DefaultBelow="300"
                                    FoldedIcon="M 1.5,1.5 H 12.5 V 12.5 H 1.5 Z M 1.5,6 H 12.5 M 4,8.5 H 10 M 4,10.5 H 8">
                     <controls:PanePair.Main>
                         <DockPanel>
