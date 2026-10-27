@@ -67,21 +67,21 @@ public partial class ThemePreview : UserControl
     ];
 
     /// <summary>A row of the sample list: its look ("" plain, "sel" selected, "off" switched off), its cells, and its status colour.</summary>
-    private sealed record SampleRow(string Look, string File, string Size, string Preset, string StatusColour, string Status);
+    private sealed record SampleRow(string Look, string File, string Size, string Mods, string StatusColour, string Status);
 
     // the rows and headings are made when they are drawn, so they are in the language in use
     private static SampleRow[] SampleRows =>
     [
-        new("", "Ammunition.ndf", "3.1 MB", "WTO (Ammunition.ndf)", "ok", Texts.Get("Settings.Preview.Exported", ("edits", Texts.Number(3290)))),
-        new("sel", "UniteDescriptor.ndf", "27.2 MB", "WTO (UniteDescriptor.ndf)", "muted", Texts.Get("Settings.Preview.Selected")),
-        new("", "MissileDescriptors.ndf", "637 KB", "WTO (MissileDescriptors.ndf)", "caution", Texts.Get("Settings.Preview.ChangedNothing", ("edits", 408))),
-        new("", "WeaponDescriptor.ndf", "14.6 MB", "WTO (WeaponDescriptor.ndf)", "warn", Texts.Get("Settings.Preview.NotValid")),
+        new("", "Ammunition.ndf", "3.1 MB", "WARNO Tactical Overhaul", "ok", Texts.Get("Settings.Preview.Exported", ("edits", Texts.Number(3290)))),
+        new("sel", "UniteDescriptor.ndf", "27.2 MB", "WARNO Tactical Overhaul \u203A My mod", "muted", Texts.Get("Settings.Preview.Selected")),
+        new("", "MissileDescriptors.ndf", "637 KB", "WARNO Tactical Overhaul", "caution", Texts.Get("Settings.Preview.ChangedNothing", ("edits", 408))),
+        new("", "WeaponDescriptor.ndf", "14.6 MB", "My mod", "warn", Texts.Get("Settings.Preview.NotValid")),
         new("off", "Terrains.ndf", "11 KB", Texts.Get("Settings.Preview.NoPreset"), "muted", Texts.Get("Settings.Preview.Off")),
     ];
 
     /// <summary>The sample list's columns, in order; the first is always shown.</summary>
     private static string[] ColumnHeadings =>
-        [Texts.Get("Files.Column.File"), Texts.Get("Files.Column.Size"), Texts.Get("Files.Column.Preset"), Texts.Get("Files.Column.Status")];
+        [Texts.Get("Files.Column.File"), Texts.Get("Files.Column.Size"), Texts.Get("Files.Column.Mods"), Texts.Get("Files.Column.Status")];
 
     /// <summary>The columns the user has hidden in the sample list, by their place in <see cref="ColumnHeadings"/>.</summary>
     private readonly HashSet<int> hiddenColumns = [];
@@ -116,7 +116,7 @@ public partial class ThemePreview : UserControl
         var table = new WebTable([.. shown.Select(column => headings[column])], [.. shown.Select(column => column == 0)]);
         foreach (SampleRow sample in SampleRows)
         {
-            string[] cells = [sample.File, sample.Size, sample.Preset, sample.Status];
+            string[] cells = [sample.File, sample.Size, sample.Mods, sample.Status];
             WebTableRow row = table.AddRow([.. shown.Select(column => cells[column])]);
             row.IsSelected = sample.Look == "sel";
             for (int place = 0; place < shown.Count; place++)

@@ -55,7 +55,8 @@ public static partial class ThemeColors
 
     /// <summary>
     /// One colour of a theme: its own, else its base theme's, else a colour worked out from others (new and old lines in
-    /// "Changes only" use the success and error colours; the toggle mixes the accent with the box colour), else Olivine's.
+    /// "Changes only" use the success and error colours; the toggle mixes the accent with the box colour; the weapon
+    /// pictures take the text colour), else Olivine's.
     /// </summary>
     private static string ColorOf(Theme theme, string key)
     {
@@ -66,6 +67,8 @@ public static partial class ThemeColors
             "d-add" => ColorOf(theme, "ok"),
             "d-del" => ColorOf(theme, "warn"),
             "toggle" => HalfAndHalf(ColorOf(theme, "accent"), ColorOf(theme, "well")),
+            // the game draws its weapon pictures light on dark; a theme without its own colour for them uses its text's
+            "weapon-art" => ColorOf(theme, "ink"),
             _ => BuiltInThemes.ById[BuiltInThemes.DefaultId].Colors.GetValueOrDefault(key, "#000000"),
         };
     }

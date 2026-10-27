@@ -30,8 +30,8 @@ public sealed class AppData
     /// <summary>The property scans: what each scanned file holds, for the rule window's dropdowns.</summary>
     public ScanStore Scans { get; }
 
-    /// <summary>Raised when a file has been scanned.</summary>
-    public event Action? ScansChanged;
+    /// <summary>Raised when a file has been scanned, with the file (by folder and name, as the scans name it).</summary>
+    public event Action<string>? ScansChanged;
 
     /// <summary>Waits a moment before saving the scans, so a folder of files read one after another is saved once.</summary>
     private System.Windows.Threading.DispatcherTimer? scanSaving;
@@ -47,7 +47,7 @@ public sealed class AppData
         }
         scanSaving.Stop();
         scanSaving.Start();
-        ScansChanged?.Invoke();
+        ScansChanged?.Invoke(file);
     }
 
     /// <summary>The scans' saves, one after another.</summary>
@@ -111,6 +111,7 @@ public sealed class AppData
         var modStore = new ModStore(folders.Mods);
         var scans = new ScanStore(Path.Combine(folders.Settings, "scans.json"));
         var data = new AppData(settingsStore, modStore, scans, settingsStore.LoadSettings(), settingsStore.LoadState());
+        data.Session = settingsStore.LoadSession() ?? TakeOldSession(data.State);
         if (data.State["defaultModsAdded"] is null)
         {
             modStore.AddDefaultMods(DefaultMods.Text);
@@ -134,6 +135,12 @@ public sealed class AppData
 
     /// <summary>The folders the data is kept in; null for data in memory only.</summary>
     public AppFolders? Folders { get; private set; }
+
+    /// <summary>
+    /// Where the files of File rules are kept: in the data folder, or a temporary folder when the app has none, as in
+    /// the designer.
+    /// </summary>
+    public ModFileStore ModFileStore => new(Folders?.ModFiles ?? Path.Combine(Path.GetTempPath(), "EasyNDF", "Mod Files"));
 
     /// <summary>"Reset settings": every setting goes back to how it was at first. Mods, scans and what the app remembers are kept.</summary>
     public void ResetSettings()
@@ -185,7 +192,14 @@ public sealed class AppData
         if (State["exportFolders"] is not JsonObject folders) State["exportFolders"] = folders = [];
         folders[mod.Name] = folder;
         SaveState();
+        ModFoldersChanged?.Invoke();
     }
+
+    /// <summary>Raised when a mod's folders change: its export folder, or the WARNO mod folder its UNITS.csv goes into.</summary>
+    public event Action? ModFoldersChanged;
+
+    /// <summary>Tells that a mod's folders changed (see <see cref="ModFoldersChanged"/>), for Undo to file the change.</summary>
+    public void TellModFoldersChanged() => ModFoldersChanged?.Invoke();
 
     /// <summary>Opens another mod, and remembers it for the next start.</summary>
     public void Open(Mod mod)
@@ -207,6 +221,23 @@ public sealed class AppData
 
     /// <summary>Saves what the app remembers after a change.</summary>
     public void SaveState() => Saving(() => settingsStore?.SaveState(State));
+
+    /// <summary>The file list to reopen at the start ("Reopen the last files"), kept as the app last closed; null for none.</summary>
+    public JsonNode? Session { get; set; }
+
+    /// <summary>Saves <see cref="Session"/>, as the app closes.</summary>
+    public void SaveSession() => Saving(() => settingsStore?.SaveSession(Session));
+
+    /// <summary>
+    /// The file list an earlier version kept in the state, taken out of it: it now has a file of its own, and in the
+    /// state it was written again with every small change. Null when there is none.
+    /// </summary>
+    private static JsonNode? TakeOldSession(JsonObject state)
+    {
+        JsonNode? session = state["session"];
+        state.Remove("session");
+        return session;
+    }
 
     /// <summary>
     /// A save that fails (the disk is full, the folder is read-only) does not stop the app; the next change tries again.

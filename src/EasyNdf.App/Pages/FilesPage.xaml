@@ -9,6 +9,21 @@
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              xmlns:files="clr-namespace:EasyNdf.App.Files">
     <UserControl.Resources>
+        <!-- the progress line's bar: a sunken well, filled in the accent colour as the run goes -->
+        <Style x:Key="RunProgressBar" TargetType="ProgressBar">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Border BorderThickness="1" BorderBrush="{DynamicResource lo}" Background="{DynamicResource well}">
+                            <Grid>
+                                <Border x:Name="PART_Track" />
+                                <Border x:Name="PART_Indicator" HorizontalAlignment="Left" Background="{DynamicResource accent}" />
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <!-- tbody tr: a line under each row; selected rows are drawn in the selection colour -->
         <Style x:Key="FileListRow" TargetType="controls:Bevel">
             <Setter Property="BottomRight" Value="{DynamicResource line}" />
@@ -64,7 +79,7 @@
     <!-- the bars stay at the top; the file list and Details share the rest of the window, beside or below each other -->
     <DockPanel>
         <StackPanel DockPanel.Dock="Top">
-            <!-- the game or mod the app works with: its files can be added here; the Units and Divisions tabs read it -->
+            <!-- the game or mod the app works with: its files can be added here; the Units tab reads it -->
             <files:SourceBar x:Name="SourceBar" />
 
             <!-- .jobbar: adding and removing files on the left, running the rules on the right; in a narrow window the
@@ -148,9 +163,37 @@
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
+
+            <!-- while Preview or Run export runs: the file being worked on, how far the run has got, and Cancel -->
+            <DockPanel x:Name="ProgressLine" Margin="0,0,0,8">
+                <DockPanel.Style>
+                    <Style TargetType="DockPanel">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsIdle}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DockPanel.Style>
+                <Button x:Name="CancelRunButton" DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" ToolTip="{t:Text Files.Run.Cancel.Tip}"
+                        Click="CancelRunClicked" Margin="8,0,0,0" VerticalAlignment="Center">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCancelRequested}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <ProgressBar DockPanel.Dock="Right" Width="160" Height="8" Margin="10,0,0,0" VerticalAlignment="Center" Minimum="0" Maximum="100"
+                             Value="{Binding RunPercent, Mode=OneWay}" Style="{StaticResource RunProgressBar}" />
+                <TextBlock Text="{Binding RunProgress}" Style="{StaticResource Note}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
         </StackPanel>
 
-        <controls:PanePair x:Name="Panes" Key="files" FoldedAtFirst="True" FoldedIcon="M 1.5,1.5 H 12.5 V 12.5 H 1.5 Z M 4,4.5 H 10 M 4,7 H 10 M 4,9.5 H 8" DefaultBeside="520" DefaultBelow="300">
+        <controls:PanePair x:Name="Panes" Key="files" FoldedAtFirst="True" FoldedIcon="M 1.5,1.5 H 12.5 V 12.5 H 1.5 Z M 4,4.5 H 10 M 4,7 H 10 M 4,9.5 H 8" DefaultBelow="300">
             <controls:PanePair.Main>
                 <DockPanel>
                     <!-- h2: the File List heading -->

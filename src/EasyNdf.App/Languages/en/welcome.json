@@ -1,7 +1,7 @@
 {
   "Welcome.WelcomeToEasyNDF": "Welcome to EasyNDF",
   "Welcome.Intro": "**Mod WARNO without the copy-paste.** Describe a change once, such as \"double the range of every autocannon\", and EasyNDF applies it to every matching entry in the game's `.ndf` files.",
-  "Welcome.Step1": "**Rules:** import a mod, or build your own rules.",
+  "Welcome.Step1": "**Mods:** import a mod, or build your own rules.",
   "Welcome.Step2": "**Files:** drop your mod folder on the window.",
   "Welcome.Step3": "**Preview** what would change, then **Run export**.",
   "Welcome.YourFilesNeverLeave": "Your files never leave this computer, and your originals are never changed. Export your mod to keep a copy of your rules.",

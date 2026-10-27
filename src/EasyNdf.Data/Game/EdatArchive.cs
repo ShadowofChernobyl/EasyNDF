@@ -80,6 +80,69 @@ public static class EdatArchive
     }
 
     /// <summary>
+    /// One file of an archive, by its path inside it in any capitals; null when the archive does not have it. Only the
+    /// tree's branch towards it is read, rather than the whole list: a game's main archive lists some 100,000 files.
+    /// </summary>
+    public static ArchiveFile? FindFile(string path, string wanted)
+    {
+        using FileStream stream = File.OpenRead(path);
+        var header = new byte[80];
+        stream.ReadExactly(header);
+        if (!header.AsSpan(0, 4).SequenceEqual("edat"u8)) throw new InvalidDataException("not an EDat archive");
+        int version = BinaryPrimitives.ReadInt32LittleEndian(header.AsSpan(4));
+        if (version is not (2 or 3)) throw new InvalidDataException("EDat version " + version + " is not known");
+        uint treeAt = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(version == 2 ? 25 : 8));
+        uint treeLength = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(version == 2 ? 29 : 12));
+        uint filesStart = BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(version == 2 ? 33 : 16));
+        if (treeLength == 0 || treeAt + (long)treeLength > stream.Length) return null;
+        var tree = new byte[treeLength];
+        stream.Position = treeAt;
+        stream.ReadExactly(tree);
+        int firstEntry = tree[0] is 9 or 10 ? tree[0] : 9;
+        try
+        {
+            return FindNode(tree, firstEntry, tree.Length, "", wanted.Replace('\\', '/'), path, filesStart, depth: 0);
+        }
+        catch (Exception problem) when (problem is ArgumentException or InvalidDataException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Looks for a file among the tree's entries from one place to another, as <see cref="ReadNodes"/> reads them, going
+    /// into a folder only when the file's path starts with the folder's name.
+    /// </summary>
+    private static ArchiveFile? FindNode(byte[] tree, int start, int end, string parentName, string wanted, string archive, long filesStart, int depth)
+    {
+        if (depth > 64) throw new InvalidDataException("the file tree is too deep");
+        while (start + 8 <= end)
+        {
+            int childrenAt = BitConverter.ToInt32(tree, start);
+            int length = BitConverter.ToInt32(tree, start + 4);
+            int stop = length == 0 ? end : Math.Min(start + length, end);
+            if (stop <= start) throw new InvalidDataException("a tree entry has no length");
+
+            bool isFolder = childrenAt != 0;
+            int nameAt = start + (isFolder ? 8 : 40);
+            int nameEnd = Array.IndexOf(tree, (byte)0, nameAt, stop - nameAt);
+            if (nameEnd < 0) throw new InvalidDataException("a name has no end");
+            string name = (parentName + Encoding.UTF8.GetString(tree, nameAt, nameEnd - nameAt)).Replace('\\', '/');
+
+            if (isFolder && wanted.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+            {
+                if (FindNode(tree, start + childrenAt, stop, name, wanted, archive, filesStart, depth + 1) is ArchiveFile found) return found;
+            }
+            else if (!isFolder && string.Equals(name, wanted, StringComparison.OrdinalIgnoreCase))
+            {
+                return new ArchiveFile(archive, name, filesStart + BitConverter.ToInt64(tree, start + 8), BitConverter.ToInt64(tree, start + 16));
+            }
+            start = stop;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Reads the tree's entries from one place to another. Each entry starts with two numbers: where its children
     /// start (0 for a file) and its own length (0 for the last one). A name is only the part after its parent's.
     /// </summary>

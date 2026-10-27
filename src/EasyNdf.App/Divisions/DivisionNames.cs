@@ -31,22 +31,12 @@ public static class DivisionNames
     public static IReadOnlyList<int> UnitsAtEachVeterancy(DivisionUnit unit)
     {
         if (unit.UnitsPerCard is not int perCard) return [];
-        var counts = new List<int>();
-        foreach (double share in unit.VeterancyMultipliers)
-        {
-            if (share == 0) counts.Add(0);
-            else counts.Add(Math.Max(1, (int)Math.Round(perCard * share, MidpointRounding.AwayFromZero)));
-        }
-        return counts;
+        return [.. unit.VeterancyMultipliers.Select(share => UnitsAt(perCard, share))];
     }
 
-    /// <summary>The units at each veterancy level as a short text, "4 · 2 · 1 · –"; "–" when there are none.</summary>
-    public static string VeterancyText(DivisionUnit unit)
-    {
-        IReadOnlyList<int> counts = UnitsAtEachVeterancy(unit);
-        if (counts.Count == 0) return UnitNumbers.None;
-        return string.Join(" · ", counts.Select(count => count == 0 ? UnitNumbers.None : Texts.Number(count)));
-    }
+    /// <summary>The units in one card at a level with this share: the units per card times it, at least one; 0 for a level not offered.</summary>
+    public static int UnitsAt(int unitsPerCard, double share) =>
+        share == 0 ? 0 : Math.Max(1, (int)Math.Round(unitsPerCard * share, MidpointRounding.AwayFromZero));
 
     /// <summary>The units in one card: "4"; in Steel Division 2, by phase, "6 / 12 / 0".</summary>
     public static string UnitsPerCard(DivisionUnit unit) =>

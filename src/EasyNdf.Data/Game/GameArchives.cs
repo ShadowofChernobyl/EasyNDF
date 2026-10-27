@@ -97,7 +97,7 @@ public sealed class GameArchives
     /// The version folders an archive is in, each padded to 20 digits so they sort as numbers do:
     /// Data\PC\21263\46442\ZZ_1.dat gives "00000000000000021263/00000000000000046442".
     /// </summary>
-    private static string VersionOf(string path) =>
+    internal static string VersionOf(string path) =>
         string.Join("/", path.Split(Path.DirectorySeparatorChar, '/')
             .Where(part => part.Length > 0 && part.All(char.IsAsciiDigit))
             .Select(part => part.PadLeft(20, '0')));

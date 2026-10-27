@@ -26,6 +26,18 @@ public sealed record DialogOptions
 
     /// <summary>Something shown under the message, such as a table comparing two files.</summary>
     public UIElement? Extra { get; init; }
+
+    /// <summary>
+    /// Dim, smaller words under the text box that explain the question, so the question itself can stay short; none when
+    /// null.
+    /// </summary>
+    public string? Note { get; init; }
+
+    /// <summary>The text box's grey hint while it is empty, such as "Folder name"; none when null.</summary>
+    public string? Placeholder { get; init; }
+
+    /// <summary>Whether the first button stays off until something is typed in the text box.</summary>
+    public bool NeedsInput { get; init; }
 }
 
 /// <summary>Which button closed the message window. Escape counts as <see cref="Cancel"/>.</summary>

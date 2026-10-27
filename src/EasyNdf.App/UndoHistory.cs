@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Windows.Threading;
 using EasyNdf.App.Files;
 using EasyNdf.Data;
@@ -8,11 +9,13 @@ using EasyNdf.App.Text;
 namespace EasyNdf.App;
 
 /// <summary>
-/// Undo and Redo (the HTML app's <c>hist*</c> functions). Everything kept in the mods, and the file list (which rows it
-/// has, in which order, and each row's preset, On checkbox and export folder), is one state; each change files the state
-/// before it, and Undo puts a filed state back. Undo on one tab can so take back a change made on the other. A removed
-/// file row is kept whole in the history, so Undo brings it back as it was. The open mod and the watermarks are not part
-/// of the state, as in the HTML app.
+/// Undo and Redo (the HTML app's <c>hist*</c> functions). Everything kept in the mods (their presets and rules, and the
+/// Armory's division changes), each mod's folders (the export folder its new files start with, and the WARNO mod folder
+/// its UNITS.csv goes into), and the file list (which rows it has, in which order, and each row's preset, On checkbox
+/// and export folder), is one state; each change files the state before it, and Undo puts a filed state back. Undo on
+/// one tab can so take back a change made on another. A removed file row is kept whole in the history, so Undo brings it
+/// back as it was. The open mod and the watermarks are not part of the state, as in the HTML app. The division changes
+/// are: the Armory presets' rules are made from them, so putting back one without the other would part the two.
 /// </summary>
 public sealed class UndoHistory
 {
@@ -81,11 +84,12 @@ public sealed class UndoHistory
     {
         if (isPuttingBack || IsPaused) return;
         modsText ??= ModsText(data.Mods);
+        string foldersText = FoldersText(data);
         // most changes to the list are not the user's (a file read, a status shown): this check needs no copying
-        if (modsText == now.ModsText && RowsAreAsFiled()) return;
-        List<UndoRow> rows = [.. files.Entries.Select(entry => UndoRow.Of(entry, data))];
+        if (modsText == now.ModsText && foldersText == now.FoldersText && RowsAreAsFiled()) return;
+        List<UndoRow> rows = [.. files.Entries.Select(UndoRow.Of)];
         string rowsText = RowsText(rows);
-        if (modsText == now.ModsText && rowsText == now.RowsText) return;
+        if (modsText == now.ModsText && foldersText == now.FoldersText && rowsText == now.RowsText) return;
 
         // one action is one step, even when it saves in several parts
         if (!isInOneAction)
@@ -100,7 +104,7 @@ public sealed class UndoHistory
         }
         redoSteps.Clear();
         // the mods are copied only now that they are filed: a click that changes nothing copies nothing
-        now = new UndoState(modsText, [.. data.Mods.Select(m => m.DeepCopy())], rows, rowsText);
+        now = new UndoState(modsText, [.. data.Mods.Select(m => m.DeepCopy())], rows, rowsText, foldersText);
         Changed?.Invoke();
     }
 
@@ -115,8 +119,15 @@ public sealed class UndoHistory
         now = undoSteps[^1];
         undoSteps.RemoveAt(undoSteps.Count - 1);
         PutBack(now);
+        OpenModChanged(was, now);
         // the message names where the change was, since Undo on one tab can take back a change made on the other
-        return new UndoResult(was.ModsText != now.ModsText ? Texts.Get("Main.Undo.Rules") : Texts.Get("Main.Undo.Files"), IsDone: true);
+        string undone = WhereChanged(was, now) switch
+        {
+            ChangePlace.Armory => Texts.Get("Main.Undo.Armory"),
+            ChangePlace.Rules => Texts.Get("Main.Undo.Rules"),
+            _ => Texts.Get("Main.Undo.Files"),
+        };
+        return new UndoResult(undone, IsDone: true);
     }
 
     /// <summary>Redo: puts back the state an Undo took away.</summary>
@@ -130,7 +141,80 @@ public sealed class UndoHistory
         now = redoSteps[^1];
         redoSteps.RemoveAt(redoSteps.Count - 1);
         PutBack(now);
-        return new UndoResult(was.ModsText != now.ModsText ? Texts.Get("Main.Redo.Rules") : Texts.Get("Main.Redo.Files"), IsDone: true);
+        OpenModChanged(was, now);
+        string redone = WhereChanged(was, now) switch
+        {
+            ChangePlace.Armory => Texts.Get("Main.Redo.Armory"),
+            ChangePlace.Rules => Texts.Get("Main.Redo.Rules"),
+            _ => Texts.Get("Main.Redo.Files"),
+        };
+        return new UndoResult(redone, IsDone: true);
+    }
+
+    /// <summary>
+    /// Opens the mod whose change Undo or Redo just took back or put back, when another mod is open: a change made in
+    /// mod A, then mod B opened, is undone with mod A shown again, so the change can be seen going.
+    /// </summary>
+    private void OpenModChanged(UndoState one, UndoState other)
+    {
+        Dictionary<string, string> before = TextByMod(one.ModsText), after = TextByMod(other.ModsText);
+        string? changed = after.Keys.FirstOrDefault(name => before.TryGetValue(name, out string? text) && text != after[name]);
+        if (changed is null || changed == data.OpenMod.Name || data.ModStore.Find(changed) is not Mod mod) return;
+        data.Open(mod);
+    }
+
+    /// <summary>A <see cref="ModsText"/> split into each mod's part, by the mod's name.</summary>
+    private static Dictionary<string, string> TextByMod(string modsText)
+    {
+        var byMod = new Dictionary<string, string>(StringComparer.Ordinal);
+        string? mod = null;
+        var text = new StringBuilder();
+        foreach (string line in modsText.Split('\n'))
+        {
+            if (line.StartsWith("mod ", StringComparison.Ordinal))
+            {
+                if (mod is not null) byMod[mod] = text.ToString();
+                mod = line[4..];
+                text.Clear();
+                continue;
+            }
+            text.Append(line).Append('\n');
+        }
+        if (mod is not null) byMod[mod] = text.ToString();
+        return byMod;
+    }
+
+    /// <summary>Where a change was made, for the message saying what Undo or Redo did.</summary>
+    private enum ChangePlace { Files, Rules, Armory }
+
+    /// <summary>
+    /// Where the change between two states was: the Armory for a division change or a unit added (which change the
+    /// Armory presets too), the Rules tab for another change to the mods, else the file list (a mod's folders are set
+    /// from it).
+    /// </summary>
+    private static ChangePlace WhereChanged(UndoState one, UndoState other)
+    {
+        if (ArmoryPart(one.ModsText) != ArmoryPart(other.ModsText)) return ChangePlace.Armory;
+        if (one.ModsText != other.ModsText || StackPart(one.FoldersText) != StackPart(other.FoldersText)) return ChangePlace.Rules;
+        return ChangePlace.Files;
+    }
+
+    /// <summary>The mods' order and which are on, from a <see cref="FoldersText"/>.</summary>
+    private static string StackPart(string foldersText) => JsonNode.Parse(foldersText)?["stack"]?.ToJsonString() ?? "";
+
+    /// <summary>The lines of a <see cref="ModsText"/> for the division changes and units added, with the mods they are in.</summary>
+    private static string ArmoryPart(string modsText)
+    {
+        // each line with its mod's name, so adding or renaming a mod without divisions or units is not an Armory change
+        var part = new StringBuilder();
+        string mod = "";
+        foreach (string line in modsText.Split('\n'))
+        {
+            if (line.StartsWith("mod ", StringComparison.Ordinal)) mod = line;
+            else if (line.StartsWith("division ", StringComparison.Ordinal) || line.StartsWith("unit ", StringComparison.Ordinal))
+                part.Append(mod).Append('|').Append(line).Append('\n');
+        }
+        return part.ToString();
     }
 
     /// <summary>Forgets every change, after "Clear all data": there is nothing to undo.</summary>
@@ -149,8 +233,8 @@ public sealed class UndoHistory
     private UndoState Here()
     {
         modsText ??= ModsText(data.Mods);
-        List<UndoRow> rows = [.. files.Entries.Select(entry => UndoRow.Of(entry, data))];
-        return new UndoState(modsText, [.. data.Mods.Select(m => m.DeepCopy())], rows, RowsText(rows));
+        List<UndoRow> rows = [.. files.Entries.Select(UndoRow.Of)];
+        return new UndoState(modsText, [.. data.Mods.Select(m => m.DeepCopy())], rows, RowsText(rows), FoldersText(data));
     }
 
     /// <summary>
@@ -164,21 +248,18 @@ public sealed class UndoHistory
         {
             var hadMods = data.Mods.Select(m => m.Name).ToHashSet();
             List<Mod> mods = [.. state.Mods.Select(m => m.DeepCopy())];
-            // the watermarks and divisions stay as they are now: Undo is for the rules and the files
+            // the watermarks stay as they are now, as in the HTML app
             foreach (Mod mod in mods)
-                if (data.ModStore.Find(mod.Name) is Mod current)
-                {
-                    mod.Watermark = current.Watermark;
-                    mod.Divisions = current.Divisions;
-                }
+                if (data.ModStore.Find(mod.Name) is Mod current) mod.Watermark = current.Watermark;
             data.ModStore.Restore(mods);
 
+            PutFoldersBack(state.FoldersText);
             string? cameBack = data.Mods.Select(m => m.Name).FirstOrDefault(name => !hadMods.Contains(name));
             if (cameBack is not null) data.State["openMod"] = cameBack;
             else if (data.ModStore.Find((string?)data.State["openMod"] ?? "") is null) data.State["openMod"] = data.Mods[0].Name;
             data.SaveState();
 
-            files.PutBack([.. state.Rows.Select(row => row.ToSaved(data))]);
+            files.PutBack([.. state.Rows.Select(row => row.ToSaved())]);
             modsText = state.ModsText;
             // not as another mod opened: the rows keep the presets they had
             data.TellModsChanged();
@@ -190,7 +271,29 @@ public sealed class UndoHistory
         Changed?.Invoke();
     }
 
-    /// <summary>The mods' names, presets and rules as one text, to tell whether they changed.</summary>
+    /// <summary>
+    /// Each mod's folders as one text, to tell whether they changed and to put them back: the folder its new files
+    /// start with ("exportFolders") and the WARNO mod folder its UNITS.csv goes into ("gameMods"), both kept by mod name;
+    /// and the mods' order on the Mods tab and which of them are on (<see cref="Mods.ModStack"/>).
+    /// </summary>
+    private static string FoldersText(AppData data) => new JsonObject
+    {
+        ["exportFolders"] = data.State["exportFolders"]?.DeepClone(),
+        ["gameMods"] = data.State["gameMods"]?.DeepClone(),
+        // the mods' order and which are on, which change what an export writes
+        ["stack"] = Mods.ModStack.Saved(),
+    }.ToJsonString();
+
+    /// <summary>Puts each mod's folders back as filed (see <see cref="FoldersText"/>).</summary>
+    private void PutFoldersBack(string foldersText)
+    {
+        if (JsonNode.Parse(foldersText) is not JsonObject folders) return;
+        data.State["exportFolders"] = folders["exportFolders"]?.DeepClone();
+        data.State["gameMods"] = folders["gameMods"]?.DeepClone();
+        if (folders["stack"] is JsonObject stack) Mods.ModStack.PutBack(stack);
+    }
+
+    /// <summary>The mods' names, presets, rules, division, unit and weapon changes as one text, to tell whether they changed.</summary>
     private static string ModsText(IEnumerable<Mod> mods)
     {
         var text = new StringBuilder();
@@ -198,16 +301,25 @@ public sealed class UndoHistory
         {
             text.Append("mod ").Append(mod.Name).Append('\n');
             foreach (ModPreset preset in mod.Presets)
-                text.Append("preset ").Append(preset.Name).Append('\n').Append(preset.Rules.ToJsonString()).Append('\n');
+                text.Append("preset ").Append(preset.Name).Append('\n').Append(preset.Rules.ToJsonString()).Append('\n')
+                    .Append("applies to ").Append(preset.AppliesTo is null ? "-" : string.Join("|", preset.AppliesTo)).Append('\n');
+            foreach (Data.Divisions.ModDivision division in mod.Divisions)
+                text.Append("division ").Append(division.ToJson().ToJsonString()).Append('\n');
+            foreach (Data.Units.ModUnit unit in mod.Units)
+                text.Append("unit ").Append(unit.ToJson().ToJsonString()).Append('\n');
+            foreach (Data.Units.UnitEdit edit in mod.UnitEdits)
+                text.Append("unit edit ").Append(edit.ToJson().ToJsonString()).Append('\n');
+            foreach (Data.Weapons.WeaponEdit edit in mod.WeaponEdits)
+                text.Append("weapon edit ").Append(edit.ToJson().ToJsonString()).Append('\n');
+            foreach (Data.Weapons.ModWeapon weapon in mod.Weapons)
+                text.Append("weapon ").Append(weapon.ToJson().ToJsonString()).Append('\n');
         }
         return text.ToString();
     }
 
-    /// <summary>The file rows as one text, to tell whether they changed.</summary>
     /// <summary>
-    /// Whether the file list is still as last filed: the same rows in the same order, each with the same preset, On box
-    /// and export folder. When it says no, the rows are compared in full: a preset put back by Undo is a copy, so it is
-    /// a different object with the same name.
+    /// Whether the file list is still as last filed: the same rows in the same order, each with the same On box and
+    /// export folder.
     /// </summary>
     private bool RowsAreAsFiled()
     {
@@ -218,38 +330,27 @@ public sealed class UndoHistory
         {
             FileEntry entry = entries[i];
             UndoRow row = filed[i];
-            if (!ReferenceEquals(entry, row.Entry) || !ReferenceEquals(entry.Preset, row.Preset) || entry.MissingPreset != row.MissingPreset
-                || entry.On != row.On || entry.ExportFolder != row.ExportFolder)
+            if (!ReferenceEquals(entry, row.Entry) || entry.On != row.On || entry.ExportFolder != row.ExportFolder)
                 return false;
         }
         return true;
     }
 
+    /// <summary>The file rows as one text, to tell whether they changed.</summary>
     private static string RowsText(IEnumerable<UndoRow> rows) =>
-        string.Join("\n", rows.Select(r => r.Entry.Id + "|" + r.ModName + "|" + r.PresetName + "|" + r.MissingPreset + "|" + (r.On ? 1 : 0) + "|" + r.ExportFolder));
+        string.Join("\n", rows.Select(r => r.Entry.Id + "|" + (r.On ? 1 : 0) + "|" + r.ExportFolder));
 
-    /// <summary>One filed state: the mods (copies), the file rows, and the texts that compare them.</summary>
-    private sealed record UndoState(string ModsText, IReadOnlyList<Mod> Mods, IReadOnlyList<UndoRow> Rows, string RowsText);
+    /// <summary>One filed state: the mods (copies), the file rows, the mods' folders, and the texts that compare them.</summary>
+    private sealed record UndoState(string ModsText, IReadOnlyList<Mod> Mods, IReadOnlyList<UndoRow> Rows, string RowsText, string FoldersText);
 
-    /// <summary>
-    /// A file row as filed. Its preset is kept by name, since putting the mods back makes new presets; the preset itself
-    /// is kept too, only to tell quickly that the row has not changed.
-    /// </summary>
-    private sealed record UndoRow(FileEntry Entry, ModPreset? Preset, string? ModName, string? PresetName, string? MissingPreset, bool On, string? ExportFolder)
+    /// <summary>A file row as filed: the row, its On box and its export folder.</summary>
+    private sealed record UndoRow(FileEntry Entry, bool On, string? ExportFolder)
     {
         /// <summary>The row as it is now.</summary>
-        public static UndoRow Of(FileEntry entry, AppData data)
-        {
-            Mod? mod = entry.Preset is null ? null : data.ModOf(entry.Preset);
-            return new UndoRow(entry, entry.Preset, mod?.Name, mod is null ? null : entry.Preset!.Name, entry.MissingPreset, entry.On, entry.ExportFolder);
-        }
+        public static UndoRow Of(FileEntry entry) => new(entry, entry.On, entry.ExportFolder);
 
-        /// <summary>The row with its preset found again among the mods put back.</summary>
-        public SavedFileRow ToSaved(AppData data)
-        {
-            ModPreset? preset = ModName is null ? null : data.ModStore.Find(ModName)?.Presets.FirstOrDefault(p => p.Name == PresetName);
-            return new SavedFileRow(Entry, preset, MissingPreset, On, ExportFolder);
-        }
+        /// <summary>The row as it was filed, for the file list to put back.</summary>
+        public SavedFileRow ToSaved() => new(Entry, On, ExportFolder);
     }
 }
 

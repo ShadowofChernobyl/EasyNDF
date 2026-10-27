@@ -30,12 +30,25 @@ public partial class AddUnitsWindow : UserControl
     private IReadOnlyList<Unit> units = [];
     private GameTitle game = GameTitle.Warno;
     private IReadOnlySet<Unit> alreadyChosen = new HashSet<Unit>();
+
+    /// <summary>The game's own units, by descriptor, for "Vanilla units" and "Modded units"; empty when not known.</summary>
+    private IReadOnlySet<string> vanillaUnits = new HashSet<string>();
     private Action<IReadOnlyList<Unit>> add = _ => { };
+
     private string side = "";
     private bool fillingLists;
 
     /// <summary>The units ticked, in the order they were ticked.</summary>
     private readonly List<Unit> ticked = [];
+
+    /// <summary>The same units for the Cards view's tiles, which show the units selected as ticked.</summary>
+    private readonly UnitSelection tickedTiles = new();
+
+    /// <summary>Whether the units show as the Armory's tiles rather than as rows; kept from one opening to the next.</summary>
+    private bool showsCards = (string?)AppData.Current.State["addUnitsView"] == "cards";
+
+    /// <summary>How many tiles fit across the list when it was last filled in the Cards view.</summary>
+    private int cardColumns;
 
     /// <summary>Builds the window, closed.</summary>
     public AddUnitsWindow()
@@ -65,20 +78,47 @@ public partial class AddUnitsWindow : UserControl
     /// <param name="fromGame">The game they are from, for its sides, factories and nations.</param>
     /// <param name="chosen">The units already chosen, greyed.</param>
     /// <param name="addUnits">What Add does with the units ticked.</param>
-    public void Open(string title, IReadOnlyList<Unit> choices, GameTitle fromGame, IReadOnlySet<Unit> chosen, Action<IReadOnlyList<Unit>> addUnits)
+    /// <param name="factory">The type the type filter starts on, such as "Tanks"; "" for every type.</param>
+    /// <param name="vanilla">The game's own units, by descriptor; when given, a filter offers vanilla or modded units only.</param>
+    public void Open(string title, IReadOnlyList<Unit> choices, GameTitle fromGame, IReadOnlySet<Unit> chosen, Action<IReadOnlyList<Unit>> addUnits, string factory = "",
+        IReadOnlySet<string>? vanilla = null)
+    {
+        vanillaUnits = vanilla ?? new HashSet<string>();
+        Start(title, choices, fromGame, chosen);
+        add = addUnits;
+        ChooseFactory(factory);
+    }
+
+    /// <summary>The type filter set to a type, when the units have it; the list follows.</summary>
+    private void ChooseFactory(string factory)
+    {
+        if (factory == "") return;
+        ComboBoxItem? item = FactoryChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(each => (string?)each.Tag == factory);
+        if (item is null) return;
+        // the list is filled once, after the filter is set
+        fillingLists = true;
+        FactoryChoice.SelectedItem = item;
+        fillingLists = false;
+        FillList();
+    }
+
+    /// <summary>Opens the window on some units, with nothing ticked and the filters as at first.</summary>
+    private void Start(string title, IReadOnlyList<Unit> choices, GameTitle fromGame, IReadOnlySet<Unit> chosen)
     {
         TitleText.Text = title;
         units = choices;
         game = fromGame;
         alreadyChosen = chosen;
-        add = addUnits;
         side = "";
         ticked.Clear();
+        tickedTiles.SetAll([]);
         fillingLists = true;
         SearchBox.Text = "";
         FillSideChoices();
         FillChoice(FactoryChoice, Texts.Get("Units.AddUnits.AllTypes"), UnitNames.FactoriesOf(game).Where(factory => units.Any(unit => unit.Factory == factory)).Select(factory => (factory, UnitNames.Factory(factory))));
         FillChoice(NationChoice, Texts.Get("Units.AddUnits.AllNations"), units.Select(unit => unit.Nation).Distinct().Select(nation => (nation, UnitNames.Nation(nation))).OrderBy(nation => nation.Item2, StringComparer.Create(Texts.Catalog.Culture, true)));
+        UnitOrder.Fill(SortChoice);
+        FillModdedChoice();
         FillChoice(RoleChoice, Texts.Get("Units.AllRoles"), units.Where(unit => unit.Role != "").GroupBy(unit => unit.Role).Select(group => (group.Key, UnitNames.RoleOf(group.First()))).OrderBy(role => role.Item2, StringComparer.Create(Texts.Catalog.Culture, true)));
         fillingLists = false;
         FillList();
@@ -86,6 +126,27 @@ public partial class AddUnitsWindow : UserControl
         Visibility = Visibility.Visible;
         Dispatcher.BeginInvoke(() => SearchBox.Focus(), System.Windows.Threading.DispatcherPriority.Input);
     }
+
+    /// <summary>
+    /// All units, Vanilla units (the game's own) or Modded units (those vanilla WARNO lacks); only when the game's own
+    /// units are known, its column given up otherwise.
+    /// </summary>
+    private void FillModdedChoice()
+    {
+        FillChoice(ModdedChoice, Texts.Get("Units.AddUnits.AllUnits"), [("vanilla", Texts.Get("Units.AddUnits.VanillaUnits")), ("modded", Texts.Get("Units.AddUnits.ModdedUnits"))]);
+        bool offered = vanillaUnits.Count > 0;
+        ModdedChoice.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
+        ModdedColumn.Width = offered ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        ModdedGap.Width = new GridLength(offered ? 6 : 0);
+    }
+
+    /// <summary>Whether a unit passes the vanilla or modded filter.</summary>
+    private bool PassesModdedChoice(Unit unit) => Chosen(ModdedChoice) switch
+    {
+        "vanilla" => vanillaUnits.Contains(unit.Descriptor),
+        "modded" => !vanillaUnits.Contains(unit.Descriptor),
+        _ => true,
+    };
 
     /// <summary>A filter's list: "All …" first, then its choices, each kept by its code.</summary>
     private static void FillChoice(ComboBox choice, string all, IEnumerable<(string Code, string Name)> items)
@@ -119,18 +180,55 @@ public partial class AddUnitsWindow : UserControl
 
     private static string Chosen(ComboBox choice) => (choice.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
 
-    /// <summary>The list: the units that pass the search and the filters, in the game's order.</summary>
+    /// <summary>
+    /// The list: the units that pass the search and the filters, in the order chosen (the game's at first), as rows,
+    /// or in the Cards view as rows of tiles, as many across as fit, in that same order.
+    /// </summary>
     private void FillList()
     {
+        CardsViewButton.IsChecked = showsCards;
+        TableViewButton.IsChecked = !showsCards;
         string text = SearchBox.Text.Trim(), factory = Chosen(FactoryChoice), nation = Chosen(NationChoice), role = Chosen(RoleChoice);
-        List<Unit> matching = [.. units.Where(unit =>
+        List<Unit> matching = UnitOrder.Sort(units.Where(unit =>
             (side == "" || unit.Side == side) && (factory == "" || unit.Factory == factory) && (nation == "" || unit.Nation == nation)
-            && (role == "" || unit.Role == role)
-            && (text == "" || unit.Name.Contains(text, StringComparison.CurrentCultureIgnoreCase) || unit.Descriptor.Contains(text, StringComparison.OrdinalIgnoreCase)))];
-        UnitList.ItemsSource = matching.Count == 0
-            ? new object[] { new AddUnitsEmptyLine(Texts.Get("Units.NoneMatch")) }
-            : matching.Select(unit => (object)new AddUnitsLine(unit, this)).ToList();
+            && (role == "" || unit.Role == role) && PassesModdedChoice(unit)
+            && (text == "" || unit.Name.Contains(text, StringComparison.CurrentCultureIgnoreCase) || unit.Descriptor.Contains(text, StringComparison.OrdinalIgnoreCase))),
+            UnitOrder.Chosen(SortChoice));
+        if (matching.Count == 0) UnitList.ItemsSource = new object[] { new AddUnitsEmptyLine(Texts.Get("Units.NoneMatch")) };
+        else if (showsCards) UnitList.ItemsSource = CardRows(matching);
+        else UnitList.ItemsSource = matching.Select(unit => (object)new AddUnitsLine(unit, this)).ToList();
         CountText.Text = Texts.CountWide("Units.AddUnits.Count", matching.Count);
+    }
+
+    /// <summary>The units as rows of tiles, as many across as fit, each tile with its tick box.</summary>
+    private List<object> CardRows(List<Unit> matching)
+    {
+        // the room beside the scrollbar, which takes 14 pixels when it shows
+        cardColumns = CardRowView.ColumnsFor(Math.Max(0, UnitList.ActualWidth - 14));
+        string alreadyText = Texts.Get("Units.AddUnits.AlreadyChosen");
+        var rows = new List<object>();
+        for (int start = 0; start < matching.Count; start += cardColumns)
+        {
+            List<Unit> row = matching.GetRange(start, Math.Min(cardColumns, matching.Count - start));
+            rows.Add(new CardRowLine(row, cardColumns, IsLast: start + cardColumns >= matching.Count, tickedTiles, IsFirstSide,
+                tile => tile.ShowTick(IsAlreadyChosen(tile.Unit), alreadyText)));
+        }
+        return rows;
+    }
+
+    /// <summary>Cards or Table clicked: the list is shown that way, and is the next time the window opens.</summary>
+    private void ViewClicked(object sender, RoutedEventArgs e)
+    {
+        showsCards = ReferenceEquals(sender, CardsViewButton);
+        AppData.Current.State["addUnitsView"] = showsCards ? "cards" : "table";
+        AppData.Current.SaveState();
+        FillList();
+    }
+
+    /// <summary>The list was resized: in the Cards view, the rows are made again when a different number of tiles fits across.</summary>
+    private void UnitListResized(object sender, SizeChangedEventArgs e)
+    {
+        if (showsCards && IsOpen && CardRowView.ColumnsFor(Math.Max(0, UnitList.ActualWidth - 14)) != cardColumns) FillList();
     }
 
     private void FilterChanged(object sender, TextChangedEventArgs e)
@@ -146,7 +244,7 @@ public partial class AddUnitsWindow : UserControl
     /// <summary>A click ticks a unit or unticks it; a double-click adds it, with any others ticked.</summary>
     private void UnitPressed(object sender, MouseButtonEventArgs e)
     {
-        if (RowAt(e.OriginalSource) is not AddUnitsRow { Unit: Unit unit } || IsAlreadyChosen(unit)) return;
+        if (UnitAt(e.OriginalSource) is not Unit unit || IsAlreadyChosen(unit)) return;
         e.Handled = true;
         if (e.ClickCount == 2)
         {
@@ -155,14 +253,25 @@ public partial class AddUnitsWindow : UserControl
             return;
         }
         if (!ticked.Remove(unit)) ticked.Add(unit);
-        TicksChanged?.Invoke();
+        ShowTicks();
         ShowAddButton();
     }
 
-    private static AddUnitsRow? RowAt(object? source)
+    /// <summary>The ticks shown again, on the rows and on the tiles.</summary>
+    private void ShowTicks()
+    {
+        tickedTiles.SetAll(ticked);
+        TicksChanged?.Invoke();
+    }
+
+    /// <summary>The unit of the row or tile under the mouse; null elsewhere.</summary>
+    private static Unit? UnitAt(object? source)
     {
         for (DependencyObject? at = source as DependencyObject; at is not null; at = at is Visual ? VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
-            if (at is AddUnitsRow row) return row;
+        {
+            if (at is AddUnitsRow { Unit: Unit inRow }) return inRow;
+            if (at is UnitTile tile) return tile.Unit;
+        }
         return null;
     }
 
@@ -171,13 +280,14 @@ public partial class AddUnitsWindow : UserControl
     {
         AddButton.IsEnabled = ticked.Count > 0;
         AddButton.Content = ticked.Count > 1 ? Texts.Get("Units.AddUnits.AddSeveral", ("count", ticked.Count)) : Texts.Get("Units.AddUnits.Add");
+        AddButton.ToolTip = Texts.Get("Units.AddUnits.Add.Tip");
     }
 
     private void AddClicked(object sender, RoutedEventArgs e) => AddTicked();
 
     private void AddTicked()
     {
-        if (ticked.Count == 0) return;
+        if (!AddButton.IsEnabled) return;
         List<Unit> picked = [.. ticked];
         Close();
         add(picked);
@@ -194,7 +304,7 @@ public partial class AddUnitsWindow : UserControl
             e.Handled = true;
             Close();
         }
-        else if (e.Key == Key.Enter && ticked.Count > 0)
+        else if (e.Key == Key.Enter && AddButton.IsEnabled)
         {
             e.Handled = true;
             AddTicked();

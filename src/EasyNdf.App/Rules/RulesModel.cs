@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text.Json.Nodes;
 using EasyNdf.Data;
+using EasyNdf.Data.Divisions;
 using EasyNdf.Engine.Mods;
 using EasyNdf.App.Text;
 
@@ -39,14 +40,40 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>Every mod's name, for the Mod box, in name order.</summary>
     public IReadOnlyList<string> ModNames => [.. Data.Mods.Select(m => m.Name)];
 
-    /// <summary>The open mod's presets, in name order as the HTML app sorts them.</summary>
-    public IReadOnlyList<ModPreset> Presets => [.. OpenMod.Presets.OrderBy(p => p.Name, StringComparer.Create(CultureInfo.InvariantCulture, false))];
+    /// <summary>
+    /// The open mod's presets of its own, in name order as the HTML app sorts them; its Armory presets are listed apart
+    /// (<see cref="ArmoryPresetsOfOpenMod"/>).
+    /// </summary>
+    public IReadOnlyList<ModPreset> Presets =>
+        [.. OpenMod.Presets.Where(p => !p.IsArmoryPreset).OrderBy(p => p.Name, StringComparer.Create(CultureInfo.InvariantCulture, false))];
 
-    /// <summary>The preset whose rules are shown; null when the mod has none.</summary>
-    public ModPreset? OpenPreset { get; private set; }
+    /// <summary>The open mod's Armory presets, listed under Armory Changes, in the order they are listed and run.</summary>
+    public IReadOnlyList<ModPreset> ArmoryPresetsOfOpenMod => ArmoryPresets.AllOf(OpenMod);
 
-    /// <summary>The selected presets, in the order listed. The open one is always among them.</summary>
-    public IReadOnlyList<ModPreset> SelectedPresets => [.. Presets.Where(selectedPresets.Contains)];
+    /// <summary>
+    /// The preset whose rules are shown; null when the mod has none, or a part of the Armory with no changes is open
+    /// (<see cref="OpenEmptyArmoryPart"/>). Opening a preset closes that part.
+    /// </summary>
+    public ModPreset? OpenPreset
+    {
+        get => openPreset;
+        private set
+        {
+            openPreset = value;
+            if (value is not null) OpenEmptyArmoryPart = null;
+        }
+    }
+
+    private ModPreset? openPreset;
+
+    /// <summary>
+    /// The part of the Armory open from the Armory Changes list while no change was made in it, so it has no preset
+    /// and no rules to show; null otherwise. Its preset opens in its place once a change is made there.
+    /// </summary>
+    public ArmoryPart? OpenEmptyArmoryPart { get; private set; }
+
+    /// <summary>The selected presets, in the order listed, the Armory's last. The open one is always among them.</summary>
+    public IReadOnlyList<ModPreset> SelectedPresets => [.. Presets.Concat(ArmoryPresetsOfOpenMod).Where(selectedPresets.Contains)];
 
     /// <summary>Whether a preset is selected.</summary>
     public bool IsSelected(ModPreset preset) => selectedPresets.Contains(preset);
@@ -66,16 +93,38 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>What the last action did (the HTML app's <c>#clipNote</c>).</summary>
     public string Note { get; private set; } = "";
 
-    /// <summary>"Presets in WARNO Tactical Overhaul".</summary>
-    public string PresetsTitle => Texts.Get("Rules.PresetsIn", ("mod", OpenMod.Name));
+    /// <summary>"Presets": the open mod's, the one in bold in the mod list (its name made the heading too long to read).</summary>
+    public string PresetsTitle => Texts.Get("Rules.Presets");
 
-    /// <summary>"Rules in WTO (Ammunition.ndf)", or "Rules" with no preset open.</summary>
-    public string RulesTitle => OpenPreset is null ? Texts.Get("Rules.Rules") : Texts.Get("Rules.RulesIn", ("preset", OpenPreset.Name));
+    /// <summary>"Rules in WTO (Ammunition.ndf)", "Rules in Units" for a part of the Armory with no changes, or "Rules" with nothing open.</summary>
+    public string RulesTitle =>
+        OpenPreset is not null ? Texts.Get("Rules.RulesIn", ("preset", OpenPreset.Name))
+        : OpenEmptyArmoryPart is ArmoryPart part ? Texts.Get("Rules.RulesIn", ("preset", ArmoryPartTexts.Name(part)))
+        : Texts.Get("Rules.Rules");
 
     /// <summary>What the rule list says when it has no rules.</summary>
-    public string NoRulesText => OpenPreset is not null
-        ? Texts.Get("Rules.NoRules")
+    public string NoRulesText =>
+        OpenPreset is not null ? Texts.Get("Rules.NoRules")
+        : OpenEmptyArmoryPart is ArmoryPart part ? Texts.Get("Rules.Armory.NoChanges", ("part", ArmoryPartTexts.Name(part)))
         : Texts.Get("Rules.NoRulesNoPreset");
+
+    /// <summary>
+    /// A click on a line of the Armory Changes list: the part's preset opens, alone; a part with no changes yet opens
+    /// with no rules, saying where its changes are made.
+    /// </summary>
+    public void OpenArmoryPart(ArmoryPart part)
+    {
+        if (ArmoryPresets.Of(OpenMod, part) is ModPreset preset)
+        {
+            ClickPreset(preset, control: false, shift: false);
+            return;
+        }
+        OpenPreset = null;
+        OpenEmptyArmoryPart = part;
+        selectedPresets.Clear();
+        CurrentRule = 0;
+        Refresh();
+    }
 
     /// <summary>What the preset list says when the mod has no presets.</summary>
     public static string NoPresetsText => Texts.Get("Rules.NoPresetsInThis");
@@ -112,31 +161,32 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         var mod = new Mod { Name = name };
         Data.ModStore.Add(mod);
         Data.Open(mod);
+        // a mod made to work in starts on; a copy or an import keeps its original's switch
+        EasyNdf.App.Mods.ModStack.SetOn(mod, on: true);
         OpenPreset = null;
         Refresh();
     }
 
-    /// <summary>"Rename": the open mod gets a new name; its file follows.</summary>
+    /// <summary>"Rename": the open mod gets a new name; its file follows, and so do its place and switch on the Mods tab.</summary>
     public void RenameMod(string name)
     {
         Mod mod = OpenMod;
+        EasyNdf.App.Mods.ModStack.Renamed(mod.Name, name);
         mod.Name = name;
         Data.Save(mod);
         Data.Open(mod);
         Refresh();
     }
 
-    /// <summary>"Make copy": a copy of the open mod with all its presets, "Name (Copy)", opened.</summary>
+    /// <summary>"Make copy": a copy of the open mod with all its presets and Armory changes, "Name (Copy)", opened.</summary>
     public void CopyMod()
     {
         Mod from = OpenMod;
-        var copy = new Mod
-        {
-            Name = Data.ModStore.FreeName(Texts.Get("Rules.Mod.CopyName", ("mod", from.Name))),
-            Watermark = from.Watermark,
-            Presets = [.. from.Presets.Select(p => new ModPreset { Name = p.Name, Rules = (JsonArray)p.Rules.DeepClone() })],
-        };
+        Mod copy = from.DeepCopy();
+        copy.Name = Data.ModStore.FreeName(Texts.Get("Rules.Mod.CopyName", ("mod", from.Name)));
         Data.ModStore.Add(copy);
+        // a copy is switched on or off as its original is; two mods that change the same value are marked ⚠
+        EasyNdf.App.Mods.ModStack.SetOn(copy, EasyNdf.App.Mods.ModStack.IsOn(from));
         Data.Open(copy);
         OpenPreset = null;
         Refresh();
@@ -146,6 +196,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>"Delete": the open mod goes, with its presets; the first mod left opens.</summary>
     public void DeleteMod()
     {
+        EasyNdf.App.Mods.ModStack.Deleted(OpenMod.Name);
         Data.ModStore.Delete(OpenMod);
         if (Data.Mods.Count == 0) Data.ModStore.Add(new Mod { Name = ModStore.BlankModName }); // there is always a mod to work in
         Data.Open(Data.Mods[0]);
@@ -216,13 +267,24 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         Refresh();
     }
 
+    /// <summary>
+    /// The Applies To window's Done: the files a rule set applies to, or null for the files its name holds. Saved in
+    /// the mod, so Undo covers it, and the Files tab follows.
+    /// </summary>
+    public void SetAppliesTo(ModPreset ruleSet, List<string>? files)
+    {
+        ruleSet.AppliesTo = files;
+        Data.Save(OpenMod);
+        Refresh();
+    }
+
     /// <summary>"Duplicate": a copy of each selected preset, "Name copy", selected.</summary>
     public void DuplicatePresets()
     {
         var made = new List<ModPreset>();
         foreach (ModPreset preset in SelectedPresets)
         {
-            var copy = new ModPreset { Name = OpenMod.FreePresetName(Texts.Get("Rules.Preset.CopyName", ("name", preset.Name))), Rules = (JsonArray)preset.Rules.DeepClone() };
+            var copy = new ModPreset { Name = OpenMod.FreePresetName(Texts.Get("Rules.Preset.CopyName", ("name", preset.Name))), Rules = (JsonArray)preset.Rules.DeepClone(), AppliesTo = preset.AppliesTo is null ? null : [.. preset.AppliesTo] };
             ReseedClones(copy.Rules);
             OpenMod.Presets.Add(copy);
             made.Add(copy);
@@ -232,17 +294,33 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         Data.Save(OpenMod);
     }
 
-    /// <summary>"Delete": the selected presets go. Files that used them have no preset after.</summary>
-    public void DeletePresets()
+    /// <summary>
+    /// "Delete": the selected presets go. Files that used them have no preset after. An Armory preset's
+    /// changes are taken back first (see <see cref="Pages.RulesPage"/>), so it is never deleted with changes left.
+    /// </summary>
+    public void DeletePresets() => DeletePresets(SelectedPresets);
+
+    /// <summary>
+    /// Deletes these presets, those still in the mod. The page passes the ones picked before it asked: taking back the
+    /// Armory's changes can remove an Armory preset meanwhile, and the selection then moves to another preset.
+    /// </summary>
+    public void DeletePresets(IReadOnlyList<ModPreset> picked)
     {
-        IReadOnlyList<ModPreset> gone = SelectedPresets;
+        List<ModPreset> gone = [.. picked.Where(OpenMod.Presets.Contains)];
+        // an Armory preset goes when the Armory's changes do, so nothing they make is left without its rules
+        if (gone.Any(preset => preset.IsArmoryPreset && preset.Rules.Any(ArmoryPresets.IsLocked)))
+        {
+            Say(Texts.Get("Rules.Locked.PresetRefused"));
+            return;
+        }
         foreach (ModPreset preset in gone) OpenMod.Presets.Remove(preset);
         selectedPresets.Clear();
         OpenPreset = null;
         CurrentRule = 0;
-        Data.Save(OpenMod);
+        // an Armory preset already removed with the Armory's changes still counts as deleted
+        if (gone.Count > 0) Data.Save(OpenMod);
         Refresh();
-        Say(Texts.Get("Rules.Deleted", ("what", Count(gone.Count))));
+        Say(Texts.Get("Rules.Deleted", ("what", Count(picked.Count))));
     }
 
     /// <summary>Selects and opens presets just made.</summary>
@@ -295,7 +373,8 @@ public sealed partial class RulesModel : INotifyPropertyChanged
             return presetItems.Count > 0;
         }
 
-        bool madePreset = ruleItems.Count > 0 && OpenPreset is null;
+        bool madePreset = ruleItems.Count > 0 && NeedsPresetForNewRules;
+        string madeNote = madePreset ? MadePresetNoteForOpen() : "";
         if (madePreset) MakePresetForRules();
         if (OpenPreset is null) { Say(Texts.Get("Rules.Paste.SelectRule")); return presetItems.Count > 0; }
         var done = new List<string>();
@@ -315,7 +394,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
             done.AddRange(rows);
         }
         SaveRules();
-        Say(Texts.Get("Rules.Paste.Done", ("what", string.Join(" " + Texts.Get("Rules.Paste.And") + " ", done))) + (madePreset ? " " + MadePresetNote : ""));
+        Say(Texts.Get("Rules.Paste.Done", ("what", string.Join(" " + Texts.Get("Rules.Paste.And") + " ", done))) + (madePreset ? " " + madeNote : ""));
         return presetItems.Count > 0;
     }
 
@@ -344,7 +423,8 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         foreach (JsonObject item in pasted)
         {
             string name = ((string?)item["PresetName"] ?? "").Trim();
-            var preset = new ModPreset { Name = OpenMod.FreePresetName(name == "" ? Texts.Get("Rules.PresetName") : name), Rules = RuleLoading.LoadRules(item["Rules"]) };
+            var preset = new ModPreset { Name = OpenMod.FreePresetName(name == "" ? Texts.Get("Rules.PresetName") : name), Rules = RuleLoading.LoadRules(item["Rules"]),
+                AppliesTo = ModFiles.AppliesToOf(item) };
             OpenMod.Presets.Add(preset);
             made.Add(preset);
         }
@@ -415,9 +495,31 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         ruleAnchor = index;
     }
 
+    /// <summary>
+    /// Whether a rule is locked: one the Armory made in an Armory preset (<see cref="ArmoryPresets"/>). It is
+    /// changed in the Armory, or made editable, not changed here.
+    /// </summary>
+    public bool IsLocked(int index) =>
+        OpenPreset?.IsArmoryPreset == true && index >= 0 && index < Rules.Count && ArmoryPresets.IsLocked(Rules[index]);
+
+    /// <summary>Whether the rule open in the rule window is locked: the window then only shows it.</summary>
+    public bool IsOpenRuleLocked => IsLocked(CurrentRule);
+
+    /// <summary>
+    /// Refuses a change to locked rules, saying where they are changed instead.
+    /// </summary>
+    /// <returns>True when refused, so the caller stops.</returns>
+    public bool RefusedForLocked(IEnumerable<int> places)
+    {
+        if (!places.Any(IsLocked)) return false;
+        Say(Texts.Get("Rules.Locked.Refused"));
+        return true;
+    }
+
     /// <summary>A rule's switch.</summary>
     public void SetRuleOn(int index, bool on)
     {
+        if (RefusedForLocked([index])) { Refresh(); return; }
         Rules[index]!["Enabled"] = on;
         SaveRules();
     }
@@ -451,6 +553,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     {
         int other = index + direction;
         if (other < 0 || other >= Rules.Count) return;
+        if (RefusedForLocked([index, other])) return;
         Swap(index, other);
         SelectOnly(other);
         Reveal(other);
@@ -460,6 +563,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>A rule's +: a copy of it below it, selected.</summary>
     public void DuplicateRule(int index)
     {
+        if (RefusedForLocked([index])) return;
         var copy = (JsonObject)Rules[index]!.DeepClone();
         ReseedClone(copy);
         Rules.Insert(index + 1, copy);
@@ -476,6 +580,8 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     {
         IReadOnlyList<int> picked = SelectedRules;
         if (picked.Count == 0) return;
+        // a rule cannot be moved past one the Armory made, nor can one of those move
+        if (RefusedForLocked(picked.Concat(picked.Select(place => place + direction)))) return;
         var placed = new HashSet<int>();
         var movedTo = new Dictionary<int, int>();
         foreach (int place in direction < 0 ? picked : picked.Reverse())
@@ -506,6 +612,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// </summary>
     public void MoveSelectedGroups(int direction)
     {
+        if (OpenPreset?.IsArmoryPreset == true && RefusedForLocked(Enumerable.Range(0, Rules.Count))) return;
         List<(int Start, int End)> groups = GroupBlocks();
         var picked = new HashSet<int>(SelectedRules);
         List<JsonNode?> selected = [.. picked.Select(place => Rules[place])];
@@ -583,7 +690,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     public void DuplicateSelectedRules()
     {
         IReadOnlyList<int> picked = SelectedRules;
-        if (picked.Count == 0) return;
+        if (picked.Count == 0 || RefusedForLocked(picked)) return;
         int at = picked[^1] + 1;
         List<JsonObject> copies = [.. picked.Select(place => (JsonObject)Rules[place]!.DeepClone())];
         for (int i = 0; i < copies.Count; i++)
@@ -611,6 +718,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>"Enable" or "Disable" in the menu: every selected rule.</summary>
     public void SetSelectedRulesOn(bool on)
     {
+        if (RefusedForLocked(SelectedRules)) return;
         foreach (int place in SelectedRules) Rules[place]!["Enabled"] = on;
         SaveRules();
     }
@@ -641,7 +749,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>Deletes rules, by their places.</summary>
     public void DeleteRules(IReadOnlyList<int> places)
     {
-        if (places.Count == 0) return;
+        if (places.Count == 0 || RefusedForLocked(places)) return;
         string label = places.Count == 1 ? Texts.Get("Rules.Rule.Named", ("rule", RuleName(places[0]))) : CountRules(places.Count);
         int first = places.Min();
         foreach (int place in places.OrderDescending()) Rules.RemoveAt(place);
@@ -651,27 +759,54 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         Say(Texts.Get("Rules.Deleted", ("what", label)));
     }
 
-    /// <summary>"New rule": a new rule of a type after the selected one, selected. With no preset, one is made to hold it.</summary>
+    /// <summary>
+    /// "New rule": a new rule of a type after the selected one, selected. With no preset of the user's own open, one is
+    /// made to hold it (see <see cref="NeedsPresetForNewRules"/>).
+    /// </summary>
     public void NewRule(string kind) => AddRule(RuleLoading.NewRule(kind));
 
     /// <summary>A rule made elsewhere (such as the Units tab's "New Rule for This Unit"), added as <see cref="NewRule"/> adds one.</summary>
     public void AddRule(JsonObject rule)
     {
-        bool madePreset = OpenPreset is null;
+        bool madePreset = NeedsPresetForNewRules;
+        string madeNote = madePreset ? MadePresetNoteForOpen() : "";
         if (madePreset) MakePresetForRules();
         int at = Rules.Count == 0 ? 0 : Math.Min(CurrentRule + 1, Rules.Count);
         Rules.Insert(at, rule);
         SelectOnly(at);
         Reveal(at);
         SaveRules();
-        if (madePreset) Say(MadePresetNote);
+        if (madePreset) Say(madeNote);
     }
+
+    /// <summary>
+    /// Whether rules added now need a preset made for them: none is open, or an Armory preset is. An Armory preset runs
+    /// only the rules the Armory made, each of which names the file it is for, so a rule added there would never run.
+    /// </summary>
+    private bool NeedsPresetForNewRules => OpenPreset is null || OpenPreset.IsArmoryPreset;
+
+    /// <summary>What to say when a preset was made for new rules: why, when an Armory preset was open, then what to do with it.</summary>
+    private string MadePresetNoteForOpen() =>
+        OpenPreset?.IsArmoryPreset == true || OpenEmptyArmoryPart is not null ? Texts.Get("Rules.Armory.OwnRulesElsewhere") + " " + MadePresetNote : MadePresetNote;
 
     /// <summary>A rule's name, or "(unnamed)".</summary>
     public string RuleName(int index) => (string?)Rules[index]?["Name"] is { Length: > 0 } name ? name : Texts.Get("Rules.Rule.Unnamed");
 
     /// <summary>Whether a rule is a Group's heading.</summary>
     public bool IsGroupHeading(int index) => (string?)Rules[index]?["Kind"] == "Group";
+
+    /// <summary>Some rules' places, with every rule under a group heading among them, up to the next heading.</summary>
+    public List<int> WithRulesUnderGroups(IReadOnlyList<int> places)
+    {
+        var all = new SortedSet<int>();
+        foreach (int place in places)
+        {
+            all.Add(place);
+            if (!IsGroupHeading(place)) continue;
+            for (int under = place + 1; under < Rules.Count && !IsGroupHeading(under); under++) all.Add(under);
+        }
+        return [.. all];
+    }
 
     /// <summary>A rule hidden inside a folded group (the HTML app's <c>ruleHidden</c>).</summary>
     public bool IsHidden(int index)
@@ -711,9 +846,21 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     public void SaveRules()
     {
         if (IsEditingRule) { Refresh(); return; }
-        Data.Save(OpenMod);
+        // the save tells every tab, this one too: its lists are drawn once, after the save, not also as it is told
+        isSavingRules = true;
+        try
+        {
+            Data.Save(OpenMod);
+        }
+        finally
+        {
+            isSavingRules = false;
+        }
         Refresh();
     }
+
+    /// <summary>Set while <see cref="SaveRules"/> saves: the notice that the mods changed does not draw the lists, as it then does.</summary>
+    private bool isSavingRules;
 
     // ---- the rule window: changes kept until Done ----
 
@@ -767,11 +914,17 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>Works out again what is open and selected, and the rule list's lines (the HTML app's renderPresetList and renderRuleList).</summary>
     public void Refresh()
     {
-        IReadOnlyList<ModPreset> listed = Presets;
+        if (isSavingRules) return;
+        // the presets that can be open: the mod's own, then its Armory presets, listed apart
+        IReadOnlyList<ModPreset> listed = [.. Presets, .. ArmoryPresetsOfOpenMod];
         if (!ReferenceEquals(OpenMod, shownMod))
         {
             // another mod: its first preset, unless the mod was only renamed
-            if (shownMod is null || OpenMod.Name != shownModName) OpenPreset = null;
+            if (shownMod is null || OpenMod.Name != shownModName)
+            {
+                OpenPreset = null;
+                OpenEmptyArmoryPart = null;
+            }
             shownMod = OpenMod;
         }
         shownModName = OpenMod.Name;
@@ -782,7 +935,9 @@ public sealed partial class RulesModel : INotifyPropertyChanged
             OpenPreset = sameName;
             if (sameName is not null) CurrentRule = Math.Max(0, Math.Min(CurrentRule, sameName.Rules.Count - 1));
         }
-        if (OpenPreset is null) { OpenPreset = listed.FirstOrDefault(); CurrentRule = 0; }
+        // a part of the Armory open with no changes: its preset opens once the first change is made
+        if (OpenEmptyArmoryPart is ArmoryPart emptyPart && ArmoryPresets.Of(OpenMod, emptyPart) is ModPreset made) OpenPreset = made;
+        if (OpenPreset is null && OpenEmptyArmoryPart is null) { OpenPreset = listed.FirstOrDefault(); CurrentRule = 0; }
         selectedPresets.RemoveWhere(p => !listed.Contains(p));
         if (OpenPreset is not null && !selectedPresets.Contains(OpenPreset)) { selectedPresets.Clear(); selectedPresets.Add(OpenPreset); }
         if (presetAnchor is null || !listed.Contains(presetAnchor)) presetAnchor = OpenPreset;
@@ -812,7 +967,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
             bool off = rule["Enabled"]?.GetValue<bool>() == false || (!isGroup && inGroup && groupOff);
             int hidden = 0;
             if (isGroup && folded) for (int k = i + 1; k < rules.Count && (string?)rules[k]?["Kind"] != "Group"; k++) hidden++;
-            rows.Add(new RuleRow { Index = i, Rule = rule, IsSelected = selectedRules.Contains(i), IsInGroup = !isGroup && inGroup, IsOff = off, HiddenCount = hidden });
+            rows.Add(new RuleRow { Index = i, Rule = rule, IsSelected = selectedRules.Contains(i), IsInGroup = !isGroup && inGroup, IsOff = off, HiddenCount = hidden, IsLocked = IsLocked(i) });
         }
         RuleRows = rows;
         Changed();

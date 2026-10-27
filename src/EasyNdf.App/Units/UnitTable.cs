@@ -188,8 +188,7 @@ public sealed class UnitTableRowView : Bevel
         Unit unit = line.Unit;
         picture.Source = unit.PictureSource;
         picture.Factory = unit.Factory;
-        name.Text = unit.Name;
-        name.ToolTip = unit.Name;
+        ModMarks.Show(name, unit, UnitField.Name, unit.Name, game => game.Name, tip: unit.Name);
         nation.Text = UnitNames.Nation(unit.Nation);
         nationMark.Show(unit.Nation, line.Actions.IsFirstSide(unit));
         role.Text = UnitNames.RoleOf(unit);
@@ -204,11 +203,21 @@ public sealed class UnitTableRowView : Bevel
             editorSlot.Content = editor;
             cell.Visibility = editor is null ? Visibility.Visible : Visibility.Collapsed;
             double? value = shown.Number?.Invoke(unit);
-            number.Text = UnitNumbers.Of(value);
+            Func<Unit, double?>? read = shown.Number;
+            ModMarks.Show(number, unit, FieldOf(shown.Key), UnitNumbers.Of(value), each => UnitNumbers.Of(read?.Invoke(each)));
             meter.Value = value;
             meter.FullBar = line.Most.GetValueOrDefault(shown.Key);
         }
         ShowState();
+    }
+
+    /// <summary>The unit's value a number column shows (<see cref="UnitField"/>): its key, but for Range, the longest range.</summary>
+    private static string FieldOf(string columnKey) => columnKey == "Range" ? UnitField.LongestRange : columnKey;
+
+    /// <summary>The table's columns were resized: the row takes their widths now.</summary>
+    internal void ShowWidths()
+    {
+        if (line is not null) SetWidths(line.Widths);
     }
 
     /// <summary>Gives the columns the table's widths, changing only those that differ.</summary>
@@ -228,7 +237,7 @@ public sealed class UnitTableRowView : Bevel
     /// <summary>The hover colour when selected, the selection colour under the mouse, else none.</summary>
     private void ShowState()
     {
-        if (line is not null && ReferenceEquals(line.Selection.Selected, line.Unit)) SetResourceReference(BackgroundProperty, "hover");
+        if (line is not null && line.Selection.IsSelected(line.Unit)) SetResourceReference(BackgroundProperty, "hover");
         else if (IsMouseOver) SetResourceReference(BackgroundProperty, "sel");
         else Background = Brushes.Transparent;
     }

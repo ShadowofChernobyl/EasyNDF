@@ -43,6 +43,6 @@ For a PC that draws the app oddly: `--render software` draws without the graphic
 
 ## License
 
-EasyNDF is free software under the [GNU General Public License, version 3](LICENSE.txt), with two additional terms (section 7): forks may not call themselves EasyNDF or suggest that they are, and modified versions must be marked as different from the original. The code it includes from others is under the MIT License (see THIRD-PARTY-NOTICES.txt).
+EasyNDF is free software under the [GNU Affero General Public License, version 3](LICENSE.txt), with two additional terms (section 7): forks may not call themselves EasyNDF or suggest that they are, and modified versions must be marked as different from the original. The code it includes from others is under the MIT License (see THIRD-PARTY-NOTICES.txt).
 
 "ShadowofChernobyl" is the author's user name. Despite it, the author is not involved with GSC Game World or any of its products.

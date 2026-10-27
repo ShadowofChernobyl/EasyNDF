@@ -89,7 +89,8 @@ public sealed partial class RuleRunner
                 if (group.On) WarnAboutNumberConditions(group.Conditions, current.Name);
                 continue;
             }
-            if (kind == "Variable" || !rule.Enabled) continue;
+            // Text and File rules write a dictionary file and a file of the mod's own, outside the engine, on export
+            if (kind is "Variable" or "Text" or "File" || !rule.Enabled) continue;
             if (group is { On: false })
             {
                 current.OffByGroup = true;
@@ -250,7 +251,7 @@ public sealed partial class RuleRunner
     /// </summary>
     private sealed class Scope
     {
-        private static readonly HashSet<string> ScopedKinds = ["Edit", "Replace", "Scale", "Formula", "Check"];
+        private static readonly HashSet<string> ScopedKinds = ["Edit", "Replace", "Scale", "Formula", "Check", "Remove"];
 
         private readonly RuleRunner runner;
         private readonly List<Condition> conditions;
@@ -313,6 +314,15 @@ public sealed partial class RuleRunner
             return found;
         }
 
+        /// <summary>
+        /// Whether a condition on the descriptor's title rules out every object inside it. An object standing in for its
+        /// descriptor has the descriptor's title, so when every condition must pass and one on the title fails, none of
+        /// its objects can pass, and they are not looked for. The result is the same; the Armory's rules (one for each
+        /// unit value changed, each naming one division's rule) no longer walk every unit line of DivisionRules.ndf.
+        /// </summary>
+        private bool TitleRulesOut(Declaration descriptor) =>
+            gateIsAll && conditions.Any(c => c.OperandInUse == Conditions.DescriptorTitle && !Conditions.Test(descriptor, c));
+
         /// <summary>An object inside a descriptor, standing in for one: its title is the descriptor's, its type its own.</summary>
         private static Declaration StandIn(Declaration top, ObjectValue obj)
         {
@@ -339,6 +349,7 @@ public sealed partial class RuleRunner
             foreach (var w in runner.work.ToList())
             {
                 if (w.IsRemoved || w.IsAdded || !runner.InGroup(w.Declaration!)) continue;
+                if (TitleRulesOut(w.Declaration!)) continue;
                 var found = ObjectsOfType(w.Declaration!.Value, []);
                 if (found.Count == 0) continue;
 
@@ -375,9 +386,16 @@ public sealed partial class RuleRunner
 
             foreach (var w in constants) w.Own();
             var standIn = AllConstants();
+            // each constant's property, kept before the actions run: Remove Property takes some out of the list
+            List<Property> before = [.. ((ObjectValue)standIn.Value).Properties];
             apply(new WorkItem { Declaration = standIn, IsOwnCopy = true });
             var properties = ((ObjectValue)standIn.Value).Properties;
-            for (int k = 0; k < properties.Count; k++) constants[k].Declaration!.Value = properties[k].Value;
+            for (int k = 0; k < before.Count; k++)
+            {
+                // a constant whose property was removed is taken out of the file, as a Remove rule takes a descriptor
+                if (!properties.Contains(before[k])) constants[k].IsRemoved = true;
+                else constants[k].Declaration!.Value = before[k].Value;
+            }
         }
     }
 
@@ -409,13 +427,21 @@ public sealed partial class RuleRunner
         });
     }
 
-    /// <summary>Remove: takes out every descriptor that passes the conditions. It needs at least one.</summary>
+    /// <summary>
+    /// Remove: takes out every descriptor that passes the conditions, or, pointed at a type, every object of that type
+    /// that passes them from the list it is in. It needs at least one condition.
+    /// </summary>
     private void RunRemove(Scope scope, List<Condition> conditions)
     {
         if (conditions.Count == 0)
         {
             current.Skipped++;
             FileNote(current.Name, "Remove", "Nothing removed. A Remove rule needs at least one condition.");
+            return;
+        }
+        if (scope.IsType)
+        {
+            RemoveObjectsFromLists(scope);
             return;
         }
         scope.ForEach(whenNoConditions: false, w =>
@@ -425,6 +451,63 @@ public sealed partial class RuleRunner
             current.Edits++;
             FileNote(w.Declaration!.Name, "Remove", "Removed from the file.");
         });
+    }
+
+    /// <summary>
+    /// A Remove rule pointed at a type: each object that passes the conditions is taken out of the list it is in,
+    /// such as one unit's line in a division's list of units. An object that is not in a list (a property's value)
+    /// cannot be taken out without breaking its descriptor, so it is left with a note.
+    /// </summary>
+    private void RemoveObjectsFromLists(Scope scope)
+    {
+        var toRemove = new Dictionary<NdfValue, string>(ReferenceEqualityComparer.Instance);
+        scope.ForEach(whenNoConditions: false, w => toRemove[w.Declaration!.Value] = w.Declaration.LogName);
+        if (toRemove.Count == 0) return;
+
+        // the matching objects are in the descriptors' own copies, which ForEach has just made
+        foreach (var w in work.Where(w => w.IsOwnCopy && !w.IsRemoved))
+            RemoveFromLists(w.Declaration!.Value, toRemove);
+
+        foreach (var (_, label) in toRemove)
+        {
+            current.Skipped++;
+            FileNote(label, "Remove", "Not removed. It is not in a list.");
+        }
+    }
+
+    /// <summary>
+    /// Looks through a value for lists holding objects to remove, takes them out, and crosses them off
+    /// <paramref name="toRemove"/>.
+    /// </summary>
+    private void RemoveFromLists(NdfValue value, Dictionary<NdfValue, string> toRemove)
+    {
+        switch (value)
+        {
+            case ObjectValue obj:
+                foreach (var property in obj.Properties) RemoveFromLists(property.Value, toRemove);
+                break;
+            case ListValue list:
+                for (int index = list.Items.Count - 1; index >= 0; index--)
+                {
+                    NdfValue item = list.Items[index];
+                    if (toRemove.Remove(item, out string? label))
+                    {
+                        list.RemoveItemAt(index);
+                        current.Matched++;
+                        current.Edits++;
+                        FileNote(label, "Remove", "Removed from its list.");
+                    }
+                    else RemoveFromLists(item, toRemove);
+                }
+                break;
+            case PairValue pair:
+                RemoveFromLists(pair.First, toRemove);
+                RemoveFromLists(pair.Second, toRemove);
+                break;
+            case AssignValue assign:
+                RemoveFromLists(assign.Value, toRemove);
+                break;
+        }
     }
 
     /// <summary>Add: adds a descriptor written in full, at the end of the file or after a named descriptor.</summary>

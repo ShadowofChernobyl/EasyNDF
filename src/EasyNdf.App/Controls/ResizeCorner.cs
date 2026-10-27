@@ -37,6 +37,7 @@ public sealed class ResizeCorner : Thumb
         Cursor = Cursors.SizeNS;
         Template = null;
         snapping = new PixelSnapping(this);
+        ToolTip = Text.Texts.Get("Common.ResizeGrip.Tip");
         DragDelta += Dragged;
     }
 
@@ -49,11 +50,33 @@ public sealed class ResizeCorner : Thumb
         foreach ((int x, int y) in Light) drawing.DrawRectangle(LightInk, null, new Rect(corner.Right + x, corner.Bottom + y, 1, 1));
     }
 
+    /// <summary>The height the box given as <see cref="Target"/> had before it was first dragged, which a double-click puts back.</summary>
+    private double? targetHeightAtFirst;
+
+    /// <summary>A double-click puts the box back to the height it had at first, as double-clicking any bar between panes does.</summary>
+    protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2)
+        {
+            base.OnMouseLeftButtonDown(e);
+            return;
+        }
+        e.Handled = true;
+        if (Target is FrameworkElement target)
+        {
+            if (targetHeightAtFirst is double first && !double.IsNaN(first)) target.Height = first;
+            else target.ClearValue(HeightProperty);
+            return;
+        }
+        if (TemplatedParent is TextBox box) box.ClearValue(HeightProperty);
+    }
+
     /// <summary>Dragging makes the text box taller or shorter; never shorter than one line. A box given instead keeps to its own least and most height.</summary>
     private void Dragged(object sender, DragDeltaEventArgs e)
     {
         if (Target is FrameworkElement target)
         {
+            targetHeightAtFirst ??= target.Height;
             target.Height = Math.Clamp(target.ActualHeight + e.VerticalChange, target.MinHeight, Math.Max(target.MinHeight, target.MaxHeight));
             return;
         }

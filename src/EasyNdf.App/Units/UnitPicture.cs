@@ -28,6 +28,12 @@ public sealed class UnitPicture : FrameworkElement
     private readonly PixelSnapping snapping;
     private ImageSource? picture;
 
+    /// <summary>
+    /// The source and size of the picture drawn now, so a frame resized within the same size (each step of a pane being
+    /// dragged wider) does not look for it again.
+    /// </summary>
+    private (string Source, int Size)? drawnFor;
+
     /// <summary>Builds an empty frame in the theme's colours.</summary>
     public UnitPicture()
     {
@@ -39,7 +45,12 @@ public sealed class UnitPicture : FrameworkElement
         // the best of WPF's ways to resize a picture, for those drawn smaller or larger than their own pixels
         RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
         // a picture is read when the frame is first drawn, and again if it was made smaller than now needed
-        SizeChanged += (_, _) => Load();
+        SizeChanged += (_, e) =>
+        {
+            lastResized = DateTime.UtcNow;
+            // a frame hidden with its view (another sub-tab shown) has no size: nothing to read for it
+            if (e.NewSize.Width > 0) Load();
+        };
     }
 
     /// <inheritdoc cref="SourceProperty"/>
@@ -56,6 +67,18 @@ public sealed class UnitPicture : FrameworkElement
 
     /// <summary>The picture made larger for this frame's size on this screen, and that size, so it is made once.</summary>
     private (ImageSource From, int Width, int Height, BitmapSource Picture)? enlarged;
+
+    /// <summary>When the frame last changed size.</summary>
+    private DateTime lastResized;
+
+    /// <summary>
+    /// How long the frame's size must stay put before a sharp copy is made for it. Making one takes a while, and
+    /// making one for each step of a pane being dragged wider made the drag slow.
+    /// </summary>
+    private static readonly TimeSpan SettleTime = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>Draws the frame again once its size has settled, to make the sharp copy then.</summary>
+    private System.Windows.Threading.DispatcherTimer? settleTimer;
 
     /// <summary>As wide as it is given, or its own Width, and five eighths of that high.</summary>
     protected override Size MeasureOverride(Size availableSize)
@@ -76,29 +99,47 @@ public sealed class UnitPicture : FrameworkElement
             Show(null);
             return;
         }
+        (string, int) wanted = (source, UnitPictureLibrary.SizeFor(width));
+        if (drawnFor == wanted) return;
         if (library.TryGetKept(source, width, out ImageSource? kept))
         {
-            Show(kept);
+            Show(kept, wanted);
             return;
         }
         Show(null);
         ImageSource? read = await library.GetAsync(source, width);
         // the frame may show another unit by now, as the list's rows are reused while it scrolls
-        if (Source == source) Show(read);
+        if (Source == source) Show(read, wanted);
     }
 
     /// <summary>Reads the picture again, for the size it is drawn at now: a list's zoom changed.</summary>
-    internal void Reload() => Load();
+    internal void Reload()
+    {
+        knownScale = null;
+        Load();
+    }
+
+    /// <summary>
+    /// The scale <see cref="DrawnScale"/> found, kept: it changes only with the list's zoom, which calls
+    /// <see cref="Reload"/>. Working it out walks up to the window, and doing it for every tile each time one changed
+    /// size took a large share of a sub-tab switch.
+    /// </summary>
+    private double? knownScale;
 
     /// <summary>How many times larger than its own size the frame is drawn on the window: 1, unless a list is zoomed.</summary>
     private double DrawnScale()
     {
+        if (knownScale is double kept) return kept;
+        // not on a window yet: 1 for now, and worked out again next time
         if (PresentationSource.FromVisual(this)?.RootVisual is not Visual window || !window.IsAncestorOf(this)) return 1;
-        return TransformToAncestor(window).TransformBounds(new Rect(0, 0, 1, 1)).Width;
+        knownScale = TransformToAncestor(window).TransformBounds(new Rect(0, 0, 1, 1)).Width;
+        return knownScale.Value;
     }
 
-    private void Show(ImageSource? shown)
+    /// <summary>Draws a picture, or the outline for none; <paramref name="from"/> says which picture it is, when one was looked for.</summary>
+    private void Show(ImageSource? shown, (string Source, int Size)? from = null)
     {
+        drawnFor = from;
         if (ReferenceEquals(picture, shown)) return;
         picture = shown;
         InvalidateVisual();
@@ -140,12 +181,32 @@ public sealed class UnitPicture : FrameworkElement
         DpiScale screen = VisualTreeHelper.GetDpi(this);
         int pixelsWide = (int)Math.Round(width * screen.DpiScaleX), pixelsHigh = (int)Math.Round(height * screen.DpiScaleY);
         if (pixelsWide <= bitmap.PixelWidth || pixelsHigh <= 0) return image;
-        if (enlarged is not var (from, madeWidth, madeHeight, made) || !ReferenceEquals(from, image) || madeWidth != pixelsWide || madeHeight != pixelsHigh)
+        if (enlarged is var (from, madeWidth, madeHeight, made) && ReferenceEquals(from, image) && madeWidth == pixelsWide && madeHeight == pixelsHigh) return made;
+        // still being resized: the copy made last (or the picture itself) is stretched to fit until the size settles
+        if (DateTime.UtcNow - lastResized < SettleTime)
         {
-            made = PictureResizer.Resize(bitmap, pixelsWide, pixelsHigh);
-            enlarged = (image, pixelsWide, pixelsHigh, made);
+            RedrawWhenSettled();
+            return enlarged is var (lastFrom, _, _, lastMade) && ReferenceEquals(lastFrom, image) ? lastMade : image;
         }
+        made = PictureResizer.Resize(bitmap, pixelsWide, pixelsHigh);
+        enlarged = (image, pixelsWide, pixelsHigh, made);
         return made;
+    }
+
+    /// <summary>Draws the frame again once its size has stayed put for <see cref="SettleTime"/>.</summary>
+    private void RedrawWhenSettled()
+    {
+        if (settleTimer is null)
+        {
+            settleTimer = new System.Windows.Threading.DispatcherTimer { Interval = SettleTime };
+            settleTimer.Tick += (_, _) =>
+            {
+                if (DateTime.UtcNow - lastResized < SettleTime) return;
+                settleTimer.Stop();
+                InvalidateVisual();
+            };
+        }
+        settleTimer.Start();
     }
 
     /// <summary>The factory's outline, faint, in the middle of the frame: 16% in from each side, 18% from the top, 22% from the bottom.</summary>

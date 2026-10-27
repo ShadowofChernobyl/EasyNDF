@@ -7,7 +7,7 @@ namespace EasyNdf.Data.Divisions;
 
 /// <summary>
 /// Reads a game's (or mod's) divisions from GameData/Generated/Gameplay/Decks: Divisions.ndf, DivisionRules.ndf and
-/// DivisionCostMatrix.ndf. WARNO gives each division a rule of its own (DivisionRule = ..._Rule); Steel Division 2 keeps
+/// DivisionCostMatrix.ndf, and their Official Battlegroups from Decks.ndf and DeckPacks.ndf. WARNO gives each division a rule of its own (DivisionRule = ..._Rule); Steel Division 2 keeps
 /// every division's rule in one MAP, by division. Each field is looked for under both games' names.
 /// </summary>
 public static class DivisionReader
@@ -15,12 +15,18 @@ public static class DivisionReader
     private const string DecksFolder = "Generated/Gameplay/Decks/";
 
     /// <summary>Every division, in the order of Divisions.ndf. What cannot be read is added to <paramref name="problems"/>.</summary>
-    public static List<Division> Read(GameDataFiles files, GameTexts texts, List<string> problems)
+    /// <param name="files">The game's files.</param>
+    /// <param name="texts">The game's texts.</param>
+    /// <param name="problems">What could not be read.</param>
+    /// <param name="cardNames">When given, it gets the descriptor of every battlegroup card in DeckPacks.ndf.</param>
+    public static List<Division> Read(GameDataFiles files, GameTexts texts, List<string> problems, HashSet<string>? cardNames = null)
     {
         Dictionary<string, List<DivisionUnit>> rules = ReadRules(files, problems);
         Dictionary<string, IReadOnlyDictionary<string, IReadOnlyList<int>>> costs = ReadCosts(files, problems);
         HashSet<string>? listed = ReadDivisionList(files, problems);
         Dictionary<string, string> emblems = ReadEmblemSources(files, problems);
+        Dictionary<string, int> deckNumbers = ReadDeckNumbers(files);
+        List<(string Division, Battlegroup Battlegroup)> decks = BattlegroupReader.Read(files, texts, problems, cardNames);
 
         var divisions = new List<Division>();
         foreach (Declaration declaration in UnitReader.Declarations(files, DecksFolder + "Divisions.ndf", _ => true, problems))
@@ -31,9 +37,10 @@ public static class DivisionReader
             {
                 IsForMultiplayer = listed?.Contains(read.Descriptor) ?? read.Tags.Contains("DEFAULT"),
                 EmblemSource = emblems.GetValueOrDefault(read.EmblemTexture),
+                DeckNumber = deckNumbers.TryGetValue(read.Descriptor, out int number) ? number : null,
             });
         }
-        return divisions;
+        return WithBattlegroups(divisions, decks);
     }
 
     private static Division ReadDivision(
@@ -59,6 +66,10 @@ public static class DivisionReader
             Side = Text(Own(division, "DivisionCoalition")) ?? Text(Own(division, "DivisionNationalite")) ?? "",
             Country = Text(Own(division, "CountryId")) ?? "",
             TypeToken = Text(Own(division, "TypeToken")) ?? "",
+            SummaryToken = Text(Own(division, "SummaryTextToken")) ?? "",
+            Summary = texts.Get(Text(Own(division, "SummaryTextToken"))) ?? "",
+            HistoryToken = Text(Own(division, "HistoryTextToken")) ?? "",
+            History = texts.Get(Text(Own(division, "HistoryTextToken"))) ?? "",
             ActivationPoints = WholeNumber(Own(division, "MaxActivationPoints")),
             ListOrder = Number(Own(division, "InterfaceOrder")),
             EmblemTexture = Text(Own(division, "EmblemTexture")) ?? "",
@@ -70,6 +81,39 @@ public static class DivisionReader
             Costs = costMatrix is ListValue inPlace ? CostsOf(inPlace) : costs.GetValueOrDefault(costName) ?? new Dictionary<string, IReadOnlyList<int>>(),
         };
     }
+
+    /// <summary>
+    /// The divisions players can pick, each with the first deck that names it: its Official Battlegroup. (The game
+    /// allows only one; the decks of the game's scripted missions name stand-in divisions, which keep none.)
+    /// </summary>
+    private static List<Division> WithBattlegroups(List<Division> divisions, List<(string Division, Battlegroup Battlegroup)> decks)
+    {
+        var firstDeck = new Dictionary<string, Battlegroup>(StringComparer.Ordinal);
+        foreach ((string division, Battlegroup battlegroup) in decks) firstDeck.TryAdd(division, battlegroup);
+        return [.. divisions.Select(division =>
+            division.IsForMultiplayer && firstDeck.TryGetValue(division.Descriptor, out Battlegroup? battlegroup)
+                ? division with { Battlegroup = battlegroup }
+                : division)];
+    }
+
+    /// <summary>
+    /// Each division's number in deck codes: (Descriptor_Deck_Division_X, 123) in DeckSerializer.ndf's DivisionIds. The
+    /// file's one declaration has no name, so its lines are looked through rather than parsed, as for the units'.
+    /// </summary>
+    private static Dictionary<string, int> ReadDeckNumbers(GameDataFiles files)
+    {
+        var numbers = new Dictionary<string, int>(StringComparer.Ordinal);
+        using TextReader? reader = files.Open(DecksFolder + "DeckSerializer.ndf");
+        if (reader is null) return numbers;
+        while (reader.ReadLine() is string line)
+            if (DeckNumberLine.Match(line) is { Success: true } match)
+                numbers.TryAdd(match.Groups[1].Value, int.Parse(match.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
+        return numbers;
+    }
+
+    // "(Descriptor_Deck_Division_US_3rd_Arm_multi, 12)", or with "~/" in front, as Steel Division 2 writes it
+    private static readonly System.Text.RegularExpressions.Regex DeckNumberLine =
+        new(@"\([ \t]*[~/]*(Descriptor_Deck_[A-Za-z0-9_]+)[ \t]*,[ \t]*([0-9]+)[ \t]*\)", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>
     /// The divisions Steel Division 2 offers, from its DivisionList.ndf; null when the game has no such list (WARNO),

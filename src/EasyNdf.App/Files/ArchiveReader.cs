@@ -76,7 +76,6 @@ public static class ArchiveReader
         return found;
     }
 
-    /// <summary>A .ndf file, leaving out the copies macOS puts in a "__MACOSX" folder.</summary>
     /// <summary>
     /// The .ndf files in a .zip, without reading them: for a big archive such as a game's base.zip, where only some of
     /// thousands of files are wanted. <see cref="WithContent"/> then reads those.
@@ -108,9 +107,25 @@ public static class ArchiveReader
         return read;
     }
 
+    /// <summary>
+    /// A .ndf file, or a dictionary file such as UNITS.csv, leaving out the copies macOS puts in a "__MACOSX" folder, and
+    /// any file whose path could lead out of the export folder.
+    /// </summary>
     private static bool IsWanted(string pathInArchive) =>
-        pathInArchive.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase)
-        && !("/" + pathInArchive.Replace('\\', '/')).Contains("/__MACOSX/", StringComparison.Ordinal);
+        (pathInArchive.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase) || Data.Divisions.FileAndTextRules.IsDictionaryFile(pathInArchive))
+        && !("/" + pathInArchive.Replace('\\', '/')).Contains("/__MACOSX/", StringComparison.Ordinal)
+        && StaysInside(pathInArchive);
+
+    /// <summary>
+    /// Whether a path in an archive stays inside the folder it is exported to. An archive made to do harm can hold
+    /// paths such as "../../x.ndf" or "C:/x.ndf", which would otherwise make Run export write outside the export folder.
+    /// </summary>
+    private static bool StaysInside(string pathInArchive)
+    {
+        string[] folders = pathInArchive.Replace('\\', '/').Split('/');
+        if (folders.Any(folder => folder == "..")) return false;
+        return !pathInArchive.Contains(':', StringComparison.Ordinal);
+    }
 
     /// <summary>One file from an archive, with the folders it sits in (the HTML app's <c>arcItem</c>).</summary>
     private static FileToAdd Item(string archivePath, string pathInArchive, byte[]? bytes, DateTime modified)

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using EasyNdf.Engine.Mods;
 using EasyNdf.Engine.Text;
+using EasyNdf.Data.Divisions;
 using EasyNdf.Data.Languages;
 
 namespace EasyNdf.Data;
@@ -13,11 +14,47 @@ namespace EasyNdf.Data;
 public static class ModFiles
 {
     /// <summary>
-    /// The text "Export mod" saves: <c>{ModName, FormatVersion, Watermark?, Presets: [{PresetName, Rules}], Divisions?}</c>.
-    /// The HTML app reads such a file but leaves out its Divisions.
+    /// The text "Export mod" saves: <c>{ModName, FormatVersion, Watermark?, Presets: [{PresetName, Rules}], Divisions?, Units?, UnitEdits?, WeaponEdits?, Weapons?}</c>.
+    /// The HTML app reads such a file but leaves out its Divisions, Units, UnitEdits, WeaponEdits and Weapons.
     /// Conditions and actions without a name get one made from what they do, as in the HTML app.
     /// </summary>
     public static string ExportText(Mod mod) => JsonFiles.ToText(ToJson(mod, nameRows: true));
+
+    /// <summary>The text "Export mod" saves, saying too whether the mod is switched on, so an import keeps its switch.</summary>
+    /// <param name="mod">The mod.</param>
+    /// <param name="isOn">Whether it is switched on on the Mods tab.</param>
+    /// <param name="store">Where the files of the mod's File rules are kept: the mod file carries them, so it can be shared whole. Null leaves them out.</param>
+    public static string ExportText(Mod mod, bool isOn, ModFileStore? store = null)
+    {
+        JsonObject json = ToJson(mod, nameRows: true);
+        json["On"] = isOn;
+        if (store is not null && CarriedFilesToJson([mod], store) is JsonObject files) json["Files"] = files;
+        return JsonFiles.ToText(json);
+    }
+
+    /// <summary>
+    /// The files the mods' File rules carry, by the name they are kept under, each as base64 text; null when they
+    /// carry none. A file the store no longer has is left out: the rule then says so on export.
+    /// </summary>
+    private static JsonObject? CarriedFilesToJson(IEnumerable<Mod> mods, ModFileStore store)
+    {
+        var files = new JsonObject();
+        foreach (string name in mods.SelectMany(mod => FileAndTextRules.StoredNamesOf(mod.Presets.SelectMany(preset => preset.Rules))).Distinct(StringComparer.Ordinal))
+            if (store.Read(name) is byte[] content) files[name] = Convert.ToBase64String(content);
+        return files.Count > 0 ? files : null;
+    }
+
+    /// <summary>The files a mod file or backup carries, by name; none when it carries none, or one is not base64 text.</summary>
+    private static Dictionary<string, byte[]> CarriedFilesFromJson(JsonNode? files)
+    {
+        var carried = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        foreach ((string name, JsonNode? text) in files as JsonObject ?? [])
+        {
+            try { carried[name] = Convert.FromBase64String(JsonValues.AsText(text)); }
+            catch (FormatException) { /* a damaged file is left out; its rule says so on export */ }
+        }
+        return carried;
+    }
 
     /// <summary>
     /// The mod as stored in the Mods folder: the same format as "Export mod", but rows without a name stay without one,
@@ -29,25 +66,28 @@ public static class ModFiles
     /// The text "Back up all mods" saves: a list of every preset, each naming its mod. The first preset of each mod also
     /// carries the mod's watermark; versions before 0.71.0 ignore it. Mods without presets are not in it, as in the HTML app.
     /// </summary>
-    public static string BackupText(IEnumerable<Mod> mods)
+    /// <param name="mods">Every mod.</param>
+    /// <param name="store">Where the files of the mods' File rules are kept: the first entry carries them all. Null leaves them out.</param>
+    public static string BackupText(IEnumerable<Mod> mods, ModFileStore? store = null)
     {
         var all = new JsonArray();
         foreach (Mod mod in mods)
         {
             for (int i = 0; i < mod.Presets.Count; i++)
             {
-                var entry = new JsonObject
-                {
-                    ["PresetName"] = mod.Presets[i].Name,
-                    ["Mod"] = mod.Name,
-                    ["Rules"] = mod.Presets[i].Rules.DeepClone(),
-                };
+                JsonObject entry = PresetToJson(mod.Presets[i], mod.Presets[i].Rules.DeepClone());
+                entry["Mod"] = mod.Name;
                 if (i == 0 && mod.Watermark is not null) entry["Watermark"] = mod.Watermark.ToJson();
                 // the divisions ride with the first preset, as the watermark does
                 if (i == 0 && mod.Divisions.Count > 0) entry["Divisions"] = DivisionsToJson(mod);
+                if (i == 0 && mod.Units.Count > 0) entry["Units"] = UnitsToJson(mod);
+                if (i == 0 && mod.UnitEdits.Count > 0) entry["UnitEdits"] = UnitEditsToJson(mod);
+                if (i == 0 && mod.WeaponEdits.Count > 0) entry["WeaponEdits"] = WeaponEditsToJson(mod);
+                if (i == 0 && mod.Weapons.Count > 0) entry["Weapons"] = WeaponsToJson(mod);
                 all.Add(entry);
             }
         }
+        if (store is not null && all.Count > 0 && CarriedFilesToJson(mods, store) is JsonObject files) all[0]!["Files"] = files;
         return JsonFiles.ToText(all);
     }
 
@@ -79,6 +119,12 @@ public static class ModFiles
         Mod mod = ModWithPresets(name, presets);
         if (modFile["Watermark"] is JsonObject watermark) mod.Watermark = ModWatermark.FromJson(watermark);
         mod.Divisions = DivisionsFromJson(modFile["Divisions"]);
+        mod.Units = UnitsFromJson(modFile["Units"]);
+        mod.UnitEdits = UnitEditsFromJson(modFile["UnitEdits"]);
+        mod.WeaponEdits = WeaponEditsFromJson(modFile["WeaponEdits"]);
+        mod.Weapons = WeaponsFromJson(modFile["Weapons"]);
+        mod.WasOn = modFile["On"] is JsonValue on && on.TryGetValue(out bool isOn) ? isOn : null;
+        mod.CarriedFiles = CarriedFilesFromJson(modFile["Files"]);
         return mod;
     }
 
@@ -102,6 +148,16 @@ public static class ModFiles
             if (withWatermark is not null) mod.Watermark = ModWatermark.FromJson((JsonObject)withWatermark["Watermark"]!);
             JsonObject? withDivisions = byMod[name].FirstOrDefault(e => e["Divisions"] is JsonArray);
             if (withDivisions is not null) mod.Divisions = DivisionsFromJson(withDivisions["Divisions"]);
+            JsonObject? withUnits = byMod[name].FirstOrDefault(e => e["Units"] is JsonArray);
+            if (withUnits is not null) mod.Units = UnitsFromJson(withUnits["Units"]);
+            JsonObject? withUnitEdits = byMod[name].FirstOrDefault(e => e["UnitEdits"] is JsonArray);
+            if (withUnitEdits is not null) mod.UnitEdits = UnitEditsFromJson(withUnitEdits["UnitEdits"]);
+            JsonObject? withWeaponEdits = byMod[name].FirstOrDefault(e => e["WeaponEdits"] is JsonArray);
+            if (withWeaponEdits is not null) mod.WeaponEdits = WeaponEditsFromJson(withWeaponEdits["WeaponEdits"]);
+            JsonObject? withWeapons = byMod[name].FirstOrDefault(e => e["Weapons"] is JsonArray);
+            if (withWeapons is not null) mod.Weapons = WeaponsFromJson(withWeapons["Weapons"]);
+            // a backup's files ride with its first entry, for every mod
+            mod.CarriedFiles = CarriedFilesFromJson(list.OfType<JsonObject>().FirstOrDefault()?["Files"]);
             mods.Add(mod);
         }
         return mods;
@@ -123,7 +179,13 @@ public static class ModFiles
             var preset = (JsonObject)presets[i]!;
             string presetName = JsText.Trim(JsonValues.AsText(preset["PresetName"]));
             if (presetName == "") presetName = modName + " " + (i + 1);
-            mod.Presets.Add(new ModPreset { Name = mod.FreePresetName(presetName), Rules = RuleLoading.LoadRules(preset["Rules"]) });
+            mod.Presets.Add(new ModPreset
+            {
+                Name = mod.FreePresetName(presetName),
+                Rules = RuleLoading.LoadRules(preset["Rules"]),
+                ArmoryPart = ArmoryPartOf(preset),
+                AppliesTo = AppliesToOf(preset),
+            });
         }
         return mod;
     }
@@ -153,13 +215,46 @@ public static class ModFiles
     {
         var json = new JsonObject { ["ModName"] = mod.Name, ["FormatVersion"] = 1 };
         if (mod.Watermark is not null) json["Watermark"] = mod.Watermark.ToJson();
-        json["Presets"] = new JsonArray(mod.Presets.Select(p => (JsonNode)new JsonObject
-        {
-            ["PresetName"] = p.Name,
-            ["Rules"] = nameRows ? RulesWithRowNames(p.Rules) : p.Rules.DeepClone(),
-        }).ToArray());
+        json["Presets"] = new JsonArray(mod.Presets.Select(p => (JsonNode)PresetToJson(p, nameRows ? RulesWithRowNames(p.Rules) : p.Rules.DeepClone())).ToArray());
         if (mod.Divisions.Count > 0) json["Divisions"] = DivisionsToJson(mod);
+        if (mod.Units.Count > 0) json["Units"] = UnitsToJson(mod);
+        if (mod.UnitEdits.Count > 0) json["UnitEdits"] = UnitEditsToJson(mod);
+        if (mod.WeaponEdits.Count > 0) json["WeaponEdits"] = WeaponEditsToJson(mod);
+        if (mod.Weapons.Count > 0) json["Weapons"] = WeaponsToJson(mod);
         return json;
+    }
+
+    /// <summary>
+    /// A preset as the mod file keeps it; an Armory preset says so (FromArmory) and which part's changes it keeps
+    /// (ArmoryPart), and a rule set with files of its own lists them (AppliesTo). Other apps ignore both.
+    /// </summary>
+    private static JsonObject PresetToJson(ModPreset preset, JsonNode rules)
+    {
+        var json = new JsonObject { ["PresetName"] = preset.Name, ["Rules"] = rules };
+        if (preset.ArmoryPart is ArmoryPart part)
+        {
+            json["FromArmory"] = true;
+            json["ArmoryPart"] = part.ToString();
+        }
+        if (preset.AppliesTo is List<string> files) json["AppliesTo"] = new JsonArray([.. files.Select(file => (JsonNode?)file)]);
+        return json;
+    }
+
+    /// <summary>The files a rule set in a mod file lists in "AppliesTo"; null when it has none, and applies to the files its name holds.</summary>
+    public static List<string>? AppliesToOf(JsonObject preset)
+    {
+        if (preset["AppliesTo"] is not JsonArray files) return null;
+        return [.. files.Select(file => JsText.Trim(JsonValues.AsText(file))).Where(file => file != "").Distinct(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// The Armory part a preset in a mod file keeps the changes of; null for a preset of the user's own. Files from
+    /// before the Armory had parts have one Armory preset, for Divisions.
+    /// </summary>
+    private static ArmoryPart? ArmoryPartOf(JsonObject preset)
+    {
+        if (!JsonValues.IsTruthy(preset["FromArmory"])) return null;
+        return Enum.TryParse(JsonValues.AsText(preset["ArmoryPart"]), out ArmoryPart part) ? part : ArmoryPart.Divisions;
     }
 
     /// <summary>A mod's divisions as the mod file keeps them.</summary>
@@ -168,6 +263,34 @@ public static class ModFiles
     /// <summary>The divisions a mod file keeps; none when it has none.</summary>
     private static List<Divisions.ModDivision> DivisionsFromJson(JsonNode? divisions) =>
         [.. (divisions as JsonArray ?? []).OfType<JsonObject>().Select(Divisions.ModDivision.FromJson)];
+
+    /// <summary>The units a mod adds, as the mod file keeps them.</summary>
+    private static JsonArray UnitsToJson(Mod mod) => new([.. mod.Units.Select(unit => (JsonNode)unit.ToJson())]);
+
+    /// <summary>The units a mod file adds; none when it adds none.</summary>
+    private static List<Units.ModUnit> UnitsFromJson(JsonNode? units) =>
+        [.. (units as JsonArray ?? []).OfType<JsonObject>().Select(Units.ModUnit.FromJson)];
+
+    /// <summary>A mod's changes to the game's units, as the mod file keeps them.</summary>
+    private static JsonArray UnitEditsToJson(Mod mod) => new([.. mod.UnitEdits.Select(edit => (JsonNode)edit.ToJson())]);
+
+    /// <summary>The changes to the game's units a mod file keeps; none when it has none.</summary>
+    private static List<Units.UnitEdit> UnitEditsFromJson(JsonNode? edits) =>
+        [.. (edits as JsonArray ?? []).OfType<JsonObject>().Select(Units.UnitEdit.FromJson)];
+
+    /// <summary>A mod's changes to the game's weapons, as the mod file keeps them.</summary>
+    private static JsonArray WeaponEditsToJson(Mod mod) => new([.. mod.WeaponEdits.Select(edit => (JsonNode)edit.ToJson())]);
+
+    /// <summary>The changes to the game's weapons a mod file keeps; none when it has none.</summary>
+    private static List<Weapons.WeaponEdit> WeaponEditsFromJson(JsonNode? edits) =>
+        [.. (edits as JsonArray ?? []).OfType<JsonObject>().Select(Weapons.WeaponEdit.FromJson)];
+
+    /// <summary>The weapons a mod adds, as the mod file keeps them.</summary>
+    private static JsonArray WeaponsToJson(Mod mod) => new([.. mod.Weapons.Select(weapon => (JsonNode)weapon.ToJson())]);
+
+    /// <summary>The weapons a mod file adds; none when it adds none.</summary>
+    private static List<Weapons.ModWeapon> WeaponsFromJson(JsonNode? weapons) =>
+        [.. (weapons as JsonArray ?? []).OfType<JsonObject>().Select(Weapons.ModWeapon.FromJson)];
 
     /// <summary>
     /// A copy of the rules in which every condition and action has a name: an unnamed one is named from what it does,

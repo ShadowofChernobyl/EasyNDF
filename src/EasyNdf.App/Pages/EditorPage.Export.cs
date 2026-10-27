@@ -2,6 +2,8 @@ using System.IO;
 using System.Windows;
 using EasyNdf.App.Editor;
 using EasyNdf.App.Files;
+using EasyNdf.App.Rules;
+using EasyNdf.Data;
 using EasyNdf.Data.FileList;
 using EasyNdf.Engine.Editing;
 using EasyNdf.Engine.Rules;
@@ -19,6 +21,17 @@ public partial class EditorPage
     /// <summary>"Show export" shows what the file's preset would export now; "Show source" goes back to the file.</summary>
     private async void ExportClicked(object sender, RoutedEventArgs e) => await ShowExportOrSource();
 
+    /// <summary>
+    /// The rules a file's export runs, by name: the rule sets that apply to it, then the Armory's parts with rules for
+    /// it ("WTO (Ammunition.ndf) + Units"); the Armory's alone for a file no rule set applies to, such as a new unit's.
+    /// </summary>
+    private static string RulesNameOf(FileEntry entry)
+    {
+        IEnumerable<string> armory = FileRunner.ArmoryPartsFor(entry.Name).Select(ArmoryPartTexts.Name);
+        IEnumerable<string> ruleSets = entry.ModsOnFile.SelectMany(mod => mod.RuleSets);
+        return string.Join(" + ", ruleSets.Concat(armory));
+    }
+
     internal async Task ShowExportOrSource()
     {
         if (shown is null) return;
@@ -28,7 +41,8 @@ public partial class EditorPage
             return;
         }
         if (shown.Entry is not FileEntry entry || Files is null || !Files.Entries.Contains(entry) || entry.Source is null) return;
-        if (entry.Preset is null)
+        // a division file can have the Armory presets' rules without a rule set of its own
+        if (FileRunner.RulesToRun(entry).Count == 0)
         {
             Say(Texts.Get("Editor.Export.NoPreset", ("file", entry.Name)), "caution");
             return;
@@ -63,8 +77,8 @@ public partial class EditorPage
 
         string edits = Texts.CountWide("Editor.Export.Edits", result.Edits);
         string how = typed is not null
-            ? Texts.Get("Editor.Export.HowEdited", ("preset", entry.Preset.Name), ("edits", edits))
-            : Texts.Get("Editor.Export.How", ("preset", entry.Preset.Name), ("edits", edits));
+            ? Texts.Get("Editor.Export.HowEdited", ("preset", RulesNameOf(entry)), ("edits", edits))
+            : Texts.Get("Editor.Export.How", ("preset", RulesNameOf(entry)), ("edits", edits));
         string warning = result.ParseError != "" ? Texts.Get("Editor.Export.NotValid", ("problem", result.ParseError)) : "";
         if (typed is not null)
             warning = (warning != "" ? warning + " " : "") + Texts.Get("Editor.Export.UnsavedEdits");

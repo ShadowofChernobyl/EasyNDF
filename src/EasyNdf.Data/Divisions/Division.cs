@@ -28,6 +28,18 @@ public sealed record Division
     /// <summary>Its type's key (TypeToken): "ARMORED", one of WARNO's eight. Empty in Steel Division 2.</summary>
     public string TypeToken { get; init; } = "";
 
+    /// <summary>The token of its summary in the game's dictionaries ("SUMBEL16PD"); "" for none.</summary>
+    public string SummaryToken { get; init; } = "";
+
+    /// <summary>Its summary, a few lines the game's armory shows; "" when it has none, or the text is not found.</summary>
+    public string Summary { get; init; } = "";
+
+    /// <summary>The token of its history in the game's dictionaries ("HISBEL16PD"); "" for none.</summary>
+    public string HistoryToken { get; init; } = "";
+
+    /// <summary>Its history, the longer text the game's armory shows; "" when it has none, or the text is not found.</summary>
+    public string History { get; init; } = "";
+
     /// <summary>The activation points a deck of it has (MaxActivationPoints).</summary>
     public int? ActivationPoints { get; init; }
 
@@ -64,6 +76,9 @@ public sealed record Division
     /// <summary>The name of its costs in DivisionCostMatrix.ndf (CostMatrix).</summary>
     public string CostMatrixName { get; init; } = "";
 
+    /// <summary>Its number in deck codes (DeckSerializer.ndf's DivisionIds); null when it has none.</summary>
+    public int? DeckNumber { get; init; }
+
     /// <summary>The units a deck of it may take, in the order of its rule.</summary>
     public IReadOnlyList<DivisionUnit> Units { get; init; } = [];
 
@@ -72,6 +87,12 @@ public sealed record Division
     /// each card of that category in turn, so the list's length is how many cards the category allows.
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyList<int>> Costs { get; init; } = new Dictionary<string, IReadOnlyList<int>>();
+
+    /// <summary>
+    /// Its Official Battlegroup, the one deck of Decks.ndf that names it; null when it has none (a division no player
+    /// can pick, or one of Steel Division 2's, whose decks are not read).
+    /// </summary>
+    public Battlegroup? Battlegroup { get; init; }
 }
 
 /// <summary>A unit a division lets a deck take, and how (one TDeckUniteRule).</summary>

@@ -5,9 +5,9 @@ public enum ShowOnly
 {
     /// <summary>All files.</summary>
     All,
-    /// <summary>Has a preset.</summary>
+    /// <summary>Has rules: a mod that is on has rule sets or Armory changes for the file.</summary>
     HasPreset,
-    /// <summary>No preset.</summary>
+    /// <summary>No rules.</summary>
     NoPreset,
     /// <summary>On.</summary>
     On,
@@ -34,12 +34,14 @@ public enum FileColumn
     File,
     /// <summary>Size.</summary>
     Size,
+    /// <summary>Armory: which parts of the Armory have changes the file runs (Divisions, Battlegroups, Units, Weapons).</summary>
+    Armory,
     /// <summary>Lines.</summary>
     Lines,
     /// <summary>Date modified.</summary>
     Modified,
-    /// <summary>Preset.</summary>
-    Preset,
+    /// <summary>Mods: the mods that run on the file, in the order they run.</summary>
+    Mods,
     /// <summary>Export folder.</summary>
     ExportFolder,
     /// <summary>Status.</summary>
@@ -51,16 +53,23 @@ public static class FileColumnIds
 {
     private static readonly Dictionary<FileColumn, string> IdOf = new()
     {
-        [FileColumn.On] = "on", [FileColumn.Number] = "num", [FileColumn.File] = "file", [FileColumn.Size] = "size",
-        [FileColumn.Lines] = "lines", [FileColumn.Modified] = "modified", [FileColumn.Preset] = "preset",
+        [FileColumn.On] = "on", [FileColumn.Number] = "num", [FileColumn.File] = "file", [FileColumn.Size] = "size", [FileColumn.Armory] = "armory",
+        [FileColumn.Lines] = "lines", [FileColumn.Modified] = "modified", [FileColumn.Mods] = "mods",
         [FileColumn.ExportFolder] = "dir", [FileColumn.Status] = "status",
     };
 
     /// <summary>A column's name in the settings, such as "dir" for Export folder.</summary>
     public static string Id(FileColumn column) => IdOf[column];
 
-    /// <summary>The column a name in the settings stands for, or null for a name no column has.</summary>
-    public static FileColumn? FromId(string? id) => IdOf.FirstOrDefault(pair => pair.Value == id) is { Value: not null } found ? found.Key : null;
+    /// <summary>
+    /// The column a name in the settings stands for, or null for a name no column has. "preset", the Preset column the
+    /// Mods column took the place of, stands for the Mods column, so a list keeps its order.
+    /// </summary>
+    public static FileColumn? FromId(string? id)
+    {
+        if (id == "preset") return FileColumn.Mods;
+        return IdOf.FirstOrDefault(pair => pair.Value == id) is { Value: not null } found ? found.Key : null;
+    }
 }
 
 /// <summary>Which rows the list shows, and in what order: the search box, "Show only", and the column it is sorted by.</summary>
@@ -79,8 +88,8 @@ public static class FileListView
     /// <summary>Whether a row passes "Show only".</summary>
     public static bool PassesShowOnly(FileEntry row, ShowOnly showOnly) => showOnly switch
     {
-        ShowOnly.HasPreset => row.HasPresetChosen,
-        ShowOnly.NoPreset => !row.HasPresetChosen,
+        ShowOnly.HasPreset => row.HasRules,
+        ShowOnly.NoPreset => !row.HasRules,
         ShowOnly.On => row.On,
         ShowOnly.Off => !row.On,
         ShowOnly.Changed => row.Edits > 0,
@@ -114,6 +123,12 @@ public static class FileListView
         return withKeys.Select(x => x.row).ToList();
     }
 
+    /// <summary>
+    /// What a file is sorted by in the Armory column: the Armory parts with changes for it, by file name, such as "DU";
+    /// empty for none. The Armory is the app's, which sets this.
+    /// </summary>
+    public static Func<string, string> ArmoryKey { get; set; } = _ => "";
+
     /// <summary>The value a row is sorted by in a column, or null when the row has none.</summary>
     private static SortValue? SortKey(FileEntry row, FileColumn column) => column switch
     {
@@ -122,8 +137,9 @@ public static class FileListView
         FileColumn.Size => row.Source is not null && row.Size is long size ? new SortValue(size) : null,
         FileColumn.Lines => row.Lines is int lines ? new SortValue(lines) : null,
         FileColumn.Modified => row.Source is not null && row.Modified is DateTime when ? new SortValue(when.Ticks) : null,
-        FileColumn.Preset => row.HasPresetChosen ? new SortValue((row.Preset?.Name ?? row.MissingPreset ?? "").ToLowerInvariant()) : null,
+        FileColumn.Mods => row.HasRules ? new SortValue(ModsText(row).ToLowerInvariant()) : null,
         FileColumn.ExportFolder => row.ExportFolder is not null ? new SortValue(FolderName(row.ExportFolder).ToLowerInvariant()) : null,
+        FileColumn.Armory => ArmoryKey(row.Name) is { Length: > 0 } armory ? new SortValue(armory) : null,
         FileColumn.Status => new SortValue(StatusRank(row) + "|" + FileStatus.Of(row).Text.ToLowerInvariant()),
         _ => new SortValue(0),
     };
@@ -142,8 +158,11 @@ public static class FileListView
             if (row.IdleRuleCount != 0) return 2;
             return row.Done ? 5 : 4;
         }
-        return row.HasPresetChosen ? 4 : 3;
+        return row.HasRules ? 4 : 3;
     }
+
+    /// <summary>The mods that run on a file, in order, as one text: "WARNO Tactical Overhaul › My mod". The Mods column sorts by it.</summary>
+    public static string ModsText(FileEntry row) => string.Join(" \u203A ", row.ModsOnFile.Select(mod => mod.Mod));
 
     /// <summary>The last part of a folder's path: what the Export folder column shows.</summary>
     public static string FolderName(string folder) =>

@@ -17,6 +17,31 @@ public sealed class Mod
     /// <summary>The mod's divisions: its new ones, and its changes to the game's, made on the Divisions tab.</summary>
     public List<Divisions.ModDivision> Divisions { get; set; } = [];
 
+    /// <summary>The units the mod adds, made in the Armory: new ones and duplicates.</summary>
+    public List<Units.ModUnit> Units { get; set; } = [];
+
+    /// <summary>The mod's changes to the game's own units, made in the Armory's Unit pane.</summary>
+    public List<Units.UnitEdit> UnitEdits { get; set; } = [];
+
+    /// <summary>The mod's changes to the game's own weapons, made in the Armory's Weapon pane.</summary>
+    public List<Weapons.WeaponEdit> WeaponEdits { get; set; } = [];
+
+    /// <summary>The weapons the mod adds, made in the Armory: copies of the game's (or of its own), for chosen units.</summary>
+    public List<Weapons.ModWeapon> Weapons { get; set; } = [];
+
+    /// <summary>
+    /// Whether the mod was switched on on the Mods tab when it was exported, as its mod file says ("On"), so an import
+    /// keeps it; null when the file doesn't say, as one made before mods could run together or by another app. Only
+    /// a mod just read from a file has it: the app keeps the switch with its own state.
+    /// </summary>
+    public bool? WasOn { get; set; }
+
+    /// <summary>
+    /// The files of the mod's File rules that its mod file carried, by the name they are kept under, for the import to
+    /// put into the app's <see cref="ModFileStore"/>. Only a mod just read from a file has them.
+    /// </summary>
+    public IReadOnlyDictionary<string, byte[]> CarriedFiles { get; set; } = new Dictionary<string, byte[]>();
+
     /// <summary>
     /// A preset name in this mod that no other preset of the mod has: the name itself, or "name (2)", "name (3)"...
     /// </summary>
@@ -35,8 +60,12 @@ public sealed class Mod
     {
         Name = Name,
         Watermark = Watermark,
-        Presets = [.. Presets.Select(p => new ModPreset { Name = p.Name, Rules = (JsonArray)p.Rules.DeepClone() })],
+        Presets = [.. Presets.Select(p => new ModPreset { Name = p.Name, Rules = (JsonArray)p.Rules.DeepClone(), ArmoryPart = p.ArmoryPart, AppliesTo = p.AppliesTo is null ? null : [.. p.AppliesTo] })],
         Divisions = [.. Divisions.Select(division => Data.Divisions.ModDivision.FromJson(division.ToJson()))],
+        Units = [.. Units.Select(unit => unit.Copy())],
+        UnitEdits = [.. UnitEdits.Select(edit => edit.Copy())],
+        WeaponEdits = [.. WeaponEdits.Select(edit => edit.Copy())],
+        Weapons = [.. Weapons.Select(weapon => weapon.Copy())],
     };
 }
 
@@ -51,6 +80,43 @@ public sealed class ModPreset
     /// <see cref="EasyNdf.Engine.Mods.RuleLoading.LoadForEngine"/> turns them into rules the engine runs.
     /// </summary>
     public JsonArray Rules { get; set; } = [];
+
+    /// <summary>
+    /// The part of the Armory whose changes the preset keeps as rules, made again whenever these change (see
+    /// <see cref="Divisions.ArmoryPresets"/>); null for a preset of the user's own.
+    /// </summary>
+    public ArmoryPart? ArmoryPart { get; set; }
+
+    /// <summary>Whether it is one of the mod's Armory presets, listed under Armory Changes on the Rules tab.</summary>
+    public bool IsArmoryPreset => ArmoryPart is not null;
+
+    /// <summary>
+    /// The files the rule set applies to, as the user listed them in its Applies To window: names such as
+    /// "Ammunition.ndf", or with folders before them, "Strategic/GDConstants.ndf", to pick one of two files of the same
+    /// name. Null when it applies to the files its own name holds, as rule sets always did (see
+    /// <see cref="FileList.RuleSetFiles"/>).
+    /// </summary>
+    public List<string>? AppliesTo { get; set; }
+}
+
+/// <summary>
+/// The Armory's parts, its sub-tabs: Units (every unit), Divisions (a division's units and details), Battlegroups
+/// (a division's Official Battlegroup) and Weapons (every weapon). A mod keeps the changes made in each in an Armory
+/// preset of its own.
+/// </summary>
+public enum ArmoryPart
+{
+    /// <summary>Every unit.</summary>
+    Units,
+
+    /// <summary>A division's units and details.</summary>
+    Divisions,
+
+    /// <summary>A division's Official Battlegroup.</summary>
+    Battlegroups,
+
+    /// <summary>Every weapon: the ammunition the units carry.</summary>
+    Weapons,
 }
 
 /// <summary>

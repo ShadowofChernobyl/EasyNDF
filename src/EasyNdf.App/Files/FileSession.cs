@@ -7,14 +7,14 @@ namespace EasyNdf.App.Files;
 
 /// <summary>
 /// "Reopen the last files" (the desktop app's own; the browser could not do it): the file list is kept when the app
-/// closes, in State["session"], and comes back when it starts, with the files that are still where they were. Each row
-/// keeps its preset, its On box and its export folder. A file from a .zip or .rar is read from the archive again.
+/// closes, in session.json (see AppData.Session), and comes back when it starts, with the files that are still where
+/// they were. Each row keeps its On box and its export folder; the mods that run on it are worked out again. A file from a .zip or .rar is read from the archive again.
 /// Text handed over with the File Editor's "Use in file list" is not kept: the file comes back as it is on disk.
 /// </summary>
 public static class FileSession
 {
     /// <summary>One row as kept: where its file is, its folder and name, and its settings.</summary>
-    public sealed record KeptRow(string Source, string Folder, string Name, bool On, string? Preset, string? ExportFolder);
+    public sealed record KeptRow(string Source, string Folder, string Name, bool On, string? ExportFolder);
 
     /// <summary>The rows of the file list, as kept.</summary>
     public static JsonArray Keep(IEnumerable<FileEntry> rows)
@@ -29,7 +29,6 @@ public static class FileSession
                 ["folder"] = row.Folder,
                 ["name"] = row.Name,
                 ["on"] = row.On,
-                ["preset"] = row.Preset?.Name ?? row.MissingPreset,
                 ["exportFolder"] = row.ExportFolder,
             });
         }
@@ -45,7 +44,6 @@ public static class FileSession
         {
             if (node is not JsonObject row || JsonValues.AsText(row["source"]) is not { Length: > 0 } source) continue;
             rows.Add(new KeptRow(source, JsonValues.AsText(row["folder"]), JsonValues.AsText(row["name"]), row["on"]?.GetValue<bool>() != false,
-                row["preset"] is JsonValue p && p.TryGetValue(out string? preset) ? preset : null,
                 row["exportFolder"] is JsonValue f && f.TryGetValue(out string? folder) ? folder : null));
         }
         return rows;

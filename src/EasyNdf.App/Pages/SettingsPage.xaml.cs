@@ -164,7 +164,8 @@ public partial class SettingsPage : UserControl
             DecimalsRow.Note = Texts.Get("Settings.DecimalsRow.Note");
             DecimalsRow.NoteIsWarning = false;
             foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
-                ConfirmExportSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch })
+                ConfirmExportSwitch, AskFolderSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch, ArmoryMarksSwitch,
+                ArmoryFileNamesSwitch, MonitorScalingSwitch })
                 toggle.IsChecked = IsOn((string)toggle.Tag);
             foreach (ComboBox choice in new[] { LineEndChoice, ScopeChoice, FolderChoice, DuplicateChoice, UndoChoice, ScaleChoice })
             {
@@ -209,6 +210,8 @@ public partial class SettingsPage : UserControl
         Settings[key] = toggle.IsChecked == true;
         AppData.Current.SaveSettings();
         if (key == "wrapRows") Controls.ListText.ApplySaved();
+        // which files each rule set applies to changes: the Files tab works out the mods on each file again
+        if (key == "autoAssign") AppData.Current.TellModsChanged();
         View.SettingsChanged(key);
     }
 
@@ -368,7 +371,7 @@ public partial class SettingsPage : UserControl
         }
         var dialog = new SaveFileDialog { Title = Texts.Get("Settings.BackUpAllMods"), FileName = "EasyNDF mods backup.json", Filter = Texts.Get("Settings.ModFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        try { File.WriteAllText(dialog.FileName, ModFiles.BackupText(AppData.Current.Mods)); }
+        try { File.WriteAllText(dialog.FileName, ModFiles.BackupText(AppData.Current.Mods, AppData.Current.ModFileStore)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             _ = View.Messages.Tell(Texts.Get("Settings.Backup.NotSaved", ("reason", error.Message)));

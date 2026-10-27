@@ -73,6 +73,7 @@ public sealed class UnitTableList : ItemsControl
         if (Template.FindName("TableScroller", this) is not ScrollViewer found) return;
         ScrollViewer scroller = found;
         this.scroller = scroller;
+        rowsPanel = null;
         scroller.Tag = headings;
         scroller.ApplyTemplate();
         if (scroller.Template.FindName("HeadingsClip", scroller) is Border headingsClip)
@@ -118,19 +119,21 @@ public sealed class UnitTableList : ItemsControl
         headings.LayoutTransform = transform;
     }
 
+    /// <summary>The units listed, in the order of their rows, for Shift+Click to select those between two.</summary>
+    public IReadOnlyList<Unit> UnitsInOrder { get; private set; } = [];
+
     /// <summary>
     /// Fills the table: one row a unit, sorted by the column chosen. Each number's bar is filled as far as the biggest
     /// number of its column among the units listed.
     /// </summary>
-    /// <param name="keepHeadings">While a column's edge is dragged: the headings only change their widths.</param>
-    public void Fill(bool keepHeadings = false)
+    public void Fill()
     {
         if (selection is null || actions is null) return;
         widths = UnitTableColumn.Widths(columns, Room(), ChosenWidths());
-        if (keepHeadings) headings.SetWidths(widths);
-        else headings.Show(game, columns, widths, sortKey, sortAscending);
+        headings.Show(game, columns, widths, sortKey, sortAscending);
         UnitTableColumn sortColumn = columns.First(column => column.Key == sortKey);
         List<Unit> sorted = sortColumn.Sort(units, sortAscending);
+        UnitsInOrder = sorted;
         var most = new Dictionary<string, double>();
         foreach (UnitTableColumn column in columns.Where(column => column.IsNumber))
             most[column.Key] = sorted.Select(column.Number!).Where(value => value > 0).Select(value => value!.Value).DefaultIfEmpty(0).Max();
@@ -153,12 +156,55 @@ public sealed class UnitTableList : ItemsControl
     /// <summary>The width the columns have across, beside the scrollbar, in the rows' own units: less when zoomed in.</summary>
     private double Room() => (ActualWidth - ScrollBarWidth) / Scale;
 
-    /// <summary>The table was resized: the columns are laid out again when the Unit column's width changes.</summary>
+    /// <summary>The table was resized: the columns take their new widths when the Unit column's width changes.</summary>
     private void Resized(object sender, SizeChangedEventArgs e)
     {
         if (Visibility != Visibility.Visible || selection is null) return;
         double[] fitted = UnitTableColumn.Widths(columns, Room(), ChosenWidths());
-        if (widths.Length == 0 || Math.Abs(fitted[0] - widths[0]) >= 1) Fill();
+        if (widths.Length == 0) Fill();
+        else if (Math.Abs(fitted[0] - widths[0]) >= 1) ShowWidths(fitted);
+    }
+
+    /// <summary>
+    /// The columns at new widths, the rows otherwise as they are. Making the rows again for each step of a pane being
+    /// dragged wider made the drag slow, so only the widths change: the rows on screen take them now, and the rows
+    /// still to come into sight take them from their lines, which share the one list of widths.
+    /// </summary>
+    private void ShowWidths(double[] fitted)
+    {
+        if (fitted.Length != widths.Length)
+        {
+            Fill();
+            return;
+        }
+        Array.Copy(fitted, widths, widths.Length);
+        headings.SetWidths(widths);
+        foreach (UnitTableRowView row in RowsInSight()) row.ShowWidths();
+    }
+
+    /// <summary>The panel the rows sit in, found once its template is in use.</summary>
+    private Panel? rowsPanel;
+
+    /// <summary>The rows made for the units in sight (the list makes only those).</summary>
+    private IEnumerable<UnitTableRowView> RowsInSight()
+    {
+        rowsPanel ??= ItemsHostIn(this);
+        if (rowsPanel is null) yield break;
+        foreach (UIElement child in rowsPanel.Children)
+            if (child is ContentPresenter presenter && VisualTreeHelper.GetChildrenCount(presenter) > 0 && VisualTreeHelper.GetChild(presenter, 0) is UnitTableRowView row)
+                yield return row;
+    }
+
+    /// <summary>The panel that holds an items list's rows, looked for among what its template made.</summary>
+    private static Panel? ItemsHostIn(DependencyObject parent)
+    {
+        for (int index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, index);
+            if (child is Panel { IsItemsHost: true } panel) return panel;
+            if (ItemsHostIn(child) is Panel found) return found;
+        }
+        return null;
     }
 
     /// <summary>The columns' widths as the user dragged them, by key, kept between sessions.</summary>
@@ -189,7 +235,7 @@ public sealed class UnitTableList : ItemsControl
     private void ResizeColumn(string key, double width)
     {
         KeptWidths()[key] = Math.Round(columns.First(column => column.Key == key).Fit(width));
-        Fill(keepHeadings: true);
+        ShowWidths(UnitTableColumn.Widths(columns, Room(), ChosenWidths()));
     }
 
     /// <summary>

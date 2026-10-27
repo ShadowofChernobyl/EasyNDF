@@ -84,6 +84,9 @@
                         <controls:SettingRow Label="{t:Text Settings.ConfirmBeforeRunExport}" Note="{t:Text Settings.ConfirmBeforeRunExport.Note}">
                             <CheckBox x:Name="ConfirmExportSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="confirmExport" />
                         </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.AskExportFolder}" Note="{t:Text Settings.AskExportFolder.Note}">
+                            <CheckBox x:Name="AskFolderSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="askExportFolder" />
+                        </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.BackUpOverwrittenFiles}" Note="{t:Text Settings.BackUpOverwrittenFiles.Note}">
                             <CheckBox x:Name="BackupSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="backupOverwritten" />
                         </controls:SettingRow>
@@ -182,6 +185,21 @@
                 </StackPanel>
             </controls:Bevel>
 
+            <!-- Armory -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Armory">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Armory}" /></controls:Bevel>
+                    <controls:SettingGrid Margin="6,4,6,6">
+                        <controls:SettingRow Label="{t:Text Settings.ArmoryMarks}" Note="{t:Text Settings.ArmoryMarks.Note}">
+                            <CheckBox x:Name="ArmoryMarksSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="armoryMarks" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.ArmoryFileNames}" Note="{t:Text Settings.ArmoryFileNames.Note}">
+                            <CheckBox x:Name="ArmoryFileNamesSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="armoryFileNames" />
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                </StackPanel>
+            </controls:Bevel>
+
             <!-- Appearance -->
             <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Appearance">
                 <StackPanel>
@@ -208,6 +226,9 @@
                                 <ComboBoxItem Content="125%" Tag="125" />
                                 <ComboBoxItem Content="150%" Tag="150" />
                             </ComboBox>
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.SharpOnEveryMonitor}" Note="{t:Text Settings.SharpOnEveryMonitor.Note}">
+                            <CheckBox x:Name="MonitorScalingSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="perMonitorDpi" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.Tooltips}" Note="{t:Text Settings.Tooltips.Note}">
                             <CheckBox x:Name="TooltipsSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="tooltips" />

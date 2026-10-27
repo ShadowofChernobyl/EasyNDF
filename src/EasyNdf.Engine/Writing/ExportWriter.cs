@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using EasyNdf.Engine.Ndf;
 using EasyNdf.Engine.Rules;
@@ -97,8 +98,9 @@ public sealed partial class ExportWriter
     {
         if (value.Start is null)
         {
-            // written by a rule
-            string written = ((ScalarValue)value).Text;
+            // written by a rule; a value typed on several lines takes the indentation of the line it lands on
+            var scalar = (ScalarValue)value;
+            string written = scalar.FitsIndentation ? Reindented(scalar.Text) : scalar.Text;
             if (value is ScalarValue { Kind: ScalarKind.Raw }) PutWithLateComment(WithFileLineBreaks(written));
             else Put(WithFileLineBreaks(written));
         }
@@ -112,13 +114,15 @@ public sealed partial class ExportWriter
                     Put(obj.TypeName);
                     if (obj.TypeNameComment is not null) PutWithLateComment(WithFileLineBreaks(obj.TypeNameComment));
                     int? at = obj.Start + obj.SourceTypeNameLength;
-                    foreach (var property in obj.Properties)
+                    foreach (var property in obj.Properties.Where(property => !property.IsAddedByRule))
                     {
+                        at = SkipRemovedProperties(obj, text, at, property.Value.StartOrReplaced);
                         Gap(text, at, property.Value.StartOrReplaced);
                         WriteValue(property.Value, text);
                         at = property.Value.EndOrReplaced;
                     }
-                    Gap(text, at, obj.End);
+                    at = SkipRemovedProperties(obj, text, at, obj.End);
+                    WriteClosingWithAddedProperties(obj, text, at);
                     break;
 
                 case ListValue list:
@@ -152,6 +156,151 @@ public sealed partial class ExportWriter
         }
         if (value.AddedComment is not null && value.AddedComment != "")
             PutWithLateComment(WithFileLineBreaks(value.AddedComment));
+    }
+
+    /// <summary>
+    /// A value a rule wrote on several lines, indented to fit where it lands: its lines after the first lose the
+    /// indentation they all share and take that of the line the value starts on, so "[" and "]" line up with the
+    /// property's name whatever indentation was typed. A value on one line is left as it is.
+    /// </summary>
+    private string Reindented(string written)
+    {
+        if (!written.Contains('\n')) return written;
+        string[] lines = written.Replace("\r\n", "\n").Split('\n');
+        int shared = int.MaxValue;
+        for (int k = 1; k < lines.Length; k++)
+        {
+            if (lines[k].Trim().Length == 0) continue;
+            int indent = lines[k].Length - lines[k].TrimStart(' ', '\t').Length;
+            shared = Math.Min(shared, indent);
+        }
+        if (shared == int.MaxValue) return written;
+        string baseIndent = IndentOfCurrentLine();
+        for (int k = 1; k < lines.Length; k++)
+            lines[k] = lines[k].Trim().Length == 0 ? "" : baseIndent + lines[k][shared..];
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>The spaces and tabs at the start of the line being written.</summary>
+    private string IndentOfCurrentLine()
+    {
+        var line = new StringBuilder();
+        for (int k = pieces.Count - 1; k >= 0; k--)
+        {
+            string piece = pieces[k];
+            int breakAt = piece.LastIndexOf('\n');
+            if (breakAt >= 0)
+            {
+                line.Insert(0, piece[(breakAt + 1)..]);
+                break;
+            }
+            line.Insert(0, piece);
+        }
+        string text = line.ToString();
+        return text[..(text.Length - text.TrimStart(' ', '\t').Length)];
+    }
+
+    /// <summary>
+    /// Writes the text from <paramref name="at"/> up to <paramref name="until"/>, leaving out the properties a rule
+    /// removed in between (Remove Property), and returns where the writing got to. A property on a line of its own goes
+    /// with its line, the comment at its end included; the comments above it stay. One sharing its line with others
+    /// goes with the spaces after it.
+    /// </summary>
+    private int? SkipRemovedProperties(ObjectValue obj, string text, int? at, int? until)
+    {
+        if (obj.RemovedProperties is null || at is null || until is null) return at;
+        foreach (var removed in obj.RemovedProperties.OrderBy(property => property.Value.StartOrReplaced))
+        {
+            int? valueStart = removed.Value.StartOrReplaced, valueEnd = removed.Value.EndOrReplaced;
+            if (valueStart is null || valueEnd is null || valueStart < at || valueStart >= until) continue;
+            var (start, end) = RemovedPropertySpan(text, valueStart.Value, valueEnd.Value);
+            if (start < at) continue;
+            Gap(text, at, start);
+            at = end;
+        }
+        return at;
+    }
+
+    /// <summary>Where a removed property's text starts and ends, its name and "=" included.</summary>
+    private static (int Start, int End) RemovedPropertySpan(string text, int valueStart, int valueEnd)
+    {
+        // back over "=" (or "is") and the name
+        int nameStart = valueStart;
+        while (nameStart > 0 && JsText.IsWhiteSpace(text[nameStart - 1])) nameStart--;
+        if (nameStart > 0 && text[nameStart - 1] == '=') nameStart--;
+        else if (nameStart >= 2 && text[(nameStart - 2)..nameStart] == "is") nameStart -= 2;
+        while (nameStart > 0 && JsText.IsWhiteSpace(text[nameStart - 1])) nameStart--;
+        while (nameStart > 0 && (char.IsAsciiLetterOrDigit(text[nameStart - 1]) || text[nameStart - 1] == '_')) nameStart--;
+
+        int lineStart = nameStart;
+        while (lineStart > 0 && text[lineStart - 1] is ' ' or '\t') lineStart--;
+        bool startsItsLine = lineStart == 0 || text[lineStart - 1] == '\n';
+
+        int end = valueEnd;
+        while (end < text.Length && text[end] is ' ' or '\t') end++;
+        if (end + 1 < text.Length && text[end] == '/' && text[end + 1] == '/')
+            while (end < text.Length && text[end] != '\n' && text[end] != '\r') end++;
+        bool endsItsLine = end >= text.Length || text[end] is '\n' or '\r';
+        if (startsItsLine && endsItsLine)
+        {
+            if (end < text.Length && text[end] == '\r') end++;
+            if (end < text.Length && text[end] == '\n') end++;
+            return (lineStart, end);
+        }
+        return (nameStart, end);
+    }
+
+    /// <summary>
+    /// Writes the end of an object, from its last property to its ")": properties a rule added go in on lines of
+    /// their own just before the line the ")" is on, indented as the object's first property, so a comment at the end
+    /// of the last property's line stays on that line. An object written on one line gets them before its ")".
+    /// </summary>
+    private void WriteClosingWithAddedProperties(ObjectValue obj, string text, int? at)
+    {
+        var added = obj.Properties.Where(property => property.IsAddedByRule).ToList();
+        if (added.Count == 0 || at is null || obj.End is null)
+        {
+            Gap(text, at, obj.End);
+            return;
+        }
+        string closing = text[at.Value..obj.End.Value];
+        int closingLineAt = closing.LastIndexOf('\n');
+        if (closingLineAt < 0)
+        {
+            // one line: "TFoo ( A = 1 )" becomes "TFoo ( A = 1 B = 2 )"
+            // they go right after the last property, so the spaces before ")" stay before it
+            int insertAt = JsText.TrimSpacesAndTabsEnd(closing[..closing.LastIndexOf(')')]).Length;
+            Gap(text, at, at + insertAt);
+            foreach (var property in added)
+            {
+                Put(" " + property.Name + " = ");
+                WriteValue(property.Value, text);
+            }
+            Gap(text, at + insertAt, obj.End);
+            return;
+        }
+        // up to the line break before the ")" line (a "\r\n" break keeps its "\r" with the line it ends)
+        int lineEnd = closingLineAt > 0 && closing[closingLineAt - 1] == '\r' ? closingLineAt - 1 : closingLineAt;
+        Gap(text, at, at + lineEnd);
+        string indent = AddedPropertyIndent(obj, text);
+        foreach (var property in added)
+        {
+            Put(lineBreak + indent + property.Name + " = ");
+            WriteValue(property.Value, text);
+        }
+        Gap(text, at + lineEnd, obj.End);
+    }
+
+    /// <summary>
+    /// The indent for a property a rule adds: that of the object's first property from the source, or one step more
+    /// than the object's own line when it has none.
+    /// </summary>
+    private static string AddedPropertyIndent(ObjectValue obj, string text)
+    {
+        var first = obj.Properties.FirstOrDefault(property => !property.IsAddedByRule && property.Value.StartOrReplaced is not null);
+        if (first is not null) return IndentOfLineAt(text, first.Value.StartOrReplaced!.Value);
+        string indent = IndentOfLineAt(text, obj.Start!.Value);
+        return indent + (indent.Contains('\t') ? "\t" : "    ");
     }
 
     private void WriteTwo(NdfValue first, NdfValue second, NdfValue whole, string text)

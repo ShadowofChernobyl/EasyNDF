@@ -35,7 +35,7 @@ public sealed class ScanStore
         {
             if (File.Exists(path)) Read(File.ReadAllBytes(path));
         }
-        catch (Exception problem) when (problem is JsonException or IOException or InvalidOperationException)
+        catch (Exception problem) when (problem is JsonException or IOException or InvalidOperationException or UnauthorizedAccessException)
         {
             Scans.Clear();
         }

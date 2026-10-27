@@ -48,7 +48,21 @@ public sealed record UnitSource(GameTitle Game, string GameFolder, GameMod? Mod)
 /// <param name="Catalog">The units.</param>
 /// <param name="Pictures">Their pictures (and the nations' flags) as .png files.</param>
 /// <param name="Problems">What could not be read: archives, dictionaries, files.</param>
-public sealed record LoadedUnits(UnitSource Source, UnitCatalog Catalog, UnitPictureStore Pictures, IReadOnlyList<string> Problems);
+/// <param name="Texts">The game's texts the units and divisions use, to read them again as a mod changes them.</param>
+public sealed record LoadedUnits(UnitSource Source, UnitCatalog Catalog, UnitPictureStore Pictures, IReadOnlyList<string> Problems, GameTexts Texts)
+{
+    /// <summary>
+    /// The descriptors of the game's own units, before any mod (the source's, for the game itself; base.zip's, for a
+    /// game mod): a unit not among them is modded.
+    /// </summary>
+    public IReadOnlySet<string> VanillaUnits { get; init; } = new HashSet<string>();
+
+    /// <summary>The descriptors of the game's own weapons, before any mod, as <see cref="VanillaUnits"/>: a weapon not among them is modded.</summary>
+    public IReadOnlySet<string> VanillaWeapons { get; init; } = new HashSet<string>();
+
+    /// <summary>The game's font for a card's number of units, copied into the cache; null when the game has none (see <see cref="GameFonts"/>).</summary>
+    public string? UnitCountFontFile { get; init; }
+}
 
 /// <summary>The steps of reading a source's units, in order, for a loading bar.</summary>
 public enum UnitReadStep
@@ -93,9 +107,35 @@ public static class UnitLibrary
         using (var files = new GameDataFiles(GameInstall.BaseZipOf(source.GameFolder), source.Mod?.Folder))
             catalog = UnitReader.Read(files, source.Game, texts);
         problems.AddRange(catalog.Problems);
+        (IReadOnlySet<string> vanilla, IReadOnlySet<string> vanillaWeapons) = VanillaOf(source, catalog);
 
         progress?.Report(UnitReadStep.PreparingPictures);
         var pictures = new UnitPictureStore(cacheRoot, source.Game, archives?.Version ?? "", archives is null ? null : new GamePictures(archives), source.Mod?.Folder);
-        return new LoadedUnits(source, catalog, pictures, problems);
+        string? countFont = archives is null ? null : GameFonts.UnitCountFontFile(source.GameFolder, cacheRoot, source.Game, archives.Version);
+        return new LoadedUnits(source, catalog, pictures, problems, texts.OnlyThoseAsked()) { UnitCountFontFile = countFont, VanillaUnits = vanilla, VanillaWeapons = vanillaWeapons };
+    }
+
+    /// <summary>
+    /// The game's own units and weapons: for the game itself, those just read; for a game mod, those of base.zip
+    /// alone, found from their declaration lines, which takes a moment rather than a full read.
+    /// </summary>
+    private static (IReadOnlySet<string> Units, IReadOnlySet<string> Weapons) VanillaOf(UnitSource source, UnitCatalog catalog)
+    {
+        if (source.Mod is null)
+            return (new HashSet<string>(catalog.Units.Select(unit => unit.Descriptor), StringComparer.Ordinal),
+                new HashSet<string>((catalog.Weapons ?? []).Select(weapon => weapon.Descriptor), StringComparer.Ordinal));
+        using var vanillaFiles = new GameDataFiles(GameInstall.BaseZipOf(source.GameFolder), null);
+        return (UnitReader.UnitDescriptorsIn(vanillaFiles), UnitReader.AmmunitionDescriptorsIn(vanillaFiles));
+    }
+
+    /// <summary>
+    /// Reads a source's units again with some of its files as an EasyNDF mod's rules make them. The game's texts read
+    /// the first time are used again. Slow (seconds): run it in the background.
+    /// </summary>
+    public static UnitCatalog ReadChanged(LoadedUnits loaded, IReadOnlyList<ChangedFile> changedFiles)
+    {
+        UnitSource source = loaded.Source;
+        using var files = new GameDataFiles(GameInstall.BaseZipOf(source.GameFolder), source.Mod?.Folder, changedFiles);
+        return UnitReader.Read(files, source.Game, loaded.Texts, loaded.Catalog.FlagSources);
     }
 }

@@ -1,0 +1,100 @@
+<!--
+  The Generate Divisions window of the Armory's Divisions sub-tab: one division for each nation and side ticked, times
+  each kind ticked, made from the files on the Files tab each time the mod is exported. Opened from a generated
+  division's "Change…", it changes how that one division is made: one choice in each group.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.GenerateDivisionsWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             Visibility="Collapsed" KeyDown="KeyPressed">
+    <!-- the dimmed backdrop; a click on it closes the window -->
+    <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed">
+        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                        Padding="12,10,12,12" Width="720" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
+            <StackPanel>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Divisions.Generate.Close.Tip}" Click="CloseClicked" />
+                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <TextBlock x:Name="Lead" Style="{StaticResource Note}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <!-- the nations, those with the most units first, each with its count -->
+                    <DockPanel Grid.Column="0">
+                        <TextBlock DockPanel.Dock="Top" Text="{t:Text Divisions.Generate.Nations}" Foreground="{DynamicResource muted}" Margin="0,0,0,3" />
+                        <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Height="230">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <StackPanel x:Name="NationTicks" Margin="6,4" />
+                            </ScrollViewer>
+                        </controls:Bevel>
+                    </DockPanel>
+                    <!-- the sides, and both sides under one side's flag -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="{t:Text Divisions.Generate.Sides}" Foreground="{DynamicResource muted}" Margin="0,0,0,3" />
+                        <StackPanel x:Name="SideTicks" />
+                    </StackPanel>
+                    <!-- the kinds: how many units a card holds -->
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="{t:Text Divisions.Generate.Kinds}" Foreground="{DynamicResource muted}" Margin="0,0,0,3" />
+                        <CheckBox x:Name="UnlimitedTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Generate.Unlimited}" ToolTip="{t:Text Divisions.Generate.Unlimited.Tip}" Click="TickClicked" />
+                        <TextBlock Style="{StaticResource Note}" Text="{t:Text Divisions.Generate.Unlimited.Note}" Margin="22,0,0,6" />
+                        <CheckBox x:Name="SameTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Generate.Same}" ToolTip="{t:Text Divisions.Generate.Same.Tip}" Click="TickClicked" />
+                        <StackPanel Orientation="Horizontal" Margin="22,2,0,6">
+                            <TextBox x:Name="CountLowest" Width="38" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                            <TextBox x:Name="CountSecond" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                            <TextBox x:Name="CountThird" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                            <TextBox x:Name="CountHighest" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                        </StackPanel>
+                        <CheckBox x:Name="AsTheGameTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Generate.AsTheGame}" ToolTip="{t:Text Divisions.Generate.AsTheGame.Tip}" Click="TickClicked" />
+                        <TextBlock Style="{StaticResource Note}" Text="{t:Text Divisions.Generate.AsTheGame.Note}" Margin="22,0,0,6" />
+                        <CheckBox x:Name="ModNationsTick" Style="{StaticResource Tick}" ToolTip="{t:Text Divisions.Generate.ModNations.Tip}" Margin="0,8,0,0" Click="TickClicked" />
+                    </StackPanel>
+                </Grid>
+                <!-- for "As the game's divisions": the game divisions and rules its numbers are not learnt from -->
+                <DockPanel Margin="0,10,0,0">
+                    <TextBlock Text="{t:Text Divisions.Generate.Ignored}" VerticalAlignment="Center" Foreground="{DynamicResource muted}" />
+                    <TextBox x:Name="IgnoredDivisionsBox" Width="200" Margin="6,0,0,0" Tag="{t:Text Divisions.Generate.Ignored.Hint}" ToolTip="{t:Text Divisions.Generate.Ignored.Tip}" TextChanged="ValueChanged" />
+                    <TextBlock Text="{t:Text Divisions.Generate.IgnoredRules}" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource muted}" />
+                    <TextBox x:Name="IgnoredRulesBox" Width="44" Margin="6,0,0,0" ToolTip="{t:Text Divisions.Generate.IgnoredRules.Tip}" TextChanged="ValueChanged" />
+                    <TextBlock Text="{t:Text Divisions.Generate.IgnoredRules.After}" VerticalAlignment="Center" Margin="6,0,0,0" Foreground="{DynamicResource muted}" />
+                </DockPanel>
+                <!-- how the divisions are named; not asked when one division's making is changed -->
+                <Grid x:Name="NamesRow" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="260" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{t:Text Divisions.Generate.Names}" VerticalAlignment="Center" />
+                    <TextBox x:Name="NamesBox" Grid.Column="1" ToolTip="{t:Text Divisions.Generate.Names.Tip}" TextChanged="ValueChanged" />
+                    <TextBlock x:Name="NameExample" Grid.Column="2" Style="{StaticResource Note}" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </Grid>
+                <Grid Margin="0,6,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="60" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{t:Text Divisions.Generate.Slots}" VerticalAlignment="Center" />
+                    <TextBox x:Name="SlotsBox" Grid.Column="1" ToolTip="{t:Text Divisions.Generate.Slots.Tip}" TextChanged="ValueChanged" />
+                    <TextBlock Grid.Column="2" Style="{StaticResource Note}" Margin="8,0,0,0" VerticalAlignment="Center" Text="{t:Text Divisions.Generate.Slots.Note}" />
+                </Grid>
+                <!-- how many divisions the ticks make, and about how much they add to the exported files -->
+                <TextBlock x:Name="Summary" Margin="0,12,0,0" TextWrapping="Wrap" Foreground="{DynamicResource ink}" />
+                <controls:SnappedRow Gap="6" HorizontalAlignment="Right" Margin="0,10,0,0">
+                    <Button x:Name="GoButton" Style="{StaticResource GoButton}" Click="GoClicked" />
+                    <Button Content="{t:Text Common.Cancel}" ToolTip="{t:Text Divisions.Generate.Cancel.Tip}" Click="CloseClicked" />
+                </controls:SnappedRow>
+            </StackPanel>
+        </controls:Bevel>
+    </Grid>
+</UserControl>

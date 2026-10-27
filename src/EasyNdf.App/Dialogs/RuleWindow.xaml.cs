@@ -3,9 +3,11 @@ using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using EasyNdf.App.Controls;
 using EasyNdf.App.Files;
 using EasyNdf.App.Rules;
 using EasyNdf.Data;
+using EasyNdf.Data.Divisions;
 using EasyNdf.Data.FileList;
 using EasyNdf.App.Text;
 
@@ -124,6 +126,7 @@ public partial class RuleWindow : UserControl
     {
         if (model?.OpenRule is not JsonObject rule) { Close(); return; }
         shownRule = rule;
+        ForgetScans();
         string kind = RuleEditor.KindOf(rule);
         Title.Text = RuleEditor.TitleOf(kind);
         // the Add Descriptor window is wider, for the descriptor's text: 64rem, or 96% of the app
@@ -131,12 +134,83 @@ public partial class RuleWindow : UserControl
         ShowScan();
         editor = new RuleEditor(model, ScanListsFor(rule), Changed, () => Dispatcher.BeginInvoke(Build));
         Editor.Children.Clear();
-        foreach (UIElement part in editor.Build(rule)) Editor.Children.Add(part);
+        bool locked = model.IsOpenRuleLocked;
+        if (locked) Editor.Children.Add(LockedBanner(rule));
+        foreach (UIElement part in editor.Build(rule))
+        {
+            // a rule the Armory made is only shown here: it is changed there
+            if (locked) part.IsEnabled = false;
+            Editor.Children.Add(part);
+        }
         foreach (RowListView list in editor.Lists)
         {
             list.MenuAsked += ShowRowMenu;
             list.RowOpenAsked += OpenRow;
         }
+    }
+
+    /// <summary>
+    /// The band at the top of a rule the Armory made: what it is, with Show in Armory, and Make Editable for keeping
+    /// it by hand from now on.
+    /// </summary>
+    private Bevel LockedBanner(JsonObject rule)
+    {
+        var text = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 6) };
+        var bold = new System.Windows.Documents.Run("\U0001F512 " + Texts.Get("Rules.Locked.Title") + " ") { FontWeight = FontWeights.Bold };
+        text.Inlines.Add(bold);
+        text.Inlines.Add(new System.Windows.Documents.Run(Texts.Get("Rules.Locked.Text")));
+        text.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        bold.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "ink");
+
+        var show = new Button { Content = Texts.Get("Rules.Locked.ShowInArmory"), ToolTip = Texts.Get("Rules.Locked.ShowInArmory.Tip") };
+        show.Click += (_, _) => ShowInArmory(rule);
+        var editable = new Button { Content = Texts.Get("Rules.Locked.MakeEditable"), ToolTip = Texts.Get("Rules.Locked.MakeEditable.Tip") };
+        editable.Click += (_, _) => _ = MakeEditable(rule);
+        var band = new Bevel
+        {
+            Padding = new Thickness(8, 6, 8, 6),
+            Child = new StackPanel { Children = { text, new WrapRow { Children = { show, editable } } } },
+        };
+        band.SetResourceReference(Bevel.TopLeftProperty, "line");
+        band.SetResourceReference(Bevel.BottomRightProperty, "line");
+        band.SetResourceReference(Bevel.BackgroundProperty, "well");
+        return band;
+    }
+
+    /// <summary>Show in Armory: the window closes, and the Armory shows the division or unit the rule is for.</summary>
+    private void ShowInArmory(JsonObject rule)
+    {
+        Close();
+        MainView view = MainView.Of(this);
+        view.Tabs.SelectedItem = view.UnitsTabItem;
+        view.UnitsTab.ShowWhatRuleChanges(rule);
+    }
+
+    /// <summary>
+    /// Make Editable, once the user says so: the rule (and the others of the same change) is kept by hand from now on,
+    /// and the Armory lets go of the change. The window opens again on the rule, now editable.
+    /// </summary>
+    private async Task MakeEditable(JsonObject rule)
+    {
+        MainView view = MainView.Of(this);
+        if (!await view.Messages.Confirm(Texts.Get("Rules.Locked.MakeEditable.Ask"), Texts.Get("Rules.Locked.MakeEditable"))) return;
+        if (!view.UnitsTab.CanMakeEditable)
+        {
+            await view.Messages.Tell(view.UnitsTab.ArmoryRulesBlockedReason ?? Texts.Get("Rules.Locked.ArmoryNotRead"));
+            return;
+        }
+        JsonNode? armory = rule[DivisionChangeRules.ArmoryKey]?.DeepClone();
+        Close();
+        view.UnitsTab.MakeEditable(rule);
+        if (model is null || history is null) return;
+        // the rule is now among those kept by hand, at the end of the preset
+        int index = model.Rules.ToList().FindIndex(each =>
+            (string?)each?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.DivisionKey] == (string?)armory?[DivisionChangeRules.DivisionKey]
+            && (string?)each?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ChangeKey] == (string?)armory?[DivisionChangeRules.ChangeKey]
+            && (string?)each?["Name"] == (string?)rule["Name"]);
+        if (index < 0) return;
+        model.SelectOnly(index);
+        Open(model, history);
     }
 
     /// <summary>Opens the condition or action window on a row (the HTML app's <c>rowOpen</c>).</summary>
@@ -180,16 +254,35 @@ public partial class RuleWindow : UserControl
 
     // ---- the property scan (the HTML app's renderScan): which scanned file fills the dropdowns ----
 
+    /// <summary>
+    /// The scans and the file they give the open preset, worked out once each time the window is built rather than for
+    /// each list that wants them: with a game's 4,000 files that took a noticeable moment each time.
+    /// </summary>
+    private (PropertyScans Scans, string CurrentFile)? scansNow;
+
     /// <summary>The scans, with the Files tab's files that are not scanned yet.</summary>
-    private PropertyScans Scans() =>
-        new(AppData.Current.Scans.Scans, [.. ListedFiles().Where(f => f.Source is not null).Select(FileListModel.ScanKey)]);
+    private PropertyScans Scans() => ScansNow().Scans;
+
+    /// <summary>The scans and the open preset's scanned file, made again after <see cref="ForgetScans"/>.</summary>
+    private (PropertyScans Scans, string CurrentFile) ScansNow()
+    {
+        if (scansNow is { } made) return made;
+        var scans = new PropertyScans(AppData.Current.Scans.Scans, [.. ListedFiles().Where(f => f.Source is not null).Select(FileListModel.ScanKey)]);
+        scansNow = (scans, WorkOutScanFile(scans));
+        return scansNow.Value;
+    }
+
+    /// <summary>The scans or the files changed, or the window is built again: they are worked out again when next wanted.</summary>
+    private void ForgetScans() => scansNow = null;
 
     /// <summary>The scanned file whose names fill the open preset's dropdowns, or "".</summary>
-    private string CurrentScanFile(PropertyScans scans)
+    private string CurrentScanFile(PropertyScans scans) => ReferenceEquals(scans, scansNow?.Scans) ? scansNow.Value.CurrentFile : WorkOutScanFile(scans);
+
+    private string WorkOutScanFile(PropertyScans scans)
     {
         if (model?.OpenPreset is not ModPreset preset) return "";
         Mod mod = model.OpenMod;
-        IEnumerable<string> withPreset = ListedFiles().Where(f => f.Source is not null && ReferenceEquals(f.Preset, preset)).Select(FileListModel.ScanKey);
+        IEnumerable<string> withPreset = ListedFiles().Where(f => f.Source is not null && FileRunner.AppliesTo(preset, f)).Select(FileListModel.ScanKey);
         return scans.ForPreset(preset, mod.Presets, AppData.Current.ScanPickOf(mod, preset), withPreset);
     }
 
@@ -200,11 +293,50 @@ public partial class RuleWindow : UserControl
         ScanInfo current = scans.Of(CurrentScanFile(scans));
         string sourceFile = JsonValues.AsText(rule["Params"]?["SourceFile"]);
         string sourceKey = scans.Find(sourceFile);
+        // only a Lookup rule lists the files, for its other file: a game's 4,000 of them take a moment to name
+        if (RuleEditor.KindOf(rule) != "Lookup") return new ScanLists(current.Names, current.Titles, current.Types, [], sourceKey != "", scans.Of(sourceFile).Names);
         List<ChoiceOption> files = [.. scans.Keys.Select(key => new ChoiceOption(
             key == sourceKey ? sourceFile : scans.ShortName(key), PropertyScans.BaseName(key),
             scans.Folder(key) is { Length: > 0 } folder ? PropertyScans.FolderTag(folder) : ""))];
+        // the files on the Files tab not read yet are offered too, as the Property scan offers them; the one chosen is read
+        foreach (string key in scans.Unread)
+        {
+            // named as a scanned file is: its name, with the folders that set it apart from another file of that name
+            string folder = scans.Folder(key);
+            string reference = folder != "" ? folder + "/" + PropertyScans.BaseName(key) : PropertyScans.BaseName(key);
+            string dim = (folder != "" ? PropertyScans.FolderTag(folder) + " " : "") + Texts.Get("Files.Status.NotReadYet");
+            files.Add(new ChoiceOption(reference, PropertyScans.BaseName(key), dim));
+        }
+        if (sourceKey == "" && sourceFile != "") ReadForLookup(sourceFile);
         return new ScanLists(current.Names, current.Titles, current.Types, files, sourceKey != "", scans.Of(sourceFile).Names);
     }
+
+    /// <summary>The files being read for a Lookup rule's other file, so each is read once.</summary>
+    private readonly HashSet<FileEntry> readingForLookup = [];
+
+    /// <summary>
+    /// A Lookup rule names a file on the Files tab that is not read yet: it is read in the background, and once scanned
+    /// the window builds itself again with its names (see <see cref="ScansChanged"/>).
+    /// </summary>
+    private async void ReadForLookup(string file)
+    {
+        // the rule names the file as a scanned file is named: by its name, or with folders in front
+        string wanted = file.ToLowerInvariant();
+        FileEntry? entry = ListedFiles().FirstOrDefault(each => each.Source is not null && NamesFile(FileListModel.ScanKey(each).ToLowerInvariant(), wanted));
+        if (entry is null || !readingForLookup.Add(entry)) return;
+        try
+        {
+            await ReadFile(entry);
+        }
+        finally
+        {
+            readingForLookup.Remove(entry);
+        }
+    }
+
+    /// <summary>Whether a rule's reference to a file (in lower case) names this file's key (in lower case).</summary>
+    private static bool NamesFile(string key, string reference) =>
+        key == reference || key.EndsWith("/" + reference, StringComparison.Ordinal);
 
     /// <summary>The property names for a list's Operand or Target: a Lookup rule's other file's for its conditions there.</summary>
     private IReadOnlyList<string> NamesFor(string list)
@@ -286,11 +418,59 @@ public partial class RuleWindow : UserControl
         }
     }
 
-    /// <summary>A file was scanned: the window shows it, building itself again when the names it shows changed.</summary>
-    private void ScansChanged()
+    /// <summary>
+    /// Files were added on the Files tab or taken off it: the Property scan offers them, and an open rule (a Lookup
+    /// rule's other file among them) is built again.
+    /// </summary>
+    public void FilesChanged()
     {
+        ForgetScans();
+        // a closed window shows them when it next opens: adding a game's 4,000 files calls this often
+        if (IsOpen && shownRule is not null) Build();
+    }
+
+    /// <summary>A file was scanned: the window shows it, building itself again when the names it shows changed.</summary>
+    private void ScansChanged(string file)
+    {
+        ForgetScans();
         if (!IsOpen || shownRule is null) return;
-        Build();
+        // a session's thousands of files are read just after the app starts: building the window again for each one
+        // stalled it until all were read. Only the file that fills the dropdowns, or a Lookup rule's other file, changes
+        // what it shows; any other only joins the Property scan's list
+        if (MayFillWindow(file)) Build();
+        else ShowScanSoon();
+    }
+
+    /// <summary>
+    /// Whether a file just scanned may be the one whose names fill the open preset's dropdowns (see
+    /// <see cref="PropertyScans.ForPreset"/>: the file picked for it, a file that has it on the Files tab, or one whose
+    /// name the preset's name holds), or the open Lookup rule's other file.
+    /// </summary>
+    private bool MayFillWindow(string file)
+    {
+        if (model?.OpenPreset is not ModPreset preset) return true;
+        if (AppData.Current.ScanPickOf(model.OpenMod, preset) == file) return true;
+        if (preset.Name.Replace('\\', '/').Contains(PropertyScans.BaseName(file), StringComparison.Ordinal)) return true;
+        if (ListedFiles().Any(entry => FileRunner.AppliesTo(preset, entry) && FileListModel.ScanKey(entry) == file)) return true;
+        string sourceFile = JsonValues.AsText(shownRule?["Params"]?["SourceFile"]).ToLowerInvariant();
+        return sourceFile != "" && NamesFile(file.ToLowerInvariant(), sourceFile);
+    }
+
+    /// <summary>Shows the Property scan's list again soon, at most twice a second while files are read one after another.</summary>
+    private System.Windows.Threading.DispatcherTimer? scanListLater;
+
+    private void ShowScanSoon()
+    {
+        if (scanListLater is null)
+        {
+            scanListLater = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+            scanListLater.Tick += (_, _) =>
+            {
+                scanListLater.Stop();
+                if (IsOpen) ShowScan();
+            };
+        }
+        if (!scanListLater.IsEnabled) scanListLater.Start();
     }
 
     /// <summary>The window is as tall as 92% of the app, or 52rem; it stays beside the row window as the app is resized.</summary>
@@ -338,7 +518,7 @@ public partial class RuleWindow : UserControl
         if (control && e.Key == Key.V)
         {
             e.Handled = true;
-            if (Clipboard.ContainsText() && Clipboard.GetText() is { Length: > 0 } text) paste(text);
+            if (ClipboardText() is { Length: > 0 } text) paste(text);
             return;
         }
         if (model.ActiveRowList is not string list) return;
@@ -352,9 +532,36 @@ public partial class RuleWindow : UserControl
 
     private void CopyRows(string list)
     {
-        if (model?.RowsAsClipboardText(list) is not string text) return;
-        Clipboard.SetText(text);
+        if (model?.RowsAsClipboardText(list) is not string text || !CopyToClipboard(text)) return;
         model.Say(Texts.Get("Rules.Copied", ("what", RulesModel.CountRows(list, model.SelectedRowsOf(list).Count))));
+    }
+
+    /// <summary>Puts text on the clipboard; false, and the status says so, when another program has it open.</summary>
+    private bool CopyToClipboard(string text)
+    {
+        try
+        {
+            Clipboard.SetText(text);
+            return true;
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            model?.Say(Texts.Get("Rules.ClipboardBusy"));
+            return false;
+        }
+    }
+
+    /// <summary>The text on the clipboard; empty when it holds none, or another program has it open.</summary>
+    private static string ClipboardText()
+    {
+        try
+        {
+            return Clipboard.ContainsText() ? Clipboard.GetText() : "";
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            return "";
+        }
     }
 
     /// <summary>Ctrl+X: copies the selected rows, then deletes them.</summary>
@@ -362,7 +569,8 @@ public partial class RuleWindow : UserControl
     {
         if (model?.RowsAsClipboardText(list) is not string text) return;
         int count = model.SelectedRowsOf(list).Count;
-        Clipboard.SetText(text);
+        // nothing is deleted when the copy failed, as when another program has the clipboard open
+        if (!CopyToClipboard(text)) return;
         model.DeleteRows(list);
         model.Say(Texts.Get("Rules.Cut", ("what", RulesModel.CountRows(list, count))));
     }

@@ -114,6 +114,20 @@ public static partial class UnitNames
     /// <summary>A compared stat's name: "Cost", "Front armor"...</summary>
     public static string Stat(string key) => Texts.Get(StatNames[key]);
 
+    /// <summary>WARNO's armour families by name, each with its text's name.</summary>
+    private static readonly Dictionary<string, string> ArmorFamilies = new(StringComparer.Ordinal)
+    {
+        ["ResistanceFamily_avion"] = "Units.ArmorFamily.Plane", ["ResistanceFamily_batiment"] = "Units.ArmorFamily.Building",
+        ["ResistanceFamily_blindage"] = "Units.ArmorFamily.Armored", ["ResistanceFamily_canon"] = "Units.ArmorFamily.Gun",
+        ["ResistanceFamily_helico"] = "Units.ArmorFamily.Helicopter", ["ResistanceFamily_infanterie"] = "Units.ArmorFamily.Infantry",
+        ["ResistanceFamily_toit"] = "Units.ArmorFamily.Roof", ["ResistanceFamily_vehicule"] = "Units.ArmorFamily.Vehicle",
+        ["ResistanceFamily_vehicule_leger"] = "Units.ArmorFamily.LightVehicle",
+    };
+
+    /// <summary>An armour family's name, such as "Helicopter" for "ResistanceFamily_helico"; one the app does not know is shown made readable.</summary>
+    public static string ArmorFamily(string family) =>
+        ArmorFamilies.TryGetValue(family, out string? name) ? Texts.Get(name) : Readable(family.Replace("ResistanceFamily_", "", StringComparison.Ordinal));
+
     /// <summary>
     /// A code made readable: Steel Division 2's leading "T" (for type) is dropped, underscores become spaces and words
     /// run together are split: "TSP_AA" is "SP AA", "TArmorReco" is "Armor Reco", "smoke_launcher" is "smoke launcher".

@@ -25,7 +25,7 @@ public partial class RowWindow : UserControl
          "Is Greater Than", "Is Greater Than Or Equal To", "Contains Any Of", "Contains All Of"];
     public static readonly string[] ActionOperators =
         ["Add [int, float]", "Subtract [int, float]", "Multiply [int, float]", "Divide [int, float]", "Set To [int, float, string, boolean]",
-         "Append [string]", "Prepend [string]", "Insert [array]", "Replace [array]", "Remove [array]"];
+         "Set To [list, object]", "Append [string]", "Prepend [string]", "Insert [array]", "Replace [array]", "Remove [array]", "Add Property", "Remove Property"];
 
     /// <summary>The line height of the code font, for the Value box's lines.</summary>
     private const double CodeLineHeight = 17.390625;

@@ -5,7 +5,7 @@
   "Editor.FilterFile.NotOne": "\"{file}\" is not a filter file.",
   "Rules.ModFile.NameTaken": "A mod named \"{name}\" already exists.",
   "Rules.ModFile.NotJson": "not valid JSON: {problem}",
-  "Rules.ModFile.IsPreset": "a preset, not a mod. Open the file, copy its text, and paste it into the preset list",
+  "Rules.ModFile.IsPreset": "a rule set, not a mod. Open the file, copy its text, and paste it into the rule set list",
   "Rules.ModFile.NotAMod": "not a mod: a mod file holds a \"Presets\" list",
-  "Rules.ModFile.PresetWithoutRules": "preset {number} in it has no \"Rules\" list"
+  "Rules.ModFile.PresetWithoutRules": "rule set {number} in it has no \"Rules\" list"
 }

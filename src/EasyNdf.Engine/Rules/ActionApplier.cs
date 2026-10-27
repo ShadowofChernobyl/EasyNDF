@@ -41,23 +41,68 @@ public sealed class EditContext
 
 /// <summary>
 /// Applies one action to one descriptor: finds every value of the target property, at any depth, and changes it.
+/// A target can be a path, "Outer > Inner": then only the Inner found inside a value named Outer is changed (one cost
+/// matrix's key among a file's many, for one). "Add Property" adds a property the descriptor does not have.
 /// </summary>
 public sealed partial class ActionApplier
 {
+    /// <summary>What separates the parts of a target path, as the stand-ins' labels write a path.</summary>
+    public const string PathSeparator = " > ";
+
+    /// <summary>
+    /// The operator that sets a list or an object to a value typed in full. It is its own operator, not plain Set To,
+    /// because the HTML app's engine leaves lists and objects alone on Set To, and the two must give the same output.
+    /// </summary>
+    public const string SetWholeOperator = "Set To [list, object]";
+
+    /// <summary>The operator that takes a property out of the descriptor, its line and all.</summary>
+    public const string RemovePropertyOperator = "Remove Property";
+
+    /// <summary>Whether Remove Property found the property anywhere.</summary>
+    private bool removedAny;
+
     private readonly Declaration descriptor;
     private readonly RuleAction action;
     private readonly EditContext context;
+
+    /// <summary>The target as written, for the edit log.</summary>
+    private readonly string fullTarget;
+
+    /// <summary>The name changed: the target, or the last part of a target path.</summary>
     private readonly string target;
+
+    /// <summary>The parts of a target path still to be found above the target, outermost first; none for a plain target.</summary>
+    private string[] pathAbove;
+
     private readonly string op;
     private readonly string value;
+
+    /// <summary>
+    /// Whether the target path starts with "&gt;": it then names the descriptor's own properties, each part one level
+    /// below the one before, rather than a property found at any depth.
+    /// </summary>
+    private readonly bool isAnchored;
     private bool IsListOperation => op is "Insert" or "Replace";
+
+    /// <summary>Whether the action sets lists and objects whole (<see cref="SetWholeOperator"/>).</summary>
+    private bool SetsWholeValues => action.Operator == SetWholeOperator;
+
+    /// <summary>Whether every part of a target path has been found, so the target itself may now be changed.</summary>
+    private bool IsAtTarget => pathAbove.Length == 0;
 
     private ActionApplier(Declaration descriptor, RuleAction action, EditContext context, string target, string op)
     {
         this.descriptor = descriptor;
         this.action = action;
         this.context = context;
-        this.target = target;
+        fullTarget = target;
+        // "> A > B": a path that starts at the descriptor's own properties and steps down one level per part
+        string trimmed = JsText.Trim(target);
+        isAnchored = trimmed.StartsWith('>');
+        if (isAnchored) target = JsText.Trim(trimmed[1..]);
+        string[] parts = [.. target.Split(PathSeparator).Select(part => JsText.Trim(part))];
+        this.target = parts[^1];
+        pathAbove = parts[..^1];
         this.op = op;
         value = action.Value ?? "";
     }
@@ -85,7 +130,13 @@ public sealed partial class ActionApplier
             EditNameOrType();
             return;
         }
+        if (op == "Add Property")
+        {
+            AddProperty();
+            return;
+        }
         Walk(descriptor.Value);
+        if (op == RemovePropertyOperator && !removedAny) context.Skipped++;
     }
 
     // ---- helpers ----
@@ -99,7 +150,7 @@ public sealed partial class ActionApplier
     {
         context.Edits++;
         if (context.Log.Count < context.LogLimit)
-            context.Log.Add(new EditLogEntry(descriptor.LogName, target, Shorten(oldText), Shorten(newText)));
+            context.Log.Add(new EditLogEntry(descriptor.LogName, fullTarget, Shorten(oldText), Shorten(newText)));
     }
 
     /// <summary>The text actions: Append, Prepend and Remove. Null when the operation does not apply to text.</summary>
@@ -151,6 +202,7 @@ public sealed partial class ActionApplier
         switch (node)
         {
             case ObjectValue obj:
+                if (op == RemovePropertyOperator && IsAtTarget && RemoveFrom(obj)) break;
                 foreach (var property in obj.Properties) property.Value = Visit(property.Name, property.Value);
                 break;
 
@@ -160,11 +212,18 @@ public sealed partial class ActionApplier
 
             case PairValue { Kind: PairKind.Pair } pair:
                 // (Key, Value) with the key as the target: the value is changed, for actions that set or calculate.
-                bool keyIsTarget = pair.First.IsPrimitive && CanonicalWriter.PrimitiveText(pair.First) == target;
+                bool keyIsTarget = IsAtTarget && pair.First.IsPrimitive && CanonicalWriter.PrimitiveText(pair.First) == target;
                 bool setsOrCalculates = Arithmetic.Operations.ContainsKey(op) || op is "Set To" or "Scale" or "Formula";
                 if (keyIsTarget && pair.Second.IsPrimitive && setsOrCalculates)
                 {
                     pair.Second = EditPrimitive(pair.Second);
+                    break;
+                }
+                // a key whose value is a list or an object, such as a cost matrix's (Factory/Tanks, [1, 1, 2]): Set To
+                // writes the whole value
+                if (keyIsTarget && SetsWholeValues && pair.Second is ListValue or ObjectValue)
+                {
+                    pair.Second = SetWhole(pair.Second);
                     break;
                 }
                 pair.First = Visit("Value1", pair.First);
@@ -185,8 +244,18 @@ public sealed partial class ActionApplier
     /// <summary>Visits one value found under a name. Returns the value to keep in its place.</summary>
     private NdfValue Visit(string? name, NdfValue node)
     {
+        if (!IsAtTarget)
+        {
+            VisitOnPath(name, node);
+            return node;
+        }
         if (name == target)
         {
+            // a single value under the name is set as plain Set To sets it; flags (A | B) and pairs ((1, 2)) are set whole
+            if (SetsWholeValues && node is ListValue or ObjectValue or PairValue) return SetWhole(node);
+            // a list an earlier action wrote in full (Set To [list, object]) is read back, so it can be added to
+            if ((IsListOperation || op == "Remove") && node is ScalarValue { Start: null, Kind: ScalarKind.Raw } written && ListWrittenAs(written.Text) is ListValue writtenList)
+                return EditWrittenList(writtenList, written);
             if (node is ListValue list)
             {
                 if (IsListOperation || op == "Remove")
@@ -207,8 +276,140 @@ public sealed partial class ActionApplier
                 return EditPrimitive(node);
             }
         }
-        if (!node.IsPrimitive) Walk(node);
+        // an anchored path goes no deeper than the level its last part names
+        if (!node.IsPrimitive && !isAnchored) Walk(node);
         return node;
+    }
+
+    /// <summary>
+    /// On the way to a path's target: a value named as the path's next part is looked inside for the rest of the path;
+    /// any other value is looked inside for that part.
+    /// </summary>
+    private void VisitOnPath(string? name, NdfValue node)
+    {
+        if (node.IsPrimitive) return;
+        if (name == pathAbove[0])
+        {
+            string[] before = pathAbove;
+            pathAbove = pathAbove[1..];
+            Walk(node);
+            pathAbove = before;
+            return;
+        }
+        // an anchored path only steps into the property its next part names
+        if (!isAnchored) Walk(node);
+    }
+
+    // ---- a property removed ----
+
+    /// <summary>
+    /// "Remove Property": takes the target out of an object that has it. The writer leaves out its line, and the
+    /// comments above it stay. True when the object had it.
+    /// </summary>
+    private bool RemoveFrom(ObjectValue obj)
+    {
+        int index = obj.Properties.FindIndex(property => property.Name == target && !property.IsAddedByRule);
+        if (index < 0) return false;
+        Property removed = obj.Properties[index];
+        obj.Properties.RemoveAt(index);
+        (obj.RemovedProperties ??= []).Add(removed);
+        removedAny = true;
+        Note(CanonicalWriter.Write(removed.Value), "(removed)");
+        return true;
+    }
+
+    // ---- a list an action wrote in full ----
+
+    /// <summary>The list a rule wrote as text, read back; null when the text is not one list.</summary>
+    private static ListValue? ListWrittenAs(string text)
+    {
+        try
+        {
+            var document = Parser.Parse("ListWrittenByARule is " + text + "\n");
+            return document.Declarations.Count == 1 ? document.Declarations[0].Value as ListValue : null;
+        }
+        catch (NdfParseException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Applies a list action to a list an earlier action wrote, and writes the list again.</summary>
+    private NdfValue EditWrittenList(ListValue list, ScalarValue written)
+    {
+        int edits = context.Edits;
+        EditList(list);
+        if (context.Edits == edits) return written;
+        var rewritten = ScalarValue.Written(CanonicalWriter.Write(new ListValue(list.TypeName, list.Items)));
+        rewritten.FitsIndentation = true;
+        rewritten.AddedComment = (written.AddedComment ?? "") + (list.AddedComment ?? "");
+        if (written.LeadingComments is not null) rewritten.LeadingComments = written.LeadingComments;
+        return rewritten.TakesPlaceOf(written);
+    }
+
+    /// <summary>
+    /// Set To on a list, an object or a MAP: the whole value is replaced by the text typed, written as typed. It is
+    /// the way to give a cost matrix's key a new list of costs.
+    /// </summary>
+    private NdfValue SetWhole(NdfValue node)
+    {
+        string old = CanonicalWriter.Write(node);
+        var (text, comment) = CommentText.SplitTrailingComment(JsText.Trim(WithLineBreaks(value)));
+        if (text == "" || text == JsText.Trim(old)) return node;
+        ScalarValue written = ScalarValue.Written(text);
+        written.FitsIndentation = true;
+        written.AddedComment = CommentText.JoinComments(comment, (node.AddedComment ?? "") + CommentFor(old));
+        if (node.LeadingComments is not null) written.LeadingComments = node.LeadingComments;
+        Note(old, text + comment);
+        return written.TakesPlaceOf(node);
+    }
+
+    // ---- a property added ----
+
+    /// <summary>
+    /// "Add Property": the descriptor (or the object a type scope found) gets a property it does not have, named as
+    /// the target, with the value typed; one it has already is left alone, as Set To changes that. A unit's line in a
+    /// division that needed no transport, for one, has no AvailableTransportList to insert into until one is added.
+    /// </summary>
+    private void AddProperty()
+    {
+        if (ObjectAtPath() is not ObjectValue obj || target == "")
+        {
+            context.Skipped++;
+            return;
+        }
+        if (obj.Properties.Any(property => property.Name == target))
+        {
+            context.Skipped++;
+            return;
+        }
+        var (text, comment) = CommentText.SplitTrailingComment(JsText.Trim(WithLineBreaks(value)));
+        if (text == "")
+        {
+            context.Skipped++;
+            return;
+        }
+        ScalarValue written = ScalarValue.Written(text);
+        written.FitsIndentation = true;
+        written.AddedComment = CommentText.JoinComments(comment, CommentFor(""));
+        obj.Properties.Add(new Property(target, written) { IsAddedByRule = true });
+        Note("", text + comment);
+    }
+
+    /// <summary>
+    /// The object Add Property adds to: the descriptor itself, or, for a path such as "ComponentFrame &gt; Width", the
+    /// object each part leads to in turn, one level at a time from the descriptor's own properties. Null when a part
+    /// is missing or does not hold an object.
+    /// </summary>
+    private ObjectValue? ObjectAtPath()
+    {
+        if (descriptor.Value is not ObjectValue holder) return null;
+        foreach (string part in pathAbove)
+        {
+            if (holder.Properties.LastOrDefault(property => property.Name == part)?.Value is not ObjectValue inner) return null;
+            holder = inner;
+        }
+        return holder;
     }
 
     // ---- single values ----
@@ -253,6 +454,8 @@ public sealed partial class ActionApplier
             var (text, comment) = CommentText.SplitTrailingComment(WithLineBreaks(value));
             extraComment = comment;
             written = ScalarValue.Written(text);
+            // a list or an object typed in place of a single value fits where it lands, as Set To a list does
+            written.FitsIndentation = SetsWholeValues;
         }
         else if (op is "Append" or "Prepend" or "Remove")
         {
@@ -355,16 +558,7 @@ public sealed partial class ActionApplier
                 return text == wanted || (item is ScalarValue { Kind: ScalarKind.String } && JsText.Slice(text, 1, -1) == wanted);
             });
             if (index < 0) { context.Skipped++; return; }
-            NdfValue gone = list.Items[index];
-            list.Items.RemoveAt(index);
-            if (gone.LeadingComments is not null)
-            {
-                // its comments move to whatever follows
-                if (index < list.Items.Count)
-                    list.Items[index].LeadingComments = [.. gone.LeadingComments, .. list.Items[index].LeadingComments ?? []];
-                else
-                    list.EndComments = [.. gone.LeadingComments, .. list.EndComments ?? []];
-            }
+            list.RemoveItemAt(index);
         }
         else
         {
@@ -377,7 +571,15 @@ public sealed partial class ActionApplier
 
             double index;
             Match named = NamedIndex().Match(indexText);
-            if (named.Success)
+            Match beside = BesideEntry().Match(indexText);
+            if (insert && beside.Success)
+            {
+                // "Before X" or "After X": beside the first item whose text holds X, or at the end when none does
+                int found = IndexOfEntryHolding(list, beside.Groups[2].Value);
+                bool before = beside.Groups[1].Value.Equals("before", StringComparison.OrdinalIgnoreCase);
+                index = found < 0 ? length : before ? found : found + 1;
+            }
+            else if (named.Success)
             {
                 double start = named.Groups[1].Value.Equals("firstindex", StringComparison.OrdinalIgnoreCase) ? 0 : (insert ? length : length - 1);
                 index = start + (named.Groups[2].Success ? ParseWhole(named.Groups[2].Value) : 0);
@@ -439,6 +641,24 @@ public sealed partial class ActionApplier
 
     [GeneratedRegex(@",+\z")]
     private static partial Regex TrailingCommas();
+
+    [GeneratedRegex(@"\A(before|after)\s+(.+)\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline)]
+    private static partial Regex BesideEntry();
+
+    /// <summary>The first item whose text holds the given text, spaces and line breaks aside; -1 when none does.</summary>
+    private static int IndexOfEntryHolding(ListValue list, string wanted)
+    {
+        string bare = WithoutWhiteSpace(wanted);
+        return bare == "" ? -1 : list.Items.FindIndex(item => WithoutWhiteSpace(CanonicalWriter.Write(item)).Contains(bare, StringComparison.Ordinal));
+    }
+
+    private static string WithoutWhiteSpace(string text)
+    {
+        var output = new StringBuilder(text.Length);
+        foreach (char c in text)
+            if (!JsText.IsWhiteSpace(c)) output.Append(c);
+        return output.ToString();
+    }
 
     [GeneratedRegex(@"\A(lastindex|firstindex)\s*([+-]?\s*[0-9]+)?\z", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex NamedIndex();

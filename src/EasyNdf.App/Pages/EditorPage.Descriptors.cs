@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Threading;
+using EasyNdf.App.Controls;
 using EasyNdf.App.Editor;
 using EasyNdf.App.Files;
 using EasyNdf.Data.FileList;
@@ -111,7 +112,15 @@ public partial class EditorPage
     private int treeBuild;
 
     /// <summary>A descriptor to choose once the file it is in has opened in the editor (the HTML app's <c>tv.want</c>).</summary>
-    private sealed record Wanted(string Name, int Offset, int RowIndex, bool Quiet);
+    /// <param name="Name">The descriptor's name.</param>
+    /// <param name="Offset">Where in it to show, from its start.</param>
+    /// <param name="RowIndex">The property row to show; -1 for none.</param>
+    /// <param name="Quiet">Whether not finding it says nothing.</param>
+    /// <param name="InExport">
+    /// Whether, not found in the file, it is looked for in the file's export: a descriptor the Armory adds (a new unit,
+    /// a unit's own loadout, a weapon of the mod's own) is only there.
+    /// </param>
+    private sealed record Wanted(string Name, int Offset, int RowIndex, bool Quiet, bool InExport = false);
     private Wanted? wanted;
 
     /// <summary>Whether Scan all is reading, and whether it was asked to stop.</summary>
@@ -150,6 +159,7 @@ public partial class EditorPage
         };
         Text.TextChanged += DescriptorTextChanged;
         StartFilter();
+        PrepareHalfButtons();
         DescriptorSplit.Moved += SplitMoved;
         DescriptorSplit.Reset += () => { splitShare = null; ShowSplit(); };
         DescriptorSplit.Settled += () => RememberSplit();
@@ -278,6 +288,7 @@ public partial class EditorPage
             int found = outline.FindIndex(d => d.Name == want.Name);
             if (found < 0)
             {
+                if (want.InExport && await LookInExport(want.Name)) return;
                 if (!want.Quiet && shown?.Entry is FileEntry opened) await TellNotInFile(want.Name, opened);
                 return;
             }
@@ -649,17 +660,25 @@ public partial class EditorPage
         }
         if (reveal && owner.Entry is FileEntry other)
         {
-            // the list stays on the file it is on
-            if (!showsAllFiles && pinnedFile is null && shown?.Entry is FileEntry current) pinnedFile = current;
-            wanted = new Wanted(owner.Name, offset, inside ? node.RowIndex : -1, Quiet: false);
-            await Open(other);
-            if (shown?.Entry != other) wanted = null;
+            await OpenInItsFile(other, owner.Name, offset, inside ? node.RowIndex : -1);
             return;
         }
         otherDescriptor = new OtherDescriptor(owner.Entry!, owner.Name, rows.Type, rows.Kind, rows.Rows, rows.IsCut);
         closedRows = [];
         ShowProperties();
         if (inside) ShowPropertyRow(node.RowIndex);
+    }
+
+    /// <summary>
+    /// Opens a descriptor of another file in the editor, shown in the text at a row of it (an offset from its start, and
+    /// its row in the properties, or -1 for none). The Descriptor Tree stays on the file it is on.
+    /// </summary>
+    private async Task OpenInItsFile(FileEntry file, string name, int offset, int rowIndex)
+    {
+        if (!showsAllFiles && pinnedFile is null && shown?.Entry is FileEntry current) pinnedFile = current;
+        wanted = new Wanted(name, offset, rowIndex, Quiet: false);
+        await Open(file);
+        if (shown?.Entry != file) wanted = null;
     }
 
     // ---- clicks and keys on the tree ----
@@ -1121,6 +1140,15 @@ public partial class EditorPage
                 UserClicked(user.User, e.ClickCount);
                 return;
             }
+            // a descriptor of another file is read-only here: a double-click on one of its rows opens it in its file there
+            if (e.ClickCount == 2 && otherDescriptor is OtherDescriptor other && at is ListBoxItem { DataContext: PropertyItem item })
+            {
+                e.Handled = true;
+                int rowIndex = item switch { ObjectOrListItem objectOrList => objectOrList.Index, ValueItem value => value.Index, _ => -1 };
+                int offset = rowIndex >= 0 && rowIndex < other.Rows.Count ? other.Rows[rowIndex].Start : 0;
+                _ = OpenInItsFile(other.Entry, other.Name, offset, rowIndex);
+                return;
+            }
             if (at is ListBox) return;
         }
     }
@@ -1154,7 +1182,7 @@ public partial class EditorPage
             int index = outline.FindIndex(descriptor => descriptor.Name == name);
             if (index < 0)
             {
-                await TellNotInFile(name, entry);
+                if (!await LookInExport(name)) await TellNotInFile(name, entry);
                 return;
             }
             otherDescriptor = null;
@@ -1163,9 +1191,23 @@ public partial class EditorPage
             return;
         }
         // shown once the file is open and its descriptors are listed
-        wanted = new Wanted(name, 0, -1, Quiet: false);
+        wanted = new Wanted(name, 0, -1, Quiet: false, InExport: true);
         await Open(entry);
         if (shown?.Entry != entry) wanted = null;
+    }
+
+    /// <summary>
+    /// A descriptor not in the file shown, looked for in its export (Show export): one the Armory adds, such as a new
+    /// unit, is only there. False when the file is shown as exported already, or its export runs no rule.
+    /// </summary>
+    private async Task<bool> LookInExport(string name)
+    {
+        if (shown is not { IsExport: false, Entry: FileEntry entry } || FileRunner.RulesToRun(entry).Count == 0) return false;
+        // found once the export's descriptors are listed; not found there, the user is told
+        wanted = new Wanted(name, 0, -1, Quiet: false);
+        await ShowExportOrSource();
+        if (shown is not { IsExport: true }) wanted = null;
+        return true;
     }
 
     /// <summary>
@@ -1429,20 +1471,51 @@ public partial class EditorPage
 
     private void RememberSplit() => FilesPage.RememberSize("dvSplit", splitShare);
 
-    /// <summary>The two lists' widths: shares of the room in whole thousandths, each at least its least width.</summary>
+    /// <summary>
+    /// The two lists' widths: shares of the room in whole thousandths, each at least its least width. A list folded
+    /// away by its button is hidden with the bar, and its room goes to the File Editor; the other keeps its width.
+    /// </summary>
     private void ShowSplit()
     {
+        bool showsTree = halfButtons.LeftShows, showsProperties = halfButtons.RightShows;
+        bool showsBoth = showsTree && showsProperties;
         int share = splitShare is double s && s > 0 && s < 1 ? (int)Math.Round(s * 1000) : 500;
-        TreeColumn.Width = new GridLength(share, GridUnitType.Star);
-        PropertiesColumn.Width = new GridLength(1000 - share, GridUnitType.Star);
+        TreeBox.Visibility = showsTree ? Visibility.Visible : Visibility.Collapsed;
+        PropertiesBox.Visibility = showsProperties ? Visibility.Visible : Visibility.Collapsed;
+        DescriptorSplit.Visibility = showsBoth ? Visibility.Visible : Visibility.Collapsed;
+        DescriptorSplitColumn.Width = new GridLength(showsBoth ? 9 : 0);
+        TreeColumn.Width = showsTree ? new GridLength(showsBoth ? share : 1, GridUnitType.Star) : new GridLength(0);
+        PropertiesColumn.Width = showsProperties ? new GridLength(showsBoth ? 1000 - share : 1, GridUnitType.Star) : new GridLength(0);
+        Panes.SecondPart = showsBoth ? 1 : showsTree ? share / 1000.0 : (1000 - share) / 1000.0;
+        ShowLeastListWidths();
     }
 
-    /// <summary>The least widths: the tree min(9rem, 30%), the properties min(14rem, 40%).</summary>
-    private void DescriptorBoxResized(object sender, SizeChangedEventArgs e)
+    /// <summary>The tree's icon: a list with branches.</summary>
+    private static readonly System.Windows.Media.Geometry TreeIcon = System.Windows.Media.Geometry.Parse("M 2,2.5 H 6 M 4,2.5 V 11.5 H 7 M 4,7 H 7 M 8.5,7 H 12 M 8.5,11.5 H 12");
+
+    /// <summary>The properties' icon: lines of a name and its value.</summary>
+    private static readonly System.Windows.Media.Geometry PropertiesIcon = System.Windows.Media.Geometry.Parse("M 1.5,3 H 5 M 7,3 H 12.5 M 1.5,7 H 5 M 7,7 H 12.5 M 1.5,11 H 5 M 7,11 H 12.5");
+
+    /// <summary>The Descriptor Tree and Properties buttons in the pane's heading, each folding its own list away.</summary>
+    private PaneHalfButtons halfButtons = null!;
+
+    private void PrepareHalfButtons()
     {
-        double width = e.NewSize.Width;
-        TreeColumn.MinWidth = Math.Min(144, 0.3 * width);
-        PropertiesColumn.MinWidth = Math.Min(224, 0.4 * width);
+        var tree = new PaneHalf(TreeIcon, () => Texts.Get("Editor.Descriptors"), () => Texts.Get("Editor.Descriptors.Show"), "editorTree");
+        var properties = new PaneHalf(PropertiesIcon, () => Texts.Get("Editor.Properties"), () => Texts.Get("Editor.Properties.Show"), "editorProperties");
+        // the Properties button sits over its own list, right of the tree and the bar between them
+        halfButtons = new PaneHalfButtons(Panes, tree, properties, () => TreeBox.ActualWidth + DescriptorSplitColumn.ActualWidth, ShowSplit);
+        TreeBox.SizeChanged += (_, _) => halfButtons.LineUp();
+    }
+
+    /// <summary>The least widths: the tree min(9rem, 30%), the properties min(14rem, 40%); none for a list folded away.</summary>
+    private void DescriptorBoxResized(object sender, SizeChangedEventArgs e) => ShowLeastListWidths();
+
+    private void ShowLeastListWidths()
+    {
+        double width = DescriptorBox.ActualWidth;
+        TreeColumn.MinWidth = TreeBox.Visibility == Visibility.Visible ? Math.Min(144, 0.3 * width) : 0;
+        PropertiesColumn.MinWidth = PropertiesBox.Visibility == Visibility.Visible ? Math.Min(224, 0.4 * width) : 0;
         // the property rows follow the width by themselves (Editor/KeyWidth.cs): building the list again on every step
         // of a resize made resizing the window slow
     }

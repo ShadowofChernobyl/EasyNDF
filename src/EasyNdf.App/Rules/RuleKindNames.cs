@@ -17,6 +17,8 @@ public static class RuleKindNames
         "Formula" => Texts.Get("Rules.Kind.Formula"),
         "Table" => Texts.Get("Rules.Kind.Table"),
         "Lookup" => Texts.Get("Rules.Kind.Lookup"),
+        "Text" => Texts.Get("Rules.Kind.Text"),
+        "File" => Texts.Get("Rules.Kind.File"),
         "Check" => Texts.Get("Rules.Kind.Check"),
         "Group" => Texts.Get("Rules.Kind.Group"),
         "Variable" => Texts.Get("Rules.Kind.Variable"),

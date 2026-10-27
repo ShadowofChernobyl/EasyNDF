@@ -1,8 +1,9 @@
 namespace EasyNdf.Data.Units;
 
 /// <summary>
-/// The Units tab's filters: the search text, the side, the nations ticked, the role, the division, "Only units in a
-/// division" and the factory (the row of tabs above the list). A unit is shown when it passes all of them.
+/// The Units tab's filters: the search text, the side, the nations ticked, the role, the division chosen in the
+/// division list, "Only units in a division", "Only modded units" and the factory (the row of tabs above the list). A unit is shown when it
+/// passes all of them.
 /// </summary>
 public sealed class UnitFilter
 {
@@ -29,11 +30,20 @@ public sealed class UnitFilter
     /// <summary>The role; empty for any.</summary>
     public string Role { get; set; } = "";
 
-    /// <summary>The division's name; empty for any.</summary>
-    public string Division { get; set; } = "";
+    /// <summary>
+    /// The units of the division chosen in the division list, by descriptor; null for all units. With a division chosen,
+    /// "Only units in a division" does not count: its units are in it.
+    /// </summary>
+    public IReadOnlySet<string>? InDivision { get; set; }
 
     /// <summary>Only units that are in at least one multiplayer division.</summary>
-    public bool OnlyInDivision { get; set; } = true;
+    public bool OnlyInDivision { get; set; }
+
+    /// <summary>Only modded units: those not in <see cref="VanillaUnits"/>.</summary>
+    public bool OnlyModded { get; set; }
+
+    /// <summary>The descriptors of vanilla WARNO's (or Steel Division 2's) units, before any mod; a unit not among them is modded.</summary>
+    public IReadOnlySet<string> VanillaUnits { get; set; } = new HashSet<string>();
 
     /// <summary>The factory; empty for all of them (the ALL tab).</summary>
     public string Factory { get; set; } = "";
@@ -44,8 +54,9 @@ public sealed class UnitFilter
         if (Side != "" && unit.Side != Side) return false;
         if (ignoring != Ignoring.NationAndFactory && Nations.Count > 0 && !Nations.Contains(unit.Nation)) return false;
         if (Role != "" && unit.Role != Role) return false;
-        if (Division != "" && !unit.Divisions.Contains(Division)) return false;
-        if (OnlyInDivision && unit.Divisions.Count == 0) return false;
+        if (InDivision is not null && !InDivision.Contains(unit.Descriptor)) return false;
+        if (InDivision is null && OnlyInDivision && unit.Divisions.Count == 0) return false;
+        if (OnlyModded && VanillaUnits.Contains(unit.Descriptor)) return false;
         if (ignoring == Ignoring.Nothing && Factory != "" && unit.Factory != Factory) return false;
         if (Text != "" && !unit.Name.Contains(Text, StringComparison.CurrentCultureIgnoreCase)
             && !unit.Descriptor.Contains(Text, StringComparison.OrdinalIgnoreCase)) return false;

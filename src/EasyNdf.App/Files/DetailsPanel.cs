@@ -42,7 +42,7 @@ public sealed class DetailsPanel : StackPanel
             return;
         }
         RunResult result = run.Result;
-        showTitle(Texts.Get("Files.Details.Title", ("file", row.Name), ("preset", run.Preset.Name)));
+        showTitle(Texts.Get("Files.Details.Title", ("file", row.Name), ("preset", run.RuleSets)));
         List<List<EditLogEntry>> logs = result.Logs;
         if (run.ShownRule is not int shown || shown >= result.Stats.Count)
         {

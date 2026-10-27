@@ -36,6 +36,7 @@ public static class BuiltInThemes
         ("s-field", "Editor: property names"),
         ("d-add", "Editor: changes only, new lines"),
         ("d-del", "Editor: changes only, old lines"),
+        ("weapon-art", "Armory: weapon pictures"),
     ];
 
     /// <summary>The theme a new install uses, and the one missing colours come from: Olivine.</summary>

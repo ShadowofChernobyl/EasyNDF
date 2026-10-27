@@ -57,6 +57,25 @@ public sealed class ModStore
         Save(mod);
     }
 
+    /// <summary>
+    /// The mod files another mod has, and those on disk the app could not read: a file that failed to read is listed as
+    /// unreadable, and a new mod of the same name was saved over it, losing it for good.
+    /// </summary>
+    private List<string> PathsTakenBesides(Mod mod)
+    {
+        List<string> taken = [.. pathOf.Where(p => p.Key != mod).Select(p => p.Value)];
+        pathOf.TryGetValue(mod, out string? own);
+        try
+        {
+            taken.AddRange(Directory.GetFiles(folder!, "*.mod.json").Where(file => !string.Equals(file, own, StringComparison.OrdinalIgnoreCase)));
+        }
+        catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
+        {
+            // the folder cannot be listed: the mods the app has are all it can go by
+        }
+        return taken;
+    }
+
     /// <summary>Saves a mod after a change. A renamed mod moves to a file named after its new name.</summary>
     public void Save(Mod mod)
     {
@@ -64,7 +83,7 @@ public sealed class ModStore
         pathOf.TryGetValue(mod, out string? oldPath);
         string path = oldPath is not null && FileFitsName(oldPath, mod.Name)
             ? oldPath
-            : FileNames.FreePath(folder, mod.Name, ".mod.json", pathOf.Where(p => p.Key != mod).Select(p => p.Value).ToList());
+            : FileNames.FreePath(folder, mod.Name, ".mod.json", PathsTakenBesides(mod));
 
         JsonFiles.Write(path, JsonFiles.Parse(ModFiles.StoredText(mod)));
         if (oldPath is not null && oldPath != path) File.Delete(oldPath);
@@ -158,7 +177,7 @@ public sealed class ModStore
             Mods.Add(mod);
             pathOf[mod] = path;
         }
-        catch (Exception error) when (error is ModFileException or IOException)
+        catch (Exception error) when (error is ModFileException or IOException or UnauthorizedAccessException)
         {
             Unreadable.Add(Path.GetFileName(path) + " (" + error.Message + ")");
         }

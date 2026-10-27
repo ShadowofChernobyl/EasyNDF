@@ -2,11 +2,15 @@ using System.IO;
 using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using EasyNdf.App.Controls;
 using EasyNdf.App.Dialogs;
+using EasyNdf.App.Mods;
 using EasyNdf.App.Rules;
 using EasyNdf.Data;
+using EasyNdf.Data.Divisions;
+using EasyNdf.Data.FileList;
 using EasyNdf.Engine.Mods;
 using Microsoft.Win32;
 using EasyNdf.App.Text;
@@ -37,6 +41,9 @@ public partial class RulesPage : UserControl
         AppData.Current.ModsChanged += _ => Model.Refresh();
         // the rule lines' type names and summaries are written in the language in use
         Texts.LanguageChanged += Model.Refresh;
+        // a Preview or export found which values two mods both change
+        ModConflictList.Changed += ShowMods;
+        SetUpColumnGrips();
         Show();
     }
 
@@ -45,30 +52,45 @@ public partial class RulesPage : UserControl
 
     // ---- showing it ----
 
-    private bool showing;
-
-    /// <summary>Fills in what the model does not bind: the Mod box, the lists, and which buttons can be used.</summary>
+    /// <summary>Fills in what the model does not bind: the mod list, the other lists, and which buttons can be used.</summary>
     private void Show()
     {
         // the rule window's changes show once Done saves them: drawing the lists again on every key made typing slow
         if (Model.IsEditingRule) return;
-        showing = true;
-        ModChoice.ItemsSource = Model.ModNames;
-        ModChoice.SelectedItem = Model.OpenMod.Name;
-        showing = false;
+        ShowMods();
+        ShowAppliesTo();
 
         IReadOnlyList<ModPreset> presets = Model.Presets;
         bool several = Model.SelectedPresets.Count > 1;
         PresetLines.ItemsSource = presets.Select(p => new PresetLine(p, Model.IsSelected(p), several && ReferenceEquals(p, Model.OpenPreset), FilesUsing(p))).ToList();
         NoPresets.Visibility = presets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ArmoryLines.ItemsSource = ArmoryPresets.Parts.Select(ArmoryLineOf).ToList();
 
-        RuleLines.ItemsSource = Model.RuleRows;
+        ShowRuleLines();
         NoRules.Visibility = Model.Rules.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         bool hasPreset = Model.OpenPreset is not null;
-        RenamePresetButton.IsEnabled = hasPreset && !several;
+        // an Armory preset is named after its part of the Armory
+        RenamePresetButton.IsEnabled = hasPreset && !several && !Model.OpenPreset!.IsArmoryPreset;
         DuplicatePresetButton.IsEnabled = DeletePresetButton.IsEnabled = hasPreset;
         ClipNote.Visibility = Model.Note == "" ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>
+    /// The rule lines, drawn again from the model's rows; the list stays where it was scrolled to, as it did while every
+    /// line was made: a new list of lines can send a list that makes only those in view back to its top.
+    /// </summary>
+    private void ShowRuleLines()
+    {
+        if (ReferenceEquals(RuleLines.ItemsSource, Model.RuleRows)) return;
+        var scroller = RuleLines.Template?.FindName("RuleScroller", RuleLines) as ScrollViewer;
+        double offset = scroller?.VerticalOffset ?? 0;
+        RuleLines.ItemsSource = Model.RuleRows;
+        if (scroller is null || offset <= 0) return;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            if (Math.Abs(scroller.VerticalOffset - offset) > 0.5) scroller.ScrollToVerticalOffset(offset);
+        });
     }
 
     /// <summary>A line of the preset list: its name, whether it is selected, and how many files use it.</summary>
@@ -77,16 +99,259 @@ public partial class RulesPage : UserControl
         /// <summary>The preset's name.</summary>
         public string Name => Preset.Name;
 
-        /// <summary>"3 files", or nothing when no file uses it.</summary>
-        public string UseText => FilesUsing == 0 ? "" : Texts.Count("Rules.Preset.FilesUsing", FilesUsing);
+        /// <summary>
+        /// Whether the rule set applies to no file at all: it has no files of its own and its name holds no file name,
+        /// as a "New rule set" just made. It never runs until its Applies To is set.
+        /// </summary>
+        public bool AppliesToNothing => RuleSetFiles.Named(Preset).Count == 0;
+
+        /// <summary>"3 files" on the Files tab it applies to; "⚠ no file" when it applies to none at all; nothing otherwise.</summary>
+        public string UseText => AppliesToNothing ? Texts.Get("Rules.Preset.NoFile") : FilesUsing == 0 ? "" : Texts.Count("Rules.Preset.FilesUsing", FilesUsing);
+
+        /// <summary>The tooltip of "⚠ no file".</summary>
+        public string? UseTip => AppliesToNothing ? Texts.Get("Rules.AppliesTo.None.Tip") : null;
     }
 
-    // ---- the mod ----
-
-    private void ModChosen(object sender, SelectionChangedEventArgs e)
+    /// <summary>
+    /// A line of the Armory Changes list: a part of the Armory, and its preset of the changes made there; null when no
+    /// change was made there.
+    /// </summary>
+    public sealed record ArmoryLine(ArmoryPart Part, ModPreset? Preset, bool IsSelected)
     {
-        if (!showing && ModChoice.SelectedItem is string name) Model.OpenModNamed(name);
+        /// <summary>The part's name, as its sub-tab in the Armory has it.</summary>
+        public string Name => ArmoryPartTexts.Name(Part);
+
+        /// <summary>How many rules its preset has, group headings left out; "None" when it has none.</summary>
+        public string CountText => Preset is null ? Texts.Get("Rules.Armory.None")
+            : RulesModel.CountRules(Preset.Rules.Count(rule => (string?)rule?["Kind"] != "Group"));
+
+        /// <summary>Whether no change was made in the part: its name is dim, and it opens with no rules.</summary>
+        public bool IsEmpty => Preset is null;
+
+        /// <summary>What the part's preset holds, and when it runs.</summary>
+        public string ToolTip => ArmoryPartTexts.PresetTip(Part);
     }
+
+    /// <summary>The Armory Changes line of a part of the Armory, for the open mod.</summary>
+    private ArmoryLine ArmoryLineOf(ArmoryPart part)
+    {
+        ModPreset? preset = ArmoryPresets.Of(Model.OpenMod, part);
+        bool isOpen = preset is not null ? Model.IsSelected(preset) : Model.OpenEmptyArmoryPart == part;
+        return new ArmoryLine(part, preset, isOpen);
+    }
+
+    // ---- the mods ----
+
+    /// <summary>
+    /// A line of the mod list: the mod, whether it is the open one, whether it is on, its Armory parts as letters, and
+    /// the values another mod that is on also changes.
+    /// </summary>
+    public sealed record ModLine(Mod Mod, bool IsSelected, bool IsOn, IReadOnlyList<ModLetter> Letters, IReadOnlyList<ModConflict> Conflicts)
+    {
+        /// <summary>The mod's name.</summary>
+        public string Name => Mod.Name;
+
+        /// <summary>Whether another mod that is on changes a value this one does: it is marked ⚠.</summary>
+        public bool HasConflicts => Conflicts.Count > 0;
+
+        /// <summary>The most values the ⚠'s tooltip lists; the rest are counted.</summary>
+        private const int TipLines = 12;
+
+        /// <summary>
+        /// The ⚠'s tooltip: how many values, then each with the file and the mod that wins, as "Ammunition.ndf ›
+        /// Ammo_X › MaximumRangeGRU: WTO wins over My mod". The mod lower on the list runs later and wins.
+        /// </summary>
+        public string ConflictsTip
+        {
+            get
+            {
+                var lines = new List<string> { Texts.Count("Rules.ModConflicts.Tip", Conflicts.Count) };
+                foreach (ModConflict conflict in Conflicts.Take(TipLines))
+                    lines.Add(Texts.Get("Rules.ModConflict.Line", ("file", conflict.File), ("descriptor", conflict.Descriptor), ("property", conflict.Property),
+                        ("winner", conflict.Winner), ("other", conflict.Overridden)));
+                if (Conflicts.Count > TipLines) lines.Add(Texts.Count("Rules.ModConflicts.More", Conflicts.Count - TipLines));
+                return string.Join("\n", lines);
+            }
+        }
+    }
+
+    /// <summary>
+    /// A letter of a mod's line, as the Files tab's Armory column has them: D, B, U or W, lit when the mod has changes
+    /// in that part of the Armory.
+    /// </summary>
+    public sealed record ModLetter(Mod Mod, ArmoryPart Part, bool IsLit, int RuleCount)
+    {
+        /// <summary>The part's letter.</summary>
+        public string Text => ArmoryLetterTexts.Letter(Part);
+
+        /// <summary>What it stands for, and how many rules the mod's changes there make.</summary>
+        public string ToolTip => IsLit
+            ? Texts.Count("Rules.ModLetter.Has.Tip", RuleCount, ("part", ArmoryPartTexts.Name(Part)))
+            : Texts.Get("Rules.ModLetter.None.Tip", ("part", ArmoryPartTexts.Name(Part)));
+    }
+
+    /// <summary>
+    /// The mod list, in the order the mods run, the open mod's line marked; and, folded, the strip naming the open mod.
+    /// </summary>
+    private void ShowMods()
+    {
+        IReadOnlyList<Mod> mods = ModStack.Ordered;
+        ModLines.ItemsSource = mods
+            .Select(mod => new ModLine(mod, ReferenceEquals(mod, Model.OpenMod), ModStack.IsOn(mod), LettersOf(mod), ModConflictList.Of(mod))).ToList();
+        ModsLine.Text = Texts.Get("Rules.ModsOn", ("on", Texts.Number(mods.Count(ModStack.IsOn))), ("all", Texts.Number(mods.Count)));
+        RuleSetsModName.Text = Model.OpenMod.Name;
+        ShowModOffLine();
+    }
+
+    /// <summary>The mod whose "is off" line was hidden with OK: it stays hidden until another mod is opened or the mod is switched on.</summary>
+    private Mod? modOffLineHiddenFor;
+
+    /// <summary>
+    /// The line under the Mods list while the open mod is off: "⚠ My mod is off and won't run." with Switch On, as its
+    /// rules can be edited but Preview and Run export skip it, which is easy to miss.
+    /// </summary>
+    private void ShowModOffLine()
+    {
+        Mod open = Model.OpenMod;
+        bool isOff = !ModStack.IsOn(open);
+        // OK hides the line for this mod only, while it stays off
+        if (!isOff || !ReferenceEquals(modOffLineHiddenFor, open)) modOffLineHiddenFor = null;
+        ModOffText.Text = Texts.Get("Rules.ModOff", ("mod", open.Name));
+        ModOffLine.Visibility = isOff && modOffLineHiddenFor is null ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>Switch On: the open mod is switched on, as its switch in the list does; Undo takes it back.</summary>
+    private void ModOffSwitchOnClicked(object sender, RoutedEventArgs e)
+    {
+        ModStack.SetOn(Model.OpenMod, true);
+        ShowMods();
+    }
+
+    /// <summary>OK: the line goes until another mod is opened, or this one is switched on and off again.</summary>
+    private void ModOffOkClicked(object sender, RoutedEventArgs e)
+    {
+        modOffLineHiddenFor = Model.OpenMod;
+        ShowModOffLine();
+    }
+
+    // ---- which files the open rule set applies to ----
+
+    /// <summary>
+    /// The line under the rules' heading: "Applies to Ammunition.ndf", "Applies to Ammunition.ndf and 2 other files"
+    /// (the tooltip lists them all), or "Applies to no file" in the caution colour, with Change... An Armory preset's
+    /// files are those its changes are written into; they follow the changes, so it has no Change....
+    /// </summary>
+    private void ShowAppliesTo()
+    {
+        AppliesText.Inlines.Clear();
+        AppliesText.ToolTip = null;
+        IReadOnlyList<string>? files = Model.OpenPreset is ModPreset ruleSet
+            ? ruleSet.IsArmoryPreset ? [.. DivisionChangeRules.FilesOf(ruleSet.Rules).Order(StringComparer.OrdinalIgnoreCase)] : RuleSetFiles.Named(ruleSet)
+            : null;
+        ChangeAppliesButton.Visibility = Model.OpenPreset is { IsArmoryPreset: false } ? Visibility.Visible : Visibility.Collapsed;
+        if (files is null) return;
+        if (files.Count == 0)
+        {
+            AppliesText.Inlines.Add(Coloured(Texts.Get("Rules.AppliesTo.None"), "caution"));
+            AppliesText.ToolTip = Texts.Get("Rules.AppliesTo.None.Tip");
+            return;
+        }
+        AppliesText.Inlines.Add(Coloured(Texts.Get("Rules.AppliesTo.Lead") + " ", "muted"));
+        var first = new Run(files[0]);
+        first.SetResourceReference(TextElement.FontFamilyProperty, "mono");
+        AppliesText.Inlines.Add(first);
+        if (files.Count > 1)
+        {
+            AppliesText.Inlines.Add(Coloured(" " + Texts.Count("Rules.AppliesTo.Others", files.Count - 1, ("count", Texts.Number(files.Count - 1))), "muted"));
+            AppliesText.ToolTip = string.Join("\n", files);
+        }
+    }
+
+    /// <summary>A piece of text in one of the theme's colours.</summary>
+    private static Run Coloured(string words, string colour)
+    {
+        var run = new Run(words);
+        run.SetResourceReference(TextElement.ForegroundProperty, colour);
+        return run;
+    }
+
+    /// <summary>"Change...": the Applies To window for the open rule set.</summary>
+    private void ChangeAppliesClicked(object sender, RoutedEventArgs e)
+    {
+        if (Model.OpenPreset is ModPreset ruleSet) OpenAppliesTo(ruleSet);
+    }
+
+    /// <summary>The Applies To window for a rule set; Done saves the choice in the mod.</summary>
+    private void OpenAppliesTo(ModPreset ruleSet)
+    {
+        if (ruleSet.IsArmoryPreset) return;
+        MainView view = MainView.Of(this);
+        view.AppliesTo.Open(ruleSet, view.FilesTab.Model.Entries, files => Model.SetAppliesTo(ruleSet, files));
+    }
+
+    /// <summary>A mod's letters: each part of the Armory, lit when the mod's preset for it has rules.</summary>
+    private static List<ModLetter> LettersOf(Mod mod) =>
+    [
+        .. ArmoryPresets.Parts.Select(part =>
+        {
+            int rules = ArmoryPresets.Of(mod, part)?.Rules.Count(rule => (string?)rule?["Kind"] != "Group") ?? 0;
+            return new ModLetter(mod, part, rules > 0, rules);
+        }),
+    ];
+
+    /// <summary>A click on a mod's line opens it.</summary>
+    private void ModClicked(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ModLine line }) Model.OpenModNamed(line.Name);
+    }
+
+    /// <summary>A mod's switch: on, it runs with the other mods that are on; off, it does not run. Undo takes it back.</summary>
+    private void ModSwitchClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox { DataContext: ModLine line } box) return;
+        e.Handled = true;
+        ModStack.SetOn(line.Mod, box.IsChecked == true);
+        ShowMods();
+    }
+
+    /// <summary>
+    /// Moves the open mod up or down the list: it then runs earlier or later than the others, and a mod lower on the
+    /// list wins where two change the same value. Undo takes it back.
+    /// </summary>
+    private void MoveOpenMod(int by)
+    {
+        if (ModStack.Move(Model.OpenMod, by)) ShowMods();
+    }
+
+    /// <summary>A click on a mod's letter opens the mod, and that part of the Armory's preset.</summary>
+    private void ModLetterClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ModLetter letter }) return;
+        e.Handled = true;
+        Model.OpenModNamed(letter.Mod.Name);
+        Model.OpenArmoryPart(letter.Part);
+    }
+
+    /// <summary>A mod file dragged over the list can be dropped there.</summary>
+    private void ModFilesDraggedOver(object sender, DragEventArgs e)
+    {
+        e.Effects = DroppedModFiles(e).Count > 0 ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    /// <summary>Mod files (and backups) dropped on the list are imported, as with "Import mod...".</summary>
+    private async void ModFilesDropped(object sender, DragEventArgs e)
+    {
+        List<string> files = DroppedModFiles(e);
+        e.Handled = true;
+        if (files.Count > 0) await ImportModFiles(files);
+    }
+
+    /// <summary>The .json files being dragged or dropped.</summary>
+    private static List<string> DroppedModFiles(DragEventArgs e) =>
+        e.Data.GetData(DataFormats.FileDrop) is string[] paths
+            ? [.. paths.Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))]
+            : [];
 
     private async void NewModClicked(object sender, RoutedEventArgs e)
     {
@@ -152,6 +417,14 @@ public partial class RulesPage : UserControl
                 choices[mod] = answer.Choice switch { DialogChoice.Ok => ImportChoice.Replace, DialogChoice.Alternative => ImportChoice.KeepBoth, _ => ImportChoice.Skip };
             }
             ImportResult result = AppData.Current.ModStore.Import(incoming, (_, mod) => choices[mod]);
+            // the files the mods' File rules carry go into the app's store, where their rules find them
+            foreach (Mod mod in incoming.Where(AppData.Current.Mods.Contains))
+            {
+                try { AppData.Current.ModFileStore.KeepCarried(mod.CarriedFiles); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { problems.Add(Path.GetFileName(path) + " (" + error.Message + ")"); }
+            }
+            // each mod comes in switched on or off as it was when exported; on when its file doesn't say
+            foreach (Mod mod in incoming.Where(AppData.Current.Mods.Contains)) ModStack.SetOn(mod, mod.WasOn ?? true);
             added += result.Added;
             skipped += result.Skipped;
             last = result.LastMod ?? last;
@@ -177,8 +450,8 @@ public partial class RulesPage : UserControl
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try
         {
-            File.WriteAllText(dialog.FileName, ModFiles.ExportText(mod));
-            Model.Say("Exported \"" + mod.Name + "\": " + RulesModel.Count(mod.Presets.Count) + ".");
+            File.WriteAllText(dialog.FileName, ModFiles.ExportText(mod, ModStack.IsOn(mod), AppData.Current.ModFileStore));
+            Model.Say(Texts.Get("Rules.Mod.Exported", ("mod", mod.Name), ("presets", RulesModel.Count(mod.Presets.Count))));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -195,6 +468,12 @@ public partial class RulesPage : UserControl
         Model.ClickPreset(line.Preset, keys.HasFlag(ModifierKeys.Control), keys.HasFlag(ModifierKeys.Shift));
     }
 
+    /// <summary>A click on a part of the Armory: its preset opens, alone, or the part with no rules when it has no changes.</summary>
+    private void ArmoryPartClicked(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ArmoryLine line }) Model.OpenArmoryPart(line.Part);
+    }
+
     private async void NewPresetClicked(object sender, RoutedEventArgs e)
     {
         string name = await Messages.AskName(Texts.Get("Rules.Preset.NewName"));
@@ -205,7 +484,8 @@ public partial class RulesPage : UserControl
 
     private async void RenamePresetClicked(object sender, RoutedEventArgs e)
     {
-        if (Model.OpenPreset is not ModPreset preset) return;
+        // an Armory preset is named after its part of the Armory
+        if (Model.OpenPreset is not ModPreset preset || preset.IsArmoryPreset) return;
         string name = await Messages.AskName(Texts.Get("Rules.Preset.Rename"), preset.Name);
         if (name == "" || name == preset.Name) return;
         if (Model.PresetExists(name)) { await Messages.Tell(Texts.Get("Rules.Preset.Exists")); return; }
@@ -226,29 +506,79 @@ public partial class RulesPage : UserControl
             ? Texts.Get("Rules.Preset.DeleteAsk", ("preset", picked[0].Name))
             : Texts.Get("Rules.Preset.DeleteAskSeveral", ("count", picked.Count));
         if (used > 0) question += " " + Texts.Count("Rules.Preset.FilesUseIt", used);
+        // an Armory preset holds the Armory's changes: deleting it takes them all back
+        List<ModPreset> armory = [.. picked.Where(preset => preset.IsArmoryPreset && preset.Rules.Any(ArmoryPresets.IsLocked))];
+        if (armory.Count > 0)
+        {
+            if (!MainView.Of(this).UnitsTab.CanMakeEditable)
+            {
+                await Messages.Tell(MainView.Of(this).UnitsTab.ArmoryRulesBlockedReason ?? Texts.Get("Rules.Locked.ArmoryNotRead"));
+                return false;
+            }
+            // deleting only the Battlegroups preset empties battlegroups; the divisions stay
+            bool onlyBattlegroups = armory.All(preset => preset.ArmoryPart == ArmoryPart.Battlegroups);
+            question += " " + Texts.Get(onlyBattlegroups ? "Rules.Locked.BattlegroupsDeleteAsk" : "Rules.Locked.PresetDeleteAsk");
+        }
         if (!await Messages.Confirm(question, Texts.Get("Common.Ok"))) return false;
-        Model.DeletePresets();
+        if (armory.Count > 0) MainView.Of(this).UnitsTab.TakeBack([.. armory.SelectMany(preset => preset.Rules)]);
+        Model.DeletePresets(picked);
         return true;
     }
 
-    /// <summary>"Copy" and Ctrl+C: the selected presets go to the clipboard, as the HTML app copies them, so they can be pasted there too.</summary>
-    private void CopyPresets()
+    /// <summary>
+    /// "Copy" and Ctrl+C: the selected presets go to the clipboard, as the HTML app copies them, so they can be pasted
+    /// there too. Returns whether they were copied.
+    /// </summary>
+    private bool CopyPresets()
     {
         IReadOnlyList<ModPreset> picked = Model.SelectedPresets;
-        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Preset.SelectToCopy")); return; }
+        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Preset.SelectToCopy")); return false; }
         // the presets as a mod file writes them, with every condition and action named, each marked as a preset
         var asMod = new Mod { Name = Model.OpenMod.Name, Presets = [.. picked] };
         var presets = (JsonArray)JsonNode.Parse(ModFiles.ExportText(asMod))!["Presets"]!;
         foreach (JsonNode? preset in presets) preset!["DataTypeToString"] = "Preset";
-        Clipboard.SetText(presets.ToJsonString());
+        if (!CopyToClipboard(presets.ToJsonString())) return false;
         Model.Say(Texts.Get("Rules.Copied", ("what", RulesModel.Count(picked.Count))));
+        return true;
     }
 
     /// <summary>"Paste": presets on the clipboard become presets of the open mod; rules go in after the selected rule.</summary>
     private void PasteClicked(object sender, RoutedEventArgs e) => PasteFromClipboard();
 
     /// <summary>Pastes what is on the clipboard.</summary>
-    public void PasteFromClipboard() => Paste(Clipboard.ContainsText() ? Clipboard.GetText() : "");
+    public void PasteFromClipboard() => Paste(ClipboardText());
+
+    /// <summary>
+    /// Puts text on the clipboard; false, and the status says so, when another program has the clipboard open, which
+    /// Windows reports as an error.
+    /// </summary>
+    private bool CopyToClipboard(string text)
+    {
+        try
+        {
+            Clipboard.SetText(text);
+            return true;
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            Model.Say(Texts.Get("Rules.ClipboardBusy"));
+            return false;
+        }
+    }
+
+    /// <summary>The text on the clipboard; empty when it holds none, or another program has it open (the status says so).</summary>
+    private string ClipboardText()
+    {
+        try
+        {
+            return Clipboard.ContainsText() ? Clipboard.GetText() : "";
+        }
+        catch (System.Runtime.InteropServices.COMException)
+        {
+            Model.Say(Texts.Get("Rules.ClipboardBusy"));
+            return "";
+        }
+    }
 
     /// <summary>Pastes text from the clipboard; presets it adds may be given to files without one. Returns whether presets were added.</summary>
     public bool Paste(string text)
@@ -401,11 +731,11 @@ public partial class RulesPage : UserControl
     }
 
 
-    /// <summary>"Copy" and Ctrl+C: the selected rules go to the clipboard, each marked as a rule.</summary>
-    private void CopyRules()
+    /// <summary>"Copy" and Ctrl+C: the selected rules go to the clipboard, each marked as a rule. Returns whether they were copied.</summary>
+    private bool CopyRules()
     {
         IReadOnlyList<int> picked = Model.SelectedRules;
-        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Rule.SelectToCopy")); return; }
+        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Rule.SelectToCopy")); return false; }
         var rules = new JsonArray();
         foreach (int place in picked)
         {
@@ -413,7 +743,8 @@ public partial class RulesPage : UserControl
             rule["DataTypeToString"] = "Rule";
             rules.Add(rule);
         }
-        Clipboard.SetText(rules.ToJsonString());
+        if (!CopyToClipboard(rules.ToJsonString())) return false;
         Model.Say(Texts.Get("Rules.Copied", ("what", RulesModel.CountRules(picked.Count))));
+        return true;
     }
 }

@@ -45,7 +45,8 @@ public sealed class CompareCard : Grid
         identity = Identity(unit, pinned, isPinned, actions, remove);
         stats = Section(Texts.Get("Units.Compare.Stats"), null, Stats(unit, isPinned ? null : pinned, best));
         weapons = Section(Texts.Get("Units.Weapons"), unit.Weapons.Count,
-            WeaponLedger.Build(unit, actions.Game.RangeUnit, narrow: false, bestRange, (weapon, at) => actions.OpenWeaponMenu(unit, weapon, at)));
+            WeaponLedger.Build(unit, actions.Game.RangeUnit, narrow: false, bestRange, (weapon, at) => actions.OpenWeaponMenu(unit, weapon, at),
+            weapon => actions.ShowWeaponInArmory(weapon.Ammunition)));
         parts.Children.Add(identity);
         parts.Children.Add(stats);
         parts.Children.Add(weapons);
@@ -125,7 +126,8 @@ public sealed class CompareCard : Grid
     /// </summary>
     private static StackPanel Identity(Unit unit, Unit pinned, bool isPinned, IUnitActions actions, Action remove)
     {
-        var name = new TextBlock { Text = unit.Name, FontSize = 14, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) };
+        var name = new TextBlock { FontSize = 14, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 0) };
+        ModMarks.Show(name, unit, UnitField.Name, unit.Name, game => game.Name);
         var what = Small(UnitNames.Nation(unit.Nation) + " · " + UnitNames.RoleOf(unit));
         what.Margin = new Thickness(5, 0, 0, 0);
         var nationLine = new DockPanel { Children = { new NationMark(unit.Nation, actions.IsFirstSide(unit)), what } };
@@ -180,8 +182,10 @@ public sealed class CompareCard : Grid
             label.ToolTip = UnitNames.Stat(stat.Key);
             // in the app's own font, not bold: the best value shows by its colour (the font's digits are all one width, so
             // the numbers still line up)
-            var number = new TextBlock { Text = UnitNumbers.Of(value), TextAlignment = TextAlignment.Right, FontSize = 12 };
-            number.SetResourceReference(TextBlock.ForegroundProperty, isBest ? "ok" : "ink");
+            var number = new TextBlock { TextAlignment = TextAlignment.Right, FontSize = 12 };
+            // the stats' keys are the units' field names
+            UnitStat shown = stat;
+            ModMarks.Show(number, unit, stat.Key, UnitNumbers.Of(value), each => UnitNumbers.Of(shown.Read(each)), isBest ? "ok" : "ink");
             var difference = new TextBlock { Text = UnitNumbers.Difference(value, pinnedValue), TextAlignment = TextAlignment.Right, FontSize = 11, Margin = new Thickness(6, 0, 0, 0) };
             difference.SetResourceReference(TextBlock.ForegroundProperty, FeelColour(stat, value, pinnedValue));
             var meter = new BlockMeter { Value = value, FullBar = stat.FullBar, Blocks = MeterBlocks, IsBest = isBest, Marker = pinnedValue, Margin = new Thickness(6, 0, 0, 0) };

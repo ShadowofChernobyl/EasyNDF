@@ -213,6 +213,9 @@ public partial class EditorPage : UserControl
         Text.WordWrap = AppData.Current.Settings["wordWrap"]?.GetValue<bool>() == true;
     }
 
+    /// <summary>The name of the file open here when it has edits not yet saved, which closing the app would lose; otherwise null.</summary>
+    public string? EditedFileName => shown?.File is { IsEdited: true } edited ? edited.Name : null;
+
     /// <summary>Keeps which file of the Files tab is open, and its top line, for "Reopen the last file".</summary>
     public void KeepOpenFile()
     {
@@ -409,8 +412,9 @@ public partial class EditorPage : UserControl
         PutFoldingAway();
         foreach (IVisualLineTransformer transformer in view.LineTransformers.Where(t => t is NdfColourizer or MutedLines).ToList())
             view.LineTransformers.Remove(transformer);
-        // only the file itself is checked: an export cannot be edited
-        syntaxProblems.Watch(shown is { IsFile: true } ? shown.Document : null);
+        // only the file itself is checked: an export cannot be edited; a dictionary file such as UNITS.csv is not NDF
+        bool isNdf = shown is not null && !Data.Divisions.FileAndTextRules.IsDictionaryFile(shown.Name);
+        syntaxProblems.Watch(shown is { IsFile: true } && isNdf ? shown.Document : null);
         if (shown is null)
         {
             Show();
@@ -472,6 +476,7 @@ public partial class EditorPage : UserControl
     private void ShowInNewLanguage()
     {
         Panes.SecondTitle = Texts.Get("Editor.Descriptors");
+        halfButtons.Show();
         ShowFoldTips();
         if (!scanning) ScanButton.Content = Texts.Get("Editor.ScanAll");
         DescriptorFind.Tag = showsAllFiles ? Texts.Get("Editor.DescriptorFind.AllFilesHint") : Texts.Get("Editor.DescriptorFind.Hint");

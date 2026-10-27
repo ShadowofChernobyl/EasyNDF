@@ -8,6 +8,7 @@
              xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              xmlns:dialogs="clr-namespace:EasyNdf.App.Dialogs"
+             xmlns:units="clr-namespace:EasyNdf.App.Units"
              Visibility="Collapsed" KeyDown="KeyPressed" Foreground="{DynamicResource ink}">
     <!-- the dimmed backdrop; a click on it closes the window -->
     <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed" SizeChanged="BackdropResized">
@@ -20,7 +21,7 @@
                     <TextBlock x:Name="TitleText" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
                 </DockPanel>
 
-                <!-- the filters: the search and the sides, then type, nation and role -->
+                <!-- the filters: the search and the sides, then type, nation and role, and the order -->
                 <Grid DockPanel.Dock="Top" Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -36,10 +37,29 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="6" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="6" />
+                        <ColumnDefinition x:Name="ModdedColumn" Width="*" />
+                        <ColumnDefinition x:Name="ModdedGap" Width="6" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <ComboBox x:Name="FactoryChoice" Grid.Column="0" ToolTip="{t:Text Units.AddUnits.Factory.Tip}" SelectionChanged="FilterChosen" />
                     <ComboBox x:Name="NationChoice" Grid.Column="2" ToolTip="{t:Text Units.AddUnits.Nation.Tip}" SelectionChanged="FilterChosen" />
                     <ComboBox x:Name="RoleChoice" Grid.Column="4" ToolTip="{t:Text Units.RoleChoice.Tip}" SelectionChanged="FilterChosen" />
+                    <!-- all units, the game's own, or the mod's; shown only when the game's own are known -->
+                    <ComboBox x:Name="ModdedChoice" Grid.Column="6" ToolTip="{t:Text Units.AddUnits.Modded.Tip}" SelectionChanged="FilterChosen" />
+                    <ComboBox x:Name="SortChoice" Grid.Column="8" SelectionChanged="FilterChosen" />
+                    <!-- Cards or Table, as the Armory's own icons; the window keeps the one chosen last -->
+                    <StackPanel Grid.Column="9" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
+                        <ToggleButton x:Name="CardsViewButton" Style="{StaticResource PressedToggle}" Padding="5,4" AutomationProperties.Name="{t:Text Units.Cards}"
+                                      ToolTip="{t:Text Units.AddUnits.Cards.Tip}" Click="ViewClicked">
+                            <controls:ViewIcon Shape="Cards" />
+                        </ToggleButton>
+                        <ToggleButton x:Name="TableViewButton" Style="{StaticResource PressedToggle}" Padding="5,4" Margin="-1,0,0,0" AutomationProperties.Name="{t:Text Units.Table}"
+                                      ToolTip="{t:Text Units.AddUnits.Table.Tip}" Click="ViewClicked">
+                            <controls:ViewIcon Shape="Table" />
+                        </ToggleButton>
+                    </StackPanel>
                 </Grid>
 
                 <!-- the foot: how many units match, Cancel and Add -->
@@ -51,7 +71,7 @@
 
                 <!-- the units, of which only those in view are made -->
                 <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Height="330">
-                    <ItemsControl x:Name="UnitList" Focusable="False"
+                    <ItemsControl x:Name="UnitList" Focusable="False" SizeChanged="UnitListResized"
                                   VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True">
                         <ItemsControl.Template>
                             <ControlTemplate TargetType="ItemsControl">
@@ -68,6 +88,9 @@
                         <ItemsControl.Resources>
                             <DataTemplate DataType="{x:Type dialogs:AddUnitsLine}">
                                 <dialogs:AddUnitsRow />
+                            </DataTemplate>
+                            <DataTemplate DataType="{x:Type units:CardRowLine}">
+                                <units:CardRowView />
                             </DataTemplate>
                             <DataTemplate DataType="{x:Type dialogs:AddUnitsEmptyLine}">
                                 <TextBlock Text="{Binding Text}" Foreground="{DynamicResource muted}" Margin="8" />

@@ -30,9 +30,11 @@ public sealed record CardGroupLine(string Role, string Name, int Count, bool IsF
 /// <param name="Units">The units of the row, at most <paramref name="Columns"/>.</param>
 /// <param name="Columns">How many tiles fit across, so a short last row keeps the others' tile width.</param>
 /// <param name="IsLast">Whether it is its role's last row, which keeps 8 pixels under it.</param>
-/// <param name="Selection">Which unit is selected.</param>
-/// <param name="Actions">The tab the tiles are on.</param>
-public sealed record CardRowLine(IReadOnlyList<Unit> Units, int Columns, bool IsLast, UnitSelection Selection, IUnitActions Actions) : CardLine;
+/// <param name="Selection">Which units are selected (in the Add Units window, which are ticked).</param>
+/// <param name="IsFirstSide">Whether a unit is on the game's first side (NATO, the Allies), for its nation's mark.</param>
+/// <param name="Decorate">What else each tile shows where the row is (the Add Units window's tick box); null for nothing.</param>
+public sealed record CardRowLine(IReadOnlyList<Unit> Units, int Columns, bool IsLast, UnitSelection Selection, Func<Unit, bool> IsFirstSide,
+    Action<UnitTile>? Decorate = null) : CardLine;
 
 /// <summary>What a list says while it has nothing to show, such as "No units match."</summary>
 /// <param name="Text">The words.</param>
@@ -62,8 +64,8 @@ public sealed class CardRowView : Grid
     }
 
     /// <summary>
-    /// Shows the row's line. The list reuses rows while it scrolls: a row with as many columns keeps its tiles and
-    /// shows the new units in them, so scrolling makes no new tiles.
+    /// Shows the row's line. The list reuses rows while it scrolls, and when a different number of tiles fits across:
+    /// the row keeps its tiles and shows the new units in them, so neither makes new tiles.
     /// </summary>
     private void Build()
     {
@@ -76,7 +78,6 @@ public sealed class CardRowView : Grid
         Margin = new Thickness(Gap, Gap, Gap, line.IsLast ? Gap : 0);
         if (ColumnDefinitions.Count != 2 * line.Columns - 1)
         {
-            Children.Clear();
             ColumnDefinitions.Clear();
             for (int column = 0; column < line.Columns; column++)
             {
@@ -89,15 +90,18 @@ public sealed class CardRowView : Grid
         for (int at = 0; at < line.Units.Count; at++)
         {
             Unit unit = line.Units[at];
-            bool firstSide = line.Actions.IsFirstSide(unit);
+            bool firstSide = line.IsFirstSide(unit);
             if (at < Children.Count && Children[at] is UnitTile kept)
             {
                 kept.Show(unit, firstSide);
+                SetColumn(kept, at * 2);
+                line.Decorate?.Invoke(kept);
                 continue;
             }
             var tile = new UnitTile(unit, firstSide, line.Selection);
             SetColumn(tile, at * 2);
             Children.Insert(at, tile);
+            line.Decorate?.Invoke(tile);
         }
     }
 }

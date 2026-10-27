@@ -1,0 +1,172 @@
+<!--
+  The Armory's Weapons sub-tab, laid out as its mocks (1 and 2): every weapon of the source (its ammunition
+  descriptors, which the units carrying them share), as cards or a table, with the Weapon pane beside or below. On the
+  left where they come from, then the filters as the mock orders them: what is typed, the side, the nations of the
+  units that carry them, the kind of damage, and those the open mod adds or changes and those in use; above the
+  weapons, a tab a category.
+  Laid out as the Units sub-tab is, so the two read the same way. WeaponsArmory.xaml.cs fills it.
+-->
+<UserControl x:Class="EasyNdf.App.Weapons.WeaponsArmory"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             xmlns:weapons="clr-namespace:EasyNdf.App.Weapons"
+             xmlns:units="clr-namespace:EasyNdf.App.Units"
+             Foreground="{DynamicResource ink}">
+    <UserControl.Resources>
+        <Style x:Key="SunkenBox" TargetType="controls:Bevel">
+            <Setter Property="TopLeft" Value="{DynamicResource lo}" />
+            <Setter Property="BottomRight" Value="{DynamicResource hi}" />
+            <Setter Property="Background" Value="{DynamicResource well}" />
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="14" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- the left column: where the weapons come from, the filters, then the nations of the units that carry them -->
+        <DockPanel Grid.Column="0">
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Source}" /></controls:Bevel>
+                <!-- the same Source list as the Units sub-tab's: choosing in one chooses in both -->
+                <units:SourceChoice x:Name="SourceChoice" />
+                <!-- "Show mods' changes", the same as the Units sub-tab's -->
+                <units:ModChangesSwitch />
+                <!-- the source's folder; it takes no room until a source is chosen -->
+                <TextBlock x:Name="WhereText" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" Margin="0,3,0,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <Trigger Property="Text" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </StackPanel>
+            <!-- as the mock's: the find box, the side, the nations ticked, the damage, then what to show -->
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Find}" /></controls:Bevel>
+                <TextBox x:Name="SearchBox" Tag="{t:Text Weapons.SearchBox.Hint}" ToolTip="{t:Text Weapons.SearchBox.Tip}" TextChanged="SearchChanged" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Weapons.Side}" /></controls:Bevel>
+                <StackPanel x:Name="SideChoices" Orientation="Horizontal" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Weapons.Show}" /></controls:Bevel>
+                <CheckBox x:Name="OnlyModded" Style="{StaticResource Toggle}" Content="{t:Text Weapons.OnlyModded}" ToolTip="{t:Text Weapons.OnlyModded.Tip}"
+                          IsChecked="False" Click="OnlyModdedClicked" />
+                <CheckBox x:Name="OnlyInUse" Style="{StaticResource Toggle}" Content="{t:Text Weapons.OnlyInUse}" ToolTip="{t:Text Weapons.OnlyInUse.Tip}"
+                          IsChecked="False" Margin="0,6,0,0" Click="OnlyInUseClicked" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Weapons.Damage}" /></controls:Bevel>
+                <ComboBox x:Name="DamageChoice" ToolTip="{t:Text Weapons.DamageChoice.Tip}" SelectionChanged="DamageChosen" />
+            </StackPanel>
+            <DockPanel>
+                <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}"><TextBlock Text="{t:Text Weapons.CarriedByUnitsOf}" /></controls:Bevel>
+                <controls:Bevel Style="{StaticResource SunkenBox}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                        <StackPanel x:Name="NationList" />
+                    </ScrollViewer>
+                </controls:Bevel>
+            </DockPanel>
+        </DockPanel>
+
+        <!-- the right column -->
+        <DockPanel Grid.Column="2">
+            <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}">
+                <controls:FlexRow Gap="8" LineGap="4">
+                    <TextBlock VerticalAlignment="Center" controls:FlexRow.Grow="1" TextTrimming="CharacterEllipsis">
+                        <Run x:Name="TitleText" /><Run x:Name="SavedInText" FontWeight="Normal" FontSize="11.5" Foreground="{DynamicResource muted}" />
+                    </TextBlock>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ToggleButton x:Name="CardsButton" Style="{StaticResource PressedToggle}" Padding="5,4" AutomationProperties.Name="{t:Text Units.Cards}"
+                                      ToolTip="{t:Text Weapons.Cards.Tip}" Click="ViewClicked">
+                            <controls:ViewIcon Shape="Cards" />
+                        </ToggleButton>
+                        <ToggleButton x:Name="TableButton" Style="{StaticResource PressedToggle}" Padding="5,4" Margin="-1,0,0,0" AutomationProperties.Name="{t:Text Units.Table}"
+                                      ToolTip="{t:Text Weapons.Table.Tip}" Click="ViewClicked">
+                            <controls:ViewIcon Shape="Table" />
+                        </ToggleButton>
+                        <ToggleButton x:Name="CompareButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Margin="-1,0,0,0"
+                                      Content="{t:Text Units.Compare}" ToolTip="{t:Text Weapons.Compare.Tip}" Click="ViewClicked" />
+                        <Button Style="{StaticResource HelpButton}" Margin="8,0,0,0" FontWeight="Bold" controls:QuickHelp.Page="units-weapons" />
+                    </StackPanel>
+                </controls:FlexRow>
+            </controls:Bevel>
+
+            <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                <!-- the zoom of Cards or Table, at the far right, as on the Units sub-tab -->
+                <ComboBox x:Name="ZoomChoice" DockPanel.Dock="Right" MinWidth="72" FontSize="12" Margin="12,0,0,0" ToolTip="{t:Text Units.Zoom.Tip}" />
+                <!-- as the mock's status bar: how many, then what the view shows -->
+                <TextBlock x:Name="CountText" DockPanel.Dock="Left" Foreground="{DynamicResource muted}" Margin="0,0,12,0" />
+                <TextBlock x:Name="FootnoteText" Style="{StaticResource Note}" />
+            </DockPanel>
+
+            <!-- Compare: a card a weapon, across the width, the pinned weapon first; it takes the place of the weapons and the pane -->
+            <controls:Bevel x:Name="CompareBox" Style="{StaticResource SunkenBox}" Visibility="Collapsed">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <StackPanel x:Name="CompareList" Margin="8,8,8,0" />
+                </ScrollViewer>
+            </controls:Bevel>
+
+            <controls:PanePair x:Name="Panes" Key="weapons" DefaultBelow="300">
+                <controls:PanePair.Main>
+                    <DockPanel>
+                        <!-- a tab a sort, with a line under them; the Weapon pane's button waits at their right when it is folded beside -->
+                        <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource line}" Edges="0,0,0,1">
+                            <DockPanel>
+                                <ContentControl x:Name="PaneSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Bottom" Margin="0,0,0,3" />
+                                <!-- at the list's top right, where the Units sub-tab has + New Unit...: a new weapon in the open mod, where it shows once made -->
+                                <Button x:Name="NewWeaponButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Content="{t:Text Weapons.New}" ToolTip="{t:Text Weapons.New.Tip}"
+                                        VerticalAlignment="Bottom" Margin="8,0,0,3" Click="NewWeaponClicked" />
+                                <WrapPanel x:Name="KindTabs" VerticalAlignment="Bottom" />
+                            </DockPanel>
+                        </controls:Bevel>
+                        <controls:Bevel Style="{StaticResource SunkenBox}">
+                            <Grid>
+                                <!-- the Cards view: rows of cards, of which only those in view are made -->
+                                <ItemsControl x:Name="CardsList" Focusable="False" SizeChanged="CardsListResized" MouseLeftButtonUp="CardsClicked" MouseRightButtonUp="CardsRightClicked"
+                                              VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True">
+                                    <ItemsControl.Template>
+                                        <ControlTemplate TargetType="ItemsControl">
+                                            <ScrollViewer Focusable="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="True">
+                                                <ItemsPresenter />
+                                            </ScrollViewer>
+                                        </ControlTemplate>
+                                    </ItemsControl.Template>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <weapons:WeaponCardRowView />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <weapons:WeaponTable x:Name="Table" Visibility="Collapsed" />
+                                <TextBlock x:Name="EmptyText" Foreground="{DynamicResource muted}" Margin="10" TextWrapping="Wrap" Visibility="Collapsed" />
+                            </Grid>
+                        </controls:Bevel>
+                    </DockPanel>
+                </controls:PanePair.Main>
+                <controls:PanePair.Second>
+                    <controls:Bevel Style="{StaticResource SunkenBox}" Margin="0,-6,0,0">
+                        <ScrollViewer x:Name="PaneScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                            <ContentControl x:Name="PaneContent" Focusable="False" />
+                        </ScrollViewer>
+                    </controls:Bevel>
+                </controls:PanePair.Second>
+            </controls:PanePair>
+        </DockPanel>
+    </Grid>
+</UserControl>

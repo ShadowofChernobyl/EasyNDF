@@ -150,7 +150,7 @@ public sealed class ProblemList
     /// <summary>A click on a problem goes to it in the text; the list stays open.</summary>
     private void GoToRowAt(MouseButtonEventArgs e)
     {
-        for (DependencyObject? at = e.OriginalSource as DependencyObject; at is not null && at != list; at = System.Windows.Media.VisualTreeHelper.GetParent(at))
+        for (DependencyObject? at = e.OriginalSource as DependencyObject; at is not null && at != list; at = at is System.Windows.Media.Visual ? System.Windows.Media.VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
             if (at is DockPanel { Tag: ProblemMark problem })
             {
                 problems.Reveal(problem);

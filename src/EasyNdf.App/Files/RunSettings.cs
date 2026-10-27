@@ -9,6 +9,9 @@ public sealed record RunSettings
     /// <summary>"Export: every file that is on" rather than only the files the rules changed.</summary>
     public bool ExportEveryFile { get; init; }
 
+    /// <summary>"Ask for the export folder each time": every Run export asks where to write the files.</summary>
+    public bool AskExportFolder { get; init; } = true;
+
     /// <summary>"Keep source comments".</summary>
     public bool KeepSourceComments { get; init; } = true;
 
@@ -31,6 +34,7 @@ public sealed record RunSettings
         return new RunSettings
         {
             ExportEveryFile = (string?)settings["exportScope"] == "all",
+            AskExportFolder = settings["askExportFolder"]?.GetValue<bool>() != false,
             KeepSourceComments = settings["keepComments"]?.GetValue<bool>() != false,
             LogLimit = settings["logCap"]?.GetValue<int>() ?? 500,
             // 0, like an empty box, means no limit
