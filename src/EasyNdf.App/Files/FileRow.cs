@@ -29,9 +29,6 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
     /// <summary>Raised when the On checkbox is ticked or cleared, so the folder's line can follow.</summary>
     public event EventHandler? SwitchedOnOrOff;
 
-    /// <summary>Raised when another preset is picked in the row's dropdown.</summary>
-    public event EventHandler? PresetChosen;
-
     /// <summary>The On checkbox: whether the file takes part in runs.</summary>
     public bool IsOn
     {
@@ -127,35 +124,8 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
     /// <summary>How the Status column's text is shown.</summary>
     public StatusKind StatusKind => FileStatus.Of(Entry).Kind;
 
-    /// <summary>
-    /// What the row's preset dropdown offers: the list's choices, and the row's own preset when it is another mod's.
-    /// </summary>
-    public IReadOnlyList<PresetChoice> Choices
-    {
-        get
-        {
-            if (Entry.Preset is not ModPreset preset || ListChoices.Any(c => ReferenceEquals(c.Preset, preset))) return ListChoices;
-            return [.. ListChoices, new PresetChoice(preset, AppData.Current.ModOf(preset)?.Name)];
-        }
-    }
-
-    /// <summary>The list's choices: "(none)" and the open mod's presets (set by the list).</summary>
-    public IReadOnlyList<PresetChoice> ListChoices { get; set; } = [PresetChoice.None];
-
-    /// <summary>The preset dropdown's choice: a preset, or <see cref="PresetChoice.None"/>.</summary>
-    public PresetChoice Preset
-    {
-        get => Entry.Preset is null ? PresetChoice.None : Choices.First(c => ReferenceEquals(c.Preset, Entry.Preset));
-        set
-        {
-            if (ReferenceEquals(value.Preset, Entry.Preset)) return;
-            Entry.Preset = value.Preset;
-            Entry.MissingPreset = null;
-            Entry.ClearMessage();
-            Refresh();
-            PresetChosen?.Invoke(this, EventArgs.Empty);
-        }
-    }
+    /// <summary>The mods that run on the file, in the order they run: what the Mods column shows.</summary>
+    public IReadOnlyList<ModOnFile> Mods => Entry.ModsOnFile;
 
     /// <summary>Whether the row has a "Save anyway" button: what the rules made failed the check, and was held back.</summary>
     public bool HasHeldOutput => Entry.HeldOutput is not null;
@@ -169,25 +139,6 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
-}
-
-/// <summary>
-/// One choice of a row's preset dropdown: a preset, or "(none)". A preset of a mod that is not open is shown with its
-/// mod's name in front, "WTO: WTO (Ammunition.ndf)", as the HTML app's <c>otherModOpt</c> shows it.
-/// </summary>
-public sealed record PresetChoice(ModPreset? Preset, string? OtherModName = null)
-{
-    /// <summary>The "(none)" choice.</summary>
-    public static readonly PresetChoice None = new((ModPreset?)null);
-
-    /// <summary>What the dropdown shows.</summary>
-    public override string ToString() => Preset is null ? Texts.Get("Files.Row.NoPreset") : OtherModName is null ? Preset.Name : OtherModName + ": " + Preset.Name;
-
-    /// <summary>Two choices are the same when they name the same preset.</summary>
-    public bool Equals(PresetChoice? other) => other is not null && ReferenceEquals(Preset, other.Preset);
-
-    /// <inheritdoc/>
-    public override int GetHashCode() => Preset?.GetHashCode() ?? 0;
 }
 
 /// <summary>

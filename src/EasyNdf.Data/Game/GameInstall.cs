@@ -73,13 +73,36 @@ public static class GameInstall
         return Path.GetFileName(modFolder);
     }
 
-    /// <summary>Where Steam is usually installed: Program Files (x86), then Program Files.</summary>
+    /// <summary>
+    /// Where Steam is installed: where the Windows registry says, which Steam always fills in, so a Steam installed on
+    /// another drive is found too; then its usual folders, Program Files (x86) and Program Files.
+    /// </summary>
     private static IEnumerable<string> DefaultSteamFolders()
     {
+        if (SteamFolderFromRegistry() is string registered) yield return registered;
         foreach (Environment.SpecialFolder programFiles in new[] { Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.ProgramFiles })
         {
             string folder = Environment.GetFolderPath(programFiles);
             if (folder != "") yield return Path.Combine(folder, "Steam");
+        }
+    }
+
+    /// <summary>
+    /// The SteamPath value in HKEY_CURRENT_USER\Software\Valve\Steam, written with forward slashes
+    /// ("d:/steam"); null when it is missing, unreadable, or not on Windows.
+    /// </summary>
+    private static string? SteamFolderFromRegistry()
+    {
+        if (!OperatingSystem.IsWindows()) return null;
+        try
+        {
+            using Microsoft.Win32.RegistryKey? steam = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+            if (steam?.GetValue("SteamPath") is not string path || path.Trim() == "") return null;
+            return Path.GetFullPath(path.Trim());
+        }
+        catch (Exception problem) when (problem is System.Security.SecurityException or IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            return null;
         }
     }
 

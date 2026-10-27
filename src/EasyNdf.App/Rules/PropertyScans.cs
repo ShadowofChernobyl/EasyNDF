@@ -14,10 +14,48 @@ namespace EasyNdf.App.Rules;
 public sealed class PropertyScans(IReadOnlyDictionary<string, ScanInfo> scans, IReadOnlyList<string> listedFiles)
 {
     /// <summary>Every scanned file, by file name, then by folder.</summary>
-    public IReadOnlyList<string> Keys { get; } = [.. scans.Keys.Order(Comparer<string>.Create(CompareByFileName))];
+    public IReadOnlyList<string> Keys { get; } = ByFileName(scans.Keys);
 
     /// <summary>The files loaded on the Files tab that are not scanned yet, in the same order.</summary>
-    public IReadOnlyList<string> Unread { get; } = [.. listedFiles.Where(f => !scans.ContainsKey(f)).Distinct().Order(Comparer<string>.Create(CompareByFileName))];
+    public IReadOnlyList<string> Unread { get; } = ByFileName(listedFiles.Where(f => !scans.ContainsKey(f)).Distinct());
+
+    /// <summary>
+    /// Files in the order of <see cref="CompareByFileName"/>, each name put in small letters once rather than at each
+    /// comparison: a game has 4,000 files.
+    /// </summary>
+    private static List<string> ByFileName(IEnumerable<string> files) =>
+        [.. files.OrderBy(file => BaseName(file).ToLowerInvariant(), StringComparer.Ordinal).ThenBy(file => file, StringComparer.Ordinal)];
+
+    /// <summary>
+    /// How the scanned files can be named, worked out once: for each way, in small letters (the whole name, or its end
+    /// from a folder on, such as "gfx/ammunition.ndf"), how many files answer to it, and the first of them in the
+    /// order of their whole names. A rule names a file so; comparing each file with every other took over a second
+    /// with a game's 4,000 files.
+    /// </summary>
+    private (Dictionary<string, string> Whole, Dictionary<string, string> End, Dictionary<string, int> Answering)? names;
+
+    private (Dictionary<string, string> Whole, Dictionary<string, string> End, Dictionary<string, int> Answering) Names()
+    {
+        if (names is { } made) return made;
+        var whole = new Dictionary<string, string>(StringComparer.Ordinal);
+        var end = new Dictionary<string, string>(StringComparer.Ordinal);
+        var answering = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (string key in scans.Keys.Order(StringComparer.Ordinal))
+        {
+            string lower = key.ToLowerInvariant();
+            whole.TryAdd(lower, key);
+            answering[lower] = answering.GetValueOrDefault(lower) + 1;
+            // each end that starts after a "/": "a/b/c.ndf" answers to "b/c.ndf" and "c.ndf"
+            for (int slash = lower.IndexOf('/'); slash >= 0; slash = lower.IndexOf('/', slash + 1))
+            {
+                string ending = lower[(slash + 1)..];
+                end.TryAdd(ending, key);
+                answering[ending] = answering.GetValueOrDefault(ending) + 1;
+            }
+        }
+        names = (whole, end, answering);
+        return names.Value;
+    }
 
     /// <summary>Whether a file is scanned.</summary>
     public bool IsScanned(string file) => scans.ContainsKey(file);
@@ -34,10 +72,8 @@ public sealed class PropertyScans(IReadOnlyDictionary<string, ScanInfo> scans, I
         string wanted = reference ?? "";
         if (wanted == "" || scans.ContainsKey(wanted)) return wanted;
         string lower = wanted.ToLowerInvariant();
-        List<string> sorted = [.. scans.Keys.Order(StringComparer.Ordinal)];
-        return sorted.FirstOrDefault(k => k.ToLowerInvariant() == lower)
-            ?? sorted.FirstOrDefault(k => k.ToLowerInvariant().EndsWith("/" + lower, StringComparison.Ordinal))
-            ?? "";
+        var (whole, end, _) = Names();
+        return whole.GetValueOrDefault(lower) ?? end.GetValueOrDefault(lower) ?? "";
     }
 
     /// <summary>A file's name, without its folders.</summary>
@@ -87,12 +123,13 @@ public sealed class PropertyScans(IReadOnlyDictionary<string, ScanInfo> scans, I
     public string ShortName(string file)
     {
         string[] parts = file.Split('/');
+        var (_, _, answering) = Names();
+        // a scanned file answers to its own names; another file answering too makes a name ambiguous
+        int itself = scans.ContainsKey(file) ? 1 : 0;
         for (int count = 1; count <= parts.Length; count++)
         {
             string reference = string.Join("/", parts[^count..]);
-            string lower = reference.ToLowerInvariant();
-            if (!Keys.Any(o => o != file && (o.ToLowerInvariant() == lower || o.ToLowerInvariant().EndsWith("/" + lower, StringComparison.Ordinal))))
-                return reference;
+            if (answering.GetValueOrDefault(reference.ToLowerInvariant()) <= itself) return reference;
         }
         return file;
     }
@@ -112,12 +149,16 @@ public sealed class PropertyScans(IReadOnlyDictionary<string, ScanInfo> scans, I
         if (filesWithPreset.FirstOrDefault(scans.ContainsKey) is string listed) return listed;
 
         static string FolderOf(string file) => file[..Math.Max(0, file.Length - BaseName(file).Length - 1)];
-        if (Keys.FirstOrDefault(f => ReferenceEquals(PresetMatching.Match(BaseName(f), FolderOf(f), modPresets), preset)) is string mine) return mine;
+        // only a file whose name the preset's name holds can fit it: the others are passed over at once, as matching
+        // each of a game's 4,000 files against every preset took a moment each time the rule window opened
+        string presetName = preset.Name.Replace('\\', '/');
+        List<string> named = [.. Keys.Where(file => presetName.Contains(BaseName(file), StringComparison.Ordinal))];
+        if (named.FirstOrDefault(f => ReferenceEquals(PresetMatching.Match(BaseName(f), FolderOf(f), modPresets), preset)) is string mine) return mine;
 
         // The Files tab leaves a file alone when two presets fit it equally; here the question is only which file fits this preset best.
         int best = -1;
         var bestFiles = new List<string>();
-        foreach (string file in Keys)
+        foreach (string file in named)
         {
             int fit = PresetMatching.Fit(preset.Name, BaseName(file), FolderOf(file).ToLowerInvariant().Split('/', StringSplitOptions.RemoveEmptyEntries));
             if (fit < 0) continue;

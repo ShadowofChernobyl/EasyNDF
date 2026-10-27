@@ -39,6 +39,7 @@ public static class ThemeColourNames
         "s-field" => Texts.Get("Settings.ThemeColour.EditorField"),
         "d-add" => Texts.Get("Settings.ThemeColour.ChangesAdd"),
         "d-del" => Texts.Get("Settings.ThemeColour.ChangesDel"),
+        "weapon-art" => Texts.Get("Settings.ThemeColour.WeaponArt"),
         _ => key,
     };
 

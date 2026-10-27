@@ -23,7 +23,7 @@ public static class RuleLoading
     {
         ["Edit"] = "Edit rule", ["Add"] = "Add descriptor", ["Clone"] = "Clone descriptor", ["Remove"] = "Remove descriptors",
         ["Replace"] = "Find and replace", ["Scale"] = "Scale", ["Formula"] = "Formula", ["Table"] = "Table",
-        ["Lookup"] = "Lookup", ["Check"] = "Check", ["Group"] = "Group", ["Variable"] = "Variable",
+        ["Lookup"] = "Lookup", ["Text"] = "Texts", ["File"] = "File", ["Check"] = "Check", ["Group"] = "Group", ["Variable"] = "Variable",
     };
 
     /// <summary>The settings a new rule of each type starts with.</summary>
@@ -46,6 +46,8 @@ public static class RuleLoading
         },
         "Check" => new() { ["Expect"] = "atLeast", ["Count"] = "1", ["Message"] = "" },
         "Variable" => new() { ["VarName"] = "", ["Value"] = "" },
+        "Text" => new() { ["Text"] = "" },
+        "File" => new() { ["Destination"] = "", ["Stored"] = "", ["ChosenName"] = "", ["Size"] = 0 },
         _ => new(),
     };
 

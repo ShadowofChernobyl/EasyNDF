@@ -144,6 +144,7 @@ public sealed partial class RulesModel
     /// <summary>The + button and "Create New Condition": a new row below the selected one (or at the end), selected. Returns its place.</summary>
     public int AddRow(string list)
     {
+        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused")); return -1; }
         if (RowsOf(list) is not JsonArray rows) return -1;
         IReadOnlyList<int> picked = SelectedRowsOf(list);
         int at = picked.Count > 0 ? picked[^1] + 1 : rows.Count;
@@ -168,6 +169,7 @@ public sealed partial class RulesModel
     /// </summary>
     public void MoveRows(string list, int direction)
     {
+        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused")); return; }
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
         if (rows is null || picked.Count == 0) { Say(SelectRowsFirst); return; }
@@ -202,6 +204,7 @@ public sealed partial class RulesModel
     /// <summary>Delete in a list: the selected rows go, without asking.</summary>
     public void DeleteRows(string list)
     {
+        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused")); return; }
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
         if (rows is null || picked.Count == 0) { Say(SelectRowsFirst); return; }
@@ -215,6 +218,7 @@ public sealed partial class RulesModel
     /// <summary>"Duplicate" in a list's menu: copies of the selected rows below the last of them, selected.</summary>
     public void DuplicateRows(string list)
     {
+        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused")); return; }
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
         if (rows is null || picked.Count == 0) return;
@@ -308,7 +312,8 @@ public sealed partial class RulesModel
     private static readonly Dictionary<string, string> ShortOperators = new()
     {
         ["Add [int, float]"] = "Add", ["Subtract [int, float]"] = "Subtract", ["Multiply [int, float]"] = "Multiply",
-        ["Divide [int, float]"] = "Divide", ["Set To [int, float, string, boolean]"] = "Set To", ["Append [string]"] = "Append",
-        ["Prepend [string]"] = "Prepend", ["Insert [array]"] = "Insert", ["Replace [array]"] = "Replace", ["Remove [array]"] = "Remove",
+        ["Divide [int, float]"] = "Divide", ["Set To [int, float, string, boolean]"] = "Set To", ["Set To [list, object]"] = "Set To", ["Append [string]"] = "Append",
+        ["Prepend [string]"] = "Prepend", ["Insert [array]"] = "Insert", ["Replace [array]"] = "Replace", ["Remove [array]"] = "Remove", ["Add Property"] = "Add Property",
+        ["Remove Property"] = "Remove Property",
     };
 }

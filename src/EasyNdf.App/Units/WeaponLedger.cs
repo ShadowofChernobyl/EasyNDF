@@ -27,7 +27,9 @@ public static class WeaponLedger
     /// <param name="narrow">The Unit pane's narrow table: smaller text, tighter cells, short headings.</param>
     /// <param name="bestRange">On Compare, the longest range among the units compared, drawn in the "best" colour; null for none.</param>
     /// <param name="openMenu">Opens a weapon's menu and gives it back: at the mouse over the row, or under the ▾ button.</param>
-    public static FrameworkElement Build(Unit unit, string rangeUnit, bool narrow, double? bestRange, Func<UnitWeapon, FrameworkElement, ContextMenu> openMenu)
+    /// <param name="showWeapon">A double-click on a weapon: shows it on the Weapons sub-tab; null where it cannot.</param>
+    public static FrameworkElement Build(Unit unit, string rangeUnit, bool narrow, double? bestRange, Func<UnitWeapon, FrameworkElement, ContextMenu> openMenu,
+        Action<UnitWeapon>? showWeapon = null)
     {
         if (unit.Weapons.Count == 0)
         {
@@ -42,8 +44,8 @@ public static class WeaponLedger
         foreach ((WeaponKind kind, List<(UnitWeapon Weapon, int Index)> weapons) in WeaponKinds.Grouped(unit.Weapons))
         {
             rows.Children.Add(GroupRow(kind));
-            foreach ((UnitWeapon weapon, _) in weapons)
-                rows.Children.Add(WeaponRow(weapon, narrow, bestRange, openMenu));
+            foreach ((UnitWeapon weapon, int index) in weapons)
+                rows.Children.Add(WeaponRow(unit, weapon, index, narrow, bestRange, openMenu, showWeapon));
         }
         var table = new Bevel { Child = rows };
         table.SetResourceReference(Bevel.TopLeftProperty, "lo");
@@ -108,15 +110,17 @@ public static class WeaponLedger
     /// A weapon's row: its icon, "2×" when it has more than one, its name (wrapping), the ▾ for its menu, then its
     /// numbers. Under the mouse the row takes the selection colour, and the hover colour while its menu is open.
     /// </summary>
-    private static Bevel WeaponRow(UnitWeapon weapon, bool narrow, double? bestRange, Func<UnitWeapon, FrameworkElement, ContextMenu> openMenu)
+    private static Bevel WeaponRow(Unit unit, UnitWeapon weapon, int index, bool narrow, double? bestRange, Func<UnitWeapon, FrameworkElement, ContextMenu> openMenu,
+        Action<UnitWeapon>? showWeapon)
     {
         Grid grid = RowGrid();
-        grid.Children.Add(NameCell(weapon, narrow, out Button menuButton));
+        grid.Children.Add(NameCell(unit, weapon, index, narrow, out Button menuButton));
         bool isBest = bestRange is double best && weapon.Range == best;
-        AddNumber(grid, 1, weapon.Range is > 0 ? UnitNumbers.Of(weapon.Range) : UnitNumbers.None, narrow, isBest);
-        AddNumber(grid, 2, UnitNumbers.Of(weapon.Damage), narrow, isBest: false);
-        AddNumber(grid, 3, UnitNumbers.Of(weapon.Suppression, decimals: 0), narrow, isBest: false);
-        AddNumber(grid, 4, UnitNumbers.Seconds(weapon.SalvoSeconds, narrow), narrow, isBest: false);
+        var number = new WeaponNumber(unit, index, narrow);
+        number.Add(grid, 1, UnitField.WeaponRange, each => each.Range is > 0 ? UnitNumbers.Of(each.Range) : UnitNumbers.None, isBest);
+        number.Add(grid, 2, UnitField.WeaponDamage, each => UnitNumbers.Of(each.Damage), isBest: false);
+        number.Add(grid, 3, UnitField.WeaponSuppression, each => UnitNumbers.Of(each.Suppression, decimals: 0), isBest: false);
+        number.Add(grid, 4, UnitField.WeaponSalvo, each => UnitNumbers.Seconds(each.SalvoSeconds, narrow), isBest: false);
 
         var row = new Bevel { Child = grid, Edges = new Thickness(0, 0, 0, 1), Background = Brushes.Transparent, Cursor = Cursors.Arrow };
         row.SetResourceReference(Bevel.BottomRightProperty, "line");
@@ -139,12 +143,25 @@ public static class WeaponLedger
             menu.Closed += (_, _) => { menuOpen = false; Colour(); };
         }
         row.MouseRightButtonUp += (_, e) => { e.Handled = true; Open(row); };
+        if (showWeapon is not null)
+        {
+            row.ToolTip = Texts.Get("Units.Weapon.DoubleClick.Tip");
+            row.MouseLeftButtonDown += (_, e) =>
+            {
+                if (e.ClickCount != 2) return;
+                e.Handled = true;
+                showWeapon(weapon);
+            };
+        }
         menuButton.Click += (_, _) => Open(menuButton);
         return row;
     }
 
-    /// <summary>The name cell: the sort's icon, the count in the accent colour, the name, and the ▾ at the right.</summary>
-    private static DockPanel NameCell(UnitWeapon weapon, bool narrow, out Button menuButton)
+    /// <summary>
+    /// The name cell: the sort's icon, the count in the accent colour, the name, and the ▾ at the right. A weapon the
+    /// open mod changed (another, or another count) is marked as changed values are.
+    /// </summary>
+    private static DockPanel NameCell(Unit unit, UnitWeapon weapon, int index, bool narrow, out Button menuButton)
     {
         WeaponKind kind = WeaponKinds.Of(weapon);
         double iconSize = narrow ? 13 : 15;
@@ -173,25 +190,44 @@ public static class WeaponLedger
             name.Inlines.Add(count);
             name.Inlines.Add(new Run(" "));
         }
-        name.Inlines.Add(new Run(weapon.Name));
+        var nameText = new Run(weapon.Name);
+        name.Inlines.Add(nameText);
+        string? changedField = new[] { UnitField.WeaponName, UnitField.WeaponCount }.Select(field => UnitField.OfWeapon(index, field))
+            .FirstOrDefault(field => ModMarks.IsChanged(unit, field));
+        if (changedField is not null && ModMarks.Changes.Of(unit) is UnitChange change)
+        {
+            if (ModMarks.AreShown) name.Inlines.Add(ModMarks.Star());
+            name.ToolTip = ModMarks.TipFor(change, changedField, game => index < game.Weapons.Count ? WeaponWithCount(game.Weapons[index]) : "");
+        }
 
         var cell = new DockPanel { Margin = narrow ? new Thickness(4, 2, 4, 2) : new Thickness(6, 2, 6, 2), Children = { icon, menuButton, name } };
         return cell;
     }
 
-    /// <summary>
-    /// A number, right-aligned in the app's own font, as the stats above are; the best range in the "best" colour, not
-    /// bold (the font's digits are all one width, so the numbers still line up).
-    /// </summary>
-    private static void AddNumber(Grid grid, int column, string text, bool narrow, bool isBest)
+    /// <summary>A weapon as its tooltip names it when it changed: "2× Canon AP 120 mm".</summary>
+    private static string WeaponWithCount(UnitWeapon weapon) =>
+        weapon.Count > 1 ? Texts.Get("Units.Weapons.Count", ("count", weapon.Count)) + " " + weapon.Name : weapon.Name;
+
+    /// <summary>The numbers of one weapon's row: which unit and weapon they are, for the open mod's marks.</summary>
+    private sealed record WeaponNumber(Unit Unit, int Index, bool Narrow)
     {
-        var number = new TextBlock
+        /// <summary>
+        /// A number, right-aligned in the app's own font, as the stats above are; the best range in the "best" colour,
+        /// not bold (the font's digits are all one width, so the numbers still line up); marked when the open mod
+        /// changed it.
+        /// </summary>
+        public void Add(Grid grid, int column, string field, Func<UnitWeapon, string> write, bool isBest)
         {
-            Text = text, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, FontSize = narrow ? 11 : 12,
-            Margin = narrow ? new Thickness(4, 2, 4, 2) : new Thickness(12, 2, 6, 2),
-        };
-        number.SetResourceReference(TextBlock.ForegroundProperty, isBest ? "ok" : "ink");
-        Grid.SetColumn(number, column);
-        grid.Children.Add(number);
+            var number = new TextBlock
+            {
+                TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, FontSize = Narrow ? 11 : 12,
+                Margin = Narrow ? new Thickness(4, 2, 4, 2) : new Thickness(12, 2, 6, 2),
+            };
+            int index = Index;
+            ModMarks.Show(number, Unit, UnitField.OfWeapon(index, field), write(Unit.Weapons[index]),
+                game => index < game.Weapons.Count ? write(game.Weapons[index]) : "", isBest ? "ok" : "ink");
+            Grid.SetColumn(number, column);
+            grid.Children.Add(number);
+        }
     }
 }

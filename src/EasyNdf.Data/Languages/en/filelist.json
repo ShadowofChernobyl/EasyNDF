@@ -1,10 +1,9 @@
 {
   "Files.Status.Ready": "Ready",
   "Files.Status.Off": "Off",
-  "Files.Status.OffNoPreset": "Off, no preset",
-  "Files.Status.NoPreset": "No preset",
+  "Files.Status.OffNoPreset": "Off, no rules",
+  "Files.Status.NoPreset": "No rules",
   "Files.Status.NotLoaded": "File not loaded. Add {file} again to reattach it.",
-  "Files.Status.PresetNotFound": "Preset \"{preset}\" not found",
   "Files.Status.NotReadYet": "not read yet",
   "Files.Status.Descriptors": "{count} descriptors|{count} descriptors",
   "Files.Status.Constants": "{count} constants|{count} constants",
@@ -18,12 +17,12 @@
   "Files.Column.On": "On",
   "Files.Column.File": "Source file",
   "Files.Column.Size": "Size",
+  "Files.Column.Armory": "Armory",
   "Files.Column.Lines": "Lines",
   "Files.Column.Modified": "Date modified",
-  "Files.Column.Preset": "Preset",
   "Files.Column.ExportFolder": "Export folder",
   "Files.Column.Status": "Status",
   "Files.Row.NotLoaded": "{file} (not loaded)",
-  "Files.Row.NoPreset": "(none)",
-  "Files.Row.NotSet": "Not set"
+  "Files.Row.NotSet": "Not set",
+  "Files.Column.Mods": "Mods"
 }

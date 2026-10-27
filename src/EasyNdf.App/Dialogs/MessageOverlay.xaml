@@ -18,7 +18,9 @@
                 <TextBlock x:Name="Message" TextWrapping="Wrap" Margin="0,0,0,8" />
                 <ContentPresenter x:Name="Extra" />
                 <!-- #dlg input[type=text]: 10 pixels above the checkbox or the buttons -->
-                <TextBox x:Name="Input" ToolTip="{t:Text Common.Message.Input.Tip}" Margin="0,0,0,10" />
+                <TextBox x:Name="Input" ToolTip="{t:Text Common.Message.Input.Tip}" Margin="0,0,0,10" TextChanged="InputChanged" />
+                <!-- what explains the question, dim and smaller under the text box, so the question stays short -->
+                <TextBlock x:Name="NoteText" Style="{StaticResource Note}" FontSize="11" Margin="0,0,0,10" Visibility="Collapsed" />
                 <!-- a web page sets this checkbox and its text on a line of text, which puts it about a pixel lower -->
                 <CheckBox x:Name="Check" ToolTip="{t:Text Common.Message.Check.Tip}" Style="{StaticResource Tick}" Margin="0,0.94,0,10" HorizontalAlignment="Left" />
                 <!-- .bar: the buttons, at the right -->

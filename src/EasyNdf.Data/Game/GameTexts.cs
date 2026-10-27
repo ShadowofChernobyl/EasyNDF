@@ -8,6 +8,9 @@ public sealed class GameTexts
 {
     private readonly Dictionary<ulong, string> texts = [];
 
+    /// <summary>The keys asked for with <see cref="Get"/>, for <see cref="OnlyThoseAsked"/>.</summary>
+    private readonly HashSet<ulong> asked = [];
+
     /// <summary>The dictionaries that could not be read, each with what went wrong.</summary>
     public List<string> Problems { get; } = [];
 
@@ -48,7 +51,22 @@ public sealed class GameTexts
     public string? Get(string? key)
     {
         if (string.IsNullOrEmpty(key) || Dictionaries.KeyOf(key) is not ulong number) return null;
+        // two reads of the mod's units can run at once, sharing these texts: a HashSet changed by both at once breaks
+        lock (asked) asked.Add(number);
         return texts.TryGetValue(number, out string? text) && text.Trim() != "" ? text.Trim() : null;
+    }
+
+    /// <summary>
+    /// Only the texts asked for so far, kept after the rest are let go of: the units' and divisions' names, for reading
+    /// the units again as a mod's rules change them without reading every dictionary again.
+    /// </summary>
+    public GameTexts OnlyThoseAsked()
+    {
+        var kept = new GameTexts();
+        lock (asked)
+            foreach (ulong number in asked)
+                if (texts.TryGetValue(number, out string? text)) kept.texts[number] = text;
+        return kept;
     }
 
     /// <summary>Whether a file in the archives is one of the English dictionaries read.</summary>

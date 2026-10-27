@@ -41,11 +41,27 @@
     <BooleanToVisibilityConverter x:Key="ShowWhenTrue" />
 
     <!-- button, .btn: a raised panel; the text turns accent under the mouse; pressed, the edges swap -->
+    <!--
+      Where the keyboard is: a thin outline in the theme's accent colour around the control that has it. WPF draws it only
+      when the focus came from the keyboard (Tab, the arrow keys), never on a mouse click. The second style is the same
+      outline for every control that has no style of its own for it, in place of Windows' dotted line.
+    -->
+    <Style x:Key="KeyboardFocusOutline">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Rectangle Margin="-2" Stroke="{DynamicResource accent}" StrokeThickness="1.5" SnapsToDevicePixels="True" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="{x:Static SystemParameters.FocusVisualStyleKey}" BasedOn="{StaticResource KeyboardFocusOutline}" />
+
     <Style TargetType="Button">
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
         <Setter Property="Padding" Value="10,3" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -80,7 +96,7 @@
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
         <Setter Property="Padding" Value="10,3" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -127,7 +143,7 @@
         <Setter Property="FontSize" Value="12" />
         <Setter Property="TextBlock.LineHeight" Value="18" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -223,7 +239,7 @@
         <Setter Property="TextElement.FontWeight" Value="Bold" />
     </Style>
 
-    <!-- the small buttons in headings, such as the Units tab's All and the Divisions tab's +: 20 pixels high, 7 pixels each side -->
+    <!-- the small buttons in headings, such as the Units tab's All and the divisions' +: 20 pixels high, 7 pixels each side -->
     <Style x:Key="HeadingButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="MinHeight" Value="20" />
         <Setter Property="Padding" Value="7,0" />
@@ -231,7 +247,7 @@
     </Style>
 
     <!--
-      .factories button: a factory's tab on the Units and Divisions tabs, bold, raised with no edge at the bottom. The one chosen is sunk on the box
+      .factories button: a factory's tab on the Units tab, bold, raised with no edge at the bottom. The one chosen is sunk on the box
       colour, in the accent colour, and covers the line under the tabs, so it opens into the list below.
     -->
     <Style x:Key="FactoryTab" TargetType="ToggleButton">
@@ -240,7 +256,7 @@
         <Setter Property="Padding" Value="11,3" />
         <Setter Property="Margin" Value="0,0,2,-1" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ToggleButton">
@@ -297,7 +313,7 @@
     <Style x:Key="VersionTag" TargetType="Button">
         <Setter Property="Foreground" Value="{DynamicResource muted}" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -325,11 +341,18 @@
                     <DockPanel>
                         <!-- 9 at the top: the strip's 8, and the tabs' "top: 1px", which also lines their bottoms up with the line -->
                         <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource hi}" Edges="0,0,0,1" Padding="10,9,10,0">
-                            <!-- not WPF's TabPanel, which ignores the gap between tabs and rounds their widths -->
-                            <controls:SnappedRow Gap="2" IsItemsHost="True" />
+                            <!--
+                              not WPF's TabPanel, which ignores the gap between tabs and rounds their widths. The Tab key
+                              never lands on the tabs: a tab takes the page as it gets the keyboard, so Tab used to switch
+                              pages. Ctrl+Tab and Ctrl+Shift+Tab switch them, as in a browser.
+                            -->
+                            <controls:SnappedRow Gap="2" IsItemsHost="True" KeyboardNavigation.TabNavigation="None" />
                         </controls:Bevel>
-                        <!-- the page under the tabs fills the window and never scrolls: each tab's lists and texts scroll in their own boxes -->
-                        <ContentPresenter ContentSource="SelectedContent" Margin="10" />
+                        <!--
+                          the page under the tabs fills the window and never scrolls: each tab's lists and texts scroll in
+                          their own boxes. Tab goes round the page's controls, top to bottom, and back to the first.
+                        -->
+                        <ContentPresenter ContentSource="SelectedContent" Margin="10" KeyboardNavigation.TabNavigation="Cycle" />
                     </DockPanel>
                 </ControlTemplate>
             </Setter.Value>
@@ -338,17 +361,19 @@
 
     <!--
       The tab's colour and boldness are set on its header only: set on the TabItem itself they would also reach the page
-      it shows, which inherits from it.
+      it shows, which inherits from it. For the same reason the tab's tooltip is given as its Tag and shown on the tab's
+      button only: as the TabItem's ToolTip, anything on its page with no tooltip of its own (such as a heading) would
+      find the tab's, which then opened and closed at once, the mouse not being over the tab.
     -->
     <Style TargetType="TabItem">
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <!-- Every tab is one pixel taller than its row and covers the strip's line, as the browser's rounding makes it. -->
         <Setter Property="Margin" Value="0,0,0,-1" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <controls:Bevel x:Name="Edge" Edges="1,1,1,0" Padding="14,5,14,6" TopLeft="{DynamicResource hi}"
+                    <controls:Bevel x:Name="Edge" Edges="1,1,1,0" Padding="14,5,14,6" ToolTip="{TemplateBinding Tag}" TopLeft="{DynamicResource hi}"
                                     BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}">
                         <ContentPresenter x:Name="Header" ContentSource="Header" HorizontalAlignment="Center" RecognizesAccessKey="False"
                                           TextElement.Foreground="{DynamicResource muted}" />
@@ -389,6 +414,8 @@
         <Setter Property="SelectionBrush" Value="{DynamicResource accent}" />
         <Setter Property="Padding" Value="5,3" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <!-- a one-line box's text in its middle; a box of several lines (a division's texts) sets Top -->
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
@@ -401,7 +428,7 @@
                               The text: WPF puts the box's padding around it itself, inside this part, and the text 2 pixels
                               further in, which the margin takes back. The line is as tall as the box's line height.
                             -->
-                            <ScrollViewer x:Name="PART_ContentHost" Margin="-2,0" VerticalAlignment="Center" />
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="-2,0" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                         </Grid>
                     </controls:Bevel>
                     <ControlTemplate.Triggers>
@@ -472,7 +499,7 @@
         <Setter Property="ItemContainerStyle">
             <Setter.Value>
                 <Style TargetType="ListBoxItem">
-                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="Cursor" Value="Hand" />
                     <Setter Property="Template">
@@ -569,7 +596,7 @@
     -->
     <Style TargetType="ComboBox">
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Cursor" Value="Hand" />
         <!--
           only the items in sight are made, scrolled by pixels: the File Editor's list can hold a game's 4,000 files,
@@ -630,7 +657,7 @@
     <Style TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
         <Setter Property="Padding" Value="8,3" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBoxItem">
@@ -657,7 +684,7 @@
     <Style x:Key="Toggle" TargetType="CheckBox">
         <Setter Property="Foreground" Value="{DynamicResource muted}" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
@@ -697,6 +724,17 @@
         <Setter Property="MinWidth" Value="22" />
     </Style>
 
+    <!-- a letter of the Files tab's Armory column (D B U W): a small square button, lit by the row where its part runs -->
+    <Style x:Key="ArmoryLetter" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="MinWidth" Value="18" />
+        <Setter Property="MinHeight" Value="18" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
+    </Style>
+
     <!-- button.qhelp: the "?" that opens the help for a tab -->
     <Style x:Key="HelpButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
         <Setter Property="FontWeight" Value="Bold" />
@@ -710,7 +748,7 @@
     -->
     <Style x:Key="WikiNavItem" TargetType="ToggleButton">
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Template">
             <Setter.Value>
@@ -742,6 +780,36 @@
                 <Setter Property="Foreground" Value="{DynamicResource ink}" />
             </DataTrigger>
         </Style.Triggers>
+    </Style>
+
+    <!--
+      The Armory's sub-tabs (Units, Divisions, Battlegroups): the app's own tabs one level down, as buttons that stay
+      pressed, on a strip with a light line under it; the one chosen is bold and covers the line.
+    -->
+    <Style x:Key="SubTab" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
+        <Setter Property="Margin" Value="0,0,2,-1" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <controls:Bevel x:Name="Edge" Edges="1,1,1,0" Padding="14,4,14,5" TopLeft="{DynamicResource hi}"
+                                    BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}">
+                        <ContentPresenter x:Name="Header" HorizontalAlignment="Center" RecognizesAccessKey="False"
+                                          TextElement.Foreground="{DynamicResource muted}" />
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource ink}" />
+                            <Setter TargetName="Header" Property="TextElement.FontWeight" Value="Bold" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- #wkCrumb: a Help page's group above its title, a dim link that turns accent under the mouse -->
@@ -788,7 +856,7 @@
     -->
     <Style x:Key="Tick" TargetType="CheckBox">
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="Foreground" Value="{DynamicResource muted}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Template">
@@ -1073,6 +1141,9 @@
         <Setter Property="HasDropShadow" Value="False" />
         <Setter Property="FontFamily" Value="{DynamicResource ui-font}" />
         <Setter Property="FontSize" Value="12" />
+        <!-- never bold or italic from the control it belongs to, such as a heading's + button -->
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="FontStyle" Value="Normal" />
         <Setter Property="TextBlock.LineHeight" Value="17" />
         <Setter Property="TextBlock.LineStackingStrategy" Value="BlockLineHeight" />
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal" />
@@ -1227,7 +1298,7 @@
     </Style>
 
     <!--
-      The Units table (Units/UnitTableList.cs), on the Units and Divisions tabs: one row a unit, of which only those in
+      The Units table (Units/UnitTableList.cs), for all units or a division's: one row a unit, of which only those in
       view are made, in a frame whose headings sit above the rows and move sideways with them.
     -->
     <Style x:Key="UnitTableList" TargetType="units:UnitTableList">
@@ -1298,4 +1369,148 @@
     <!-- Olivine's Tread until a theme is applied, so the designer shows it; the app puts the theme's own in its place -->
     <Style TargetType="ScrollBar" BasedOn="{StaticResource TreadScrollBar}" />
 
+    <!--
+      A card's cost in a division's type heading: the number in a small sunken box, a button that opens the choice of
+      cost. A light edge under the mouse, the accent edge with the keyboard on it.
+    -->
+    <Style x:Key="CostButton" TargetType="Button">
+        <Setter Property="MinWidth" Value="20" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid>
+                        <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Padding="4,0">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </controls:Bevel>
+                        <Border x:Name="Edge" BorderThickness="1" BorderBrush="{DynamicResource hi}" Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Edge" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Edge" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Edge" Property="BorderBrush" Value="{DynamicResource accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- something to add, such as a card or a signature unit: a dashed outline, dim, the accent colour under the mouse -->
+    <Style x:Key="DashedButton" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="MinWidth" Value="20" />
+        <Setter Property="MinHeight" Value="20" />
+        <Setter Property="Padding" Value="6,1" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid Background="Transparent">
+                        <Rectangle x:Name="Edge" Stroke="{DynamicResource line}" StrokeThickness="1" StrokeDashArray="3 2" SnapsToDevicePixels="True" />
+                        <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Edge" Property="Stroke" Value="{DynamicResource accent}" />
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Edge" Property="Stroke" Value="{DynamicResource accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      A folding section's header in a pane: a raised bar the whole width of the pane, with no edges at its sides, so it
+      meets the pane's own; the selection colour under the mouse. The Division pane's sections use it.
+    -->
+    <Style x:Key="SectionHeader" TargetType="Button">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <controls:Bevel x:Name="Bar" Edges="0,1,0,1" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}" Padding="10,4">
+                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                    </controls:Bevel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bar" Property="Background" Value="{DynamicResource sel}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!--
+      A weight slider, as the Generation Settings window has them (0 to 100): a sunken well, the part up to the thumb
+      filled in the accent colour, and a raised thumb. Arrow keys move it by one, Page Up and Down by ten.
+    -->
+    <Style x:Key="WeightSlider" TargetType="Slider">
+        <Setter Property="Minimum" Value="0" />
+        <Setter Property="Maximum" Value="100" />
+        <Setter Property="SmallChange" Value="1" />
+        <Setter Property="LargeChange" Value="10" />
+        <Setter Property="IsSnapToTickEnabled" Value="True" />
+        <Setter Property="TickFrequency" Value="1" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid VerticalAlignment="Center">
+                        <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Height="6" />
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="Slider.DecreaseLarge" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border Height="4" Margin="1,0,0,0" Background="{DynamicResource accent}" Opacity="0.55" />
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="Slider.IncreaseLarge" Focusable="False" IsTabStop="False">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Border Background="Transparent" />
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Width="9" Height="16" Cursor="Hand">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <controls:Bevel x:Name="Edge" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}" />
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Edge" Property="Background" Value="{DynamicResource hover}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

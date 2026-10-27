@@ -38,6 +38,7 @@
     <!-- the Tread scrollbars' track, worked out from "well" and "lo" (see ThemeColors.ScrollTrack) -->
     <SolidColorBrush x:Key="scroll-track" Color="#101311" />
     <SolidColorBrush x:Key="d-del" Color="#f0957a" />
+    <SolidColorBrush x:Key="weapon-art" Color="#e3e8e2" />
     <!-- the Units tab's bars and side marks, worked out from the theme (see ThemeColors.Meter and ThemeColors.Sides) -->
     <SolidColorBrush x:Key="meter" Color="#bfac5f" />
     <SolidColorBrush x:Key="side-a" Color="#6f93bd" />

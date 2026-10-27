@@ -7,7 +7,7 @@ using EasyNdf.Data.Units;
 namespace EasyNdf.App.Units;
 
 /// <summary>
-/// The Source list of the Files, Units and Divisions tabs: "Choose a Source…" until one is chosen, then the games, the
+/// The Source list of the Files and Units tabs: "Choose a Source…" until one is chosen, then the games, the
 /// mods under a heading of their own, and "Choose a Game Folder…" for a game Steam did not find. Every list shows the
 /// main window's one <see cref="SourceSelection"/>, so choosing in one chooses in all.
 /// </summary>

@@ -12,7 +12,7 @@ namespace EasyNdf.App.Divisions;
 public sealed class DivisionEmblem : Image
 {
     /// <summary>Builds the emblem and starts reading its picture.</summary>
-    /// <param name="source">The emblem's picture, as the game names it; null for none.</param>
+    /// <param name="source">The emblem's picture, as the game names it; null for none; "" for an empty placeholder, as a new division starts.</param>
     /// <param name="size">How wide and high it is drawn.</param>
     /// <param name="keepsRoom">Whether it keeps its room while it shows nothing, as in the list of divisions.</param>
     /// <param name="file">A picture of the user's own on this computer, shown instead of the game's; null for none.</param>
@@ -24,7 +24,19 @@ public sealed class DivisionEmblem : Image
         Visibility = keepsRoom ? Visibility.Hidden : Visibility.Collapsed;
         RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
         if (file is not null) ReadFile(file, size);
+        else if (source == "") ShowPlaceholder();
         else if (source is not null && UnitPictureLibrary.Current is { } library) Read(library, source, size);
+    }
+
+    /// <summary>A dashed shield's outline, dim, where a new division's emblem goes until one is chosen.</summary>
+    private void ShowPlaceholder()
+    {
+        var pen = new Pen((Brush)Application.Current.FindResource("muted"), 0.8) { DashStyle = new DashStyle([2, 1.5], 0) };
+        var shield = Geometry.Parse("M 7,1.5 L 12.5,3.5 V 7 C 12.5,10 10,12 7,13 C 4,12 1.5,10 1.5,7 V 3.5 Z");
+        var picture = new DrawingImage(new GeometryDrawing(null, pen, shield));
+        picture.Freeze();
+        Source = picture;
+        Visibility = Visibility.Visible;
     }
 
     /// <summary>Shows a picture of the user's own; nothing when it cannot be read (moved, or not a picture).</summary>
@@ -36,8 +48,9 @@ public sealed class DivisionEmblem : Image
             picture.BeginInit();
             picture.UriSource = new Uri(file);
             picture.DecodePixelWidth = (int)Math.Ceiling(size * 2);
-            // read at once, so the file is not kept open
+            // read at once, so the file is not kept open; and read anew, as a picture made a plain .png keeps its path
             picture.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            picture.CreateOptions = System.Windows.Media.Imaging.BitmapCreateOptions.IgnoreImageCache;
             picture.EndInit();
             picture.Freeze();
             Source = picture;

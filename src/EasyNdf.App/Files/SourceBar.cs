@@ -8,8 +8,8 @@ namespace EasyNdf.App.Files;
 
 /// <summary>
 /// The Source bar at the top of the Files tab: a raised strip with the game or mod the app works with (the same Source
-/// list as on the Units and Divisions tabs, so choosing here chooses there), its folder, how many of its files the list
-/// holds, and Add Its Files.
+/// list as on the Units tab, so choosing here chooses there), its folder, how many of its files the list holds, and Add
+/// Its Files.
 /// </summary>
 public sealed class SourceBar : Bevel
 {

@@ -37,5 +37,10 @@
   "Common.Key.Down": "Down",
   "Common.WithColon": "{label}:",
   "Rules.Row.Position": "{number} of {count}",
-  "Common.Pane.Open.Tip": "Show {name}"
+  "Common.Pane.Open.Tip": "Show {name}",
+  "Common.Pane.Menu.Tip": "Show a pane, or put the panes beside or below",
+  "Common.Pane.Heading": "Panes",
+  "Common.Pane.Beside": "Beside",
+  "Common.Pane.Below": "Below",
+  "Common.Pane.Automatic": "Arrange Automatically"
 }

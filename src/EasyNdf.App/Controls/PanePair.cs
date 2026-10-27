@@ -55,6 +55,13 @@ public sealed class PanePair : Grid
     private readonly TextBlock arrow = new() { Margin = new Thickness(5, 0, 0, 0), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock title = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly ToggleButton besideButton, belowButton;
+    private readonly Button foldButton;
+
+    /// <summary>
+    /// Folded beside, with the tab's own heading buttons (<see cref="SecondHeading"/>): ▾, whose menu opens a pane or
+    /// puts the panes beside or below, in place of ▥ and ▤, so the row stays short.
+    /// </summary>
+    private readonly Button placeMenuButton = new() { Content = "▾", Padding = new Thickness(6, 1, 6, 1), Margin = new Thickness(4, 0, 0, 0) };
     private readonly ContentControl body = new() { Focusable = false };
     private UIElement? main;
     private bool isFolded;
@@ -65,13 +72,13 @@ public sealed class PanePair : Grid
         besideButton = PlaceButton("beside");
         belowButton = PlaceButton("below");
         // the same button look as the one that opens the pane when folded beside, so the heading never changes style
-        var fold = new Button { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 3), ToolTip = Texts.Get("Common.Pane.Fold.Tip"), Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { foldIcon, title, arrow } } };
-        fold.Click += (_, _) => Fold(!isFolded);
+        foldButton = new Button { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 3), ToolTip = Texts.Get("Common.Pane.Fold.Tip"), Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { foldIcon, title, arrow } } };
+        foldButton.Click += (_, _) => Fold(!isFolded);
         // 3 pixels kept under the buttons, so they do not sit on the heading's line
         tools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3), Children = { besideButton, belowButton } };
         DockPanel.SetDock(tools, Dock.Right);
         // at the bottom, so the row keeps its own height when the heading is made as tall as the main one
-        headingRow = new DockPanel { LastChildFill = false, VerticalAlignment = VerticalAlignment.Bottom, Children = { tools, fold } };
+        headingRow = new DockPanel { LastChildFill = false, VerticalAlignment = VerticalAlignment.Bottom, Children = { tools, foldButton } };
         headingSpacer.SetBinding(HeightProperty, new System.Windows.Data.Binding(nameof(ActualHeight)) { Source = headingRow });
         heading = new Bevel { Style = (Style)Application.Current.FindResource("Heading"), Child = headingRow };
         DockPanel.SetDock(heading, Dock.Top);
@@ -85,13 +92,15 @@ public sealed class PanePair : Grid
             icon.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "accent");
         openButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { openIcon, openName, new TextBlock { Text = " ◂", VerticalAlignment = VerticalAlignment.Center } } };
         openButton.Click += (_, _) => Fold(false);
-        foldedRow.Children.Add(openButton);
+        placeMenuButton.ToolTip = Texts.Get("Common.Pane.Menu.Tip");
+        placeMenuButton.Click += (_, _) => Menus.ShowBelow(placeMenuButton, PlaceMenu());
         second.Children.Add(heading);
         second.Children.Add(body);
         bar.Moved += BarMoved;
         bar.Reset += () => { SizeNow = DefaultSize; ShareNow = null; Arrange(); };
         SizeChanged += (_, _) => TakeShare();
         bar.Settled += KeepState;
+        bar.Settled += () => Resized?.Invoke();
         // the tabs live as long as the app, so the pair listens for as long
         PaneArrangement.Changed += Arrange;
     }
@@ -102,7 +111,13 @@ public sealed class PanePair : Grid
     /// <summary>Whether the second pane starts folded the first time the app runs, so a new user sees less at once.</summary>
     public bool FoldedAtFirst { get; set; }
 
-    /// <summary>The second pane's size at first: its width beside.</summary>
+    /// <summary>
+    /// The second pane's share of the room beside at first, on every tab: 46%, as Paul laid out the Armory's Division
+    /// and Unit panes. Double-clicking the bar brings it back.
+    /// </summary>
+    public const double DefaultShareBeside = 0.46;
+
+    /// <summary>The second pane's width beside before the panes have room, until <see cref="DefaultShareBeside"/> can be worked out.</summary>
     public double DefaultBeside { get; set; } = 480;
 
     /// <summary>The second pane's size at first: its height below.</summary>
@@ -154,6 +169,58 @@ public sealed class PanePair : Grid
     private string secondTitle = "";
 
     /// <summary>
+    /// Buttons the tab gives in place of the one that folds the whole pane, when the pane holds parts that fold on their
+    /// own (the Units tab's Unit and Division panes). Folded beside, they take the open button's place in the main
+    /// pane's heading. Null for the usual single button.
+    /// </summary>
+    public FrameworkElement? SecondHeading
+    {
+        get => secondHeading;
+        set { secondHeading = value; Arrange(); }
+    }
+    private FrameworkElement? secondHeading;
+
+    /// <summary>
+    /// Folded beside, with <see cref="SecondHeading"/>: the items at the top of the ▾ menu, such as each pane to open;
+    /// null for none.
+    /// </summary>
+    public Func<IEnumerable<MenuChoice?>>? FoldedChoices { get; set; }
+
+    /// <summary>The ▾ menu: the tab's items, then beside, below, or arranged by the window's size, the one in use ticked.</summary>
+    private List<MenuChoice?> PlaceMenu()
+    {
+        List<MenuChoice?> items = [.. FoldedChoices?.Invoke() ?? []];
+        if (items.Count > 0) items.Add(Menus.Line);
+        items.Add(Menus.Heading(Texts.Get("Common.Pane.Heading")));
+        bool automatic = PaneArrangement.IsAutomatic;
+        items.Add(new MenuChoice(Texts.Get("Common.Pane.Beside"), () => PaneArrangement.Choose(true), Symbol: !automatic && Beside ? "✓" : ""));
+        items.Add(new MenuChoice(Texts.Get("Common.Pane.Below"), () => PaneArrangement.Choose(false), Symbol: !automatic && !Beside ? "✓" : ""));
+        items.Add(new MenuChoice(Texts.Get("Common.Pane.Automatic"), PaneArrangement.ChooseAutomatic, Symbol: automatic ? "✓" : ""));
+        return items;
+    }
+
+    /// <summary>
+    /// How much of the second pane's width shows beside, from just above 0 to 1: a tab whose second pane holds parts
+    /// that fold on their own (the Units tab's Unit and Division panes) gives the part still showing, so the room a
+    /// folded part took goes to the main pane, and the part left keeps its width. Below, the parts sit side by side
+    /// across the whole width, so the height is kept. The size kept and dragged is always the whole pane's.
+    /// </summary>
+    public double SecondPart
+    {
+        get => secondPart;
+        set
+        {
+            if (value == secondPart) return;
+            secondPart = Math.Clamp(value, 0.05, 1);
+            Arrange();
+        }
+    }
+    private double secondPart = 1;
+
+    /// <summary>The part of the second pane showing, as <see cref="SecondPart"/>: below, always the whole.</summary>
+    private double PartNow => Beside ? secondPart : 1;
+
+    /// <summary>
     /// The heading while the second pane is folded, when it should be shorter than <see cref="SecondTitle"/>: Details
     /// is just "Details" then, not the file and preset it shows. Null keeps the same heading folded or not.
     /// </summary>
@@ -172,7 +239,7 @@ public sealed class PanePair : Grid
 
     private bool Beside => PaneArrangement.IsBeside;
 
-    private double DefaultSize => Beside ? DefaultBeside : DefaultBelow;
+    private double DefaultSize => !Beside ? DefaultBelow : Room > 0 ? Math.Round(DefaultShareBeside * Room) : DefaultBeside;
 
     /// <summary>The second pane's size beside or below, as last chosen.</summary>
     private double SizeNow
@@ -230,12 +297,14 @@ public sealed class PanePair : Grid
     {
         if (!GrowsWithWindow)
         {
-            var fixedSize = new GridLength(Math.Max(Beside ? SmallestBeside : SmallestBelow, SizeNow));
+            var fixedSize = new GridLength(Math.Max(Beside ? SmallestBeside : SmallestBelow, SizeNow * PartNow));
             if (Beside && ColumnDefinitions.Count > 2) { ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star); ColumnDefinitions[2].Width = fixedSize; }
             else if (!Beside && RowDefinitions.Count > 2) { RowDefinitions[0].Height = new GridLength(1, GridUnitType.Star); RowDefinitions[2].Height = fixedSize; }
             return;
         }
-        if (ShareNow is not double share) return;
+        if (ShareNow is not double wholeShare) return;
+        // a pane widened while partly folded can be wider than the room once whole again
+        double share = Math.Min(wholeShare * PartNow, 0.95);
         var mainSize = new GridLength(1 - share, GridUnitType.Star);
         var secondSize = new GridLength(share, GridUnitType.Star);
         if (Beside && ColumnDefinitions.Count > 2) { ColumnDefinitions[0].Width = mainSize; ColumnDefinitions[2].Width = secondSize; }
@@ -244,6 +313,16 @@ public sealed class PanePair : Grid
 
     /// <summary>Raised after the second pane is folded away or brought back.</summary>
     public event Action? FoldChanged;
+
+    /// <summary>Raised when the bar between the panes is let go after a drag.</summary>
+    public event Action? Resized;
+
+    /// <summary>
+    /// The second pane's whole width beside, with all of its parts showing (see <see cref="SecondPart"/>), in pixels;
+    /// 0 below, or before the panes have room.
+    /// </summary>
+    public double WholeSecondWidth =>
+        !Beside || Room <= 0 ? 0 : GrowsWithWindow && ShareNow is double share ? Math.Min(share, 0.95) * Room : SizeNow;
 
     /// <summary>Folds the second pane away or back, and keeps that for next time.</summary>
     public void Fold(bool folded)
@@ -267,7 +346,7 @@ public sealed class PanePair : Grid
         if (main is null) return;
         bool beside = Beside;
         // the main pane, the bar, the second pane: across, or down
-        GridLength secondSize = isFolded ? GridLength.Auto : new GridLength(Math.Max(beside ? SmallestBeside : SmallestBelow, SizeNow));
+        GridLength secondSize = isFolded ? GridLength.Auto : new GridLength(Math.Max(beside ? SmallestBeside : SmallestBelow, SizeNow * PartNow));
         foreach (GridLength size in new[] { new GridLength(1, GridUnitType.Star), GridLength.Auto, secondSize })
         {
             if (beside) ColumnDefinitions.Add(new ColumnDefinition { Width = size });
@@ -308,11 +387,15 @@ public sealed class PanePair : Grid
     private void PutTools(bool inMainHeading)
     {
         (tools.Parent as Panel)?.Children.Remove(tools);
+        (secondHeading?.Parent as Panel)?.Children.Remove(secondHeading);
+        foldedRow.Children.Clear();
         if (FoldedPlace is not null) FoldedPlace.Content = null;
+        foldButton.Visibility = secondHeading is null ? Visibility.Visible : Visibility.Collapsed;
         if (inMainHeading)
         {
             tools.Margin = new Thickness(0);
-            foldedRow.Children.Add(tools);
+            foldedRow.Children.Add(secondHeading ?? openButton);
+            foldedRow.Children.Add(secondHeading is null ? tools : placeMenuButton);
             FoldedPlace!.Content = foldedRow;
         }
         else
@@ -320,6 +403,7 @@ public sealed class PanePair : Grid
             // 3 pixels kept under the buttons, so they do not sit on the heading's line
             tools.Margin = new Thickness(0, 0, 0, 3);
             headingRow.Children.Insert(0, tools);
+            if (secondHeading is not null) headingRow.Children.Add(secondHeading);
         }
     }
 
@@ -369,12 +453,30 @@ public sealed class PanePair : Grid
         double total = beside ? ActualWidth : ActualHeight;
         double wanted = total - at - (beside ? bar.ActualWidth : bar.ActualHeight) / 2;
         double largest = total - (beside ? MainKeepsBeside : MainKeepsBelow) - 9;
-        SizeNow = Math.Clamp(wanted, beside ? SmallestBeside : SmallestBelow, Math.Max(beside ? SmallestBeside : SmallestBelow, largest));
-        if (Room > 0) ShareNow = Math.Clamp(SizeNow / Room, 0.05, 0.95);
+        double shown = Math.Clamp(wanted, beside ? SmallestBeside : SmallestBelow, Math.Max(beside ? SmallestBeside : SmallestBelow, largest));
+        // kept as the whole pane's size, so a folded part comes back at the width it had
+        SizeNow = shown / PartNow;
+        if (Room > 0) ShareNow = Math.Clamp(shown / Room, 0.05, 0.95) / PartNow;
         ShowShare();
     }
 
     private static void KeepState() => AppData.Current.SaveState();
+
+    /// <summary>
+    /// Sets the second pane's whole width beside, in pixels, as dragging its bar would: when a part of it comes back
+    /// (the Units tab's Division pane), the room is taken from the main pane, not from the part already showing. The
+    /// main pane keeps its least width.
+    /// </summary>
+    public void SetWholeSecondWidth(double width)
+    {
+        if (!Beside || isFolded || Room <= 0) return;
+        double largest = (Room - MainKeepsBeside) / PartNow;
+        double whole = Math.Clamp(width, SmallestBeside, Math.Max(SmallestBeside, largest));
+        SizeNow = whole;
+        ShareNow = Math.Clamp(whole / Room, 0.05, 0.95);
+        ShowShare();
+        KeepState();
+    }
 
     /// <summary>
     /// ▥ or ▤ (drawn by <see cref="PaneIcon"/>): puts the second panes beside or below by hand. Clicking the one already pressed lets the window's size

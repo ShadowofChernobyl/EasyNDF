@@ -34,6 +34,8 @@ public static class EditComments
             case "Append": return "Appended " + value;
             case "Prepend": return "Prepended " + value;
             case "Remove": return "Removed " + value;
+            case "Add Property": return "Added";
+            case "Remove Property": return "Removed";
             case "Insert":
             {
                 var (index, item) = IndexAndValue();
@@ -65,7 +67,9 @@ public static class EditComments
         string text = Text.JsText.Trim(own) != "" ? own : Automatic(action).Replace("*/", "* /");
         string mod = c.IncludeMod && modName != "" ? " Edited by " + modName : "";
         string time = c.IncludeTimestamp ? " [" + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + " UTC]" : "";
-        string original = c.IncludeOriginalValue ? " Original Value: " + originalValue : "";
+        // an added property had no value before
+        bool hadValue = OperatorName(action.Operator) != "Add Property";
+        string original = c.IncludeOriginalValue && hadValue ? " Original Value: " + originalValue : "";
         return " /*" + text + mod + time + original + "*/";
     }
 }

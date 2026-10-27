@@ -1,7 +1,9 @@
 <!--
-  The Units tab: the units of a game or of one of its mods, read from the game's own files. On the left where they
-  come from and the filters; on the right the factory tabs and the units as cards or a table, with the Unit pane beside
-  or below, or Compare, the units chosen side by side. Its text is in the theme's ink, which the parts built in code
+  The Armory tab: the units, divisions and Official Battlegroups of a game or of one of its mods, read from the game's
+  own files, under three sub-tabs: Units, Divisions and Battlegroups. On the left where they come from, the filters,
+  the nations and (on Divisions and Battlegroups) the divisions; on the right the factory tabs and the units (all of
+  them, or the chosen division's) as cards or a table, or the division's battlegroup, with the Unit and Division panes
+  beside or below, or Compare, the units chosen side by side. Its text is in the theme's ink, which the parts built in code
   take: inside a tab, text would otherwise take Windows' default black. UnitsPage.xaml.cs reads the units and fills the views; the parts
   that show a unit are in the Units folder, so other tabs can use them too.
 -->
@@ -11,6 +13,7 @@
              xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              xmlns:units="clr-namespace:EasyNdf.App.Units"
+             xmlns:weapons="clr-namespace:EasyNdf.App.Weapons"
              Foreground="{DynamicResource ink}">
     <UserControl.Resources>
         <!-- a sunken box that scrolls -->
@@ -22,175 +25,341 @@
     </UserControl.Resources>
 
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="230" />
-            <ColumnDefinition Width="14" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-
-        <!-- the left column: where the units come from, the filters, and the nations -->
-        <DockPanel Grid.Column="0">
-            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Source}" /></controls:Bevel>
-                <units:SourceChoice x:Name="SourceChoice" />
-                <TextBlock x:Name="WhereText" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" Margin="0,6,0,0" />
-            </StackPanel>
-            <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Find}" /></controls:Bevel>
-                <TextBox x:Name="SearchBox" Tag="{t:Text Units.SearchBox.Hint}" ToolTip="{t:Text Units.SearchBox.Tip}" TextChanged="SearchChanged" />
-                <StackPanel x:Name="SideChoices" Orientation="Horizontal" Margin="0,6,0,0" />
-                <ComboBox x:Name="RoleChoice" ToolTip="{t:Text Units.RoleChoice.Tip}" Margin="0,6,0,0" SelectionChanged="RoleChosen" />
-                <ComboBox x:Name="DivisionChoice" ToolTip="{t:Text Units.DivisionChoice.Tip}" Margin="0,6,0,0" SelectionChanged="DivisionChosen" />
-                <CheckBox x:Name="OnlyInDivision" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyInDivision}" ToolTip="{t:Text Units.OnlyInDivision.Tip}"
-                          IsChecked="True" Margin="0,6,0,0" Click="OnlyInDivisionClicked" />
-            </StackPanel>
-            <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}">
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Content="{t:Text Units.AllNations}" ToolTip="{t:Text Units.AllNations.Tip}" Click="AllNationsClicked" />
-                    <TextBlock Text="{t:Text Units.Nations}" VerticalAlignment="Center" />
-                </DockPanel>
+        <DockPanel>
+            <!-- the sub-tabs, on a strip with a light line under it, as the app's own tabs -->
+            <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource hi}" Edges="0,0,0,1" Margin="0,0,0,10">
+                <StackPanel Orientation="Horizontal">
+                    <ToggleButton x:Name="UnitsPartButton" Style="{StaticResource SubTab}" Content="{t:Text Armory.Units}" ToolTip="{t:Text Armory.Units.Tip}" Click="PartClicked" />
+                    <ToggleButton x:Name="DivisionsPartButton" Style="{StaticResource SubTab}" Content="{t:Text Armory.Divisions}" ToolTip="{t:Text Armory.Divisions.Tip}" Click="PartClicked" />
+                    <ToggleButton x:Name="BattlegroupsPartButton" Style="{StaticResource SubTab}" Content="{t:Text Armory.Battlegroups}" ToolTip="{t:Text Armory.Battlegroups.Tip}" Click="PartClicked" />
+                    <ToggleButton x:Name="WeaponsPartButton" Style="{StaticResource SubTab}" Content="{t:Text Armory.Weapons}" ToolTip="{t:Text Armory.Weapons.Tip}" Click="PartClicked" />
+                </StackPanel>
             </controls:Bevel>
-            <controls:Bevel Style="{StaticResource SunkenBox}" MinHeight="120">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                    <StackPanel x:Name="NationList" />
-                </ScrollViewer>
-            </controls:Bevel>
-        </DockPanel>
-
-        <!-- the right column -->
-        <DockPanel Grid.Column="2">
-            <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}">
-                <!-- the title, then the buttons at the right; in a narrow window the buttons go on a line of their own -->
-                <controls:FlexRow Gap="8" LineGap="4">
-                    <TextBlock x:Name="TitleText" VerticalAlignment="Center" controls:FlexRow.Grow="1" />
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button x:Name="AddUnitsButton" Style="{StaticResource HeadingButton}" Content="{t:Text Units.AddUnits}" ToolTip="{t:Text Units.AddUnits.Tip}"
-                                Margin="0,0,8,0" Click="AddUnitsClicked" />
-                        <Button Style="{StaticResource HelpButton}" Margin="8,0,0,0" FontWeight="Bold" controls:QuickHelp.Page="tab-units" />
-                    </StackPanel>
-                </controls:FlexRow>
-            </controls:Bevel>
-
-            <!-- what the view shows: how to use it, how many units, and its zoom -->
-            <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
-                <!-- the zoom of Cards or Table, at the far right, as the File Editor's text size -->
-                <ComboBox x:Name="ZoomChoice" DockPanel.Dock="Right" MinWidth="72" FontSize="12" Margin="12,0,0,0" ToolTip="{t:Text Units.Zoom.Tip}" />
-                <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" Margin="12,0,0,0" />
-                <!-- shown when some of the source's files could not be read; its tooltip says which -->
-                <TextBlock x:Name="ProblemsText" DockPanel.Dock="Right" Foreground="{DynamicResource caution}" Margin="12,0,0,0"
-                           Text="{t:Text Units.SomeNotRead}" Visibility="Collapsed" />
-                <TextBlock x:Name="Footnote" Style="{StaticResource Note}" />
-            </DockPanel>
-
             <Grid>
-                <!-- Cards and Table, with the Unit pane beside or below -->
-                <controls:PanePair x:Name="Panes" Key="units" DefaultBeside="350" DefaultBelow="300"
-                                   FoldedIcon="M 1.5,1.5 H 12.5 V 12.5 H 1.5 Z M 1.5,6 H 12.5 M 4,8.5 H 10 M 4,10.5 H 8">
-                    <controls:PanePair.Main>
-                        <DockPanel>
-                            <!-- the factory tabs, with a line under them; the Unit pane's button waits at their right when it is folded beside -->
-                            <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource line}" Edges="0,0,0,1">
+            <!-- the Weapons sub-tab, in the units' place while it shows -->
+            <weapons:WeaponsArmory x:Name="WeaponsView" Visibility="Collapsed" />
+            <Grid x:Name="UnitsView">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300" />
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- the left column: where the units come from, the filters, then the nations and the divisions sharing the height -->
+                <DockPanel Grid.Column="0">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Source}" /></controls:Bevel>
+                        <units:SourceChoice x:Name="SourceChoice" />
+                        <!-- "Show mods' changes", and the mods that are on under it -->
+                        <units:ModChangesSwitch />
+                        <!-- the source's folder; it takes no room until a source is chosen -->
+                        <TextBlock x:Name="WhereText" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" Margin="0,3,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Find}" /></controls:Bevel>
+                        <TextBox x:Name="SearchBox" Tag="{t:Text Units.SearchBox.Hint}" ToolTip="{t:Text Units.SearchBox.Tip}" TextChanged="SearchChanged" />
+                        <StackPanel x:Name="SideChoices" Orientation="Horizontal" Margin="0,6,0,0" />
+                        <ComboBox x:Name="RoleChoice" ToolTip="{t:Text Units.RoleChoice.Tip}" Margin="0,6,0,0" SelectionChanged="RoleChosen" />
+                        <CheckBox x:Name="OnlyInDivision" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyInDivision}" ToolTip="{t:Text Units.OnlyInDivision.Tip}"
+                                  IsChecked="False" Margin="0,6,0,0" Click="OnlyInDivisionClicked" />
+                    <CheckBox x:Name="OnlyModded" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyModded}" ToolTip="{t:Text Units.OnlyModded.Tip}"
+                              IsChecked="False" Margin="0,6,0,0" Click="OnlyModdedClicked" />
+                    </StackPanel>
+                    <!-- the nations above, the divisions below, and a bar between them that shares the height (as in the File Editor's descriptor viewer) -->
+                    <Grid x:Name="ListsBox">
+                        <Grid.RowDefinitions>
+                            <RowDefinition x:Name="NationsRow" Height="*" MinHeight="90" />
+                            <RowDefinition Height="9" />
+                            <RowDefinition x:Name="DivisionsRow" Height="*" MinHeight="90" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0">
+                            <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}">
                                 <DockPanel>
-                                    <!-- 3 pixels above the line, as in a heading, so the buttons never sit on it -->
-                                    <ContentControl x:Name="PaneSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Bottom" Margin="0,0,0,3" />
-                                    <!-- Cards, Table and Compare, at the list's top right; while Compare is shown, the code moves them above it -->
-                                    <ContentControl x:Name="ViewButtonsSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Bottom" Margin="8,0,0,3">
-                                        <StackPanel x:Name="ViewButtons" Orientation="Horizontal">
-                                            <!-- Cards and Table as icons, as the pane buttons beside Details; their names are for screen readers -->
-                                            <ToggleButton x:Name="CardsButton" Style="{StaticResource PressedToggle}" Padding="5,4" AutomationProperties.Name="{t:Text Units.Cards}"
-                                                          ToolTip="{t:Text Units.Cards.Tip}" Click="ViewClicked">
-                                                <controls:ViewIcon Shape="Cards" />
-                                            </ToggleButton>
-                                            <ToggleButton x:Name="TableButton" Style="{StaticResource PressedToggle}" Padding="5,4" Margin="-1,0,0,0" AutomationProperties.Name="{t:Text Units.Table}"
-                                                          ToolTip="{t:Text Units.Table.Tip}" Click="ViewClicked">
-                                                <controls:ViewIcon Shape="Table" />
-                                            </ToggleButton>
-                                            <ToggleButton x:Name="CompareButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Margin="-1,0,0,0" Content="{t:Text Units.Compare}" ToolTip="{t:Text Units.Compare.Tip}" Click="ViewClicked" />
-                                        </StackPanel>
-                                    </ContentControl>
-                                    <WrapPanel x:Name="FactoryTabs" VerticalAlignment="Bottom" />
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Content="{t:Text Units.AllNations}" ToolTip="{t:Text Units.AllNations.Tip}" Click="AllNationsClicked" />
+                                    <TextBlock Text="{t:Text Units.Nations}" VerticalAlignment="Center" />
                                 </DockPanel>
                             </controls:Bevel>
-                            <!-- a sunken edge all round, so a line shows where the cards scrolled under the tabs are cut off -->
                             <controls:Bevel Style="{StaticResource SunkenBox}">
-                                <Grid>
-                                    <!-- the Cards view: role headings and rows of tiles, of which only those in view are made -->
-                                    <ItemsControl x:Name="CardsList" Focusable="False" SizeChanged="CardsListResized"
-                                                  VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True"
-                                                  MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked">
-                                        <ItemsControl.Template>
-                                            <ControlTemplate TargetType="ItemsControl">
-                                                <ScrollViewer Focusable="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="True">
-                                                    <ItemsPresenter />
-                                                </ScrollViewer>
-                                            </ControlTemplate>
-                                        </ItemsControl.Template>
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <VirtualizingStackPanel />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.Resources>
-                                            <DataTemplate DataType="{x:Type units:EmptyLine}">
-                                                <TextBlock Text="{Binding Text}" Foreground="{DynamicResource muted}" Margin="10" TextWrapping="Wrap" />
-                                            </DataTemplate>
-                                            <!-- .grouprow: a role's heading on the panel colour, between lines; a click folds it -->
-                                            <DataTemplate DataType="{x:Type units:CardGroupLine}">
-                                                <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Edges="0,1,0,1"
-                                                                Background="{DynamicResource panel}" Padding="8,3" Cursor="Hand" MouseLeftButtonUp="GroupClicked">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding Arrow}" Width="14" TextAlignment="Center" Foreground="{DynamicResource muted}" />
-                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="8,0,0,0" />
-                                                        <TextBlock Text="{Binding CountText}" Foreground="{DynamicResource muted}" Margin="8,0,0,0" />
-                                                    </StackPanel>
-                                                </controls:Bevel>
-                                            </DataTemplate>
-                                            <DataTemplate DataType="{x:Type units:CardRowLine}">
-                                                <units:CardRowView />
-                                            </DataTemplate>
-                                        </ItemsControl.Resources>
-                                    </ItemsControl>
-
-                                    <!-- the Table view: its headings above the rows, moving sideways with them -->
-                                    <units:UnitTableList x:Name="TableList" WidthsKey="unitColumns" Visibility="Collapsed"
-                                                         MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked" />
-                                </Grid>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                    <StackPanel x:Name="NationList" />
+                                </ScrollViewer>
                             </controls:Bevel>
                         </DockPanel>
-                    </controls:PanePair.Main>
-                    <controls:PanePair.Second>
-                        <!-- up against its heading's line, so its top is level with the list's under the factory tabs -->
-                        <controls:Bevel Style="{StaticResource SunkenBox}" Margin="0,-6,0,0">
-                            <ScrollViewer x:Name="UnitPaneScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                <ContentControl x:Name="UnitPaneContent" Focusable="False" />
-                            </ScrollViewer>
-                        </controls:Bevel>
-                    </controls:PanePair.Second>
-                </controls:PanePair>
-
-                <!-- Compare: a card a unit, across the width, the pinned unit first -->
-                <DockPanel x:Name="CompareBox" Visibility="Collapsed">
-                    <!-- the view buttons, at the same place as above the cards -->
-                    <ContentControl x:Name="CompareButtonsSlot" DockPanel.Dock="Top" HorizontalAlignment="Right" Focusable="False" Margin="0,0,0,3" />
-                    <controls:Bevel Style="{StaticResource SunkenBox}">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                            <StackPanel x:Name="CompareList" Margin="8,8,8,0" />
-                        </ScrollViewer>
-                    </controls:Bevel>
+                        <!-- drag to share the height; double-click shares it evenly again -->
+                        <controls:SplitBar x:Name="ListsSplit" Grid.Row="1" LiesFlat="True" ToolTip="{t:Text Units.ListsSplit.Tip}" />
+                        <!-- on the Units sub-tab there is no division list: the nations have the height -->
+                        <DockPanel x:Name="DivisionsBox" Grid.Row="2">
+                            <!--
+                              the list's heading: "Divisions", or, with a division chosen, that division's emblem and name in its place,
+                              with an accent mark at the left on the selection colour fading out to the right; + at the right. The same height either way, so the list never moves (see ShowChosenDivision).
+                              A click on the chosen division scrolls the list to it. The Units sub-tab shows every unit.
+                            -->
+                            <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}">
+                                <DockPanel>
+                                    <!-- + makes a new division in the open mod -->
+                                    <Button x:Name="NewDivisionButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Content="+" FontWeight="Bold"
+                                            ToolTip="{t:Text Divisions.NewDivision.Tip}" AutomationProperties.Name="{t:Text Divisions.NewDivision}" Click="NewDivisionClicked" />
+                                    <!-- ⚙ makes generated divisions in the open mod: one for each nation or side and kind ticked -->
+                                    <Button x:Name="GenerateDivisionsButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Content="&#x2699;" Margin="0,0,4,0"
+                                            ToolTip="{t:Text Divisions.Generate.Tip}" AutomationProperties.Name="{t:Text Divisions.Generate}" Click="GenerateDivisionsClicked" />
+                                    <TextBlock x:Name="DivisionsTitle" Text="{t:Text Divisions.List}" VerticalAlignment="Center" />
+                                    <Grid x:Name="ChosenDivisionMark" HorizontalAlignment="Left" Margin="0,0,6,0" Visibility="Collapsed" Cursor="Hand"
+                                          MouseLeftButtonUp="ChosenDivisionMarkClicked">
+                                        <!-- the selection colour, fading out to the right -->
+                                        <Border Background="{DynamicResource sel}">
+                                            <Border.OpacityMask>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                    <GradientStop Color="Black" Offset="0" />
+                                                    <GradientStop Color="Transparent" Offset="1" />
+                                                </LinearGradientBrush>
+                                            </Border.OpacityMask>
+                                        </Border>
+                                        <Border BorderBrush="{DynamicResource accent}" BorderThickness="3,0,0,0" Padding="6,1,8,1">
+                                            <DockPanel>
+                                                <ContentControl x:Name="ChosenDivisionEmblem" DockPanel.Dock="Left" Focusable="False" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                <TextBlock x:Name="ChosenDivisionName" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            </DockPanel>
+                                        </Border>
+                                    </Grid>
+                                </DockPanel>
+                            </controls:Bevel>
+                            <controls:Bevel Style="{StaticResource SunkenBox}">
+                                <ScrollViewer x:Name="DivisionScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                    <StackPanel x:Name="DivisionList" />
+                                </ScrollViewer>
+                            </controls:Bevel>
+                        </DockPanel>
+                    </Grid>
                 </DockPanel>
 
-                <!-- while the units are read, or when there are none to read -->
-                <controls:Bevel x:Name="MessageArea" Style="{StaticResource SunkenBox}" Visibility="Collapsed">
-                    <StackPanel Margin="10">
-                        <TextBlock x:Name="MessageText" Foreground="{DynamicResource muted}" TextWrapping="Wrap" />
-                        <!-- while reading: a bar that fills block by block, always the same size, and the step it is on -->
-                        <controls:BlockBar x:Name="ReadingBar" Margin="0,8,0,0" Visibility="Collapsed" />
-                        <TextBlock x:Name="ReadingStep" FontSize="12" Foreground="{DynamicResource muted}" Margin="0,5,0,0" Visibility="Collapsed" />
-                        <Button x:Name="ChooseFolderButton" Content="{t:Text Units.ChooseGameFolder}" ToolTip="{t:Text Units.ChooseGameFolder.Tip}"
-                                HorizontalAlignment="Left" Margin="0,8,0,0" Click="ChooseFolderClicked" Visibility="Collapsed" />
-                    </StackPanel>
-                </controls:Bevel>
+                <!-- the right column -->
+                <DockPanel Grid.Column="2">
+                    <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}">
+                        <!-- the title, then the buttons at the right; in a narrow window the buttons go on a line of their own -->
+                        <controls:FlexRow Gap="8" LineGap="4">
+                            <!-- "Units in WARNO", or the division chosen with its size -->
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" controls:FlexRow.Grow="1">
+                                <TextBlock x:Name="TitleText" VerticalAlignment="Center" />
+                                <TextBlock x:Name="SummaryText" Foreground="{DynamicResource muted}" FontWeight="Normal" Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <!-- with a division chosen: where it comes from, and which mod its changes are saved in, as the two can differ -->
+                            <TextBlock x:Name="SavedInText" Foreground="{DynamicResource muted}" FontWeight="Normal" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="AddUnitsButton" Style="{StaticResource HeadingButton}" Content="{t:Text Units.AddUnits}" ToolTip="{t:Text Units.AddUnits.Tip}"
+                                        Margin="0,0,8,0" Click="AddUnitsClicked" />
+                                <!-- on the Battlegroups sub-tab, for a generated division's battlegroup -->
+                                <Button x:Name="GenerationSettingsButton" Style="{StaticResource HeadingButton}" Content="{t:Text Divisions.Battlegroup.Generation.Open}"
+                                        ToolTip="{t:Text Divisions.Battlegroup.Generation.Open.Tip}" Margin="0,0,8,0" Visibility="Collapsed" Click="GenerationSettingsClicked" />
+                                <!-- on the Battlegroups sub-tab, for a battlegroup the open mod changed -->
+                                <Button x:Name="RevertBattlegroupButton" Style="{StaticResource HeadingButton}" Content="{t:Text Divisions.Battlegroup.Revert}"
+                                        ToolTip="{t:Text Divisions.Battlegroup.Revert.Tip}" Margin="0,0,8,0" Visibility="Collapsed" Click="RevertBattlegroupClicked" />
+                                <!-- Cards, Table and Compare, in the heading as the tab's other controls -->
+                                <StackPanel x:Name="ViewButtons" Orientation="Horizontal">
+                                    <!-- Cards and Table as icons, as the pane buttons beside Details; their names are for screen readers -->
+                                    <ToggleButton x:Name="CardsButton" Style="{StaticResource PressedToggle}" Padding="5,4" AutomationProperties.Name="{t:Text Units.Cards}"
+                                                  ToolTip="{t:Text Units.Cards.Tip}" Click="ViewClicked">
+                                        <controls:ViewIcon Shape="Cards" />
+                                    </ToggleButton>
+                                    <ToggleButton x:Name="TableButton" Style="{StaticResource PressedToggle}" Padding="5,4" Margin="-1,0,0,0" AutomationProperties.Name="{t:Text Units.Table}"
+                                                  ToolTip="{t:Text Units.Table.Tip}" Click="ViewClicked">
+                                        <controls:ViewIcon Shape="Table" />
+                                    </ToggleButton>
+                                    <ToggleButton x:Name="CompareButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Margin="-1,0,0,0" Content="{t:Text Units.Compare}" ToolTip="{t:Text Units.Compare.Tip}" Click="ViewClicked" />
+                                </StackPanel>
+                                <Button Style="{StaticResource HelpButton}" Margin="8,0,0,0" FontWeight="Bold" controls:QuickHelp.Page="tab-units" />
+                            </StackPanel>
+                        </controls:FlexRow>
+                    </controls:Bevel>
+
+                    <!-- what the view shows: how to use it, how many units, and its zoom -->
+                    <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                        <!-- the zoom of Cards or Table, at the far right, as the File Editor's text size -->
+                        <ComboBox x:Name="ZoomChoice" DockPanel.Dock="Right" MinWidth="72" FontSize="12" Margin="12,0,0,0" ToolTip="{t:Text Units.Zoom.Tip}" />
+                        <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" Margin="12,0,0,0" />
+                        <!-- shown when some of the source's files could not be read; its tooltip says which -->
+                        <TextBlock x:Name="ProblemsText" DockPanel.Dock="Right" Foreground="{DynamicResource caution}" Margin="12,0,0,0"
+                                   Text="{t:Text Units.SomeNotRead}" Visibility="Collapsed" />
+                        <!-- with a game mod as the source: files of the open mod whose changes are not shown; its tooltip says which, and why -->
+                        <TextBlock x:Name="NotShownText" DockPanel.Dock="Right" Foreground="{DynamicResource caution}" Margin="12,0,0,0"
+                                   Text="{t:Text Units.ModFilesNotShown}" Visibility="Collapsed" />
+                        <TextBlock x:Name="Footnote" Style="{StaticResource Note}" />
+                    </DockPanel>
+
+                    <Grid>
+                        <!-- Cards and Table, with the Unit pane beside or below -->
+                        <controls:PanePair x:Name="Panes" Key="units" DefaultBelow="300">
+                            <controls:PanePair.Main>
+                                <DockPanel>
+                                    <!--
+                                      a generated division chosen: how it is made, again at each export, with Change… (the Generate Divisions
+                                      window, for it alone) and Make Fixed (it keeps the units it has now, as an ordinary new division)
+                                    -->
+                                    <DockPanel x:Name="GeneratedLine" DockPanel.Dock="Top" Margin="0,0,0,6" Visibility="Collapsed">
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{t:Text Divisions.Generated.MakeFixed}" ToolTip="{t:Text Divisions.Generated.MakeFixed.Tip}"
+                                                Click="MakeFixedClicked" Margin="4,0,0,0" VerticalAlignment="Center" />
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{t:Text Divisions.Generated.Change}" ToolTip="{t:Text Divisions.Generated.Change.Tip}"
+                                                Click="ChangeGenerationClicked" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                        <TextBlock DockPanel.Dock="Left" Text="&#x2699;" Foreground="{DynamicResource accent}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="GeneratedText" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource ink}" />
+                                    </DockPanel>
+                                    <!-- the factory tabs, with a line under them; the Unit pane's button waits at their right when it is folded beside -->
+                                    <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource line}" Edges="0,0,0,1">
+                                        <DockPanel>
+                                            <!-- 3 pixels above the line, as in a heading, so the buttons never sit on it -->
+                                            <ContentControl x:Name="PaneSlot" DockPanel.Dock="Right" Focusable="False" VerticalAlignment="Bottom" Margin="0,0,0,3" />
+                                            <!-- on the Units sub-tab, at the list's top right: a new unit in the open mod, where it shows once made -->
+                                            <Button x:Name="NewUnitButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Content="{t:Text Units.New.Button}" ToolTip="{t:Text Units.New.Button.Tip}"
+                                                    VerticalAlignment="Bottom" Margin="8,0,0,3" Click="NewUnitClicked" />
+                                            <WrapPanel x:Name="FactoryTabs" VerticalAlignment="Bottom" />
+                                        </DockPanel>
+                                    </controls:Bevel>
+                                    <!-- a sunken edge all round, so a line shows where the cards scrolled under the tabs are cut off -->
+                                    <controls:Bevel Style="{StaticResource SunkenBox}">
+                                        <Grid>
+                                            <!-- the Cards view: role headings and rows of tiles, of which only those in view are made -->
+                                            <ItemsControl x:Name="CardsList" Focusable="False" SizeChanged="CardsListResized"
+                                                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True"
+                                                          MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked">
+                                                <ItemsControl.Template>
+                                                    <ControlTemplate TargetType="ItemsControl">
+                                                        <ScrollViewer Focusable="False" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="True">
+                                                            <ItemsPresenter />
+                                                        </ScrollViewer>
+                                                    </ControlTemplate>
+                                                </ItemsControl.Template>
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <VirtualizingStackPanel />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.Resources>
+                                                    <DataTemplate DataType="{x:Type units:EmptyLine}">
+                                                        <TextBlock Text="{Binding Text}" Foreground="{DynamicResource muted}" Margin="10" TextWrapping="Wrap" />
+                                                    </DataTemplate>
+                                                    <!-- .grouprow: a role's heading on the panel colour, between lines; a click folds it -->
+                                                    <DataTemplate DataType="{x:Type units:CardGroupLine}">
+                                                        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Edges="0,1,0,1"
+                                                                        Background="{DynamicResource panel}" Padding="8,3" Cursor="Hand" MouseLeftButtonUp="GroupClicked">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding Arrow}" Width="14" TextAlignment="Center" Foreground="{DynamicResource muted}" />
+                                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="8,0,0,0" />
+                                                                <TextBlock Text="{Binding CountText}" Foreground="{DynamicResource muted}" Margin="8,0,0,0" />
+                                                            </StackPanel>
+                                                        </controls:Bevel>
+                                                    </DataTemplate>
+                                                    <DataTemplate DataType="{x:Type units:CardRowLine}">
+                                                        <units:CardRowView />
+                                                    </DataTemplate>
+                                                </ItemsControl.Resources>
+                                            </ItemsControl>
+
+                                            <!-- the Cards view of a division: its units by category, under headings with the category's slot costs -->
+                                            <ScrollViewer x:Name="DivisionCardsScroller" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+                                                          MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked" SizeChanged="DivisionCardsResized">
+                                                <ContentControl x:Name="DivisionCardsContent" Focusable="False" />
+                                            </ScrollViewer>
+
+                                            <!-- the Battlegroups sub-tab: the division's Official Battlegroup, a row of cards a type, as the game shows it -->
+                                            <ScrollViewer x:Name="BattlegroupScroller" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+                                                          MouseLeftButtonUp="UnitListClicked">
+                                                <ContentControl x:Name="BattlegroupContent" Focusable="False" />
+                                            </ScrollViewer>
+
+                                            <!-- the Table view: its headings above the rows, moving sideways with them -->
+                                            <units:UnitTableList x:Name="TableList" WidthsKey="unitColumns" Visibility="Collapsed"
+                                                                 MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked" />
+
+                                        </Grid>
+                                    </controls:Bevel>
+                                </DockPanel>
+                            </controls:PanePair.Main>
+                            <controls:PanePair.Second>
+                                <!--
+                                  with a division chosen, the Division pane, then the Unit pane, with a bar between them that shares the
+                                  width, as the File Editor's descriptor tree and properties; up against the heading's line, so their
+                                  tops are level with the list's under the factory tabs
+                                -->
+                                <Grid x:Name="PanesBox" Margin="0,-6,0,0" SizeChanged="PanesBoxResized">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition x:Name="DivisionPaneColumn" Width="*" />
+                                        <ColumnDefinition x:Name="PanesSplitColumn" Width="9" />
+                                        <ColumnDefinition x:Name="UnitPaneColumn" Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <controls:Bevel x:Name="UnitPaneBox" Grid.Column="2" Style="{StaticResource SunkenBox}">
+                                        <DockPanel>
+                                            <ScrollViewer x:Name="UnitPaneScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                                <ContentControl x:Name="UnitPaneContent" Focusable="False" />
+                                            </ScrollViewer>
+                                        </DockPanel>
+                                    </controls:Bevel>
+                                    <!-- drag to share the width; double-click shares it evenly again -->
+                                    <controls:SplitBar x:Name="PanesSplit" Grid.Column="1" ToolTip="{t:Text Units.PanesSplit.Tip}" />
+                                    <controls:Bevel x:Name="DivisionPaneBox" Grid.Column="0" Style="{StaticResource SunkenBox}">
+                                        <DockPanel>
+                                            <!-- what the open mod does to the division, at the pane's foot, so the boxes above never move -->
+                                            <TextBlock x:Name="ModNote" DockPanel.Dock="Bottom" HorizontalAlignment="Right" Margin="10,4,10,6" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource accent}" Visibility="Collapsed" />
+                                            <ScrollViewer x:Name="DivisionPaneScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                                <ContentControl x:Name="DivisionPaneContent" Focusable="False" />
+                                            </ScrollViewer>
+                                        </DockPanel>
+                                    </controls:Bevel>
+                                </Grid>
+                            </controls:PanePair.Second>
+                        </controls:PanePair>
+
+                        <!-- Compare: a card a unit, across the width, the pinned unit first -->
+                        <DockPanel x:Name="CompareBox" Visibility="Collapsed">
+                            <controls:Bevel Style="{StaticResource SunkenBox}">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                    <StackPanel x:Name="CompareList" Margin="8,8,8,0" />
+                                </ScrollViewer>
+                            </controls:Bevel>
+                        </DockPanel>
+
+                        <!-- when there are no units to read, or they could not be read -->
+                        <controls:Bevel x:Name="MessageArea" Style="{StaticResource SunkenBox}" Visibility="Collapsed">
+                            <StackPanel Margin="10">
+                                <TextBlock x:Name="MessageText" Foreground="{DynamicResource muted}" TextWrapping="Wrap" />
+                                <Button x:Name="ChooseFolderButton" Content="{t:Text Units.ChooseGameFolder}" ToolTip="{t:Text Units.ChooseGameFolder.Tip}"
+                                        HorizontalAlignment="Left" Margin="0,8,0,0" Click="ChooseFolderClicked" Visibility="Collapsed" />
+                            </StackPanel>
+                        </controls:Bevel>
+                    </Grid>
+                </DockPanel>
+            </Grid>
             </Grid>
         </DockPanel>
+        <!--
+          while reading: a raised card saying what is read and from where, the bar filling block by block, and the four
+          steps ticked off as they finish. It is shown over the whole app, dimmed as behind the app's other windows: the
+          code moves it into the main view's cover (see UnitsPage.Reading.cs). This holder, then empty, covers the page while
+          it reads, clear, so nothing on it is clicked meanwhile; the app's tabs, outside the page, can be.
+        -->
+        <Grid x:Name="ReadingCardHolder" Visibility="Collapsed" Background="Transparent">
+            <controls:Bevel x:Name="ReadingCard" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                            Padding="18,14" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="420">
+                <StackPanel>
+                    <DockPanel>
+                        <TextBlock x:Name="ReadingStepCount" DockPanel.Dock="Right" FontSize="12" Foreground="{DynamicResource muted}" VerticalAlignment="Bottom" Margin="16,0,0,1" />
+                        <TextBlock x:Name="ReadingTitle" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" />
+                    </DockPanel>
+                    <TextBlock x:Name="ReadingWhere" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" MaxWidth="420" HorizontalAlignment="Left" Margin="0,2,0,10" />
+                    <!-- a bar that fills block by block, always the same size -->
+                    <controls:BlockBar x:Name="ReadingBar" />
+                    <StackPanel x:Name="ReadingSteps" Margin="0,10,0,0" />
+                </StackPanel>
+            </controls:Bevel>
+        </Grid>
     </Grid>
 </UserControl>

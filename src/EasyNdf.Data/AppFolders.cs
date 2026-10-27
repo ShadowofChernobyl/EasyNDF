@@ -1,7 +1,7 @@
 namespace EasyNdf.Data;
 
 /// <summary>
-/// Where EasyNDF keeps its data, and the folders inside it: Mods, Themes, Filters, Languages and Settings.
+/// Where EasyNDF keeps its data, and the folders inside it: Mods, Themes, Filters, Languages, Settings, Pictures and Mod Files.
 /// </summary>
 /// <remarks>
 /// Normally the data is in <c>%LOCALAPPDATA%\EasyNDF</c>, where the WinForms app kept its data too. In portable mode it is in a
@@ -51,10 +51,39 @@ public sealed class AppFolders
     /// </summary>
     public string Cache => Path.Combine(Root, "Cache");
 
-    /// <summary>All five folders, in the order above.</summary>
-    public IReadOnlyList<string> All => [Mods, Themes, Filters, Languages, Settings];
+    /// <summary>
+    /// Copies of the pictures chosen for divisions' emblems, kept with the app's data so a mod still exports its
+    /// pictures when the files they were chosen from are moved or deleted.
+    /// </summary>
+    public string Pictures => Path.Combine(Root, "Pictures");
 
-    /// <summary>Makes sure all five folders exist.</summary>
+    /// <summary>
+    /// The files that File rules carry into a mod (pictures, videos, new NDF files...), each kept once under a name made
+    /// from its content (<see cref="ModFileStore"/>), so the mods themselves stay small.
+    /// </summary>
+    public string ModFiles => Path.Combine(Root, "Mod Files");
+
+    /// <summary>All seven folders, in the order above (the cache aside).</summary>
+    public IReadOnlyList<string> All => [Mods, Themes, Filters, Languages, Settings, Pictures, ModFiles];
+
+    /// <summary>
+    /// The folders a mod's pictures may be copied from on export: the Pictures folders of both data folders (a mod
+    /// saved before portable mode was turned on or off still names the other), and the one used when there is no data
+    /// folder. A picture a mod file names anywhere else is never copied.
+    /// </summary>
+    /// <param name="appFolder">The folder EasyNDF.exe is in.</param>
+    /// <param name="localAppData">The user's Local AppData folder.</param>
+    public static IReadOnlyList<string> PictureFoldersOf(string appFolder, string localAppData) =>
+    [
+        new AppFolders(Path.Combine(localAppData, "EasyNDF")).Pictures,
+        new AppFolders(Path.Combine(appFolder, PortableDataFolderName), isPortable: true).Pictures,
+        TemporaryPictures,
+    ];
+
+    /// <summary>Where chosen pictures are kept when the app has no data folder, as in the designer.</summary>
+    public static string TemporaryPictures => Path.Combine(Path.GetTempPath(), "EasyNDF", "Pictures");
+
+    /// <summary>Makes sure all seven folders exist.</summary>
     public void CreateAll()
     {
         foreach (string folder in All) Directory.CreateDirectory(folder);
@@ -113,7 +142,7 @@ public sealed class AppFolders
         return to;
     }
 
-    /// <summary>Copies the five folders' files, replacing files of the same name.</summary>
+    /// <summary>Copies the seven folders' files, replacing files of the same name.</summary>
     private static void CopyFolders(AppFolders from, AppFolders to)
     {
         for (int i = 0; i < from.All.Count; i++)

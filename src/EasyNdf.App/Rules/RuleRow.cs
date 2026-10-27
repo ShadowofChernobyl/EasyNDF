@@ -1,5 +1,8 @@
 using System.Text.Json.Nodes;
+using System.Windows;
+using EasyNdf.App.Divisions;
 using EasyNdf.App.Text;
+using EasyNdf.Data.Divisions;
 
 namespace EasyNdf.App.Rules;
 
@@ -27,6 +30,31 @@ public sealed class RuleRow
     /// <summary>For a folded Group: how many rules it hides.</summary>
     public required int HiddenCount { get; init; }
 
+    /// <summary>
+    /// Whether the rule is locked: made from the Armory in an Armory preset, and changed there. It shows a lock
+    /// in place of its move, copy and delete buttons.
+    /// </summary>
+    public bool IsLocked { get; init; }
+
+    /// <summary>What a rule made from the Armory changes: "Name" or "Picture" for those, else its kind; "" for any other rule.</summary>
+    public string Shows => (string?)Rule[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ShowsKey] ?? "";
+
+    /// <summary>Whether the rule's symbol is a picture: a division's emblem, for a rule that changes one.</summary>
+    public bool ShowsPicture => Shows == "Picture";
+
+    /// <summary>
+    /// The emblem a picture rule gives, small, in place of the type's symbol: a picture of the user's own, or one of
+    /// the game's.
+    /// </summary>
+    public FrameworkElement? Picture
+    {
+        get
+        {
+            if (!ShowsPicture || Rule[DivisionChangeRules.ArmoryKey] is not JsonObject armory) return null;
+            return new DivisionEmblem((string?)armory[DivisionChangeRules.PictureSourceKey], 16, keepsRoom: true, (string?)armory[DivisionChangeRules.PictureFileKey]);
+        }
+    }
+
     /// <summary>The rule's type: "Edit", "Add", ... "Group", "Variable".</summary>
     public string Kind => (string?)Rule["Kind"] is { Length: > 0 } kind ? kind : "Edit";
 
@@ -42,14 +70,30 @@ public sealed class RuleRow
     /// <summary>Whether this Group's rules are folded away.</summary>
     public bool IsFolded => Rule["Collapsed"]?.GetValue<bool>() == true;
 
-    /// <summary>The type's symbol (the HTML app's <c>KSYM</c>), such as ✎ for Edit.</summary>
-    public string SymbolText => Symbols.GetValueOrDefault(Kind, ("", "muted")).Item1;
+    /// <summary>
+    /// The type's symbol (the HTML app's <c>KSYM</c>), such as ✎ for Edit; "Aa" for a rule that names a division, and
+    /// none for one that gives it a picture, which shows the picture instead.
+    /// </summary>
+    public string SymbolText => Shows switch
+    {
+        "Name" => NameSymbol,
+        "Picture" => "",
+        _ => Symbols.GetValueOrDefault(Kind, ("", "muted")).Item1,
+    };
 
     /// <summary>The theme colour the symbol is drawn in, such as "muted" for Edit.</summary>
-    public string SymbolColour => Symbols.GetValueOrDefault(Kind, ("", "muted")).Item2;
+    public string SymbolColour => Shows == "Name" ? "accent" : Symbols.GetValueOrDefault(Kind, ("", "muted")).Item2;
+
+    /// <summary>The symbol of a rule that names a division.</summary>
+    public const string NameSymbol = "Aa";
 
     /// <summary>The symbol's tooltip, such as "Edit rule. Click to open."</summary>
-    public string SymbolTip => Texts.Get("Rules.Rule.SymbolTip", ("kind", RuleKindNames.Of(Kind)));
+    public string SymbolTip => Shows switch
+    {
+        "Name" => Texts.Get("Rules.Rule.SymbolTip", ("kind", Texts.Get("Rules.Kind.DivisionName"))),
+        "Picture" => Texts.Get("Rules.Rule.SymbolTip", ("kind", Texts.Get("Rules.Kind.DivisionEmblem"))),
+        _ => Texts.Get("Rules.Rule.SymbolTip", ("kind", RuleKindNames.Of(Kind))),
+    };
 
     /// <summary>A rule type's symbol and the theme colour it is drawn in, as the rule list shows them.</summary>
     public static (string Text, string Colour) SymbolOf(string kind) => Symbols.GetValueOrDefault(kind, ("", "muted"));
@@ -66,6 +110,8 @@ public sealed class RuleRow
         "Formula" => Texts.Get("Rules.KindSummary.Formula").Replace("`", ""),
         "Table" => Texts.Get("Rules.KindSummary.Table"),
         "Lookup" => Texts.Get("Rules.KindSummary.Lookup"),
+        "Text" => Texts.Get("Rules.KindSummary.Text"),
+        "File" => Texts.Get("Rules.KindSummary.File"),
         "Check" => Texts.Get("Rules.KindSummary.Check"),
         "Group" => Texts.Get("Rules.KindSummary.Group"),
         "Variable" => Texts.Get("Rules.KindSummary.Variable").Replace("`", ""),
@@ -80,6 +126,7 @@ public sealed class RuleRow
         ["Edit"] = ("✎", "muted"), ["Add"] = ("⊞", "d-add"), ["Clone"] = ("⧉", "s-keyword"),
         ["Remove"] = ("⊟", "d-del"), ["Replace"] = ("⇄", "s-param"), ["Scale"] = ("⇅", "s-number"),
         ["Formula"] = ("ƒ", "s-func"), ["Table"] = ("▦", "s-field"), ["Lookup"] = ("⌕", "s-const"),
+        ["Text"] = ("¶", "s-string"), ["File"] = ("❏", "s-keyword"),
         ["Check"] = ("✓", "ok"), ["Variable"] = ("\U0001D465", "s-string"), ["Group"] = (FolderSymbol, "accent"),
     };
 }

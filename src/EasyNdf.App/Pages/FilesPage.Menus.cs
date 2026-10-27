@@ -88,6 +88,10 @@ public partial class FilesPage
             row.Entry.HeldOutput is not null && count == 1 ? new MenuChoice(Texts.Get("Files.SaveAnyway"), () => SaveAnyway(row)) : null,
             new MenuChoice(Texts.Get("Files.Menu.OpenInEditor"), () => OpenInEditor(row.Entry), IsEnabled: row.Entry.Source is not null),
             new MenuChoice(Texts.Get("Files.Menu.ChooseExportFolder"), () => ExportFolderClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
+            Data.Divisions.FileAndTextRules.IsDictionaryFile(row.Entry.Name) && FileRunner.GoesIntoLocalisation(row.Entry) && count == 1
+                ? new MenuChoice(Texts.Get("Files.Menu.GameMod"), () => _ = ChangeGameMod(), IsEnabled: !Model.IsBusy,
+                    Key: FileRunner.KeptGameMod(AppData.Current.OpenMod.Name) ?? "", Tip: Texts.Get("Files.Menu.GameMod.Tip"))
+                : null,
             new MenuChoice(removeText, () => RemoveClicked(this, new RoutedEventArgs()), IsEnabled: !Model.IsBusy),
             Menus.Line,
             .. ListMenu(),

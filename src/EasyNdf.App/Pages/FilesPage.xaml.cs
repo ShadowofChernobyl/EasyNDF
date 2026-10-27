@@ -51,6 +51,8 @@ public partial class FilesPage : UserControl
         };
         searchPause.Tick += SearchPaused;
         Rows.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(RowButtonClicked));
+        // the Armory column sorts by the parts of the Armory with changes for each file
+        FileListView.ArmoryKey = FileRunner.ArmorySortKey;
         Rows.AddHandler(MouseLeftButtonUpEvent, new MouseButtonEventHandler(RowMouseUp));
         Rows.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(RowDoubleClicked), handledEventsToo: true);
         ListBox.MouseRightButtonUp += ListRightClicked;
@@ -66,8 +68,7 @@ public partial class FilesPage : UserControl
         }
         ListScroller.ScrollChanged += ListScrolled;
         ListHeader.RenderTransform = headingsOffset;
-        IReadOnlyList<string> allPresetNames = AppData.Current.Mods.SelectMany(m => m.Presets).Select(p => p.Name).ToList();
-        Model = new FileListModel(AppData.Current.OpenMod.Presets, allPresetNames);
+        Model = new FileListModel();
         // the columns, sort, grouping and sizes as the user left them
         Model.LoadView(AppData.Current.Settings, AppData.Current.State);
         Model.ViewChanged += SaveView;
@@ -90,9 +91,9 @@ public partial class FilesPage : UserControl
     /// <summary>Keeps the file list for next time, when "Reopen the last files" is on; called as the window closes.</summary>
     public void KeepSession()
     {
-        if (AppData.Current.Settings["restoreSession"]?.GetValue<bool>() == false) AppData.Current.State.Remove("session");
-        else AppData.Current.State["session"] = FileSession.Keep(Model.Entries);
-        AppData.Current.SaveState();
+        bool reopens = AppData.Current.Settings["restoreSession"]?.GetValue<bool>() != false;
+        AppData.Current.Session = reopens ? FileSession.Keep(Model.Entries) : null;
+        AppData.Current.SaveSession();
     }
 
     /// <summary>
@@ -102,7 +103,7 @@ public partial class FilesPage : UserControl
     public async Task ReopenSession()
     {
         if (AppData.Current.Settings["restoreSession"]?.GetValue<bool>() == false) return;
-        List<FileSession.KeptRow> kept = FileSession.Rows(AppData.Current.State["session"]);
+        List<FileSession.KeptRow> kept = FileSession.Rows(AppData.Current.Session);
         if (kept.Count == 0) return;
         List<(FileToAdd File, FileSession.KeptRow Row)> found = await Task.Run(() => FileSession.StillThere(kept));
         if (found.Count == 0) return;
@@ -185,6 +186,7 @@ public partial class FilesPage : UserControl
             Model.RowChanged(entry);
             if (summary is not null) AppData.Current.SetScan(FileListModel.ScanKey(entry), summary);
         }
+        Model.TellListChangedNow();
     }
 
     /// <summary>The message window of the main view this page is in.</summary>
@@ -238,7 +240,7 @@ public partial class FilesPage : UserControl
         }
     }
 
-    /// <summary>The main window's source, shared with the Units and Divisions tabs, in the Source bar.</summary>
+    /// <summary>The main window's source, shared with the Units tab, in the Source bar.</summary>
     public void UseSources(Units.SourceSelection sources)
     {
         SourceBar.Selection = sources;
@@ -297,7 +299,9 @@ public partial class FilesPage : UserControl
         if (onlyWithPreset)
         {
             int all = found.Count;
-            found = found.Where(file => PresetMatching.Match(file.Name, "", Model.OpenModPresets) is not null).ToList();
+            // the files the Armory's changes are written into, and those a rule set of a mod that is on applies to, count
+            IReadOnlySet<string> armoryFiles = FileRunner.FilesWithArmoryRules();
+            found = found.Where(file => armoryFiles.Contains(file.Name) || FileRunner.HasRuleSetsFor(file.Name, file.Folder)).ToList();
             if (found.Count == 0)
             {
                 Model.Say(Texts.Get("Files.AddFolder.NoneWithPreset", ("count", FileStatus.Count(all))));
@@ -343,7 +347,7 @@ public partial class FilesPage : UserControl
     {
         var notNdf = paths.Where(path => !IsNdf(path)).Select(path => Path.GetFileName(path)).ToList();
         if (notNdf.Count > 0) await Messages.Tell(NotLoadedMessage(notNdf));
-        var ndf = paths.Where(IsNdf).Select(path => FileToAdd.OnDisk(path)).ToList();
+        var ndf = paths.Where(IsNdf).Select(LooseFile).ToList();
         if (ndf.Count > 0) await AddAndRead(ndf, fromFolder: false);
     }
 
@@ -389,7 +393,24 @@ public partial class FilesPage : UserControl
         return Texts.Get("Files.NotNdf.Several", ("count", FileStatus.Count(names.Count)), ("files", named));
     }
 
-    private static bool IsNdf(string path) => path.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Whether a file can go on the list: an .ndf file, or a dictionary file (.csv) such as the mod's UNITS.csv, which
+    /// the Armory's division names and Text rules are written into.
+    /// </summary>
+    private static bool IsNdf(string path) =>
+        path.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase) || Data.Divisions.FileAndTextRules.IsDictionaryFile(path);
+
+    /// <summary>
+    /// A file added on its own, with the folders it sits in from GameData on when it is a dictionary file such as
+    /// UNITS.csv, so the export puts it in the mod's Localisation folder as the game wants it.
+    /// </summary>
+    private static FileToAdd LooseFile(string path)
+    {
+        if (!Data.Divisions.FileAndTextRules.IsDictionaryFile(path) || Data.Divisions.DivisionExtras.GameDataFolderOf(path) is not string gameData)
+            return FileToAdd.OnDisk(path);
+        string fromGameData = Path.GetRelativePath(Path.GetDirectoryName(gameData)!, Path.GetDirectoryName(path)!).Replace('\\', '/');
+        return FileToAdd.OnDisk(path, fromGameData);
+    }
 
     /// <summary>
     /// Shows or hides the dashed outline that marks the list as the place dropped files land (the HTML app's
@@ -434,7 +455,7 @@ public partial class FilesPage : UserControl
         var found = new List<FileToAdd>();
         foreach (string path in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
         {
-            if (!path.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!IsNdf(path)) continue;
             string relativeFolder = Path.GetRelativePath(parent, Path.GetDirectoryName(path)!).Replace('\\', '/');
             found.Add(FileToAdd.OnDisk(path, relativeFolder));
         }
@@ -464,27 +485,94 @@ public partial class FilesPage : UserControl
 
     // ---- Preview, Run export and what they leave ----
 
-    private FileRunner Runner => new(Model, RunSettings.From(AppData.Current.Settings));
+    internal FileRunner Runner => new(Model, RunSettings.From(AppData.Current.Settings)) { AskGameMod = AskGameMod };
+
+    /// <summary>
+    /// Asks which WARNO mod an EasyNDF mod's UNITS.csv is for, by the mod's folder name under WARNO\Mods; "" or null
+    /// when cancelled.
+    /// </summary>
+    private async Task<string?> AskGameMod(string modName)
+    {
+        string typed = await Messages.AskName(Texts.Get("Files.Run.AskGameMod"), new DialogOptions
+        {
+            Input = FileRunner.KeptGameMod(modName) ?? "",
+            Placeholder = Texts.Get("Files.Run.AskGameMod.Hint"),
+            Note = Texts.Get("Files.Run.AskGameMod.Note", ("mod", modName)),
+            NeedsInput = true,
+        });
+        return typed == "" ? null : typed;
+    }
+
+    /// <summary>"WARNO Mod Folder…" in UNITS.csv's menu: the mod folder its export goes into, asked again and kept.</summary>
+    private async Task ChangeGameMod()
+    {
+        string modName = AppData.Current.OpenMod.Name;
+        if (await AskGameMod(modName) is string typed) FileRunner.KeepGameMod(modName, typed);
+    }
 
     private async void PreviewClicked(object sender, RoutedEventArgs e) => await Preview();
+
+    /// <summary>The progress line's Cancel: the run stops after the file it is on.</summary>
+    private void CancelRunClicked(object sender, RoutedEventArgs e) => Model.CancelRun();
 
     /// <summary>What the Preview button does.</summary>
     internal Task Preview() => Runner.Run(write: false, ChooseExportFolder);
 
     private async void RunClicked(object sender, RoutedEventArgs e)
     {
-        if (Model.IsBusy || !await ExportIsConfirmed() || !await WatermarksAreUpToDate()) return;
+        if (Model.IsBusy || !await ExportIsConfirmed() || !await DivisionsAreChecked() || !await WatermarksAreUpToDate()) return;
         HashSet<FileEntry>? skipped = await AskAboutEarlierExports();
         if (skipped is null) return;
         await Runner.Run(write: true, ChooseExportFolder, skipped);
         if (AppData.Current.Settings["openAfterExport"]?.GetValue<bool>() == true) OpenExportFolder();
     }
 
-    /// <summary>The files Run export writes: those that are on, with a preset unless "Files to export" is all files.</summary>
+    /// <summary>
+    /// The files Run export writes, as the run itself picks them (<see cref="FileRunner.FilesThatRun"/>): files that run
+    /// only because of another mod or the Armory are asked about too.
+    /// </summary>
     private List<FileEntry> FilesToExport()
     {
         bool everyFile = (string?)AppData.Current.Settings["exportScope"] == "all";
-        return [.. Model.Entries.Where(e => e.On && e.Source is not null && (everyFile || e.Preset is not null))];
+        return FileRunner.FilesThatRun(Model.Entries, everyFile);
+    }
+
+    /// <summary>"Don't show again during this session" was ticked in the divisions' check: it is not shown again until the app restarts.</summary>
+    private bool divisionCheckHidden;
+
+    /// <summary>
+    /// Before Run export: what may not work in the game in the divisions the open mod changes (see
+    /// <see cref="UnitsPage.DivisionWarnings"/>), with Export Anyway or Cancel. True to go on.
+    /// </summary>
+    private async Task<bool> DivisionsAreChecked()
+    {
+        if (divisionCheckHidden) return true;
+        List<string> warnings = MainView.Of(this).UnitsTab.DivisionWarnings();
+        if (warnings.Count == 0) return true;
+        DialogAnswer answer = await Messages.Ask(Texts.Get("Divisions.Check.Ask"), new DialogOptions
+        {
+            Extra = WarningList(warnings),
+            Ok = Texts.Get("Divisions.Check.ExportAnyway"),
+            CheckText = Texts.Get("Divisions.Check.HideForSession"),
+        });
+        if (answer.IsChecked) divisionCheckHidden = true;
+        return answer.Choice == DialogChoice.Ok;
+    }
+
+    /// <summary>The warnings, one a line, in a box that scrolls past 40 of them.</summary>
+    private static FrameworkElement WarningList(List<string> warnings)
+    {
+        const int Shown = 40;
+        var lines = new StackPanel();
+        foreach (string warning in warnings.Take(Shown))
+            lines.Children.Add(new TextBlock { Text = "• " + warning, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 3) });
+        if (warnings.Count > Shown)
+        {
+            var more = new TextBlock { Text = Texts.Get("Divisions.Check.More", ("count", Texts.Number(warnings.Count - Shown))) };
+            more.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+            lines.Children.Add(more);
+        }
+        return new ScrollViewer { Content = lines, MaxHeight = 260, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 6, 0, 0) };
     }
 
     /// <summary>"Confirm before Run export": says how many files will be written, and to how many folders, and asks.</summary>
@@ -493,6 +581,9 @@ public partial class FilesPage : UserControl
         if (AppData.Current.Settings["confirmExport"]?.GetValue<bool>() != true) return true;
         List<FileEntry> files = FilesToExport();
         if (files.Count == 0) return true;
+        // asked for each time, the folder is chosen after this question
+        if (RunSettings.From(AppData.Current.Settings).AskExportFolder)
+            return await Messages.Confirm(Texts.Get("Files.ConfirmExport.AskFolderNext", ("files", FileListModel.Files(files.Count))), Texts.Get("Files.ConfirmExport.Export"));
         int folders = files.Select(e => e.ExportFolder ?? "").Distinct().Count();
         bool someHaveNone = files.Any(e => e.ExportFolder is null);
         string question = Texts.Get("Files.ConfirmExport.Ask", ("files", FileListModel.Files(files.Count)), ("folders", Texts.Count("Files.ConfirmExport.Folders", folders)));
@@ -555,18 +646,30 @@ public partial class FilesPage : UserControl
         List<FileEntry> exported = FilesToExport();
         // with nothing to run, the run itself says so
         if (exported.Count == 0) return true;
-        IEnumerable<Mod> asking = exported.Where(e => e.Preset is not null).Select(e => AppData.Current.ModOf(e.Preset!)).OfType<Mod>().Distinct()
+        IEnumerable<Mod> asking = exported.SelectMany(e => e.ModsOnFile).Select(m => AppData.Current.ModStore.Find(m.Mod)).OfType<Mod>().Distinct()
             .Where(m => m.Watermark is { On: true, Ask: true });
         foreach (Mod mod in asking.ToList())
             if (!await MainView.Of(this).Watermark.AskBeforeExport(mod)) return false;
         return true;
     }
 
-    /// <summary>Asks for the folder the files that have none are exported to; null when cancelled.</summary>
+    /// <summary>Asks for an export folder, starting in the one used last; null when cancelled.</summary>
     private Task<string?> ChooseExportFolder()
     {
         var dialog = new OpenFolderDialog { Title = Texts.Get("Files.ExportFolder.Title") };
+        if (LastExportFolder() is string last) dialog.InitialDirectory = last;
         return Task.FromResult(dialog.ShowDialog(Window.GetWindow(this)) == true ? dialog.FolderName : null);
+    }
+
+    /// <summary>
+    /// The folder exported to last, where the folder window starts: the open mod's, or else the one most files on
+    /// the list have; null when none is kept, or it is gone.
+    /// </summary>
+    private string? LastExportFolder()
+    {
+        string? folder = AppData.Current.ExportFolderOf(AppData.Current.OpenMod)
+            ?? Model.Entries.Where(entry => entry.ExportFolder is not null).GroupBy(entry => entry.ExportFolder!).OrderByDescending(group => group.Count()).Select(group => group.Key).FirstOrDefault();
+        return folder is not null && Directory.Exists(folder) ? folder : null;
     }
 
     /// <summary>"Export folder...": sets where the selected files are exported to.</summary>
@@ -650,7 +753,19 @@ public partial class FilesPage : UserControl
             case FileRowView.ClearFolderAction:
                 Model.ClearExportFolder(row.Entry);
                 break;
+            case string armory when armory.StartsWith(FileRowView.ArmoryAction, StringComparison.Ordinal)
+                                    && Enum.TryParse(armory[FileRowView.ArmoryAction.Length..], out ArmoryPart part):
+                ShowArmoryRules(part);
+                break;
         }
+    }
+
+    /// <summary>An Armory column letter: the Rules tab, with that part of the Armory's preset open.</summary>
+    private void ShowArmoryRules(ArmoryPart part)
+    {
+        MainView view = MainView.Of(this);
+        view.Tabs.SelectedItem = view.RulesTabItem;
+        view.RulesTab.Model.OpenArmoryPart(part);
     }
 
     /// <summary>A click on a row, not on one of its controls (they take their own clicks): selects it.</summary>
@@ -794,10 +909,10 @@ public partial class FilesPage : UserControl
         return formatted.WidthIncludingTrailingWhitespace;
     }
 
-    /// <summary>The mods changed on the Rules tab: the list follows, and reads the files that now have a preset.</summary>
+    /// <summary>The mods changed on the Mods tab: the list follows, and reads the files that now have rules.</summary>
     private async void FollowMods(ModsChange change)
     {
-        IReadOnlyList<FileEntry> toRead = Model.FollowMods(AppData.Current.Mods, AppData.Current.OpenMod, change);
+        IReadOnlyList<FileEntry> toRead = Model.FollowMods();
         await ReadAll(toRead);
     }
 

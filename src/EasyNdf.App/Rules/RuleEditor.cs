@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using EasyNdf.App.Controls;
 using EasyNdf.Data;
+using EasyNdf.Data.Divisions;
 using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Rules;
@@ -43,7 +44,7 @@ public sealed class RuleEditor
     }
 
     /// <summary>The rule types that apply to one kind of object, or to the constants, as well as to descriptors.</summary>
-    private static readonly HashSet<string> ScopedKinds = ["Edit", "Replace", "Scale", "Formula", "Check"];
+    private static readonly HashSet<string> ScopedKinds = ["Edit", "Replace", "Scale", "Formula", "Check", "Remove"];
 
     /// <summary>The operand and target choices every descriptor has, before the scanned property names.</summary>
     public static readonly string[] SpecialOperands = ["Entire Descriptor", "Descriptor Title", "Descriptor Type"];
@@ -67,7 +68,7 @@ public sealed class RuleEditor
 
         string kind = KindOf(rule);
         AddHeader();
-        if (ScopedKinds.Contains(kind)) AddScope();
+        if (ScopedKinds.Contains(kind)) AddScope(kind);
         switch (kind)
         {
             case "Edit": BuildEdit(); break;
@@ -82,6 +83,8 @@ public sealed class RuleEditor
             case "Table": BuildTable(); break;
             case "Lookup": BuildLookup(); break;
             case "Check": BuildCheck(); break;
+            case "Text": BuildText(); break;
+            case "File": BuildFile(); break;
         }
         return parts;
     }
@@ -104,7 +107,8 @@ public sealed class RuleEditor
 
     private void BuildVariable()
     {
-        AddRow(Texts.Get("Rules.Editor.Name"), TextField("VarName", Texts.Get("Rules.Editor.VarNameHint.ForExampleRangeMultiplier"), mono: true));
+        // "Variable name", as the rule's own name is in the box above it
+        AddRow(Texts.Get("Rules.Editor.VariableName"), TextField("VarName", Texts.Get("Rules.Editor.VarNameHint.ForExampleRangeMultiplier"), mono: true));
         AddRow(Texts.Get("Rules.Editor.Value"), TextField("Value", Texts.Get("Rules.Editor.ValueHint.ForExample2"), mono: true));
         string name = JsonValues.AsText(parameters["VarName"]);
         AddNote(Note("Rules.Editor.Variable.Note", ("variable", "{" + (name != "" ? name : Texts.Get("Rules.Editor.Name")) + "}")));
@@ -198,7 +202,8 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         string sourceFile = JsonValues.AsText(parameters["SourceFile"]);
         var files = new List<ChoiceOption> { new("", Texts.Get("Rules.Editor.Lookup.ChooseFile")) };
         files.AddRange(scan.SourceFiles);
-        if (sourceFile != "" && !scan.SourceFileIsScanned) files.Add(new(sourceFile, Texts.Get("Rules.Editor.Lookup.NotScanned", ("file", sourceFile))));
+        if (sourceFile != "" && !scan.SourceFileIsScanned && files.All(file => file.Value != sourceFile))
+            files.Add(new(sourceFile, Texts.Get("Rules.Editor.Lookup.NotScanned", ("file", sourceFile))));
         AddNote(Note("Rules.Editor.Lookup.Note"));
         AddRow(Texts.Get("Rules.Editor.OtherFile"), Choice("SourceFile", files, rebuildAfter: true));
         AddList(RulesModel.SourceConditions, Texts.Get("Rules.Editor.Lookup.SourceConditions"), Gate("SourceGate", inParams: true), Texts.Get("Rules.Editor.ACondition"), Texts.Get("Rules.Editor.NoConditions") + " " + Texts.Get("Rules.Editor.PressPlus"));
@@ -208,6 +213,78 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         AddNote(Note("Rules.Editor.Lookup.ReferenceNote"));
         AddConditions(Texts.Get("Rules.Editor.ExtraConditionsInThis"), null);
         AddActions(Texts.Get("Rules.Editor.Actions"));
+    }
+
+    private void BuildText()
+    {
+        AddNote(Note("Rules.Editor.Text.Note"));
+        // as tall as the Table rule's box: twelve lines of the code font
+        var lines = TextArea(FileAndTextRules.LinesKey, "YSM_UNIT_NAME;Heli Zopium Express\nYSM_WEAPON_NAME;Zombie Bite");
+        lines.Height = 12 * 17.390625 + 8 + 2;
+        parts.Add(lines);
+        int count = FileAndTextRules.LinesOf(JsonValues.AsText(parameters[FileAndTextRules.LinesKey])).Count;
+        AddNote(Plain(Texts.Count("Rules.Editor.Text.Count", count)));
+    }
+
+    private void BuildFile()
+    {
+        AddNote(Note("Rules.Editor.File.Note"));
+        var choose = new Button { Content = Texts.Get("Rules.Editor.File.Choose"), ToolTip = Texts.Get("Rules.Editor.File.Choose.Tip") };
+        choose.Click += (_, _) => ChooseCarriedFile();
+        AddRow(Texts.Get("Rules.Editor.File.File"), choose, CarriedFileText());
+        var destination = TextField(FileAndTextRules.DestinationKey, Texts.Get("Rules.Editor.File.DestinationHint"), mono: true);
+        AddRow(Texts.Get("Rules.Editor.File.Destination"), destination);
+    }
+
+    /// <summary>What the File rule carries: the chosen file's name and size, or that none is chosen, or that the app no longer has it.</summary>
+    private TextBlock CarriedFileText()
+    {
+        string stored = JsonValues.AsText(parameters[FileAndTextRules.StoredKey]);
+        string chosen = JsonValues.AsText(parameters[FileAndTextRules.ChosenNameKey]);
+        long size = parameters[FileAndTextRules.SizeKey] is JsonValue value && value.TryGetValue(out long bytes) ? bytes : 0;
+        string text = stored == "" ? Texts.Get("Rules.Editor.File.NoneChosen")
+            : AppData.Current.ModFileStore.PathOf(stored) is null ? Texts.Get("Rules.Editor.File.Missing", ("file", chosen))
+            : Texts.Get("Rules.Editor.File.Chosen", ("file", chosen), ("size", SizeText(size)));
+        var block = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
+        block.SetResourceReference(TextBlock.ForegroundProperty, stored != "" && AppData.Current.ModFileStore.PathOf(stored) is null ? "caution" : "muted");
+        return block;
+    }
+
+    /// <summary>A size as people read it: "820 KB", "7.7 MB".</summary>
+    private static string SizeText(long bytes) =>
+        bytes >= 1024 * 1024 ? (bytes / 1024.0 / 1024.0).ToString("0.0", System.Globalization.CultureInfo.CurrentCulture) + " MB"
+        : Math.Max(1, (bytes + 1023) / 1024) + " KB";
+
+    /// <summary>
+    /// "Choose File...": the file is kept in the app's data (a later change to the chosen file does not change the
+    /// mod), and a rule with no place yet gets one under GameData named after it.
+    /// </summary>
+    private void ChooseCarriedFile()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Title = Texts.Get("Rules.Editor.File.Choose.Title") };
+        if (dialog.ShowDialog(parts.Count > 0 ? Window.GetWindow(parts[0]) : null) != true) return;
+        byte[] content;
+        string stored;
+        try
+        {
+            content = System.IO.File.ReadAllBytes(dialog.FileName);
+            stored = AppData.Current.ModFileStore.Keep(content, dialog.FileName);
+        }
+        catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException)
+        {
+            parameters[FileAndTextRules.StoredKey] = "";
+            parameters[FileAndTextRules.ChosenNameKey] = System.IO.Path.GetFileName(dialog.FileName) + " (" + error.Message + ")";
+            changed();
+            rebuild();
+            return;
+        }
+        string name = System.IO.Path.GetFileName(dialog.FileName);
+        parameters[FileAndTextRules.StoredKey] = stored;
+        parameters[FileAndTextRules.ChosenNameKey] = name;
+        parameters[FileAndTextRules.SizeKey] = content.LongLength;
+        if (JsonValues.AsText(parameters[FileAndTextRules.DestinationKey]).Trim() == "") parameters[FileAndTextRules.DestinationKey] = "GameData/" + name;
+        changed();
+        rebuild();
     }
 
     private void BuildCheck()
@@ -242,7 +319,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     }
 
     /// <summary>.rscope: what the rule applies to: each descriptor, each object of one type, or the top-level constants.</summary>
-    private void AddScope()
+    private void AddScope(string kind)
     {
         string scope = JsonValues.AsText(parameters["Scope"]);
         if (scope is not ("constants" or "type")) scope = "";
@@ -260,7 +337,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         }
         parts.Add(row);
         if (scope == "type")
-            AddNote(Note("Rules.Editor.Scope.TypeNote"));
+            AddNote(Note(kind == "Remove" ? "Rules.Editor.Scope.RemoveTypeNote" : "Rules.Editor.Scope.TypeNote"));
         else if (scope == "constants")
             AddNote(Note("Rules.Editor.Scope.ConstantsNote"));
     }

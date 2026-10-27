@@ -5,6 +5,7 @@ namespace EasyNdf.Data;
 /// <summary>
 /// The Settings folder: <c>settings.json</c> holds what the Settings tab sets, <c>state.json</c> what the app remembers
 /// between sessions (the open mod, column widths, folded sections...). Both are JSON objects with the HTML app's keys.
+/// <c>session.json</c> holds the file list to reopen at the next start.
 /// </summary>
 public sealed class SettingsStore(string settingsFolder)
 {
@@ -49,6 +50,15 @@ public sealed class SettingsStore(string settingsFolder)
         ["treeShowsAll"] = false,
         // exporting
         ["confirmExport"] = false,
+        // the desktop app's own: each Run export asks where to write the files, rather than using the folders kept
+        ["askExportFolder"] = true,
+        ["armoryMarks"] = true,
+        // the desktop app's own: under each value's name in the Armory's panes, the property it is in, in the game's files
+        ["armoryFileNames"] = true,
+        // the Armory shows the values as the mods that are on make them; off, as the source has them
+        ["armoryModChanges"] = true,
+        // the desktop app's own: the app redraws itself for each monitor's scaling, rather than Windows stretching it
+        ["perMonitorDpi"] = true,
         ["backupOverwritten"] = false,
         ["openAfterExport"] = false,
         // the window: its size in percent, tooltips, and whether it opens where it was left
@@ -75,6 +85,19 @@ public sealed class SettingsStore(string settingsFolder)
 
     /// <summary>Saves what the app remembers between sessions.</summary>
     public void SaveState(JsonObject state) => JsonFiles.Write(PathOf("state.json"), state);
+
+    /// <summary>The file list kept for the next start ("Reopen the last files"); null when none is.</summary>
+    public JsonNode? LoadSession() => JsonFiles.TryRead(PathOf("session.json"));
+
+    /// <summary>
+    /// Keeps the file list for the next start, or forgets it (null). It has a file of its own, written as the app
+    /// closes: kept in state.json, its thousands of rows were written again with every small thing the app remembers.
+    /// </summary>
+    public void SaveSession(JsonNode? session)
+    {
+        if (session is null) File.Delete(PathOf("session.json"));
+        else JsonFiles.Write(PathOf("session.json"), session);
+    }
 
     /// <summary>"Reset settings": the settings go back to the defaults. Mods and the rest are kept.</summary>
     public void ResetSettings() => SaveSettings(DefaultSettings());

@@ -13,9 +13,10 @@ using EasyNdf.Data.Units;
 namespace EasyNdf.App.Pages;
 
 /// <summary>
-/// The Units tab: reads the units of a game or mod (the Source list), filters them (Find and Nations), and shows them
-/// as cards or a table with the Unit pane, or side by side on Compare. This file reads the units and runs the filters;
-/// UnitsPage.Views.cs fills the views, and UnitsPage.Menus.cs holds what the buttons and menus do.
+/// The Armory tab: reads the units of a game or mod (the Source list), filters them (Find and Nations), and shows them
+/// as cards or a table with the Unit pane, or side by side on Compare, under three sub-tabs (UnitsPage.ArmoryParts.cs).
+/// This file reads the units and runs the filters; UnitsPage.Views.cs fills the views, and UnitsPage.Menus.cs holds
+/// what the buttons and menus do.
 /// </summary>
 public partial class UnitsPage : UserControl
 {
@@ -24,12 +25,6 @@ public partial class UnitsPage : UserControl
 
     /// <summary>The units shown, with where they came from; null until a source has been read.</summary>
     private LoadedUnits? loaded;
-
-    /// <summary>The units read last, with their divisions, for the Divisions tab; null until a source has been read.</summary>
-    public LoadedUnits? Units => loaded;
-
-    /// <summary>Raised when a source's units have been read and shown, so the Divisions tab shows its divisions.</summary>
-    public event Action? UnitsRead;
 
     /// <summary>Counts the reads started, so a read that a newer one has overtaken is ignored when it ends.</summary>
     private int readsStarted;
@@ -45,8 +40,9 @@ public partial class UnitsPage : UserControl
     {
         InitializeComponent();
         Panes.FoldedPlace = PaneSlot;
-        Panes.SecondTitle = Texts.Get("Units.Pane.Title");
+        PreparePaneButtons();
         selection.Changed += ShowUnitPane;
+        IsVisibleChanged += (_, _) => ShowReadingCover();
         // a right-click in the Unit pane, but not on a weapon, opens the unit's menu
         UnitPaneContent.MouseRightButtonUp += (_, e) =>
         {
@@ -58,10 +54,19 @@ public partial class UnitsPage : UserControl
         ShowSource();
         PreviewKeyDown += FoldKeys;
         PreviewKeyDown += ZoomKeys;
+        PreviewKeyDown += SelectAllKey;
+        PreviewKeyDown += DeleteKey;
+        // the page takes the keys after a click on a unit, for Ctrl+A to reach it (the lists themselves take no focus)
+        Focusable = true;
+        IsTabStop = false;
+        FocusVisualStyle = null;
         Texts.LanguageChanged += LanguageChanged;
         CardsList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
         TableList.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
         PrepareZoom();
+        PrepareDivisions();
+        PrepareParts();
+        PrepareModValues();
         // Cards or Table, whichever was used last; Compare, kept by an earlier version, counts as Cards
         view = (string?)AppData.Current.State["unitView"] == nameof(UnitView.Table) ? UnitView.Table : UnitView.Cards;
         ShowViewButtons();
@@ -78,33 +83,42 @@ public partial class UnitsPage : UserControl
     {
         if (!IsVisible) return;
         if (!started) _ = LookForGames();
+        if (redrawWhenShown && loaded is not null)
+        {
+            redrawWhenShown = false;
+            ShowAll();
+        }
+        // what the other tabs changed meanwhile (files added, say) is not all told to this one: the views kept for the
+        // sub-tabs are drawn again when next shown
+        ShownThingsChanged();
         ShowUnitPane();
+        ModValuesMayHaveChanged();
     }
 
     /// <summary>Another language: the names of sides, roles and nations are shown in it, the filters kept.</summary>
     private void LanguageChanged()
     {
-        Panes.SecondTitle = Texts.Get("Units.Pane.Title");
+        ShowPaneButtons();
         ShowSource();
         if (loaded is null) return;
         FillSideChoices();
         FillRoleChoice();
-        FillDivisionChoice();
         ShowAll();
     }
 
     // ---- the source ----
 
-    /// <summary>The games and mods found, and the one chosen in a Source list: the main window's, shared with the Files and Divisions tabs.</summary>
+    /// <summary>The games and mods found, and the one chosen in a Source list: the main window's, shared with the Files tab.</summary>
     private SourceSelection sources = new();
 
-    /// <summary>Shows and reads the main window's source, which the Files and Divisions tabs' lists choose too.</summary>
+    /// <summary>Shows and reads the main window's source, which the Files tab's list chooses too.</summary>
     public void UseSources(SourceSelection shared)
     {
         sources.Changed -= SourceChanged;
         sources = shared;
         sources.Changed += SourceChanged;
         SourceChoice.Selection = shared;
+        WeaponsView.UseSources(shared);
         ShowSource();
     }
 
@@ -149,6 +163,7 @@ public partial class UnitsPage : UserControl
         TitleText.Inlines.Clear();
         UnitSource? chosen = sources.Chosen;
         WhereText.Text = chosen?.Folder ?? "";
+        WeaponsView.ShowWhere(chosen?.Folder ?? "");
         if (chosen is null)
         {
             TitleText.Inlines.Add(new System.Windows.Documents.Run(Texts.Get("Main.Units")));
@@ -171,8 +186,7 @@ public partial class UnitsPage : UserControl
     {
         int mine = ++readsStarted;
         readingKey = source.Key;
-        ShowMessage(Texts.Get("Units.Reading", ("name", source.Name)), offerChooser: false);
-        StartReadingBar();
+        StartReading(source);
         // created here, so each step is told on the screen's thread
         var progress = new Progress<UnitReadStep>(step => { if (mine == readsStarted) ShowReadingStep(step); });
         ProblemsText.Visibility = Visibility.Collapsed;
@@ -182,7 +196,9 @@ public partial class UnitsPage : UserControl
         {
             read = await Task.Run(() => UnitLibrary.Load(source, cacheRoot, progress: progress));
         }
-        catch (Exception problem) when (problem is IOException or InvalidDataException or UnauthorizedAccessException)
+        // any failure, not only a file problem: one not caught left the reading card up for good, and the same source
+        // could not be chosen again
+        catch (Exception problem) when (problem is not OutOfMemoryException)
         {
             if (mine != readsStarted) return;
             readingKey = null;
@@ -193,130 +209,66 @@ public partial class UnitsPage : UserControl
         readingKey = null;
 
         loaded = read;
+        gameUnits = read;
+        filter.VanillaUnits = read.VanillaUnits;
+        // the open mod's values are worked out for this source once it shows
+        ModMarks.Changes = UnitChanges.None;
+        modValuesFrom = "";
+        unitsByRules = null;
+        addedUnitsShown = "";
+        NotShownText.Visibility = Visibility.Collapsed;
         // the source before is let go of, and what reading this one left behind (the game's archive lists, its
         // dictionaries, its unit files) is given back
         UnitPictureLibrary.Current = new UnitPictureLibrary(read.Pictures, read.Catalog.FlagSources);
+        UnitCountFont.Use(read.UnitCountFontFile);
         Memory.GiveBack();
         ProblemsText.Visibility = read.Problems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         ProblemsText.ToolTip = string.Join("\n", read.Problems.Take(20));
+        ReadDivisions();
         ResetFilters();
+        // a division chosen last time shows all its categories
+        if (chosenDivision is not null) filter.Factory = "";
         compared.Clear();
         pinned = null;
         selection.Selected = null;
-        StopReadingBar();
+        StopReading();
         MessageArea.Visibility = Visibility.Collapsed;
         ShowAll();
-        UnitsRead?.Invoke();
+        ModValuesMayHaveChanged();
     }
 
     /// <summary>Shows a line where the units go: while reading, or when there is nothing to read; with "Choose a Game Folder…" when it helps.</summary>
     private void ShowMessage(string text, bool offerChooser)
     {
-        StopReadingBar();
+        StopReading();
         MessageText.Text = text;
         ChooseFolderButton.Visibility = offerChooser ? Visibility.Visible : Visibility.Collapsed;
         MessageArea.Visibility = Visibility.Visible;
         CountText.Text = "";
-    }
-
-    // ---- the loading bar ----
-
-    /// <summary>
-    /// Where each step of reading starts and ends on the bar, as shares of it. Reading the units takes the most time.
-    /// The shares are a first guess, to be tuned by timing a game's read: the steps cannot say how far through
-    /// themselves they are.
-    /// </summary>
-    private static (double Start, double End) ShareOf(UnitReadStep step) => step switch
-    {
-        UnitReadStep.FindingFiles => (0, 0.2),
-        UnitReadStep.ReadingNames => (0.2, 0.4),
-        UnitReadStep.ReadingUnits => (0.4, 0.9),
-        _ => (0.9, 1),
-    };
-
-    /// <summary>Moves the bar on a block at a time while a step runs.</summary>
-    private readonly System.Windows.Threading.DispatcherTimer readingTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
-
-    /// <summary>Where the step being read ends on the bar: the bar creeps towards it but stops a block short.</summary>
-    private double readingStepEnd;
-
-    /// <summary>
-    /// Raised whenever the loading bar moves, shows or goes, with how far it is (null once it is hidden) and the step
-    /// under it, so the Divisions tab can show the same bar while the source is read.
-    /// </summary>
-    public event Action<double?, string>? ReadingBarChanged;
-
-    /// <summary>Tells the Divisions tab where the bar is now.</summary>
-    private void TellReadingBar() =>
-        ReadingBarChanged?.Invoke(ReadingBar.Visibility == Visibility.Visible ? ReadingBar.Fraction : null, ReadingStep.Text);
-
-    /// <summary>Shows an empty bar under the reading line and starts it creeping.</summary>
-    private void StartReadingBar()
-    {
-        ReadingBar.Fraction = 0;
-        ReadingBar.Visibility = Visibility.Visible;
-        ReadingStep.Visibility = Visibility.Visible;
-        ShowReadingStep(UnitReadStep.FindingFiles);
-        if (!readingTimerStarted)
-        {
-            readingTimer.Tick += (_, _) => CreepReadingBar();
-            readingTimerStarted = true;
-        }
-        readingTimer.Start();
-    }
-    private bool readingTimerStarted;
-
-    /// <summary>A step has begun: the bar is at least at its start, and its name shows under the bar.</summary>
-    private void ShowReadingStep(UnitReadStep step)
-    {
-        (double start, double end) = ShareOf(step);
-        ReadingBar.Fraction = Math.Max(ReadingBar.Fraction, start);
-        readingStepEnd = end;
-        ReadingStep.Text = Texts.Get(step switch
-        {
-            UnitReadStep.FindingFiles => "Units.Step.FindingFiles",
-            UnitReadStep.ReadingNames => "Units.Step.ReadingNames",
-            UnitReadStep.ReadingUnits => "Units.Step.ReadingUnits",
-            _ => "Units.Step.PreparingPictures",
-        });
-        TellReadingBar();
-    }
-
-    /// <summary>One block more, unless that would reach the end of the step being read.</summary>
-    private void CreepReadingBar()
-    {
-        double oneBlock = 1.0 / Controls.BlockBar.Blocks;
-        if (ReadingBar.Fraction + oneBlock < readingStepEnd - oneBlock / 2) ReadingBar.Fraction += oneBlock;
-        TellReadingBar();
-    }
-
-    /// <summary>Hides the bar: the read is done, or a message takes its place.</summary>
-    private void StopReadingBar()
-    {
-        readingTimer.Stop();
-        ReadingBar.Visibility = Visibility.Collapsed;
-        ReadingStep.Visibility = Visibility.Collapsed;
-        TellReadingBar();
+        WeaponsView.ShowMessage(text);
     }
 
     // ---- the filters ----
 
-    /// <summary>The filters as at first, for a source just read: every side, nation, role and division, and only units in a division.</summary>
+    /// <summary>
+    /// The filters as at first, for a source just read: every side, nation, role and division, and every unit, those in
+    /// no division too (a unit only some division's transport is in none, such as the M2A2 BRAT).
+    /// </summary>
     private void ResetFilters()
     {
         filter.Text = "";
         filter.Side = "";
         filter.Nations.Clear();
         filter.Role = "";
-        filter.Division = "";
-        filter.OnlyInDivision = true;
+        filter.OnlyInDivision = false;
+        filter.OnlyModded = false;
         filter.Factory = loaded is not null && loaded.Catalog.Units.Any(unit => unit.Factory == "Tanks") ? "Tanks" : "";
         foldedRoles.Clear();
         SearchBox.Text = "";
-        OnlyInDivision.IsChecked = true;
+        OnlyInDivision.IsChecked = false;
+        OnlyModded.IsChecked = false;
         FillSideChoices();
         FillRoleChoice();
-        FillDivisionChoice();
     }
 
     /// <summary>Both, and each side by its name, as buttons that stay pressed.</summary>
@@ -334,10 +286,7 @@ public partial class UnitsPage : UserControl
             button.Click += (_, _) =>
             {
                 filter.Side = side;
-                // a division of the other side would leave nothing to show
-                filter.Division = "";
                 FillSideChoices();
-                FillDivisionChoice();
                 ShowAll();
             };
             SideChoices.Children.Add(button);
@@ -361,26 +310,26 @@ public partial class UnitsPage : UserControl
         fillingLists = false;
     }
 
-    /// <summary>All divisions, then each multiplayer division of the side chosen, A to Z.</summary>
-    private void FillDivisionChoice()
-    {
-        fillingLists = true;
-        DivisionChoice.Items.Clear();
-        DivisionChoice.Items.Add(new ComboBoxItem { Content = Texts.Get("Units.AllDivisions"), Tag = "" });
-        IEnumerable<string> divisions = (loaded?.Catalog.Units ?? [])
-            .Where(unit => filter.Side == "" || unit.Side == filter.Side)
-            .SelectMany(unit => unit.Divisions)
-            .Distinct()
-            .Order(StringComparer.Create(Texts.Catalog.Culture, ignoreCase: true));
-        foreach (string division in divisions) DivisionChoice.Items.Add(new ComboBoxItem { Content = division, Tag = division });
-        DivisionChoice.SelectedItem = DivisionChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == filter.Division) ?? DivisionChoice.Items[0];
-        fillingLists = false;
-    }
+    /// <summary>
+    /// The search is applied once typing pauses, as on the Files tab: drawing the whole tab again for each letter made
+    /// typing lag with many units.
+    /// </summary>
+    private readonly System.Windows.Threading.DispatcherTimer searchPause = new() { Interval = TimeSpan.FromMilliseconds(160) };
 
     private void SearchChanged(object sender, TextChangedEventArgs e)
     {
-        filter.Text = SearchBox.Text.Trim();
-        if (loaded is not null) ShowAll();
+        if (searchPause.Tag is null)
+        {
+            searchPause.Tag = true;
+            searchPause.Tick += (_, _) =>
+            {
+                searchPause.Stop();
+                filter.Text = SearchBox.Text.Trim();
+                if (loaded is not null) ShowAll();
+            };
+        }
+        searchPause.Stop();
+        searchPause.Start();
     }
 
     private void RoleChosen(object sender, SelectionChangedEventArgs e)
@@ -390,16 +339,16 @@ public partial class UnitsPage : UserControl
         ShowAll();
     }
 
-    private void DivisionChosen(object sender, SelectionChangedEventArgs e)
-    {
-        if (fillingLists || DivisionChoice.SelectedItem is not ComboBoxItem { Tag: string division }) return;
-        filter.Division = division;
-        ShowAll();
-    }
-
     private void OnlyInDivisionClicked(object sender, RoutedEventArgs e)
     {
         filter.OnlyInDivision = OnlyInDivision.IsChecked == true;
+        if (loaded is not null) ShowAll();
+    }
+
+    /// <summary>"Only modded units": the units vanilla WARNO does not have, those the open mod adds among them.</summary>
+    private void OnlyModdedClicked(object sender, RoutedEventArgs e)
+    {
+        filter.OnlyModded = OnlyModded.IsChecked == true;
         if (loaded is not null) ShowAll();
     }
 
@@ -414,8 +363,12 @@ public partial class UnitsPage : UserControl
     /// The nations, under their side's name: each with a tick and how many units it has with the other filters. A nation
     /// can fight on both sides (Romania in Steel Division 2), so each side lists its own. Ticking nations shows only them.
     /// </summary>
-    private void FillNationList()
+    /// <param name="mayKeep">Whether the list may be left as it was drawn, when its counts are the same (a sub-tab switch).</param>
+    private void FillNationList(bool mayKeep = false)
     {
+        DrawnFor now = CountsDrawnForNow();
+        if (IsDrawnFor(nationListDrawnFor, now, mayKeep)) return;
+        nationListDrawnFor = now;
         NationList.Children.Clear();
         if (loaded is null) return;
         IReadOnlyList<string> sides = UnitNames.SidesOf(Game);
@@ -429,13 +382,19 @@ public partial class UnitsPage : UserControl
         }
     }
 
-    /// <summary>A side's heading in the nation list: bold, on the panel colour, with a stripe of the side's colour.</summary>
-    private static Bevel SideHeading(string side, bool firstSide)
+    /// <summary>A side's heading in the nation list (see <see cref="GroupHeading"/>).</summary>
+    private static Bevel SideHeading(string side, bool firstSide) => GroupHeading(UnitNames.Side(side), firstSide ? "side-a" : "side-b");
+
+    /// <summary>
+    /// A group's heading in the nation or division list, the same in both: bold, on the panel colour, with a stripe of
+    /// a theme colour (a side's, or the accent for the mod's own divisions) and a line under it.
+    /// </summary>
+    private static Bevel GroupHeading(string text, string colour)
     {
         var stripe = new System.Windows.Shapes.Rectangle { Width = 3, Margin = new Thickness(0, 0, 6, 0) };
-        stripe.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, firstSide ? "side-a" : "side-b");
-        var heading = new DockPanel { Children = { stripe, new TextBlock { Text = UnitNames.Side(side), FontWeight = FontWeights.Bold } } };
-        var row = new Bevel { Child = heading, Padding = new Thickness(8, 3, 8, 3), Edges = new Thickness(0, 0, 0, 1) };
+        stripe.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, colour);
+        var name = new TextBlock { Text = text, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis };
+        var row = new Bevel { Child = new DockPanel { Children = { stripe, name } }, Padding = new Thickness(8, 3, 8, 3), Edges = new Thickness(0, 0, 0, 1) };
         row.SetResourceReference(Bevel.BottomRightProperty, "line");
         row.SetResourceReference(Bevel.BackgroundProperty, "panel");
         return row;
@@ -466,8 +425,12 @@ public partial class UnitsPage : UserControl
     /// The factory tabs: ALL, then each factory of the game, each with how many units it would show with the other
     /// filters. Compare has none.
     /// </summary>
-    private void FillFactoryTabs()
+    /// <param name="mayKeep">Whether the tabs may be left as they were drawn, when their counts are the same (a sub-tab switch).</param>
+    private void FillFactoryTabs(bool mayKeep = false)
     {
+        DrawnFor now = CountsDrawnForNow();
+        if (IsDrawnFor(factoryTabsDrawnFor, now, mayKeep)) return;
+        factoryTabsDrawnFor = now;
         FactoryTabs.Children.Clear();
         if (loaded is null) return;
         Dictionary<string, int> counts = filter.FactoryCounts(loaded.Catalog.Units);
@@ -505,50 +468,108 @@ public partial class UnitsPage : UserControl
         if (loaded is not null) ShowAll();
     }
 
-    /// <summary>The view chosen stays pressed; + Add Units… is only on Compare.</summary>
+    /// <summary>
+    /// The view chosen stays pressed; + Add Units… is on Compare. A battlegroup has no views or factory tabs: its cards
+    /// are in rows, one a type.
+    /// </summary>
     private void ShowViewButtons()
     {
+        ViewButtons.Visibility = ShowsBattlegroup ? Visibility.Collapsed : Visibility.Visible;
+        FactoryTabs.Visibility = ShowsBattlegroup ? Visibility.Collapsed : Visibility.Visible;
         CardsButton.IsChecked = view == UnitView.Cards;
         TableButton.IsChecked = view == UnitView.Table;
         CompareButton.IsChecked = view == UnitView.Compare;
-        AddUnitsButton.Visibility = view == UnitView.Compare ? Visibility.Visible : Visibility.Collapsed;
-        PlaceViewButtons();
+        // a division's units are added from the Division pane's heading
+        AddUnitsButton.Visibility = view == UnitView.Compare && !ShowsBattlegroup ? Visibility.Visible : Visibility.Collapsed;
+        // a new unit is made among every unit, where it shows once made
+        NewUnitButton.Visibility = part == Data.ArmoryPart.Units && view != UnitView.Compare ? Visibility.Visible : Visibility.Collapsed;
         ShowZoom();
     }
 
-    /// <summary>
-    /// The view buttons sit at the list's top right, in the row of factory tabs; Compare has no such row (the list and
-    /// its pane are hidden), so while it is shown they move to a row of their own above it.
-    /// </summary>
-    private void PlaceViewButtons()
-    {
-        bool compare = view == UnitView.Compare;
-        ContentControl from = compare ? ViewButtonsSlot : CompareButtonsSlot;
-        ContentControl to = compare ? CompareButtonsSlot : ViewButtonsSlot;
-        if (to.Content == ViewButtons) return;
-        from.Content = null;
-        to.Content = ViewButtons;
-    }
-
     /// <summary>Shows everything again after a filter, the view or the source changed: the nations, the factory tabs and the view.</summary>
-    private void ShowAll()
+    private void ShowAll() => ShowAll(onlyPartChanged: false);
+
+    /// <summary>
+    /// Shows everything again; after only a sub-tab switch (<paramref name="onlyPartChanged"/>), the views and panes
+    /// drawn since the last change are shown as they were (see UnitsPage.KeptViews.cs).
+    /// </summary>
+    private void ShowAll(bool onlyPartChanged)
     {
         if (loaded is null) return;
-        FillNationList();
-        FillFactoryTabs();
-        bool compare = view == UnitView.Compare;
+        if (!onlyPartChanged) ShownThingsChanged();
+        KeepADivisionChosen();
+        UseDivisionMarks();
+        // on the Divisions sub-tab, only the division's units: the filters narrow them further
+        filter.InDivision = ShowsDivisionUnits ? ChosenDivisionUnits() : null;
+        FillNationList(mayKeep: onlyPartChanged);
+        FillFactoryTabs(mayKeep: onlyPartChanged);
+        FillDivisionList(mayKeep: onlyPartChanged);
+        ShowChosenDivision();
+        ShowTitle();
+        ShowViewButtons();
+        // a battlegroup is shown whatever the view: it has no table, and Compare is the units'
+        bool battlegroup = ShowsBattlegroup;
+        bool compare = view == UnitView.Compare && !battlegroup;
+        bool divisionCards = view == UnitView.Cards && ShowsDivisionUnits;
+        FrameworkElement cardsView = battlegroup ? BattlegroupScroller : divisionCards ? DivisionCardsScroller : CardsList;
+        bool cardsViewWasHidden = cardsView.Visibility != Visibility.Visible;
         Panes.Visibility = compare ? Visibility.Collapsed : Visibility.Visible;
         CompareBox.Visibility = compare ? Visibility.Visible : Visibility.Collapsed;
-        CardsList.Visibility = view == UnitView.Cards ? Visibility.Visible : Visibility.Collapsed;
-        TableList.Visibility = view == UnitView.Table ? Visibility.Visible : Visibility.Collapsed;
+        CardsList.Visibility = view == UnitView.Cards && !divisionCards && !battlegroup ? Visibility.Visible : Visibility.Collapsed;
+        DivisionCardsScroller.Visibility = divisionCards ? Visibility.Visible : Visibility.Collapsed;
+        TableList.Visibility = view == UnitView.Table && !battlegroup ? Visibility.Visible : Visibility.Collapsed;
+        BattlegroupScroller.Visibility = battlegroup ? Visibility.Visible : Visibility.Collapsed;
         shown = filter.Apply(loaded.Catalog.Units);
-        if (view == UnitView.Cards) ShowCards();
+        // the battlegroup's cards are not filtered, so the unit selected there stays selected
+        if (!battlegroup) selection.KeepOnly(shown);
+        if (battlegroup || view == UnitView.Cards) ShowCardsView(cardsView, cardsViewWasHidden, mayKeep: onlyPartChanged);
         else if (view == UnitView.Table) ShowTable();
         else ShowCompare();
-        ShowUnitPane();
-        Footnote.Text = compare
+        if (onlyPartChanged) ShowUnitPaneUnlessDrawn();
+        else ShowUnitPane();
+        ShowDivisionPane(mayKeep: onlyPartChanged);
+        ShowFootnote();
+        CountText.Text = battlegroup ? BattlegroupCountText()
+            : compare ? Texts.Count("Units.Comparing", compared.Count) : Texts.CountWide("Units.Shown", shown.Count);
+        if (part == Data.ArmoryPart.Weapons) ShowWeapons();
+    }
+
+    /// <summary>The note at the foot of the tab: how Compare reads its numbers, or how to use the list.</summary>
+    private void ShowFootnote()
+    {
+        if (messageTimer?.IsEnabled == true) return;
+        if (ShowsBattlegroup)
+        {
+            Footnote.Text = Texts.Get("Divisions.Battlegroup.Footnote");
+            return;
+        }
+        Footnote.Text = view == UnitView.Compare
             ? Texts.Get("Units.Footnote.Compare") + " " + Texts.Get(Game.RangeUnit == "GRU" ? "Units.Footnote.RangeGru" : "Units.Footnote.RangeMetres")
             : Texts.Get("Units.Footnote.List");
-        CountText.Text = compare ? Texts.Count("Units.Comparing", compared.Count) : Texts.CountWide("Units.Shown", shown.Count);
+    }
+
+    /// <summary>How long a message stays at the foot of the tab before its note comes back.</summary>
+    private static readonly TimeSpan MessageTime = TimeSpan.FromSeconds(4);
+
+    private System.Windows.Threading.DispatcherTimer? messageTimer;
+
+    /// <summary>
+    /// Shows a message, such as what Undo did, at the foot of the tab in place of its note for a few seconds: the tab
+    /// has no message line of its own, as the Files and Rules tabs have.
+    /// </summary>
+    public void SayForAMoment(string message)
+    {
+        if (messageTimer is null)
+        {
+            messageTimer = new System.Windows.Threading.DispatcherTimer { Interval = MessageTime };
+            messageTimer.Tick += (_, _) =>
+            {
+                messageTimer.Stop();
+                ShowFootnote();
+            };
+        }
+        messageTimer.Stop();
+        Footnote.Text = message;
+        messageTimer.Start();
     }
 }

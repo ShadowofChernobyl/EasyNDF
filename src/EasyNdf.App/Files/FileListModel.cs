@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Text.Json.Nodes;
+using System.Windows.Threading;
 using EasyNdf.Data;
 using EasyNdf.Data.FileList;
 using EasyNdf.Engine;
@@ -22,15 +23,15 @@ public sealed class FileListModel : INotifyPropertyChanged
     private FileRow? lastClicked;
     private int nextId = 1;
 
-    /// <summary>Starts an empty list for the open mod's presets.</summary>
-    /// <param name="openModPresets">The open mod's presets.</param>
-    /// <param name="allPresetNames">The names of every mod's presets: the longest sets the Preset column's width.</param>
-    public FileListModel(IReadOnlyList<ModPreset> openModPresets, IReadOnlyList<string> allPresetNames)
+    /// <summary>Starts an empty list.</summary>
+    public FileListModel()
     {
-        AllPresetNames = allPresetNames;
-        OpenModPresets = openModPresets;
-        PresetChoices = [PresetChoice.None, .. openModPresets.Select(p => new PresetChoice(p))];
         Refilter(); // so the empty list says "No files yet"
+        // the Mods column marks a mod in a conflict with ⚠, found by a run
+        Mods.ModConflictList.Changed += () =>
+        {
+            foreach (FileRow row in rowOf.Values) row.Refresh();
+        };
     }
 
     /// <summary>
@@ -38,6 +39,12 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// or "Group by folder". The page saves them (see <see cref="SaveView"/>).
     /// </summary>
     public event Action? ViewChanged;
+
+    /// <summary>
+    /// Raised when files are added to the list or taken out of it, so what offers the listed files (the rule window's
+    /// Property scan, a Lookup rule's other file) can offer them again.
+    /// </summary>
+    public event Action? FilesChanged;
 
     /// <summary>
     /// Takes the view the app saved last time: columns, order and sort from the settings (the HTML app's <c>cols</c>,
@@ -48,7 +55,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         if (settings["cols"] is JsonObject columns)
         {
             List<FileColumn> order = IdsToColumns(columns["order"] as JsonArray);
-            foreach (FileColumn column in DefaultColumnOrder) if (!order.Contains(column)) order.Add(column);
+            AddNewColumns(order);
             columnOrder = order;
             hiddenColumns = [.. IdsToColumns(columns["hidden"] as JsonArray)];
         }
@@ -66,6 +73,22 @@ public sealed class FileListModel : INotifyPropertyChanged
                     manualWidths[column] = value;
         }
         Refilter();
+    }
+
+    /// <summary>
+    /// Columns the saved order does not have yet (added in a later version, such as Armory) go where a new list has
+    /// them: before the next column that comes after them there, else at the end.
+    /// </summary>
+    private static void AddNewColumns(List<FileColumn> order)
+    {
+        for (int at = DefaultColumnOrder.Length - 1; at >= 0; at--)
+        {
+            FileColumn column = DefaultColumnOrder[at];
+            if (order.Contains(column)) continue;
+            int next = DefaultColumnOrder.Skip(at + 1).Select(later => order.IndexOf(later)).FirstOrDefault(place => place >= 0, -1);
+            if (next < 0) order.Add(column);
+            else order.Insert(next, column);
+        }
     }
 
     /// <summary>Writes the view into the settings and what the app remembers, in the HTML app's form.</summary>
@@ -86,41 +109,34 @@ public sealed class FileListModel : INotifyPropertyChanged
     private static List<FileColumn> IdsToColumns(JsonArray? ids) =>
         ids is null ? [] : [.. ids.Select(id => FileColumnIds.FromId((string?)id)).OfType<FileColumn>().Distinct()];
 
-    /// <summary>Another mod was opened: new files get its presets, and the rows' dropdowns offer them.</summary>
-    public void OpenMod(IReadOnlyList<ModPreset> presets)
+    /// <summary>
+    /// The mods, their switches or their rule sets changed (see <see cref="AppData.ModsChanged"/>): which mods run on each
+    /// file is worked out again. A row whose mods changed loses its last message, which was about other rules. Returns
+    /// the rows to read now: those with rules that have not been read.
+    /// </summary>
+    public IReadOnlyList<FileEntry> FollowMods()
     {
-        OpenModPresets = presets;
-        PresetChoices = [PresetChoice.None, .. presets.Select(p => new PresetChoice(p))];
-        Changed();
+        string Before(FileEntry entry) => string.Join("|", entry.ModsOnFile.Select(mod => mod.Mod + ":" + string.Join(",", mod.RuleSets) + ":" + mod.HasArmoryChanges));
+        Dictionary<FileEntry, string> before = entries.ToDictionary(entry => entry, Before);
+        MarkModsOnFiles(entries);
+        foreach (FileEntry entry in entries)
+            if (Before(entry) != before[entry]) entry.ClearMessage();
+        Refilter();
+        return entries.Where(e => e.Source is not null && e.HasRules && !e.Scanned).ToList();
     }
 
-    /// <summary>The names of every mod's presets.</summary>
-    public IReadOnlyList<string> AllPresetNames { get; private set; }
-
     /// <summary>
-    /// The mods changed (see <see cref="AppData.ModsChanged"/>): a row whose preset was deleted has none now; when another
-    /// mod was opened, every row gets the preset of that mod its name points to (the HTML app's <c>syncFilesToMod</c>);
-    /// when presets were pasted or imported, rows without one may get one. Returns the rows to read now: those with a
-    /// preset that have not been read.
+    /// Works out which mods run on each of these files (<see cref="FileEntry.ModsOnFile"/>), and whether the Armory has
+    /// changes for them. The mods are looked at once for the whole list, as a list can hold thousands of files.
     /// </summary>
-    public IReadOnlyList<FileEntry> FollowMods(IReadOnlyList<Mod> mods, Mod openMod, ModsChange change)
+    private static void MarkModsOnFiles(IEnumerable<FileEntry> files)
     {
-        var allPresets = mods.SelectMany(m => m.Presets).ToHashSet();
-        AllPresetNames = [.. allPresets.Select(p => p.Name)];
-        OpenMod(openMod.Presets);
-        bool autoAssign = AppData.Current.Settings["autoAssign"]?.GetValue<bool>() != false;
-        foreach (FileEntry entry in entries)
+        List<(Mod Mod, IReadOnlySet<string> Files)> armoryFiles = FileRunner.ArmoryFilesByMod();
+        foreach (FileEntry entry in files)
         {
-            ModPreset? preset = entry.Preset;
-            if (preset is not null && !allPresets.Contains(preset)) preset = null;
-            if (change.OpenModChanged) preset = autoAssign ? PresetMatching.Match(entry.Name, entry.Folder, OpenModPresets) : null;
-            else if (change.PresetsAdded && preset is null && autoAssign) preset = PresetMatching.Match(entry.Name, entry.Folder, OpenModPresets);
-            if (ReferenceEquals(preset, entry.Preset)) continue;
-            entry.Preset = preset;
-            entry.ClearMessage();
+            entry.ModsOnFile = FileRunner.ModsOn(entry, armoryFiles);
+            entry.HasDivisionRules = entry.ModsOnFile.Any(mod => mod.HasArmoryChanges);
         }
-        Refilter();
-        return entries.Where(e => e.Source is not null && e.Preset is not null && !e.Scanned).ToList();
     }
 
     /// <summary>Every column, in the order they come in; the Columns popup lists them so.</summary>
@@ -129,7 +145,7 @@ public sealed class FileListModel : INotifyPropertyChanged
 
     /// <summary>The columns in the order a new list has them, as the HTML app's <c>COLS</c>.</summary>
     private static readonly FileColumn[] DefaultColumnOrder =
-        [FileColumn.On, FileColumn.Number, FileColumn.File, FileColumn.Size, FileColumn.Lines, FileColumn.Modified, FileColumn.Preset, FileColumn.ExportFolder, FileColumn.Status];
+        [FileColumn.On, FileColumn.Number, FileColumn.File, FileColumn.Size, FileColumn.Lines, FileColumn.Modified, FileColumn.Armory, FileColumn.Mods, FileColumn.ExportFolder, FileColumn.Status];
 
     /// <summary>The columns the Columns popup has hidden. Source file is always shown.</summary>
     private HashSet<FileColumn> hiddenColumns = [FileColumn.Lines, FileColumn.Modified, FileColumn.ExportFolder];
@@ -153,7 +169,7 @@ public sealed class FileListModel : INotifyPropertyChanged
     private static double StartingWidth(FileColumn column) => column switch
     {
         FileColumn.On => 40, FileColumn.Number => 44, FileColumn.File => 240, FileColumn.Size => 80, FileColumn.Lines => 70,
-        FileColumn.Modified => 130, FileColumn.Preset => 240, FileColumn.ExportFolder => 220, _ => 300,
+        FileColumn.Modified => 130, FileColumn.Armory => 92, FileColumn.Mods => 240, FileColumn.ExportFolder => 220, _ => 300,
     };
 
     /// <summary>A Columns popup checkbox: shows or hides a column. A hidden column the list was sorted by gives way to Source file.</summary>
@@ -224,17 +240,11 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// <inheritdoc/>
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    /// <summary>The open mod's presets: the ones a new file can get, and the rows' dropdowns offer.</summary>
-    public IReadOnlyList<ModPreset> OpenModPresets { get; private set; }
-
-    /// <summary>What each row's preset dropdown offers: "(none)", then the open mod's presets.</summary>
-    public IReadOnlyList<PresetChoice> PresetChoices { get; private set; }
-
     /// <summary>The file rows on screen, in the order shown: those that match the search and filter, less those in closed folders.</summary>
-    public ObservableCollection<FileRow> Shown { get; } = [];
+    public ReplaceableCollection<FileRow> Shown { get; } = [];
 
     /// <summary>What the list shows, in order: file rows, and with "Group by folder" a <see cref="FolderRow"/> above each folder's files.</summary>
-    public ObservableCollection<object> ListItems { get; } = [];
+    public ReplaceableCollection<object> ListItems { get; } = [];
 
     /// <summary>
     /// The rows that match the search and "Show only", in the order shown, in closed folders too. Select all, the
@@ -322,6 +332,58 @@ public sealed class FileListModel : INotifyPropertyChanged
     }
     private bool isBusy;
 
+    /// <summary>Whether the run going is Run export, which writes files, rather than Preview: closing the app then asks first.</summary>
+    public bool IsExporting { get; private set; }
+
+    /// <summary>What the progress line under the buttons says while a run goes: "Exporting Ammunition.ndf: 3 of 17 (18%)".</summary>
+    public string RunProgress { get; private set; } = "";
+
+    /// <summary>How far the run has got, from 0 to 100, by the files finished.</summary>
+    public double RunPercent { get; private set; }
+
+    /// <summary>Whether Cancel was pressed: the run stops once the file it is on is finished.</summary>
+    public bool IsCancelRequested { get; private set; }
+
+    /// <summary>Starts a run's progress line, at nothing done.</summary>
+    /// <param name="exporting">True for Run export, false for Preview.</param>
+    public void StartProgress(bool exporting)
+    {
+        IsExporting = exporting;
+        IsCancelRequested = false;
+        RunPercent = 0;
+        RunProgress = "";
+        ProgressChanged();
+    }
+
+    /// <summary>Shows which file the run is on, and how many are finished.</summary>
+    /// <param name="fileName">The file being worked on now.</param>
+    /// <param name="finished">How many files are finished.</param>
+    /// <param name="total">How many files the run takes.</param>
+    public void ShowProgress(string fileName, int finished, int total)
+    {
+        RunPercent = total == 0 ? 0 : 100.0 * finished / total;
+        string doing = IsExporting ? "Files.Run.Progress.Exporting" : "Files.Run.Progress.Previewing";
+        RunProgress = Texts.Get(doing, ("file", fileName), ("done", finished + 1), ("total", total), ("percent", (int)RunPercent));
+        ProgressChanged();
+    }
+
+    /// <summary>Cancel on the progress line: the file being worked on is finished, and the rest are left as they are.</summary>
+    public void CancelRun()
+    {
+        if (!isBusy) return;
+        IsCancelRequested = true;
+        RunProgress = Texts.Get("Files.Run.Progress.Stopping");
+        ProgressChanged();
+    }
+
+    /// <summary>Tells the progress line, and only it, to show the run's progress again: a run of thousands of files tells it often.</summary>
+    private void ProgressChanged()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RunProgress)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RunPercent)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCancelRequested)));
+    }
+
     /// <summary>Whether the buttons that change the list can be used now.</summary>
     public bool IsIdle => !isBusy;
 
@@ -340,16 +402,21 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// <summary>The row Details describes: the one clicked last, or the first one run.</summary>
     public FileEntry? DetailsRow { get; set; }
 
-    /// <summary>Gives rows an export folder, and makes it the one their mods' new files start with.</summary>
+    /// <summary>
+    /// Gives rows an export folder. When rules run on one of them, it becomes the folder the open mod's new files start
+    /// with: the mods export together, into the open mod's folder.
+    /// </summary>
     public void SetExportFolder(IEnumerable<FileEntry> rows, string folder)
     {
+        bool anyWithRules = false;
         foreach (FileEntry row in rows)
         {
             row.ExportFolder = folder;
             row.ClearMessage();
-            if (row.Preset is not null && AppData.Current.ModOf(row.Preset) is Mod mod) AppData.Current.RememberExportFolder(mod, folder);
+            anyWithRules |= row.HasRules;
             RowChanged(row);
         }
+        if (anyWithRules) AppData.Current.RememberExportFolder(AppData.Current.OpenMod, folder);
     }
 
     /// <summary>The × after a row's export folder: the row has none again.</summary>
@@ -434,6 +501,7 @@ public sealed class FileListModel : INotifyPropertyChanged
             if (choice == DuplicateChoice.Replace)
             {
                 Replace(existing!, file);
+                MarkModsOnFiles([existing!]);
                 fresh.Add(existing!);
                 replaced++;
                 continue;
@@ -445,7 +513,7 @@ public sealed class FileListModel : INotifyPropertyChanged
             listed.TryAdd(key, row);
         }
 
-        int waiting = fromFolder ? fresh.Count(e => e.Preset is null) : 0;
+        int waiting = fromFolder ? fresh.Count(e => !e.HasRules) : 0;
         var said = new List<string>();
         if (fromFolder && added > 0) said.Add(Texts.Count("Files.Added.FromFolder", added, ("count", FileStatus.Count(added))));
         if (replaced > 0) said.Add(Texts.Count("Files.Added.Replaced", replaced));
@@ -453,10 +521,11 @@ public sealed class FileListModel : INotifyPropertyChanged
         if (said.Count > 0)
             flash = string.Join(", ", said) + "." + (waiting > 0 ? " " + Texts.Get("Files.Added.Waiting", ("count", FileStatus.Count(waiting))) : "");
         Refilter();
-        return fromFolder ? fresh.Where(e => e.Preset is not null).ToList() : fresh;
+        if (added > 0 || replaced > 0) FilesChanged?.Invoke();
+        return fromFolder ? fresh.Where(e => e.HasRules).ToList() : fresh;
     }
 
-    /// <summary>A new row for a file, with the open mod's preset its name points to.</summary>
+    /// <summary>A new row for a file, with the mods that run on it.</summary>
     private FileEntry NewRow(FileToAdd file)
     {
         var row = new FileEntry
@@ -468,16 +537,14 @@ public sealed class FileListModel : INotifyPropertyChanged
             ArchivedContent = file.ArchivedContent,
             Size = file.Size,
             Modified = file.Modified,
-            // the "Assign presets by file name" setting
-            Preset = AppData.Current.Settings["autoAssign"]?.GetValue<bool>() == false ? null : PresetMatching.Match(file.Name, file.Folder, OpenModPresets),
         };
-        // A file starts with the export folder its preset's mod last used.
-        if (row.Preset is not null && AppData.Current.ModOf(row.Preset) is Mod mod)
-            row.ExportFolder = AppData.Current.ExportFolderOf(mod);
+        MarkModsOnFiles([row]);
+        // A file with rules starts with the export folder the open mod last used: the mods export together, into it.
+        if (row.HasRules) row.ExportFolder = AppData.Current.ExportFolderOf(AppData.Current.OpenMod);
         return row;
     }
 
-    /// <summary>Puts a newly picked file in a listed row's place; the row keeps its preset and export folder.</summary>
+    /// <summary>Puts a newly picked file in a listed row's place; the row keeps its export folder.</summary>
     private static void Replace(FileEntry entry, FileToAdd file)
     {
         entry.Source = file.Source;
@@ -508,6 +575,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         try
         {
             string text = FileContent.Text(entry);
+            if (Data.Divisions.FileAndTextRules.IsDictionaryFile(entry.Name)) return ReadNamesFile(entry, text);
             LoadSummary summary = SharedNames(new NdfEngine().Load(text));
             entry.ExportStamp = ExportStamp.Of(text);
             entry.Info = FileStatus.Holds(summary.Descriptors, summary.Constants, summary.Unnamed);
@@ -524,6 +592,20 @@ public sealed class FileListModel : INotifyPropertyChanged
             entry.IsError = true;
             return null;
         }
+    }
+
+    /// <summary>
+    /// A dictionary file such as UNITS.csv is not NDF: its lines are counted, and it holds nothing the property scan or the references want.
+    /// </summary>
+    private static LoadSummary? ReadNamesFile(FileEntry entry, string text)
+    {
+        entry.Lines = text.Split('\n').Count(line => line.Trim() != "");
+        entry.Info = "";
+        entry.Message = "";
+        entry.IsError = false;
+        entry.Scanned = true;
+        entry.References = [];
+        return null;
     }
 
     /// <summary>
@@ -557,7 +639,43 @@ public sealed class FileListModel : INotifyPropertyChanged
     public void RowChanged(FileEntry entry)
     {
         if (rowOf.TryGetValue(entry, out FileRow? row)) row.Refresh();
-        // a row's news leaves a warning in the note as it is
+        TellListChanged();
+    }
+
+    /// <summary>The least time between two tellings that the whole list changed, while rows change one after another.</summary>
+    private static readonly TimeSpan ListNewsGap = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>When the whole list was last said to have changed, for <see cref="TellListChanged"/>.</summary>
+    private DateTime listNewsTold;
+
+    /// <summary>Tells the whole list later, when it was told less than <see cref="ListNewsGap"/> ago.</summary>
+    private DispatcherTimer? listNewsLater;
+
+    /// <summary>
+    /// After a row's news, everything that shows the list as a whole is told (the note, the counts, the buttons, Undo, the
+    /// Armory), but at most five times a second: each of them goes through every row, and a session of 4,000 files read
+    /// one after another made the window stall for some ten seconds. A row's news leaves a warning in the note as it is.
+    /// </summary>
+    private void TellListChanged()
+    {
+        if (DateTime.UtcNow - listNewsTold >= ListNewsGap)
+        {
+            TellListChangedNow();
+            return;
+        }
+        if (listNewsLater is null)
+        {
+            listNewsLater = new DispatcherTimer { Interval = ListNewsGap };
+            listNewsLater.Tick += (_, _) => TellListChangedNow();
+        }
+        if (!listNewsLater.IsEnabled) listNewsLater.Start();
+    }
+
+    /// <summary>Tells everything that shows the list as a whole that it changed, now, rather than up to a fifth of a second later.</summary>
+    internal void TellListChangedNow()
+    {
+        listNewsLater?.Stop();
+        listNewsTold = DateTime.UtcNow;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     }
 
@@ -610,6 +728,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         entries.RemoveAll(selected.Contains);
         flash = Texts.Get("Files.Removed", ("files", Files(selected.Count)));
         Refilter();
+        FilesChanged?.Invoke();
     }
 
     /// <summary>"Remove all": empties the list. Files on disk are not touched.</summary>
@@ -620,11 +739,12 @@ public sealed class FileListModel : INotifyPropertyChanged
         entries.Clear();
         lastClicked = null;
         Refilter();
+        FilesChanged?.Invoke();
     }
 
     /// <summary>
-    /// Undo and Redo: the list gets back the rows it had at an earlier moment, in that order, each with the preset, On
-    /// checkbox and export folder it had then. A row whose preset or folder changes loses its last message.
+    /// Undo and Redo: the list gets back the rows it had at an earlier moment, in that order, each with the On checkbox
+    /// and export folder it had then. A row whose folder changes loses its last message.
     /// </summary>
     public void PutBack(IReadOnlyList<SavedFileRow> rows)
     {
@@ -632,35 +752,21 @@ public sealed class FileListModel : INotifyPropertyChanged
         foreach (SavedFileRow saved in rows)
         {
             FileEntry entry = saved.Entry;
-            if (!ReferenceEquals(entry.Preset, saved.Preset) || entry.ExportFolder != saved.ExportFolder) entry.ClearMessage();
-            entry.Preset = saved.Preset;
-            entry.MissingPreset = saved.MissingPreset;
+            if (entry.ExportFolder != saved.ExportFolder) entry.ClearMessage();
             entry.On = saved.On;
             entry.ExportFolder = saved.ExportFolder;
             entries.Add(entry);
         }
         if (lastClicked is not null && !entries.Contains(lastClicked.Entry)) lastClicked = null;
         Refilter();
+        FilesChanged?.Invoke();
     }
 
-    /// <summary>
-    /// A row brought back from the last session (see <see cref="FileSession"/>): its preset by name, from the open mod
-    /// (a name it lacks is kept as missing), its On box and its export folder.
-    /// </summary>
+    /// <summary>A row brought back from the last session (see <see cref="FileSession"/>): its On box and its export folder.</summary>
     public void Restore(FileEntry entry, FileSession.KeptRow kept)
     {
         entry.On = kept.On;
         entry.ExportFolder = kept.ExportFolder;
-        if (kept.Preset is string name)
-        {
-            entry.Preset = OpenModPresets.FirstOrDefault(p => p.Name == name);
-            entry.MissingPreset = entry.Preset is null ? name : null;
-        }
-        else
-        {
-            entry.Preset = null;
-            entry.MissingPreset = null;
-        }
         RowChanged(entry);
     }
 
@@ -672,6 +778,7 @@ public sealed class FileListModel : INotifyPropertyChanged
     {
         entries.Remove(row.Entry);
         Refilter();
+        FilesChanged?.Invoke();
     }
 
     /// <summary>
@@ -697,7 +804,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         else
         {
             int available = (int)Math.Floor(listWidth - buttonsWidth) - 2;
-            fitted = ColumnFit.Widths(shown, entries, AllPresetNames, groupedByFolder: groupByFolder, available, width)
+            fitted = ColumnFit.Widths(shown, entries, groupedByFolder: groupByFolder, available, width)
                 .ToDictionary(pair => pair.Key, pair => (double)pair.Value);
         }
         Columns.Set(shown, fitted, buttonsWidth, gap);
@@ -760,8 +867,10 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// </summary>
     private void Refilter()
     {
-        foreach (FileEntry gone in rowOf.Keys.Where(e => !entries.Contains(e)).ToList()) rowOf.Remove(gone);
-        if (DetailsRow is not null && !entries.Contains(DetailsRow)) DetailsRow = null;
+        // a set: looking each row up in the list took about ten million steps for each refresh of 4,000 files
+        var listed = new HashSet<FileEntry>(entries);
+        foreach (FileEntry gone in rowOf.Keys.Where(e => !listed.Contains(e)).ToList()) rowOf.Remove(gone);
+        if (DetailsRow is not null && !listed.Contains(DetailsRow)) DetailsRow = null;
         Dictionary<string, int> sameFile = entries.GroupBy(e => e.Key).ToDictionary(group => group.Key, group => group.Count());
 
         matching = [];
@@ -771,45 +880,46 @@ public sealed class FileListModel : INotifyPropertyChanged
             {
                 rowOf[entry] = row = new FileRow(entry);
                 row.SwitchedOnOrOff += (_, _) => Changed();
-                row.PresetChosen += (_, _) => Changed();
             }
             row.SameFileCount = sameFile[entry.Key];
-            row.ListChoices = PresetChoices;
             matching.Add(row);
         }
         foreach (FileRow row in rowOf.Values.Except(matching)) row.IsSelected = false;
 
         Columns.ShowColumns(ShownColumns);
-        Shown.Clear();
-        ListItems.Clear();
+        // the lines are put together here, then shown in one go (see ReplaceableCollection)
+        var shownRows = new List<FileRow>();
+        var lines = new List<object>();
         if (!groupByFolder)
-            foreach (FileRow row in matching) ShowRow(row, inFolder: false);
+            foreach (FileRow row in matching) ShowRow(row, inFolder: false, shownRows, lines);
         else
         {
             // one line per folder, in name order, with its files under it when it is open; while searching, folders with matches are open
             foreach (IGrouping<string, FileRow> folder in matching.GroupBy(r => r.Entry.Folder).OrderBy(g => g.Key, StringComparer.CurrentCulture))
             {
                 bool isOpen = openFolders.Contains(folder.Key) || Search != "";
-                ListItems.Add(new FolderRow(folder.Key, [.. folder], isOpen));
+                lines.Add(new FolderRow(folder.Key, [.. folder], isOpen));
                 if (isOpen)
-                    foreach (FileRow row in folder) ShowRow(row, inFolder: true);
+                    foreach (FileRow row in folder) ShowRow(row, inFolder: true, shownRows, lines);
             }
         }
-        if (ListItems.Count == 0) ListItems.Add(new EmptyListItem(EmptyText));
+        if (lines.Count == 0) lines.Add(new EmptyListItem(EmptyText));
         // A long list is drawn as the HTML app draws one: a file's folder and its size and date share one line.
-        bool isLong = ListItems.Count > LongListRows;
-        foreach (FileRow row in Shown) row.IsInLongList = isLong;
+        bool isLong = lines.Count > LongListRows;
+        foreach (FileRow row in shownRows) row.IsInLongList = isLong;
+        Shown.ReplaceAll(shownRows);
+        ListItems.ReplaceAll(lines);
         Changed();
     }
 
-    /// <summary>Puts a file row on screen, numbered in the order shown.</summary>
-    private void ShowRow(FileRow row, bool inFolder)
+    /// <summary>Adds a file row to the lines to show, numbered in the order shown.</summary>
+    private static void ShowRow(FileRow row, bool inFolder, List<FileRow> shownRows, List<object> lines)
     {
-        row.Number = Shown.Count + 1;
+        row.Number = shownRows.Count + 1;
         row.IsInFolder = inFolder;
         row.Refresh();
-        Shown.Add(row);
-        ListItems.Add(row);
+        shownRows.Add(row);
+        lines.Add(row);
     }
 
     /// <summary>A click on a folder's line: opens it, or closes it.</summary>
@@ -854,11 +964,9 @@ public sealed class FileListModel : INotifyPropertyChanged
 
 /// <summary>A file row as it was at one moment, for Undo and Redo: the row itself, and what the user can change about it.</summary>
 /// <param name="Entry">The row, kept whole with its file, so Undo can bring back a removed row as it was.</param>
-/// <param name="Preset">The row's preset then.</param>
-/// <param name="MissingPreset">The name of a preset the row asked for that did not exist, if any.</param>
 /// <param name="On">The On checkbox then.</param>
 /// <param name="ExportFolder">The export folder then.</param>
-public sealed record SavedFileRow(FileEntry Entry, ModPreset? Preset, string? MissingPreset, bool On, string? ExportFolder);
+public sealed record SavedFileRow(FileEntry Entry, bool On, string? ExportFolder);
 
 /// <summary>What to do with a file already in the list.</summary>
 public enum DuplicateChoice

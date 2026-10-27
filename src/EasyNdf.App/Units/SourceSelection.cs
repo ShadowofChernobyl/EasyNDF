@@ -6,9 +6,9 @@ using EasyNdf.Data.Units;
 namespace EasyNdf.App.Units;
 
 /// <summary>
-/// The game or mod the app works with, chosen in the Source list of the Files, Units or Divisions tab: the games found
-/// on this computer and their mods, and the one chosen. The main window has one (<see cref="MainView.Sources"/>) and
-/// gives it to the three tabs, so their lists always show the same choice. Nothing is chosen when the app starts, so nothing slow happens before the
+/// The game or mod the app works with, chosen in the Source list of the Files or Units tab: the games found on this
+/// computer and their mods, and the one chosen. The main window has one (<see cref="MainView.Sources"/>) and gives it
+/// to both tabs, so their lists always show the same choice. Nothing is chosen when the app starts, so nothing slow happens before the
 /// user asks for it.
 /// </summary>
 public sealed class SourceSelection

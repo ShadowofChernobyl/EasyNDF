@@ -22,7 +22,11 @@ public partial class MessageOverlay : UserControl
         {
             if (e.Key == Key.Escape) { e.Handled = true; Close(DialogChoice.Cancel); }
             // Enter in the text box answers OK
-            else if (e.Key == Key.Enter && Input.IsKeyboardFocused) { e.Handled = true; Close(DialogChoice.Ok); }
+            else if (e.Key == Key.Enter && Input.IsKeyboardFocused)
+            {
+                e.Handled = true;
+                if (OkButton.IsEnabled) Close(DialogChoice.Ok);
+            }
         };
     }
 
@@ -39,7 +43,14 @@ public partial class MessageOverlay : UserControl
         Extra.Content = options.Extra;
         Extra.Visibility = options.Extra is null ? Visibility.Collapsed : Visibility.Visible;
         Input.Visibility = options.Input is null ? Visibility.Collapsed : Visibility.Visible;
+        Input.Tag = options.Placeholder;
+        needsInput = options.NeedsInput;
         Input.Text = options.Input ?? "";
+        ShowOkButtonState();
+        NoteText.Text = options.Note ?? "";
+        NoteText.Visibility = options.Note is null ? Visibility.Collapsed : Visibility.Visible;
+        // the note sits close under the box it explains
+        Input.Margin = new Thickness(0, 0, 0, options.Note is null ? 10 : 4);
         Check.Content = options.CheckText;
         Check.IsChecked = false;
         Check.Visibility = options.CheckText is null ? Visibility.Collapsed : Visibility.Visible;
@@ -63,6 +74,14 @@ public partial class MessageOverlay : UserControl
         return answer.Task;
     }
 
+    /// <summary>Whether the question's first button waits for something to be typed (<see cref="DialogOptions.NeedsInput"/>).</summary>
+    private bool needsInput;
+
+    private void InputChanged(object sender, TextChangedEventArgs e) => ShowOkButtonState();
+
+    /// <summary>The first button is off while the text box is empty, for a question that needs an answer typed.</summary>
+    private void ShowOkButtonState() => OkButton.IsEnabled = !needsInput || Input.Text.Trim() != "";
+
     /// <summary>Asks a yes-or-no question: whether the first button was pressed.</summary>
     public async Task<bool> Confirm(string message, string okText)
     {
@@ -74,9 +93,12 @@ public partial class MessageOverlay : UserControl
     /// Asks for a name (the HTML app's <c>askName</c>): the text typed, without spaces around it or dots and spaces at its
     /// end; "" when cancelled.
     /// </summary>
-    public async Task<string> AskName(string message, string start = "")
+    public async Task<string> AskName(string message, string start = "") => await AskName(message, new DialogOptions { Input = start });
+
+    /// <summary>Asks for a name as <see cref="AskName(string, string)"/> does, with other options (a note, a hint).</summary>
+    public async Task<string> AskName(string message, DialogOptions options)
     {
-        DialogAnswer reply = await Ask(message, new DialogOptions { Input = start });
+        DialogAnswer reply = await Ask(message, options with { Input = options.Input ?? "" });
         return reply.Choice == DialogChoice.Ok ? reply.Text.Trim().TrimEnd(' ', '.') : "";
     }
 

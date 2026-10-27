@@ -1,0 +1,43 @@
+<!--
+  The Applies To window: which files a rule set applies to. "From its name" (on unless changed) applies it to the files
+  its name holds, as rule sets always did; off, it applies to the files ticked in the list, which holds the files on the
+  Files tab and any typed in.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.AppliesToWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             Visibility="Collapsed" KeyDown="KeyPressed">
+    <!-- the dimmed backdrop; a click on it closes the window -->
+    <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed">
+        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                        Padding="12,10,12,12" Width="560" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
+            <StackPanel>
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.AppliesTo.Close.Tip}" Click="CloseClicked" />
+                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <CheckBox x:Name="ByNameSwitch" Style="{StaticResource Toggle}" Content="{t:Text Rules.AppliesTo.ByName}" Margin="0,10,0,0" HorizontalAlignment="Left"
+                          ToolTip="{t:Text Rules.AppliesTo.ByName.Tip}" Click="ByNameClicked" />
+                <TextBlock x:Name="ByNameNote" Style="{StaticResource Note}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                <TextBlock Text="{t:Text Rules.AppliesTo.TheseFiles}" Foreground="{DynamicResource muted}" Margin="0,10,0,3" />
+                <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Height="190">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                        <StackPanel x:Name="FileTicks" Margin="6,4" />
+                    </ScrollViewer>
+                </controls:Bevel>
+                <DockPanel Margin="0,6,0,0">
+                    <Button x:Name="AddButton" DockPanel.Dock="Right" Content="{t:Text Rules.AppliesTo.Add}" ToolTip="{t:Text Rules.AppliesTo.Add.Tip}" Margin="6,0,0,0" Click="AddClicked" />
+                    <TextBox x:Name="TypedFile" Tag="{t:Text Rules.AppliesTo.TypedFile.Hint}" ToolTip="{t:Text Rules.AppliesTo.TypedFile.Tip}" KeyDown="TypedFileKeyDown" />
+                </DockPanel>
+                <TextBlock Style="{StaticResource Note}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{t:Text Rules.AppliesTo.Note}" />
+                <controls:SnappedRow Gap="6" HorizontalAlignment="Right" Margin="0,10,0,0">
+                    <Button Style="{StaticResource GoButton}" Content="{t:Text Rules.AppliesTo.Done}" ToolTip="{t:Text Rules.AppliesTo.Done.Tip}" Click="DoneClicked" />
+                    <Button Content="{t:Text Common.Cancel}" ToolTip="{t:Text Rules.AppliesTo.Cancel.Tip}" Click="CloseClicked" />
+                </controls:SnappedRow>
+            </StackPanel>
+        </controls:Bevel>
+    </Grid>
+</UserControl>

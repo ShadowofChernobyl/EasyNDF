@@ -169,12 +169,19 @@ public sealed class ScalarValue(ScalarKind kind, string text) : NdfValue
     /// <summary>The value as written. For a string this includes its quotes; for nil it is "nil".</summary>
     public string Text { get; set; } = text;
 
+    /// <summary>
+    /// Whether a value a rule wrote on several lines takes the indentation of the line it lands on (Set To a list or
+    /// an object, Add Property). Other values are written exactly as typed, as the HTML app writes them.
+    /// </summary>
+    public bool FitsIndentation { get; set; }
+
     public override bool IsPrimitive => true;
 
     public override NdfValue CopyForEdit()
     {
         var copy = WithSamePosition(new ScalarValue(Kind, Text));
         copy.TrailingLineComment = TrailingLineComment;
+        copy.FitsIndentation = FitsIndentation;
         return copy;
     }
 
@@ -195,10 +202,14 @@ public sealed class Property(string name, NdfValue value)
     /// <summary>True for "Name is value" inside an object, as hand-written game files sometimes have.</summary>
     public bool IsMemberDeclaration { get; init; }
 
+    /// <summary>True for a property a rule added ("Add Property"): the writer writes its name and "=" too.</summary>
+    public bool IsAddedByRule { get; init; }
+
     public Property CopyForEdit() => new(Name, Value.CopyForEdit())
     {
         LeadingComments = LeadingComments,
         IsMemberDeclaration = IsMemberDeclaration,
+        IsAddedByRule = IsAddedByRule,
     };
 }
 
@@ -222,6 +233,9 @@ public sealed class ObjectValue(string typeName, List<Property> properties) : Nd
     /// <summary>Comments after the last property, before ")".</summary>
     public List<SourceComment>? EndComments { get; init; }
 
+    /// <summary>Properties from the file a rule took out (Remove Property): the writer leaves out their text.</summary>
+    public List<Property>? RemovedProperties { get; set; }
+
     public override bool IsPrimitive => false;
 
     public override NdfValue CopyForEdit() =>
@@ -231,6 +245,7 @@ public sealed class ObjectValue(string typeName, List<Property> properties) : Nd
             TypeNameComment = TypeNameComment,
             HeadComments = HeadComments,
             EndComments = EndComments,
+            RemovedProperties = RemovedProperties is null ? null : [.. RemovedProperties],
         });
 }
 
@@ -255,6 +270,21 @@ public sealed class ListValue(string? typeName, List<NdfValue> items) : NdfValue
     public List<SourceComment>? EndComments { get; set; }
 
     public override bool IsPrimitive => false;
+
+    /// <summary>
+    /// Takes out one item. The comments above it move to whatever follows, or to the end of the list, so no
+    /// comment is lost with the item.
+    /// </summary>
+    public void RemoveItemAt(int index)
+    {
+        NdfValue removed = Items[index];
+        Items.RemoveAt(index);
+        if (removed.LeadingComments is null) return;
+        if (index < Items.Count)
+            Items[index].LeadingComments = [.. removed.LeadingComments, .. Items[index].LeadingComments ?? []];
+        else
+            EndComments = [.. removed.LeadingComments, .. EndComments ?? []];
+    }
 
     public override NdfValue CopyForEdit() =>
         WithSamePosition(new ListValue(TypeName, Items.Select(i => i.CopyForEdit()).ToList())

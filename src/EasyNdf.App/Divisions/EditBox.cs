@@ -11,7 +11,7 @@ namespace EasyNdf.App.Divisions;
 /// </summary>
 public sealed class EditBox : TextBox
 {
-    private readonly string shown;
+    private string shown;
     private readonly Func<string, bool> keep;
 
     /// <summary>Builds the box.</summary>
@@ -47,10 +47,15 @@ public sealed class EditBox : TextBox
         }
     }
 
-    /// <summary>Keeps what is typed when it changed; puts the value back when it is not one the box takes.</summary>
+    /// <summary>
+    /// Keeps what is typed when it changed; puts the value back when it is not one the box takes, or the change was
+    /// refused. A value kept is the box's value from then on, so leaving the box after Enter does not keep it again.
+    /// </summary>
     private void Keep()
     {
-        if (Text.Trim() == shown) return;
-        if (!keep(Text.Trim())) Text = shown;
+        string typed = Text.Trim();
+        if (typed == shown) return;
+        if (keep(typed)) shown = typed;
+        else Text = shown;
     }
 }

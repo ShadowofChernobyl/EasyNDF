@@ -1,3 +1,5 @@
+using EasyNdf.Data.Game;
+
 namespace EasyNdf.Data.Divisions;
 
 /// <summary>
@@ -10,7 +12,10 @@ public static class DivisionChanges
     /// The game's multiplayer divisions with the mod's changes made, then the mod's new divisions. A new division whose
     /// starting division the source does not have is left out.
     /// </summary>
-    public static List<Division> Apply(IReadOnlyList<Division> game, Mod mod)
+    /// <param name="game">The game's divisions.</param>
+    /// <param name="mod">The mod.</param>
+    /// <param name="rosters">The units of generated divisions; without it, a generated division has only the units the user added.</param>
+    public static List<Division> Apply(IReadOnlyList<Division> game, Mod mod, DivisionRosters? rosters = null)
     {
         Dictionary<string, Division> byDescriptor = game.GroupBy(division => division.Descriptor).ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         var divisions = new List<Division>();
@@ -20,9 +25,63 @@ public static class DivisionChanges
             divisions.Add(change is null ? division : change.Apply(division));
         }
         foreach (ModDivision added in mod.Divisions.Where(each => each.IsNew))
-            if (byDescriptor.TryGetValue(added.StartsFrom, out Division? start)) divisions.Add(added.Apply(start));
+            if (byDescriptor.TryGetValue(added.StartsFrom, out Division? start)) divisions.Add(WithGeneratedBattlegroup(added.Apply(StartOf(added, start, rosters)), added, rosters));
         return divisions;
     }
+
+    /// <summary>
+    /// A new division with its Official Battlegroup as its Generation Settings make it from its units, when it has
+    /// them (<see cref="ModDivision.BattlegroupGeneration"/>) and the units are known; as it is otherwise.
+    /// </summary>
+    public static Division WithGeneratedBattlegroup(Division division, ModDivision entry, DivisionRosters? rosters)
+    {
+        if (entry.BattlegroupGeneration is not BattlegroupGeneration settings || rosters is null) return division;
+        List<GeneratedCard> generated = BattlegroupGenerator.Cards(division, rosters.UnitsByDescriptor, settings);
+        return division with
+        {
+            Battlegroup = new Battlegroup
+            {
+                Descriptor = ModDivision.DeckDescriptorOf(entry.Descriptor),
+                Name = entry.BattlegroupName,
+                Cards = [.. generated.Select(card => card.Card)],
+                Generated = generated,
+            },
+        };
+    }
+
+    /// <summary>
+    /// Saves a generated division's Generation Settings: its battlegroup is made from them from now on, in place of
+    /// any cards it had.
+    /// </summary>
+    public static void SetBattlegroupGeneration(Mod mod, string descriptor, BattlegroupGeneration settings)
+    {
+        if (EntryOf(mod, descriptor) is not { IsGenerated: true } entry) return;
+        entry.BattlegroupGeneration = settings;
+        entry.BattlegroupCards = null;
+    }
+
+    /// <summary>
+    /// "Make Fixed" in the Generation Settings window: a generated battlegroup keeps the cards it has now, as an
+    /// ordinary battlegroup changed card by card.
+    /// </summary>
+    public static void MakeBattlegroupFixed(Mod mod, IReadOnlyList<Division> game, string descriptor, DivisionRosters rosters)
+    {
+        if (EntryOf(mod, descriptor) is not { BattlegroupGeneration: not null } entry) return;
+        Division shown = WithGeneratedBattlegroup(entry.Apply(StartOf(entry, game, rosters)), entry, rosters);
+        entry.BattlegroupCards = [.. shown.Battlegroup?.Cards ?? []];
+        entry.BattlegroupGeneration = null;
+    }
+
+    /// <summary>
+    /// The division an entry's changes apply to: its starting division, with, for a generated division, the units its
+    /// generation gives it in place of the starting division's (<see cref="DivisionRosters.StartOf"/>).
+    /// </summary>
+    private static Division StartOf(ModDivision entry, Division start, DivisionRosters? rosters) =>
+        entry.IsGenerated ? rosters?.StartOf(entry, start) ?? start with { Units = [] } : start;
+
+    /// <summary>The division an entry's changes apply to, found among the game's (<see cref="StartOf(ModDivision, Division, DivisionRosters?)"/>).</summary>
+    private static Division StartOf(ModDivision entry, IReadOnlyList<Division> game, DivisionRosters? rosters) =>
+        StartOf(entry, game.First(division => division.Descriptor == entry.StartsFrom), rosters);
 
     /// <summary>The mod's own entry for a division shown: the new division, or its change to the game's; null for none yet.</summary>
     public static ModDivision? EntryOf(Mod mod, string descriptor) =>
@@ -33,10 +92,10 @@ public static class DivisionChanges
     /// none yet. Each unit comes as another division of the game has it (<see cref="RuleFor"/>).
     /// </summary>
     /// <returns>How many units were added: those already in the division are not added again.</returns>
-    public static int AddUnits(Mod mod, IReadOnlyList<Division> game, string descriptor, IEnumerable<string> units)
+    public static int AddUnits(Mod mod, IReadOnlyList<Division> game, string descriptor, IEnumerable<string> units, DivisionRosters? rosters = null)
     {
         ModDivision entry = EntryOf(mod, descriptor) ?? AddChange(mod, descriptor);
-        Division start = game.First(division => division.Descriptor == entry.StartsFrom);
+        Division start = StartOf(entry, game, rosters);
         int added = 0;
         foreach (string unit in units)
             if (entry.AddUnit(RuleFor(unit, game), start)) added++;
@@ -47,27 +106,29 @@ public static class DivisionChanges
     /// Changes how a division shown has a unit (its cards, units per card or veterancy), in the mod's new division or in
     /// its change to the game's; a change that is left changing nothing is let go of.
     /// </summary>
-    public static void SetRule(Mod mod, IReadOnlyList<Division> game, string descriptor, DivisionUnit rule)
+    public static void SetRule(Mod mod, IReadOnlyList<Division> game, string descriptor, DivisionUnit rule, DivisionRosters? rosters = null)
     {
         ModDivision entry = EntryOf(mod, descriptor) ?? AddChange(mod, descriptor);
-        entry.SetRule(rule, game.First(division => division.Descriptor == entry.StartsFrom));
+        entry.SetRule(rule, StartOf(entry, game, rosters));
         if (entry.ChangesNothing) mod.Divisions.Remove(entry);
     }
 
     /// <summary>Takes a unit out of a division shown; a change that is left changing nothing is let go of.</summary>
-    public static void RemoveUnit(Mod mod, IReadOnlyList<Division> game, string descriptor, string unit)
+    public static void RemoveUnit(Mod mod, IReadOnlyList<Division> game, string descriptor, string unit, DivisionRosters? rosters = null)
     {
         ModDivision entry = EntryOf(mod, descriptor) ?? AddChange(mod, descriptor);
-        entry.RemoveUnit(unit, game.First(division => division.Descriptor == entry.StartsFrom));
+        entry.RemoveUnit(unit, StartOf(entry, game, rosters));
         if (entry.ChangesNothing) mod.Divisions.Remove(entry);
     }
 
     /// <summary>
-    /// A new division in the mod, named <paramref name="name"/>, that starts as a copy of a game division's details
-    /// without its units, and has <paramref name="units"/>.
+    /// A new division in the mod, named <paramref name="name"/>, with <paramref name="units"/>. Its nation and side are
+    /// those given (else <paramref name="startsFrom"/>'s); everything else starts as <see cref="NewDivisionStart"/>
+    /// sets it. <paramref name="startsFrom"/> is only the frame its files are made from: none of its values are kept.
     /// </summary>
     /// <returns>The new division's descriptor.</returns>
-    public static string AddNew(Mod mod, IReadOnlyList<Division> game, string name, Division startsFrom, IEnumerable<string> units)
+    public static string AddNew(Mod mod, IReadOnlyList<Division> game, string name, Division startsFrom, IEnumerable<string> units, GameTitle title,
+        (string Country, string Side)? nation = null)
     {
         HashSet<string> taken = [.. game.Select(division => division.Descriptor), .. mod.Divisions.Select(division => division.Descriptor)];
         var created = new ModDivision
@@ -77,10 +138,60 @@ public static class DivisionChanges
             StartsFrom = startsFrom.Descriptor,
             Name = name.Trim(),
             KeepsUnits = false,
+            // never empty, so the game always finds a summary; the history is the user's to write
+            Summary = name.Trim(),
+            History = "",
         };
+        NewDivisionStart.Give(created, game, mod, title);
+        if (nation is (string country, string side)) (created.Country, created.Side) = (country, side);
         mod.Divisions.Add(created);
         AddUnits(mod, game, created.Descriptor, units);
         return created.Descriptor;
+    }
+
+    /// <summary>
+    /// A generated division in the mod (<see cref="DivisionGeneration"/>), named <paramref name="name"/>: no units of its
+    /// own, as they are made each time; its points and costs as its generation gives them; its battlegroup generated
+    /// with the ready setting Balanced; everything else as a new division starts (<see cref="NewDivisionStart"/>).
+    /// </summary>
+    /// <param name="startsFrom">The frame its files are made from: a game division (none of its values are kept).</param>
+    /// <param name="nation">Its nation (<see cref="DivisionRosters.NationOf"/>) and side.</param>
+    /// <returns>The new division's descriptor.</returns>
+    public static string AddGenerated(Mod mod, IReadOnlyList<Division> game, string name, Division startsFrom, DivisionGeneration generation,
+        (string Country, string Side) nation, GameTitle title)
+    {
+        string descriptor = AddNew(mod, game, name, startsFrom, [], title, nation);
+        ModDivision created = EntryOf(mod, descriptor)!;
+        created.Generation = generation;
+        // its units are those generated, the user's own changes on top
+        created.KeepsUnits = true;
+        created.ActivationPoints = generation.ActivationPoints;
+        created.Costs = generation.Costs();
+        // its Official Battlegroup is made from its units too, as its Generation Settings choose
+        created.BattlegroupGeneration = new BattlegroupGeneration();
+        return descriptor;
+    }
+
+    /// <summary>
+    /// "Change…": gives a generated division another way of being made. Its points and costs follow; the user's own
+    /// changes to its units are kept.
+    /// </summary>
+    public static void ChangeGeneration(Mod mod, string descriptor, DivisionGeneration generation, (string Country, string Side) nation)
+    {
+        if (EntryOf(mod, descriptor) is not { IsGenerated: true } entry) return;
+        entry.Generation = generation;
+        (entry.Country, entry.Side) = nation;
+        entry.ActivationPoints = generation.ActivationPoints;
+        entry.Costs = generation.Costs();
+    }
+
+    /// <summary>"Make Fixed": a generated division keeps the units it has now, as an ordinary new division (<see cref="ModDivision.MakeFixed"/>).</summary>
+    public static void MakeFixed(Mod mod, IReadOnlyList<Division> game, string descriptor, DivisionRosters rosters)
+    {
+        if (EntryOf(mod, descriptor) is not { IsGenerated: true } entry) return;
+        // its battlegroup is made from its units: fixed with them, as it is now
+        if (entry.BattlegroupGeneration is not null) MakeBattlegroupFixed(mod, game, descriptor, rosters);
+        entry.MakeFixed(StartOf(entry, game, rosters));
     }
 
     /// <summary>
@@ -134,7 +245,16 @@ public static class DivisionChanges
         copy.Descriptor = ModDivision.NewDescriptor(name, taken);
         copy.IsNew = true;
         copy.IsRemoved = false;
+        // a deck number of its own, as two divisions cannot share one in deck codes
+        copy.DeckNumber = NewDivisionStart.NextDeckNumber(game, mod);
         copy.Name = name.Trim();
+        // a copy of a game division keeps its texts, as its other details
+        Division? start = game.FirstOrDefault(division => division.Descriptor == descriptor);
+        copy.Summary ??= start?.Summary ?? "";
+        copy.History ??= start?.History ?? "";
+        // the same battlegroup, under a name made from its own (the game's name is the other division's)
+        copy.BattlegroupCards ??= start?.Battlegroup?.Cards.ToList();
+        copy.BattlegroupName = "";
         mod.Divisions.Add(copy);
         return copy.Descriptor;
     }

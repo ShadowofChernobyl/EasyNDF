@@ -44,12 +44,6 @@ public sealed class FileEntry
     /// <summary>Whether the file takes part in Preview and Run export (the "On" checkbox).</summary>
     public bool On { get; set; } = true;
 
-    /// <summary>The preset whose rules run on the file, or null for none.</summary>
-    public ModPreset? Preset { get; set; }
-
-    /// <summary>The name of a preset the row was given that no longer exists, so its status can say so.</summary>
-    public string? MissingPreset { get; set; }
-
     /// <summary>The folder its export is written to, or null when none is chosen yet.</summary>
     public string? ExportFolder { get; set; }
 
@@ -110,8 +104,20 @@ public sealed class FileEntry
     /// </summary>
     public string Key => FileReferences.Key(Folder, Name);
 
-    /// <summary>Whether the row has a preset, even one that no longer exists.</summary>
-    public bool HasPresetChosen => Preset is not null || MissingPreset is not null;
+    /// <summary>
+    /// Whether the Armory presets of the mods that are on (the Armory's changes) have rules for the file. The app sets
+    /// it, as it knows the mods.
+    /// </summary>
+    public bool HasDivisionRules { get; set; }
+
+    /// <summary>
+    /// The mods that run on the file, in the order they run, each with its rule sets for it: what the Files tab's Mods
+    /// column shows. The app sets it, as it knows the mods; empty until then.
+    /// </summary>
+    public IReadOnlyList<ModOnFile> ModsOnFile { get; set; } = [];
+
+    /// <summary>Whether any rules run on the file: a mod that is on has rule sets or Armory changes for it. "Has rules" and "No rules" on the Files tab go by this.</summary>
+    public bool HasRules => ModsOnFile.Count > 0;
 
     /// <summary>Forgets what the last action said (the HTML app's <c>clearMsg</c>).</summary>
     public void ClearMessage()
@@ -125,3 +131,9 @@ public sealed class FileEntry
         HeldOutput = null;
     }
 }
+
+/// <summary>A mod that runs on a file, as the Files tab's Mods column lists it.</summary>
+/// <param name="Mod">The mod's name.</param>
+/// <param name="RuleSets">Its rule sets that apply to the file, in its list order; none when only its Armory changes run on it.</param>
+/// <param name="HasArmoryChanges">Whether its Armory changes run on the file too.</param>
+public sealed record ModOnFile(string Mod, IReadOnlyList<string> RuleSets, bool HasArmoryChanges);

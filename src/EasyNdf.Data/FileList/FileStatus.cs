@@ -33,13 +33,12 @@ public static class FileStatus
         if (row.Message != "" && row.IsError) return (row.Message, StatusKind.Error);
         if (!row.On)
         {
-            string off = row.HasPresetChosen ? DataTexts.Get("Files.Status.Off") : DataTexts.Get("Files.Status.OffNoPreset");
+            string off = row.HasRules ? DataTexts.Get("Files.Status.Off") : DataTexts.Get("Files.Status.OffNoPreset");
             return (off + InBrackets(row.Info), StatusKind.Plain);
         }
         if (row.Message != "") return MessageWithCounts(row);
         if (row.Source is null) return (DataTexts.Get("Files.Status.NotLoaded", ("file", row.Name)), StatusKind.Error);
-        if (!row.HasPresetChosen) return (DataTexts.Get("Files.Status.NoPreset") + ReadOrNot(row), StatusKind.Plain);
-        if (row.Preset is null) return (DataTexts.Get("Files.Status.PresetNotFound", ("preset", row.MissingPreset)), StatusKind.Error);
+        if (!row.HasRules) return (DataTexts.Get("Files.Status.NoPreset") + ReadOrNot(row), StatusKind.Plain);
         return (DataTexts.Get("Files.Status.Ready") + ReadOrNot(row), StatusKind.Plain);
     }
 

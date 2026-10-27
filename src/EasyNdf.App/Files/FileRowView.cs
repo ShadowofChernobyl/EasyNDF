@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Data;
 using EasyNdf.App.Controls;
+using EasyNdf.App.Rules;
+using EasyNdf.Data;
 using EasyNdf.Data.FileList;
 using EasyNdf.App.Text;
 
@@ -27,31 +29,34 @@ public sealed class FileRowView : Decorator
     /// <summary>What the Remove button, Save anyway and the export folder buttons say they do, in their Tag.</summary>
     public const string RemoveAction = "remove", SaveAnywayAction = "save", ChooseFolderAction = "dir", ClearFolderAction = "nodir";
 
+    /// <summary>What an Armory column letter's Tag starts with, before the part it opens: "armory:Units".</summary>
+    public const string ArmoryAction = "armory:";
+
     /// <summary>Makes an empty row; it fills itself in once it has its list and its <see cref="FileRow"/>.</summary>
     public FileRowView() => DataContextChanged += ShowOtherFile;
 
     /// <inheritdoc cref="ListProperty"/>
     public FileListModel? List { get => (FileListModel?)GetValue(ListProperty); set => SetValue(ListProperty, value); }
 
-    /// <summary>The preset dropdown, when the Preset column is shown.</summary>
-    private ComboBox? presetBox;
+    /// <summary>The Mods cell, when the Mods column is shown.</summary>
+    private ModsCell? modsCell;
 
-    /// <summary>While the preset dropdown is being filled in, its choice is not the user's.</summary>
-    private bool showingPreset;
-
-    /// <summary>The list reuses the row for another file: its cells follow, and the preset dropdown is filled in again.</summary>
+    /// <summary>The list reuses the row for another file: its cells follow, and the Mods cell is filled in again.</summary>
     private void ShowOtherFile(object sender, DependencyPropertyChangedEventArgs e)
     {
         // a weak handler: the file row lives on after the list has done with this row
         if (e.OldValue is FileRow oldRow) PropertyChangedEventManager.RemoveHandler(oldRow, RowChanged, "");
         if (e.NewValue is FileRow newRow) PropertyChangedEventManager.AddHandler(newRow, RowChanged, "");
         Build();
-        ShowPreset();
+        ShowMods();
+        ShowArmory();
     }
 
     private void RowChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is null or "" or nameof(FileRow.Preset) or nameof(FileRow.Choices)) ShowPreset();
+        if (e.PropertyName is not (null or "" or nameof(FileRow.Mods))) return;
+        ShowMods();
+        ShowArmory();
     }
 
     /// <summary>The list, columns and language the cells were built for.</summary>
@@ -64,7 +69,8 @@ public sealed class FileRowView : Decorator
         var layout = (list, string.Join(",", shown), (object?)Texts.Catalog.Language);
         if (builtFor == layout) return;
         builtFor = layout;
-        presetBox = null;
+        modsCell = null;
+        armoryLetters = null;
         var grid = new Grid();
         grid.SetResourceReference(TextElement.ForegroundProperty, "ink");
         for (int place = 0; place < shown.Count; place++)
@@ -85,7 +91,8 @@ public sealed class FileRowView : Decorator
         SetBinding(WidthProperty, new Binding(nameof(ColumnWidths.RowWidth)) { Source = list.Columns });
         // tbody tr: a line under it, in the selection colour when selected
         Child = new Bevel { Style = (Style)FindResource("FileListRow"), Child = grid };
-        ShowPreset();
+        ShowMods();
+        ShowArmory();
     }
 
     private UIElement CellFor(FileColumn column, FileListModel list) => column switch
@@ -96,7 +103,8 @@ public sealed class FileRowView : Decorator
         FileColumn.Size => TextCell(nameof(FileRow.SizeText)),
         FileColumn.Lines => TextCell(nameof(FileRow.LinesText)),
         FileColumn.Modified => TextCell(nameof(FileRow.ModifiedText)),
-        FileColumn.Preset => PresetCell(),
+        FileColumn.Mods => modsCell = new ModsCell(),
+        FileColumn.Armory => ArmoryCell(),
         FileColumn.ExportFolder => ExportFolderCell(),
         _ => StatusCell(),
     };
@@ -156,31 +164,57 @@ public sealed class FileRowView : Decorator
         return line;
     }
 
-    /// <remarks>
-    /// The dropdown is filled in by <see cref="ShowPreset"/> rather than bound: when a row is reused for another file,
-    /// bound choices and a bound selection change one after the other, and in between the dropdown would clear the
-    /// new file's preset.
-    /// </remarks>
-    private UIElement PresetCell()
+    /// <summary>Shows the row's file's mods in the Mods cell.</summary>
+    private void ShowMods()
     {
-        presetBox = new ComboBox { Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center, ToolTip = Texts.Get("Files.Row.Preset.Tip") };
-        presetBox.SelectionChanged += PresetPicked;
-        return presetBox;
+        if (modsCell is null || DataContext is not FileRow row) return;
+        modsCell.Show(row.Entry);
     }
 
-    /// <summary>Fills the preset dropdown with the file's choices and shows its preset.</summary>
-    private void ShowPreset()
+    // ---- the Armory column ----
+
+    /// <summary>The Armory's parts, in the order their presets run, as the column's letters show them.</summary>
+    private static readonly ArmoryPart[] ArmoryParts = [ArmoryPart.Divisions, ArmoryPart.Battlegroups, ArmoryPart.Units, ArmoryPart.Weapons];
+
+    /// <summary>The Armory column's letters, when it is shown.</summary>
+    private Button[]? armoryLetters;
+
+    /// <summary>
+    /// The Armory column: a letter for each part of the Armory (D B U W), lit where the open mod's changes in that
+    /// part run on the file, dim where they don't. Each is a button that opens that part's preset on the Rules tab.
+    /// </summary>
+    private UIElement ArmoryCell()
     {
-        if (presetBox is null || DataContext is not FileRow row) return;
-        showingPreset = true;
-        presetBox.ItemsSource = row.Choices;
-        presetBox.SelectedItem = row.Preset;
-        showingPreset = false;
+        var letters = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center };
+        armoryLetters = [.. ArmoryParts.Select(part => new Button
+        {
+            Style = (Style)FindResource("ArmoryLetter"), Content = ArmoryLetterTexts.Letter(part), Tag = ArmoryAction + part,
+            Margin = new Thickness(part == ArmoryParts[0] ? 0 : 2, 0, 0, 0),
+        })];
+        foreach (Button letter in armoryLetters) letters.Children.Add(letter);
+        return letters;
     }
 
-    private void PresetPicked(object sender, SelectionChangedEventArgs e)
+    /// <summary>Lights the letters of the parts with changes for the row's file, and says in each tooltip what it stands for.</summary>
+    private void ShowArmory()
     {
-        if (!showingPreset && DataContext is FileRow row && presetBox?.SelectedItem is PresetChoice choice) row.Preset = choice;
+        if (armoryLetters is null || DataContext is not FileRow row) return;
+        IReadOnlyDictionary<ArmoryPart, int> counts = FileRunner.ArmoryRuleCountsFor(row.Entry.Name);
+        for (int at = 0; at < ArmoryParts.Length; at++)
+        {
+            ArmoryPart part = ArmoryParts[at];
+            int count = counts.GetValueOrDefault(part);
+            Button letter = armoryLetters[at];
+            letter.Tag = ArmoryAction + part;
+            letter.IsEnabled = true;
+            letter.Opacity = count > 0 ? 1 : 0.35;
+            letter.FontWeight = count > 0 ? FontWeights.Bold : FontWeights.Normal;
+            if (count > 0) letter.SetResourceReference(Control.ForegroundProperty, "accent");
+            else letter.SetResourceReference(Control.ForegroundProperty, "muted");
+            letter.ToolTip = count > 0
+                ? Texts.Count("Files.Armory.Has.Tip", count, ("part", ArmoryPartTexts.Name(part)))
+                : Texts.Get("Files.Armory.None.Tip", ("part", ArmoryPartTexts.Name(part)));
+        }
     }
 
     /// <summary>td.dir: "Browse...", the folder's name 6 pixels either side (or "Not set"), and × to clear it.</summary>

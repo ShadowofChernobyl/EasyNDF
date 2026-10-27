@@ -325,6 +325,7 @@ public sealed class Parser
         if (IsPunct("[")) return ReadList(typeName: null);
         if (IsPunct("("))
         {
+            int openAt = tokens[i].Position;
             i++;
             NdfValue first = ReadValue();
             if (IsPunct(","))
@@ -335,6 +336,9 @@ public sealed class Parser
                 return new PairValue(PairKind.Pair, first, second);
             }
             Expect(")");
+            // A condition in brackets, (Value ? A : B), is kept as written with its brackets, so a rule that replaces
+            // it replaces the brackets too rather than leaving a ")" behind.
+            if (first is ScalarValue { Kind: ScalarKind.Expression }) return KeptAsWritten(openAt);
             // Brackets around a calculation are kept; brackets around a single value are not.
             return first is BinaryValue ? new WrappedValue(WrapKind.Parentheses, first) : first;
         }

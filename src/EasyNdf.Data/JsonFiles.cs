@@ -33,17 +33,23 @@ public static class JsonFiles
         try { return File.Exists(path) ? Parse(File.ReadAllText(path)) : null; }
         catch (JsonException) { return null; }
         catch (IOException) { return null; }
+        catch (UnauthorizedAccessException) { return null; }
     }
 
     /// <summary>
     /// Writes a file safely: the text goes to a temporary file first, which then replaces the old one.
-    /// If the app or the PC stops halfway, the old file is still whole.
+    /// If the app or the PC stops halfway, the old file is still whole. The new text is on the disk before it replaces
+    /// the old file: otherwise a power cut just after could leave the new name on an empty file.
     /// </summary>
     public static void Write(string path, JsonNode? value)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         string temporary = path + ".saving";
-        File.WriteAllText(temporary, ToText(value));
+        using (FileStream file = File.Create(temporary))
+        {
+            file.Write(System.Text.Encoding.UTF8.GetBytes(ToText(value)));
+            file.Flush(flushToDisk: true);
+        }
         File.Move(temporary, path, overwrite: true);
     }
 
@@ -56,8 +62,11 @@ public static class JsonFiles
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         string temporary = path + ".saving";
         using (FileStream file = File.Create(temporary))
-        using (var writer = new Utf8JsonWriter(file, new JsonWriterOptions { Indented = true, IndentSize = Options.IndentSize, Encoder = Options.Encoder }))
-            write(writer);
+        {
+            using (var writer = new Utf8JsonWriter(file, new JsonWriterOptions { Indented = true, IndentSize = Options.IndentSize, Encoder = Options.Encoder }))
+                write(writer);
+            file.Flush(flushToDisk: true);
+        }
         File.Move(temporary, path, overwrite: true);
     }
 }

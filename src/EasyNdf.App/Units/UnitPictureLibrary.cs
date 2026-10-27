@@ -116,7 +116,8 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
     {
         try
         {
-            string? file = store.FileFor(source);
+            // a card picture of the user's own, for a unit the mod adds, is a file on this computer
+            string? file = Path.IsPathFullyQualified(source) ? source : store.FileFor(source);
             if (file is null) return null;
             byte[] bytes = File.ReadAllBytes(file);
             // never made wider than the file itself: stretched here and again on screen, it would blur twice
@@ -167,7 +168,7 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
     /// The width a picture is made at: the next of a few sizes up from the width it is drawn at on this screen, so a
     /// card that is a little wider or narrower uses the picture already made.
     /// </summary>
-    private static int SizeFor(double width)
+    internal static int SizeFor(double width)
     {
         double onScreen = width * ScreenScale;
         foreach (int size in new[] { 48, 96, 160, 256, 384 })

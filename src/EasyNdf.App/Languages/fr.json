@@ -73,11 +73,6 @@
       "text": "Fichier non chargé. Ajoutez à nouveau {file} pour le rattacher.",
       "machine": true
     },
-    "Files.Status.PresetNotFound": {
-      "english": "Preset \"{preset}\" not found",
-      "text": "Préréglage « {preset} » introuvable",
-      "machine": true
-    },
     "Files.Status.NotReadYet": {
       "english": "not read yet",
       "text": "pas encore lu",
@@ -153,11 +148,6 @@
       "text": "Date de modification",
       "machine": true
     },
-    "Files.Column.Preset": {
-      "english": "Preset",
-      "text": "Préréglage",
-      "machine": true
-    },
     "Files.Column.ExportFolder": {
       "english": "Export folder",
       "text": "Dossier d’exportation",
@@ -171,11 +161,6 @@
     "Files.Row.NotLoaded": {
       "english": "{file} (not loaded)",
       "text": "{file} (non chargé)",
-      "machine": true
-    },
-    "Files.Row.NoPreset": {
-      "english": "(none)",
-      "text": "(aucun)",
       "machine": true
     },
     "Files.Row.NotSet": {
@@ -1818,13 +1803,13 @@
       "machine": true
     },
     "Files.NotNdf.One": {
-      "english": "{file} was not loaded. EasyNDF only reads .ndf files.",
-      "text": "{file} n'a pas été chargé. EasyNDF ne lit que les fichiers .ndf.",
+      "english": "{file} was not loaded. EasyNDF only reads .ndf files, and .csv dictionary files.",
+      "text": "{file} n'a pas été chargé. EasyNDF ne lit que les fichiers .ndf, et les fichiers dictionnaires .csv.",
       "machine": true
     },
     "Files.NotNdf.Several": {
-      "english": "{count} files were not loaded: {files}. EasyNDF only reads .ndf files.",
-      "text": "{count} fichiers n'ont pas été chargés : {files}. EasyNDF ne lit que les fichiers .ndf.",
+      "english": "{count} files were not loaded: {files}. EasyNDF only reads .ndf files, and .csv dictionary files.",
+      "text": "{count} fichiers n'ont pas été chargés : {files}. EasyNDF ne lit que les fichiers .ndf, et les fichiers dictionnaires .csv.",
       "machine": true
     },
     "Files.NotNdf.AndMore": {
@@ -2422,11 +2407,6 @@
       "text": "Inclure dans l'exécution",
       "machine": true
     },
-    "Files.Row.Preset.Tip": {
-      "english": "Preset",
-      "text": "Préréglage",
-      "machine": true
-    },
     "Files.Row.Browse": {
       "english": "Browse...",
       "text": "Parcourir…",
@@ -2598,8 +2578,8 @@
       "machine": true
     },
     "Main.Rules": {
-      "english": "Rules",
-      "text": "Règles",
+      "english": "Mods",
+      "text": "Mods",
       "machine": true
     },
     "Main.Rules.Tip": {
@@ -2664,7 +2644,7 @@
     },
     "Main.Undo.Rules": {
       "english": "Undone: a change on the Rules tab.",
-      "text": "Annulé : une modification dans l’onglet « Règles ».",
+      "text": "Annulé : une modification dans l’onglet « Mods ».",
       "machine": true
     },
     "Main.Undo.Files": {
@@ -2679,7 +2659,7 @@
     },
     "Main.Redo.Rules": {
       "english": "Redone: a change on the Rules tab.",
-      "text": "Rétabli : une modification dans l’onglet « Règles ».",
+      "text": "Rétabli : une modification dans l’onglet « Mods ».",
       "machine": true
     },
     "Main.Redo.Files": {
@@ -2867,16 +2847,6 @@
       "text": "Ne pas exporter",
       "machine": true
     },
-    "Rules.Mod": {
-      "english": "Mod",
-      "text": "Mod",
-      "machine": true
-    },
-    "Rules.ModChoice.Tip": {
-      "english": "Mod",
-      "text": "Mod",
-      "machine": true
-    },
     "Rules.New": {
       "english": "New",
       "text": "Nouveau",
@@ -2892,29 +2862,9 @@
       "text": "Renommer",
       "machine": true
     },
-    "Rules.RenameMod.Tip": {
-      "english": "Rename mod",
-      "text": "Renommer le mod",
-      "machine": true
-    },
-    "Rules.MakeCopy": {
-      "english": "Make copy",
-      "text": "Créer une copie",
-      "machine": true
-    },
-    "Rules.CopyMod.Tip": {
-      "english": "Copy this mod and its presets",
-      "text": "Copier ce mod et ses préréglages",
-      "machine": true
-    },
     "Rules.Delete": {
       "english": "Delete",
       "text": "Supprimer",
-      "machine": true
-    },
-    "Rules.DeleteMod.Tip": {
-      "english": "Delete mod and its presets",
-      "text": "Supprimer le mod et ses préréglages",
       "machine": true
     },
     "Rules.Watermark": {
@@ -2922,29 +2872,14 @@
       "text": "Filigrane...",
       "machine": true
     },
-    "Rules.Watermark.Tip": {
-      "english": "This mod's watermark comment",
-      "text": "Le commentaire de filigrane de ce mod",
-      "machine": true
-    },
     "Rules.ImportMod": {
       "english": "Import mod...",
       "text": "Importer le mod...",
       "machine": true
     },
-    "Rules.ImportMod.Tip": {
-      "english": "Load a mod file",
-      "text": "Charger un fichier de mod",
-      "machine": true
-    },
     "Rules.ExportMod": {
       "english": "Export mod",
       "text": "Exporter le mod",
-      "machine": true
-    },
-    "Rules.ExportMod.Tip": {
-      "english": "Save mod as a file",
-      "text": "Enregistrer le mod dans un fichier",
       "machine": true
     },
     "Rules.NewPreset.Tip": {
@@ -3040,6 +2975,11 @@
     "Rules.Editor.Name": {
       "english": "Name",
       "text": "Nom",
+      "machine": true
+    },
+    "Rules.Editor.VariableName": {
+      "english": "Variable name",
+      "text": "Nom de la variable",
       "machine": true
     },
     "Rules.Editor.VarNameHint.ForExampleRangeMultiplier": {
@@ -3712,9 +3652,9 @@
       "text": "{count} fichier l'utilise et n'aura pas de préréglage.|{count} fichiers l'utilisent et n'auront pas de préréglages.",
       "machine": true
     },
-    "Rules.PresetsIn": {
-      "english": "Presets in {mod}",
-      "text": "Préréglages de {mod}",
+    "Rules.Presets": {
+      "english": "Presets",
+      "text": "Préréglages",
       "machine": true
     },
     "Rules.Rules": {
@@ -5808,8 +5748,8 @@
       "machine": true
     },
     "Welcome.Step1": {
-      "english": "**Rules:** import a mod, or build your own rules.",
-      "text": "**Règles :** importez un mod ou créez vos propres règles.",
+      "english": "**Mods:** import a mod, or build your own rules.",
+      "text": "**Mods :** importez un mod ou créez vos propres règles.",
       "machine": true
     },
     "Welcome.Step2": {
@@ -5874,7 +5814,7 @@
     },
     "Help.Page.steps.Html": {
       "english": "<ol class=\"wksteps\"><li><b>Pick your rules.</b> On the Rules tab, choose a mod in the <b>Mod</b> box. <i>WARNO Tactical Overhaul</i> is a ready-made example. <b>Import mod...</b> loads a mod file someone shared.</li><li><b>Add the files.</b> On the Files tab, press <b>Add folder...</b> and choose a GameData folder, ideally <a href=\"#\" data-p=\"mod-clean\">the game's clean files</a>.</li><li><b>Try it.</b> Press <b>Preview</b>. Nothing is saved. Click a file to see what changed in <b>Details</b>.</li><li><b>Export.</b> Press <b>Run export</b> and choose a folder; your edited files are written there. Choose your mod's folder to <a href=\"#\" data-p=\"mod-export\">put them straight in your mod</a>.</li></ol><div class=\"wkcall\"><b>Note</b><span>Clean files work best. Rules apply to whatever you add, so a file you already exported gets them again: \"multiply by 2\" becomes \"multiply by 4\". Run export asks before it does that to a file EasyNDF exported before.</span></div><div class=\"wkcall\"><b>Tip</b><span>Not sure what to press next? The green button is always the next step.</span></div>",
-      "text": "<ol class=\"wksteps\"><li><b>Sélectionnez vos règles.</b> Dans l’onglet « Règles », choisissez un mod dans la zone « <b>Mod</b> ». <i>« WARNO Tactical Overhaul »</i> est un exemple prêt à l’emploi. « <b>Importer un mod… »</b> permet de charger un fichier de mod partagé par un utilisateur.</li><li><b>Ajoutez les fichiers.</b> Dans l’onglet « Fichiers », cliquez sur « <b>Ajouter un dossier… »</b> et sélectionnez un dossier « GameData », de préférence <a href=\"#\" data-p=\"mod-clean\">les fichiers d’origine du jeu</a>.</li><li><b>Essayez.</b> Cliquez sur « <b>Aperçu</b> ». Rien n’est enregistré. Cliquez sur un fichier pour voir ce qui a changé dans « <b>Détails</b> ».</li><li><b>Exporter.</b> Cliquez sur <b>« Lancer l’export »</b> et choisissez un dossier ; vos fichiers modifiés y seront enregistrés. Choisissez le dossier de votre mod pour <a href=\"#\" data-p=\"mod-export\">les placer directement dans celui-ci</a>.</li></ol><div class=\"wkcall\"><b>Remarque :</b><span>Les fichiers d’origine donnent les meilleurs résultats. Les règles s’appliquent à tout ce que vous ajoutez : un fichier déjà exporté les reçoit une seconde fois, et « multiplier par 2 » devient « multiplier par 4 ». « Lancer l’export » vous le demande avant de le faire sur un fichier qu’EasyNDF a déjà exporté.</span></div><div class=\"wkcall\"><b>Astuce :</b><span> vous ne savez pas sur quoi cliquer ensuite ? Le bouton vert correspond toujours à l’étape suivante.</span></div>",
+      "text": "<ol class=\"wksteps\"><li><b>Sélectionnez vos règles.</b> Dans l’onglet « Mods », choisissez un mod dans la zone « <b>Mod</b> ». <i>« WARNO Tactical Overhaul »</i> est un exemple prêt à l’emploi. « <b>Importer un mod… »</b> permet de charger un fichier de mod partagé par un utilisateur.</li><li><b>Ajoutez les fichiers.</b> Dans l’onglet « Fichiers », cliquez sur « <b>Ajouter un dossier… »</b> et sélectionnez un dossier « GameData », de préférence <a href=\"#\" data-p=\"mod-clean\">les fichiers d’origine du jeu</a>.</li><li><b>Essayez.</b> Cliquez sur « <b>Aperçu</b> ». Rien n’est enregistré. Cliquez sur un fichier pour voir ce qui a changé dans « <b>Détails</b> ».</li><li><b>Exporter.</b> Cliquez sur <b>« Lancer l’export »</b> et choisissez un dossier ; vos fichiers modifiés y seront enregistrés. Choisissez le dossier de votre mod pour <a href=\"#\" data-p=\"mod-export\">les placer directement dans celui-ci</a>.</li></ol><div class=\"wkcall\"><b>Remarque :</b><span>Les fichiers d’origine donnent les meilleurs résultats. Les règles s’appliquent à tout ce que vous ajoutez : un fichier déjà exporté les reçoit une seconde fois, et « multiplier par 2 » devient « multiplier par 4 ». « Lancer l’export » vous le demande avant de le faire sur un fichier qu’EasyNDF a déjà exporté.</span></div><div class=\"wkcall\"><b>Astuce :</b><span> vous ne savez pas sur quoi cliquer ensuite ? Le bouton vert correspond toujours à l’étape suivante.</span></div>",
       "machine": true
     },
     "Help.Page.words.Title": {
@@ -5914,7 +5854,7 @@
     },
     "Help.Page.important.Html": {
       "english": "<div class=\"wkcall\"><b>Note</b><span>Clean files work best. Rules apply to whatever you add, so a file you already exported gets them again: \"multiply by 2\" becomes \"multiply by 4\". Run export asks before it does that to a file EasyNDF exported before.</span></div><ul><li><b>Your rules are saved on this computer only,</b> in EasyNDF's data folder (see <a href=\"#\" data-p=\"data\">Backups and clearing data</a>). Use <b>Export mod</b> on the Rules tab now and then to keep a copy.</li><li><b>Green, yellow, red:</b> green means changed, yellow means changed but worth a look, red means it failed. Click the file to see why.</li></ul>",
-      "text": "<div class=\"wkcall\"><b>Remarque :</b><span>Les fichiers d’origine donnent les meilleurs résultats. Les règles s’appliquent à tout ce que vous ajoutez : un fichier déjà exporté les reçoit une seconde fois, et « multiplier par 2 » devient « multiplier par 4 ». « Lancer l’export » vous le demande avant de le faire sur un fichier qu’EasyNDF a déjà exporté.</span></div><ul><li><b>Vos règles sont enregistrées uniquement sur cet ordinateur,</b> dans le dossier de données d’EasyNDF (voir <a href=\"#\" data-p=\"data\">Sauvegardes et effacement des données</a>). Utilisez de temps à autre <b>la fonction « Exporter »</b> de l’onglet « Règles » pour en conserver une copie.</li><li><b>Vert, jaune, rouge :</b> le vert signifie « modifié », le jaune « modifié mais à vérifier », et le rouge « échec ». Cliquez sur le fichier pour en connaître la raison.</li></ul>",
+      "text": "<div class=\"wkcall\"><b>Remarque :</b><span>Les fichiers d’origine donnent les meilleurs résultats. Les règles s’appliquent à tout ce que vous ajoutez : un fichier déjà exporté les reçoit une seconde fois, et « multiplier par 2 » devient « multiplier par 4 ». « Lancer l’export » vous le demande avant de le faire sur un fichier qu’EasyNDF a déjà exporté.</span></div><ul><li><b>Vos règles sont enregistrées uniquement sur cet ordinateur,</b> dans le dossier de données d’EasyNDF (voir <a href=\"#\" data-p=\"data\">Sauvegardes et effacement des données</a>). Utilisez de temps à autre <b>la fonction « Exporter »</b> de l’onglet « Mods » pour en conserver une copie.</li><li><b>Vert, jaune, rouge :</b> le vert signifie « modifié », le jaune « modifié mais à vérifier », et le rouge « échec ». Cliquez sur le fichier pour en connaître la raison.</li></ul>",
       "machine": true
     },
     "Help.Page.where.Title": {
@@ -5924,7 +5864,7 @@
     },
     "Help.Page.where.Html": {
       "english": "<div class=\"list sunken helptbl\"><table><thead><tr><th>I want to</th><th>Go here</th></tr></thead><tbody><tr><td>Choose which rules a file gets</td><td>Files tab, the <b>Preset</b> box on the file's row</td></tr><tr><td>See what changed</td><td>Files tab, click the file, then read <b>Details</b></td></tr><tr><td>Make or change a rule</td><td>Rules tab, double-click the rule</td></tr><tr><td>Look inside a file</td><td>Files tab, double-click the file</td></tr><tr><td>Give one preset to another mod</td><td>Rules tab, select it, <kbd>Ctrl</kbd>+<kbd>C</kbd>, then <kbd>Ctrl</kbd>+<kbd>V</kbd> in the other mod</td></tr><tr><td>Find a file in a long list</td><td>Files tab, the search box</td></tr><tr><td>Do something to one row</td><td>Right-click it</td></tr><tr><td>Undo a change</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, or right-click and choose <b>Undo</b></td></tr><tr><td>Keep my rules safe</td><td>Rules tab, <b>Export mod</b></td></tr><tr><td>Change the colors</td><td>Settings tab, <b>Theme</b></td></tr><tr><td>See what's new</td><td>Click the version number next to the title</td></tr></tbody></table></div>",
-      "text": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Je souhaite</th><th>Aller ici</th></tr></thead><tbody><tr><td>Choisir les règles qui s’appliquent à un fichier</td><td>Onglet « Fichiers », la case <b>« Préréglage »</b> sur la ligne du fichier</td></tr><tr><td>Voir ce qui a changé</td><td>Onglet « Fichiers » : cliquez sur le fichier, puis consultez la rubrique « <b>Détails »</b></td></tr><tr><td>Créer ou modifier une règle</td><td>Onglet « Règles », double-cliquez sur la règle</td></tr><tr><td>Consultez le contenu d’un fichier</td><td>Onglet « Fichiers », double-cliquez sur le fichier</td></tr><tr><td>Attribuer un préréglage à un autre mod</td><td>Onglet « Règles », sélectionnez-le, <kbd>Ctrl</kbd> + <kbd>C</kbd>, puis <kbd>Ctrl</kbd> + <kbd>V</kbd> dans l&#x27;autre mod</td></tr><tr><td>Rechercher un fichier dans une longue liste</td><td>Onglet « Fichiers », champ de recherche</td></tr><tr><td>Effectuer une action sur une ligne</td><td>Cliquez dessus avec le bouton droit</td></tr><tr><td>Annuler une modification</td><td><kbd>Ctrl</kbd> + <kbd>Z</kbd>, ou cliquez avec le bouton droit et sélectionnez <b>« Annuler »</b></td></tr><tr><td>Sauvegarder mes règles</td><td>Onglet « Règles », « <b>Exporter les mods »</b></td></tr><tr><td>Modifier les couleurs</td><td>Onglet « Paramètres », « <b>Thème »</b></td></tr><tr><td>Découvrez les nouveautés</td><td>Cliquez sur le numéro de version à côté du titre</td></tr></tbody></table></div>",
+      "text": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Je souhaite</th><th>Aller ici</th></tr></thead><tbody><tr><td>Choisir les règles qui s’appliquent à un fichier</td><td>Onglet « Fichiers », la case <b>« Préréglage »</b> sur la ligne du fichier</td></tr><tr><td>Voir ce qui a changé</td><td>Onglet « Fichiers » : cliquez sur le fichier, puis consultez la rubrique « <b>Détails »</b></td></tr><tr><td>Créer ou modifier une règle</td><td>Onglet « Mods », double-cliquez sur la règle</td></tr><tr><td>Consultez le contenu d’un fichier</td><td>Onglet « Fichiers », double-cliquez sur le fichier</td></tr><tr><td>Attribuer un préréglage à un autre mod</td><td>Onglet « Mods », sélectionnez-le, <kbd>Ctrl</kbd> + <kbd>C</kbd>, puis <kbd>Ctrl</kbd> + <kbd>V</kbd> dans l&#x27;autre mod</td></tr><tr><td>Rechercher un fichier dans une longue liste</td><td>Onglet « Fichiers », champ de recherche</td></tr><tr><td>Effectuer une action sur une ligne</td><td>Cliquez dessus avec le bouton droit</td></tr><tr><td>Annuler une modification</td><td><kbd>Ctrl</kbd> + <kbd>Z</kbd>, ou cliquez avec le bouton droit et sélectionnez <b>« Annuler »</b></td></tr><tr><td>Sauvegarder mes règles</td><td>Onglet « Mods », « <b>Exporter les mods »</b></td></tr><tr><td>Modifier les couleurs</td><td>Onglet « Paramètres », « <b>Thème »</b></td></tr><tr><td>Découvrez les nouveautés</td><td>Cliquez sur le numéro de version à côté du titre</td></tr></tbody></table></div>",
       "machine": true
     },
     "Help.Group.FilesandExport": {
@@ -5959,7 +5899,7 @@
     },
     "Help.Page.files-list.Html": {
       "english": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Column</th><th>What it shows</th></tr></thead><tbody><tr><td>On</td><td>Whether the file is included when you press Preview or Run export.</td></tr><tr><td>Source file</td><td>The file's name, with its folder underneath.</td></tr><tr><td>Preset</td><td>Which rules the file gets. Change it here for one file.</td></tr><tr><td>Status</td><td>What happened last time. Green: done. Yellow: done, worth a look. Red: failed.</td></tr><tr><td>&times;</td><td>Takes the file off the list. A file held back by the safety check also has <b>Save anyway</b>.</td></tr><tr><td>Size, Lines, Date modified, Export folder</td><td>Extra details. Some are hidden at first; turn them on with <b>Columns</b>.</td></tr></tbody></table></div><h3>Working with the List</h3><ul><li>Click a row to select it. Ctrl-click adds or removes one. Shift-click selects a range.</li><li>Click the <b>File list</b> heading to collapse the list, and again to bring it back.</li><li><b>Remove</b> takes files off the list. The files on your computer are never touched.</li><li>Click a column heading to sort by it. Click again to reverse.</li><li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes changes to the list.</li></ul><h3>More Columns</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Column</th><th>What it shows</th></tr></thead><tbody><tr><td>#</td><td>The row number, counted down the list as shown. Click it to sort by the order you added the files.</td></tr><tr><td>Lines</td><td>Blank until the file has been read.</td></tr><tr><td>Preset</td><td>The dropdown lists the presets of the mod open on the Rules tab.</td></tr></tbody></table></div><h3>More About Selecting</h3><ul><li><b>Select all</b> or <kbd>Ctrl</kbd>+<kbd>A</kbd> selects every row you can see. Press it again to select none.</li><li>Delete removes the selected rows, after asking. <b>Remove all</b> clears the list.</li><li><b>Export folder...</b> sets where the selected rows are written.</li><li>Right-click a row to open it in the Editor, choose its export folder or remove it.</li></ul><h3>More About Sorting and Arranging</h3><ul><li>An arrow shows which column the list is sorted by.</li><li>Status sorts by what needs you first: errors, warnings, rules that changed nothing, no preset, ready, done, then files switched off.</li><li>Drag a column heading onto another to move it.</li><li><b>Reset columns</b>, in the Columns list, puts back the original columns, order, sorting and widths.</li><li>Columns size themselves to fit. Drag the line between two headings to set a width yourself; double-click the line to go back to automatic.</li><li>Drag the bar between the list and Details to share the room differently. Double-click it to reset.</li></ul><div class=\"wkcall\"><b>Tip</b><span>Undo brings a removed file back with its results.</span></div>",
-      "text": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Colonne</th><th>Ce qu’elle affiche</th></tr></thead><tbody><tr><td>Activé</td><td>Indique si le fichier est inclus lorsque vous cliquez sur « Aperçu » ou « Lancer l&#x27;export ».</td></tr><tr><td>Fichier source</td><td>Le nom du fichier, suivi de son dossier.</td></tr><tr><td>Préréglage</td><td>Règles appliquées au fichier. Modifiez-les ici pour un fichier donné.</td></tr><tr><td>Statut</td><td>Ce qui s&#x27;est passé lors de la dernière vérification. Vert : terminé. Jaune : terminé, à vérifier. Rouge : échec.</td></tr><tr><td>×</td><td>Supprime le fichier de la liste. Un fichier bloqué par le contrôle de sécurité dispose également d’une option « <b>Enregistrer quand même</b> ».</td></tr><tr><td>Taille, Lignes, Date de modification, Dossier d&#x27;exportation</td><td>Informations supplémentaires. Certaines sont masquées par défaut ; activez-les via l’option « <b>Colonnes</b> ».</td></tr></tbody></table></div><h3>Utilisation de la liste</h3><ul><li>Cliquez sur une ligne pour la sélectionner. Ctrl + clic permet d’ajouter ou de supprimer une ligne. Maj + clic permet de sélectionner une plage.</li><li>Cliquez sur l&#x27;en-tête « <b>Liste des fichiers »</b> pour réduire la liste, puis cliquez à nouveau pour la faire réapparaître.</li><li><b>La commande « Supprimer »</b> retire les fichiers de la liste. Les fichiers présents sur votre ordinateur ne sont jamais modifiés.</li><li>Cliquez sur l’en-tête d’une colonne pour trier la liste selon ce critère. Cliquez à nouveau pour inverser l’ordre.</li><li><kbd>Ctrl</kbd>+<kbd>Z</kbd> annule les modifications apportées à la liste.</li></ul><h3>Plus de colonnes</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Colonne</th><th>Ce qu’elle affiche</th></tr></thead><tbody><tr><td>#</td><td>Le numéro de ligne, compté à partir du haut de la liste comme indiqué. Cliquez dessus pour trier les fichiers selon l&#x27;ordre dans lequel vous les avez ajoutés.</td></tr><tr><td>Lignes</td><td>Vide tant que le fichier n’a pas été lu.</td></tr><tr><td>Préréglage</td><td>Le menu déroulant répertorie les préréglages du mod ouverts dans l&#x27;onglet « Règles ».</td></tr></tbody></table></div><h3>En savoir plus sur la sélection</h3><ul><li><b>« Tout sélectionner</b> » ou <kbd>Ctrl</kbd>+<kbd>A</kbd> permet de sélectionner toutes les lignes visibles. Appuyez à nouveau pour désélectionner toutes les lignes.</li><li>« Supprimer » supprime les lignes sélectionnées, après vous avoir demandé votre confirmation. « <b>Tout supprimer</b> » efface la liste.</li><li><b>« Dossier d’exportation… »</b> permet de définir l’emplacement où les lignes sélectionnées seront enregistrées.</li><li>Cliquez avec le bouton droit sur une ligne pour l’ouvrir dans l’éditeur, choisir son dossier d’exportation ou la supprimer.</li></ul><h3>En savoir plus sur le tri et l&#x27;organisation</h3><ul><li>Une flèche indique la colonne selon laquelle la liste est triée.</li><li>Le tri par « Statut » s&#x27;effectue selon ce qui doit être traité en priorité : erreurs, avertissements, règles n&#x27;ayant rien modifié, aucun préréglage, prêt, terminé, puis fichiers désactivés.</li><li>Faites glisser l&#x27;en-tête d&#x27;une colonne sur une autre pour la déplacer.</li><li><b>La fonction « Réinitialiser les colonnes</b> », dans la liste « Colonnes », rétablit les colonnes, l&#x27;ordre, le tri et les largeurs d&#x27;origine.</li><li>Les colonnes s’adaptent automatiquement à l’espace disponible. Faites glisser la ligne entre deux en-têtes pour définir vous-même une largeur ; double-cliquez sur la ligne pour revenir au réglage automatique.</li><li>Faites glisser la barre située entre la liste et la section « Détails » pour répartir l’espace différemment. Double-cliquez dessus pour réinitialiser.</li></ul><div class=\"wkcall\"><span>Astuce : la fonction « Annuler » permet de rétablir un fichier supprimé ainsi que ses résultats.</span></div>",
+      "text": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Colonne</th><th>Ce qu’elle affiche</th></tr></thead><tbody><tr><td>Activé</td><td>Indique si le fichier est inclus lorsque vous cliquez sur « Aperçu » ou « Lancer l&#x27;export ».</td></tr><tr><td>Fichier source</td><td>Le nom du fichier, suivi de son dossier.</td></tr><tr><td>Préréglage</td><td>Règles appliquées au fichier. Modifiez-les ici pour un fichier donné.</td></tr><tr><td>Statut</td><td>Ce qui s&#x27;est passé lors de la dernière vérification. Vert : terminé. Jaune : terminé, à vérifier. Rouge : échec.</td></tr><tr><td>×</td><td>Supprime le fichier de la liste. Un fichier bloqué par le contrôle de sécurité dispose également d’une option « <b>Enregistrer quand même</b> ».</td></tr><tr><td>Taille, Lignes, Date de modification, Dossier d&#x27;exportation</td><td>Informations supplémentaires. Certaines sont masquées par défaut ; activez-les via l’option « <b>Colonnes</b> ».</td></tr></tbody></table></div><h3>Utilisation de la liste</h3><ul><li>Cliquez sur une ligne pour la sélectionner. Ctrl + clic permet d’ajouter ou de supprimer une ligne. Maj + clic permet de sélectionner une plage.</li><li>Cliquez sur l&#x27;en-tête « <b>Liste des fichiers »</b> pour réduire la liste, puis cliquez à nouveau pour la faire réapparaître.</li><li><b>La commande « Supprimer »</b> retire les fichiers de la liste. Les fichiers présents sur votre ordinateur ne sont jamais modifiés.</li><li>Cliquez sur l’en-tête d’une colonne pour trier la liste selon ce critère. Cliquez à nouveau pour inverser l’ordre.</li><li><kbd>Ctrl</kbd>+<kbd>Z</kbd> annule les modifications apportées à la liste.</li></ul><h3>Plus de colonnes</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Colonne</th><th>Ce qu’elle affiche</th></tr></thead><tbody><tr><td>#</td><td>Le numéro de ligne, compté à partir du haut de la liste comme indiqué. Cliquez dessus pour trier les fichiers selon l&#x27;ordre dans lequel vous les avez ajoutés.</td></tr><tr><td>Lignes</td><td>Vide tant que le fichier n’a pas été lu.</td></tr><tr><td>Préréglage</td><td>Le menu déroulant répertorie les préréglages du mod ouverts dans l&#x27;onglet « Mods ».</td></tr></tbody></table></div><h3>En savoir plus sur la sélection</h3><ul><li><b>« Tout sélectionner</b> » ou <kbd>Ctrl</kbd>+<kbd>A</kbd> permet de sélectionner toutes les lignes visibles. Appuyez à nouveau pour désélectionner toutes les lignes.</li><li>« Supprimer » supprime les lignes sélectionnées, après vous avoir demandé votre confirmation. « <b>Tout supprimer</b> » efface la liste.</li><li><b>« Dossier d’exportation… »</b> permet de définir l’emplacement où les lignes sélectionnées seront enregistrées.</li><li>Cliquez avec le bouton droit sur une ligne pour l’ouvrir dans l’éditeur, choisir son dossier d’exportation ou la supprimer.</li></ul><h3>En savoir plus sur le tri et l&#x27;organisation</h3><ul><li>Une flèche indique la colonne selon laquelle la liste est triée.</li><li>Le tri par « Statut » s&#x27;effectue selon ce qui doit être traité en priorité : erreurs, avertissements, règles n&#x27;ayant rien modifié, aucun préréglage, prêt, terminé, puis fichiers désactivés.</li><li>Faites glisser l&#x27;en-tête d&#x27;une colonne sur une autre pour la déplacer.</li><li><b>La fonction « Réinitialiser les colonnes</b> », dans la liste « Colonnes », rétablit les colonnes, l&#x27;ordre, le tri et les largeurs d&#x27;origine.</li><li>Les colonnes s’adaptent automatiquement à l’espace disponible. Faites glisser la ligne entre deux en-têtes pour définir vous-même une largeur ; double-cliquez sur la ligne pour revenir au réglage automatique.</li><li>Faites glisser la barre située entre la liste et la section « Détails » pour répartir l’espace différemment. Double-cliquez dessus pour réinitialiser.</li></ul><div class=\"wkcall\"><span>Astuce : la fonction « Annuler » permet de rétablir un fichier supprimé ainsi que ses résultats.</span></div>",
       "machine": true
     },
     "Help.Page.files-search.Title": {
@@ -6009,7 +5949,7 @@
     },
     "Help.Page.tab-rules.Title": {
       "english": "The Rules Tab",
-      "text": "L’onglet « Règles »",
+      "text": "L’onglet « Mods »",
       "machine": true
     },
     "Help.Page.tab-rules.Html": {
@@ -6024,7 +5964,7 @@
     },
     "Help.Page.mods.Html": {
       "english": "<ul><li>A <b>mod</b> holds presets. A <b>preset</b> holds the rules for one file.</li><li>The app comes with <b>My mod</b>, empty, for your own rules, and <b>WARNO Tactical Overhaul</b>, a complete example.</li><li>Pick a mod in the <b>Mod</b> box on the Rules tab. The buttons under it make, rename, copy and delete mods.</li><li>Files on the Files tab can only be given presets of the open mod. Opening another mod gives each file that mod's preset for it, or none.</li><li><b>Export mod</b> saves the whole mod as one file, to keep or to share. <b>Import mod...</b> loads one.</li><li>To move one preset between mods, select it, press <kbd>Ctrl</kbd>+<kbd>X</kbd>, open the other mod and press <kbd>Ctrl</kbd>+<kbd>V</kbd>. Right-click offers the same.</li></ul><h3>Naming Presets</h3><p>Name each preset after its file, like <span class=\"mono\">My mod (Ammunition.ndf)</span>. When you add a file, it automatically gets the preset with its whole name in it, capitals included.</p><div class=\"wkcall\"><b>Tip</b><span>Two files with the same name in different folders? Put the folder in the name: <span class=\"mono\">WTO (Strategic/GDConstants.ndf)</span>.</span></div><h3>More About Mods</h3><ul><li>Both built-in mods can be renamed or deleted, and come back if you use <b>Clear all data</b>.</li><li>A copy is named \"Name (Copy)\", and further copies get a number.</li><li>You can also drop a mod file onto the page to import it.</li><li>If a mod with that name already exists, you're asked whether to replace it, keep both or skip. Replacing keeps your files on the presets they were using.</li></ul><h3>More About Presets</h3><ul><li>Click a preset to open its rules. Ctrl-click or Shift-click selects several; Duplicate, Delete, Cut and Copy then act on all of them. Rename needs exactly one.</li><li><kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> copy and paste presets too.</li><li>Preset text copied from the old EasyNDF desktop app can be pasted.</li><li>A name only has to be unique inside its mod. A pasted, duplicated or moved preset whose name is taken gets a number.</li></ul><div class=\"wkcall wkwarn\"><b>Careful</b><span>If saving ever stops working, a red notice appears at the top of the page. Export your mod to keep a copy elsewhere.</span></div>",
-      "text": "<ul><li>Un <b>mod</b> contient des préréglages. Un <b>préréglage</b> contient les règles applicables à un fichier.</li><li>L’application est fournie avec « <b>My mod</b> », vide, pour vos propres règles, et « <b>WARNO Tactical Overhaul</b> », un exemple complet.</li><li>Sélectionnez un mod dans la zone <b>« Mod »</b> de l’onglet « Règles ». Les boutons situés en dessous permettent de créer, renommer, copier et supprimer des mods.</li><li>Les fichiers de l’onglet « Fichiers » ne peuvent se voir attribuer que les préréglages du mod ouvert. L’ouverture d’un autre mod attribue à chaque fichier le préréglage correspondant de ce mod, ou aucun.</li><li><b>La fonction « Exporter le mod »</b> enregistre l’intégralité du mod dans un seul fichier, que vous pouvez conserver ou partager. La fonction « <b>Importer le mod… »</b> en charge un.</li><li>Pour déplacer un préréglage d’un mod à l’autre, sélectionnez-le, appuyez sur <kbd>Ctrl</kbd>+<kbd>X</kbd>, ouvrez l’autre mod et appuyez sur <kbd>Ctrl</kbd>+<kbd>V</kbd>. Un clic droit propose les mêmes options.</li></ul><h3>Nommer les préréglages</h3><p>Nommez chaque préréglage d’après son fichier, par exemple <span class=\"mono\">My mod (Ammunition.ndf)</span>. Lorsque vous ajoutez un fichier, il se voit automatiquement attribuer le préréglage contenant son nom complet, majuscules comprises.</p><div class=\"wkcall\"><b>Astuce :</b><span> deux fichiers portant le même nom dans des dossiers différents ? Indiquez le dossier dans le nom : <span class=\"mono\">WTO (Strategic/GDConstants.ndf)</span>.</span></div><h3>En savoir plus sur les mods</h3><ul><li>Les deux mods intégrés peuvent être renommés ou supprimés, et réapparaissent si vous utilisez l’option « <b>Effacer toutes les données</b> ».</li><li>Une copie est nommée « Nom (Copie) », et les copies suivantes sont numérotées.</li><li>Vous pouvez également glisser-déposer un fichier de mod sur la page pour l’importer.</li><li>Si un mod portant ce nom existe déjà, le système vous demande si vous souhaitez le remplacer, conserver les deux ou ignorer l’opération. Le remplacement conserve vos fichiers dans les préréglages qu’ils utilisaient.</li></ul><h3>En savoir plus sur les préréglages</h3><ul><li>Cliquez sur un préréglage pour afficher ses règles. Un clic avec la touche Ctrl ou Maj enfoncée permet d’en sélectionner plusieurs ; les actions « Dupliquer », « Supprimer », « Couper » et « Copier » s’appliquent alors à l’ensemble. L’action « Renommer » nécessite exactement un élément.</li><li><kbd>Ctrl</kbd>+<kbd>C</kbd> et <kbd>Ctrl</kbd>+<kbd>V</kbd> permettent également de copier-coller des préréglages.</li><li>Le texte d’un préréglage copié depuis l’ancienne application de bureau EasyNDF peut être collé.</li><li>Un nom doit uniquement être unique au sein de son mod. Un préréglage collé, dupliqué ou déplacé dont le nom est déjà pris se voit attribuer un numéro.</li></ul><div class=\"wkcall wkwarn\"><b>Attention :</b> <span>si l’enregistrement cesse de fonctionner, un message d’avertissement rouge s’affiche en haut de la page. Exportez votre mod afin d’en conserver une copie ailleurs.</span></div>",
+      "text": "<ul><li>Un <b>mod</b> contient des préréglages. Un <b>préréglage</b> contient les règles applicables à un fichier.</li><li>L’application est fournie avec « <b>My mod</b> », vide, pour vos propres règles, et « <b>WARNO Tactical Overhaul</b> », un exemple complet.</li><li>Sélectionnez un mod dans la zone <b>« Mod »</b> de l’onglet « Mods ». Les boutons situés en dessous permettent de créer, renommer, copier et supprimer des mods.</li><li>Les fichiers de l’onglet « Fichiers » ne peuvent se voir attribuer que les préréglages du mod ouvert. L’ouverture d’un autre mod attribue à chaque fichier le préréglage correspondant de ce mod, ou aucun.</li><li><b>La fonction « Exporter le mod »</b> enregistre l’intégralité du mod dans un seul fichier, que vous pouvez conserver ou partager. La fonction « <b>Importer le mod… »</b> en charge un.</li><li>Pour déplacer un préréglage d’un mod à l’autre, sélectionnez-le, appuyez sur <kbd>Ctrl</kbd>+<kbd>X</kbd>, ouvrez l’autre mod et appuyez sur <kbd>Ctrl</kbd>+<kbd>V</kbd>. Un clic droit propose les mêmes options.</li></ul><h3>Nommer les préréglages</h3><p>Nommez chaque préréglage d’après son fichier, par exemple <span class=\"mono\">My mod (Ammunition.ndf)</span>. Lorsque vous ajoutez un fichier, il se voit automatiquement attribuer le préréglage contenant son nom complet, majuscules comprises.</p><div class=\"wkcall\"><b>Astuce :</b><span> deux fichiers portant le même nom dans des dossiers différents ? Indiquez le dossier dans le nom : <span class=\"mono\">WTO (Strategic/GDConstants.ndf)</span>.</span></div><h3>En savoir plus sur les mods</h3><ul><li>Les deux mods intégrés peuvent être renommés ou supprimés, et réapparaissent si vous utilisez l’option « <b>Effacer toutes les données</b> ».</li><li>Une copie est nommée « Nom (Copie) », et les copies suivantes sont numérotées.</li><li>Vous pouvez également glisser-déposer un fichier de mod sur la page pour l’importer.</li><li>Si un mod portant ce nom existe déjà, le système vous demande si vous souhaitez le remplacer, conserver les deux ou ignorer l’opération. Le remplacement conserve vos fichiers dans les préréglages qu’ils utilisaient.</li></ul><h3>En savoir plus sur les préréglages</h3><ul><li>Cliquez sur un préréglage pour afficher ses règles. Un clic avec la touche Ctrl ou Maj enfoncée permet d’en sélectionner plusieurs ; les actions « Dupliquer », « Supprimer », « Couper » et « Copier » s’appliquent alors à l’ensemble. L’action « Renommer » nécessite exactement un élément.</li><li><kbd>Ctrl</kbd>+<kbd>C</kbd> et <kbd>Ctrl</kbd>+<kbd>V</kbd> permettent également de copier-coller des préréglages.</li><li>Le texte d’un préréglage copié depuis l’ancienne application de bureau EasyNDF peut être collé.</li><li>Un nom doit uniquement être unique au sein de son mod. Un préréglage collé, dupliqué ou déplacé dont le nom est déjà pris se voit attribuer un numéro.</li></ul><div class=\"wkcall wkwarn\"><b>Attention :</b> <span>si l’enregistrement cesse de fonctionner, un message d’avertissement rouge s’affiche en haut de la page. Exportez votre mod afin d’en conserver une copie ailleurs.</span></div>",
       "machine": true
     },
     "Help.Page.watermark.Title": {
@@ -6159,7 +6099,7 @@
     },
     "Help.Page.editor-desc.Html": {
       "english": "<p class=\"wklead\">Under the text is a list of the file's descriptors, with their properties on the right.</p><ul><li>Open a descriptor to see what's inside it and what it links to, like a unit, its weapons and their ammunition.</li><li><b>Used by</b> shows everything that refers to it. Changing it changes it for all of them.</li><li>Double-click a descriptor to find it in the text.</li><li>The box above the list finds any descriptor by name.</li><li>The funnel button beside it filters by property, such as every descriptor with a MaximumRangeGRU over 2000. The number on it is how many conditions are on.</li></ul><h3>The Filter</h3><ul><li>Each condition is a property, a test and a value. <b>all</b> or <b>any</b> above the list says how many must match.</li><li>The Property list holds the properties found in the descriptors being viewed: this file, or every read file under All files. (Name) and (Type) are always there.</li><li>A condition can have a <b>Name</b>, shown in the list in place of its details.</li><li>The checkbox turns a condition on or off. Right-click a condition to disable, duplicate, move, cut, copy, paste or delete it; the same keys as the Rules tab work.</li><li>Quotes around values are ignored, and text is compared without regard to capitals. \"is greater than\" and \"is less than\" compare numbers.</li><li>A filter works without saving it, and stays on until you clear it. <b>Save as...</b> keeps it under a name; <b>Export</b> and <b>Import...</b> share saved filters as a file.</li></ul><h3>More Details</h3><ul><li>A descriptor from another file is found once that file has been read. <b>Refresh</b> reads every file on the Files tab.</li><li><b>This file</b> lists this file's descriptors. <b>All files</b> shows chains that lead from one file into another, like a unit leading to its weapon.</li><li>Alt+click a descriptor to find it in the text, too. This opens its file if it's in another one.</li></ul><h3>Changing a Value</h3><ul><li>When the descriptor is in the open file and the text is editable, type over a value and press Enter.</li><li>A value that would break the descriptor is refused.</li><li>Values that run over several lines are changed in the text itself.</li></ul><div class=\"wkcall\"><b>Tip</b><span>Drag the bar between the two lists to share the width differently.</span></div>",
-      "text": "<p class=\"wklead\">Sous le texte figure une liste des descripteurs du fichier, avec leurs propriétés à droite.</p><ul><li>Ouvrez un descripteur pour voir ce qu’il contient et vers quoi il renvoie, par exemple une unité, ses armes et leurs munitions.</li><li><b>La rubrique « Utilisé par »</b> affiche tout ce qui y fait référence. Toute modification apportée à cet élément s’applique à l’ensemble de ces éléments.</li><li>Double-cliquez sur un descripteur pour le localiser dans le texte.</li><li>Le champ situé au-dessus de la liste permet de rechercher n’importe quel descripteur par son nom.</li><li>Le bouton en forme d’entonnoir situé à côté permet de filtrer par propriété, par exemple tous les descripteurs dont la valeur « MaximumRangeGRU » est supérieure à 2 000. Le chiffre qui y figure indique le nombre de conditions activées.</li></ul><h3>Le filtre</h3><ul><li>Chaque condition est composée d’une propriété, d’un critère et d’une valeur. Les options « <b>toutes »</b> ou « <b>n’importe laquelle »</b> situées au-dessus de la liste indiquent le nombre de conditions qui doivent être remplies.</li><li>La liste « Propriétés » contient les propriétés présentes dans les descripteurs affichés : ce fichier ou tous les fichiers lus sous « Tous les fichiers ». Les champs (Nom) et (Type) y figurent systématiquement.</li><li>Une condition peut avoir un « <b>Nom</b> », affiché dans la liste à la place de ses détails.</li><li>La case à cocher permet d’activer ou de désactiver une condition. Cliquez avec le bouton droit sur une condition pour la désactiver, la dupliquer, la déplacer, la couper, la copier, la coller ou la supprimer ; les raccourcis clavier sont les mêmes que ceux de l’onglet « Règles ».</li><li>Les guillemets entourant les valeurs sont ignorés, et la comparaison du texte s’effectue sans distinction entre majuscules et minuscules. « est supérieur à » et « est inférieur à » permettent de comparer des nombres.</li><li>Un filtre fonctionne sans qu’il soit nécessaire de l’enregistrer et reste actif jusqu’à ce que vous le désactiviez. L’option « <b>Enregistrer sous… »</b> permet de l’enregistrer sous un nom ; les options « <b>Exporter »</b> et <b>« Importer… »</b> permettent de partager les filtres enregistrés sous forme de fichier.</li></ul><h3>Plus de détails</h3><ul><li>Un descripteur provenant d’un autre fichier est détecté dès que ce fichier a été lu. <b>L’option « Actualiser »</b> lit tous les fichiers de l’onglet « Fichiers ».</li><li><b>Ce fichier</b> répertorie les descripteurs de ce fichier. <b>« Tous les fichiers »</b> affiche les chaînes qui relient un fichier à un autre, comme une unité menant à son arme.</li><li>Appuyez sur Alt + clic sur un descripteur pour le localiser également dans le texte. Cela ouvre son fichier s’il se trouve dans un autre fichier.</li></ul><h3>Modification d’une valeur</h3><ul><li>Lorsque le descripteur se trouve dans le fichier ouvert et que le texte est modifiable, remplacez une valeur par une autre et appuyez sur Entrée.</li><li>Une valeur susceptible de corrompre le descripteur est refusée.</li><li>Les valeurs s&#x27;étendant sur plusieurs lignes sont modifiées directement dans le texte.</li></ul><div class=\"wkcall\"><span>Astuce : faites glisser la barre située entre les deux listes pour répartir la largeur différemment.</span></div>",
+      "text": "<p class=\"wklead\">Sous le texte figure une liste des descripteurs du fichier, avec leurs propriétés à droite.</p><ul><li>Ouvrez un descripteur pour voir ce qu’il contient et vers quoi il renvoie, par exemple une unité, ses armes et leurs munitions.</li><li><b>La rubrique « Utilisé par »</b> affiche tout ce qui y fait référence. Toute modification apportée à cet élément s’applique à l’ensemble de ces éléments.</li><li>Double-cliquez sur un descripteur pour le localiser dans le texte.</li><li>Le champ situé au-dessus de la liste permet de rechercher n’importe quel descripteur par son nom.</li><li>Le bouton en forme d’entonnoir situé à côté permet de filtrer par propriété, par exemple tous les descripteurs dont la valeur « MaximumRangeGRU » est supérieure à 2 000. Le chiffre qui y figure indique le nombre de conditions activées.</li></ul><h3>Le filtre</h3><ul><li>Chaque condition est composée d’une propriété, d’un critère et d’une valeur. Les options « <b>toutes »</b> ou « <b>n’importe laquelle »</b> situées au-dessus de la liste indiquent le nombre de conditions qui doivent être remplies.</li><li>La liste « Propriétés » contient les propriétés présentes dans les descripteurs affichés : ce fichier ou tous les fichiers lus sous « Tous les fichiers ». Les champs (Nom) et (Type) y figurent systématiquement.</li><li>Une condition peut avoir un « <b>Nom</b> », affiché dans la liste à la place de ses détails.</li><li>La case à cocher permet d’activer ou de désactiver une condition. Cliquez avec le bouton droit sur une condition pour la désactiver, la dupliquer, la déplacer, la couper, la copier, la coller ou la supprimer ; les raccourcis clavier sont les mêmes que ceux de l’onglet « Mods ».</li><li>Les guillemets entourant les valeurs sont ignorés, et la comparaison du texte s’effectue sans distinction entre majuscules et minuscules. « est supérieur à » et « est inférieur à » permettent de comparer des nombres.</li><li>Un filtre fonctionne sans qu’il soit nécessaire de l’enregistrer et reste actif jusqu’à ce que vous le désactiviez. L’option « <b>Enregistrer sous… »</b> permet de l’enregistrer sous un nom ; les options « <b>Exporter »</b> et <b>« Importer… »</b> permettent de partager les filtres enregistrés sous forme de fichier.</li></ul><h3>Plus de détails</h3><ul><li>Un descripteur provenant d’un autre fichier est détecté dès que ce fichier a été lu. <b>L’option « Actualiser »</b> lit tous les fichiers de l’onglet « Fichiers ».</li><li><b>Ce fichier</b> répertorie les descripteurs de ce fichier. <b>« Tous les fichiers »</b> affiche les chaînes qui relient un fichier à un autre, comme une unité menant à son arme.</li><li>Appuyez sur Alt + clic sur un descripteur pour le localiser également dans le texte. Cela ouvre son fichier s’il se trouve dans un autre fichier.</li></ul><h3>Modification d’une valeur</h3><ul><li>Lorsque le descripteur se trouve dans le fichier ouvert et que le texte est modifiable, remplacez une valeur par une autre et appuyez sur Entrée.</li><li>Une valeur susceptible de corrompre le descripteur est refusée.</li><li>Les valeurs s&#x27;étendant sur plusieurs lignes sont modifiées directement dans le texte.</li></ul><div class=\"wkcall\"><span>Astuce : faites glisser la barre située entre les deux listes pour répartir la largeur différemment.</span></div>",
       "machine": true
     },
     "Help.Group.SettingsandMore": {
@@ -6204,7 +6144,7 @@
     },
     "Help.Page.data.Html": {
       "english": "<ul><li>Everything you make is saved on this computer, in <span class=\"mono\">%LOCALAPPDATA%\\EasyNDF</span>. In portable mode, set by a file called <span class=\"mono\">EasyNDF portable mode.txt</span> beside EasyNDF.exe, it's in a <span class=\"mono\">Data</span> folder beside the app instead.</li><li><b>Back up all mods</b>, in Settings, saves all your mods in one file. <b>Restore backup...</b> brings them back.</li><li><b>Reset settings</b> puts the settings back but keeps your mods.</li><li><b>Clear all data</b> deletes everything EasyNDF has saved.</li></ul><h3>More Details</h3><ul><li>These buttons are under <b>Data</b> in Settings.</li><li><b>Clear all data</b> also empties the file list. The two built-in mods come back.</li><li><b>Export mod</b>, on the Rules tab, saves one mod at a time.</li></ul>",
-      "text": "<ul><li>Tout ce que vous créez est enregistré sur cet ordinateur, dans <span class=\"mono\">%LOCALAPPDATA%\\EasyNDF</span>. En mode portable, activé par un fichier nommé <span class=\"mono\">EasyNDF portable mode.txt</span> situé à côté de EasyNDF.exe, vos fichiers sont plutôt stockés dans un dossier <span class=\"mono\">Data</span> à côté de l’application.</li><li><b>La fonction « Sauvegarder toutes les mods</b> », dans les Paramètres, enregistre toutes vos mods dans un seul fichier. « <b>Restaurer la sauvegarde… »</b> les rétablit.</li><li><b>« Réinitialiser les paramètres »</b> rétablit les paramètres par défaut tout en conservant vos mods.</li><li><b>« Effacer toutes les données »</b> supprime tout ce qu’EasyNDF a enregistré.</li></ul><h3>Plus de détails</h3><ul><li>Ces boutons se trouvent sous « <b>Données »</b> dans les Paramètres.</li><li><b>L’option « Effacer toutes les données »</b> vide également la liste des fichiers. Les deux mods intégrés réapparaissent.</li><li><b>L’option « Exporter un mod</b> », dans l’onglet « Règles », permet d’enregistrer un mod à la fois.</li></ul>",
+      "text": "<ul><li>Tout ce que vous créez est enregistré sur cet ordinateur, dans <span class=\"mono\">%LOCALAPPDATA%\\EasyNDF</span>. En mode portable, activé par un fichier nommé <span class=\"mono\">EasyNDF portable mode.txt</span> situé à côté de EasyNDF.exe, vos fichiers sont plutôt stockés dans un dossier <span class=\"mono\">Data</span> à côté de l’application.</li><li><b>La fonction « Sauvegarder toutes les mods</b> », dans les Paramètres, enregistre toutes vos mods dans un seul fichier. « <b>Restaurer la sauvegarde… »</b> les rétablit.</li><li><b>« Réinitialiser les paramètres »</b> rétablit les paramètres par défaut tout en conservant vos mods.</li><li><b>« Effacer toutes les données »</b> supprime tout ce qu’EasyNDF a enregistré.</li></ul><h3>Plus de détails</h3><ul><li>Ces boutons se trouvent sous « <b>Données »</b> dans les Paramètres.</li><li><b>L’option « Effacer toutes les données »</b> vide également la liste des fichiers. Les deux mods intégrés réapparaissent.</li><li><b>L’option « Exporter un mod</b> », dans l’onglet « Mods », permet d’enregistrer un mod à la fois.</li></ul>",
       "machine": true
     },
     "Help.Page.tips.Title": {
@@ -6214,7 +6154,7 @@
     },
     "Help.Page.tips.Html": {
       "english": "<ul><li><b>Right-click</b> almost anything for a menu of what you can do with it.</li><li><b><kbd>Ctrl</kbd>+<kbd>Z</kbd></b> undoes changes on the Files and Rules tabs.</li><li>A text box with a small arrow at its end has more text than fits. Click the arrow to see it all.</li><li>Drag the bar between two parts of a tab, like the file list and Details, to share the room differently. Double-click the bar to reset it.</li><li>Drag a column heading to move the column, or the line between headings to resize it.</li></ul><h3>More Tricks</h3><ul><li>Right-click works on rows, headings, folders, rules, edits in Details, the Editor's text and lists, and most dropdowns. Text boxes have the usual Cut, Copy and Paste menu.</li><li>In the bigger text box, moving away or Enter keeps what you typed; Escape throws it away.</li><li>The ▥ and ▤ buttons on Details and Descriptors put them beside or below; click the pressed one again to let the window's size decide.</li><li>Every tab has a <b>?</b> button at its top right with help for that tab.</li></ul>",
-      "text": "<ul><li><b>Cliquez avec le bouton droit de la souris sur</b> presque n’importe quel élément pour afficher un menu des actions possibles.</li><li><b><kbd>Ctrl</kbd>+<kbd>Z</kbd></b> annule les modifications apportées dans les onglets « Fichiers » et « Règles ».</li><li>Une zone de texte comportant une petite flèche à son extrémité contient plus de texte qu’elle ne peut en afficher. Cliquez sur la flèche pour afficher l’intégralité du texte.</li><li>Faites glisser la barre située entre deux parties d’un onglet, par exemple entre la liste des fichiers et la section « Détails », pour répartir l’espace différemment. Double-cliquez sur la barre pour rétablir la configuration d’origine.</li><li>Faites glisser l’en-tête d’une colonne pour déplacer celle-ci, ou la ligne entre les en-têtes pour la redimensionner.</li></ul><h3>Autres astuces</h3><ul><li>Le clic droit fonctionne sur les lignes, les en-têtes, les dossiers, les règles, les modifications dans « Détails », le texte et les listes de l’éditeur, ainsi que sur la plupart des menus déroulants. Les zones de texte disposent du menu habituel « Couper », « Copier » et « Coller ».</li><li>Dans la zone de texte la plus grande, le fait de vous éloigner du curseur ou d’appuyer sur Entrée conserve ce que vous avez saisi ; la touche Échap efface le contenu.</li><li>Les boutons ▥ et ▤ dans les onglets « Détails » et « Descripteurs » permettent de les placer à côté ou en dessous ; cliquez à nouveau sur le bouton enfoncé pour laisser la taille de la fenêtre déterminer leur emplacement.</li><li>Chaque onglet comporte un bouton <b>« ? »</b> en haut à droite, qui vous permet d’accéder à l’aide correspondante.</li></ul>",
+      "text": "<ul><li><b>Cliquez avec le bouton droit de la souris sur</b> presque n’importe quel élément pour afficher un menu des actions possibles.</li><li><b><kbd>Ctrl</kbd>+<kbd>Z</kbd></b> annule les modifications apportées dans les onglets « Fichiers » et « Mods ».</li><li>Une zone de texte comportant une petite flèche à son extrémité contient plus de texte qu’elle ne peut en afficher. Cliquez sur la flèche pour afficher l’intégralité du texte.</li><li>Faites glisser la barre située entre deux parties d’un onglet, par exemple entre la liste des fichiers et la section « Détails », pour répartir l’espace différemment. Double-cliquez sur la barre pour rétablir la configuration d’origine.</li><li>Faites glisser l’en-tête d’une colonne pour déplacer celle-ci, ou la ligne entre les en-têtes pour la redimensionner.</li></ul><h3>Autres astuces</h3><ul><li>Le clic droit fonctionne sur les lignes, les en-têtes, les dossiers, les règles, les modifications dans « Détails », le texte et les listes de l’éditeur, ainsi que sur la plupart des menus déroulants. Les zones de texte disposent du menu habituel « Couper », « Copier » et « Coller ».</li><li>Dans la zone de texte la plus grande, le fait de vous éloigner du curseur ou d’appuyer sur Entrée conserve ce que vous avez saisi ; la touche Échap efface le contenu.</li><li>Les boutons ▥ et ▤ dans les onglets « Détails » et « Descripteurs » permettent de les placer à côté ou en dessous ; cliquez à nouveau sur le bouton enfoncé pour laisser la taille de la fenêtre déterminer leur emplacement.</li><li>Chaque onglet comporte un bouton <b>« ? »</b> en haut à droite, qui vous permet d’accéder à l’aide correspondante.</li></ul>",
       "machine": true
     },
     "Help.Page.keys.Title": {
@@ -6223,8 +6163,8 @@
       "machine": true
     },
     "Help.Page.keys.Html": {
-      "english": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Keys</th><th>What they do</th></tr></thead><tbody><tr><td><kbd class=\"mouse\"></kbd>, <kbd>Ctrl</kbd>+<kbd class=\"mouse\"></kbd>, <kbd>Shift</kbd>+<kbd class=\"mouse\"></kbd></td><td>Select one row, add or remove one, select a range.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>Select everything in the list.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo, redo.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Copy, cut and paste presets, rules, conditions and actions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>↑</kbd>, <kbd>Ctrl</kbd>+<kbd>↓</kbd></td><td>Move the selected rules, conditions or actions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>On the Rules tab: add an Edit rule.</td></tr><tr><td><kbd>Delete</kbd></td><td>Remove selected files from the list, or delete selected rules.</td></tr><tr><td><kbd>Enter</kbd> or <kbd class=\"mouse double\"></kbd></td><td>Open the selected file, rule, condition or action.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd>, <kbd>Ctrl</kbd>+<kbd>H</kbd>, <kbd>Ctrl</kbd>+<kbd>G</kbd></td><td>In the Editor: find, replace, go to a line.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>In the Editor: search all files.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Scroll</kbd></td><td>Editor text size.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Space</kbd></td><td>In a rule's boxes: show suggestions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd></td><td>On the Rules tab: expand or collapse every group; on the Files tab, every folder; on the Units tab, every unit type in Cards.</td></tr><tr><td><kbd>Escape</kbd></td><td>Close a menu, a window, or the Editor's find bar.</td></tr></tbody></table></div><div class=\"wkcall\"><b>Tip</b><span>Shortcuts don't work while you're typing in a box.</span></div><h3>More Shortcuts</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Keys</th><th>What they do</th></tr></thead><tbody><tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo, like <kbd>Ctrl</kbd>+<kbd>Y</kbd>.</td></tr><tr><td><kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>Rule window: select another condition or action. Shift selects several.</td></tr><tr><td><kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>Condition or action window: close it, or in Value, add a line break.</td></tr><tr><td><kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>In the Editor's Find box: next match, previous match.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>+</kbd>, <kbd>Ctrl</kbd>+<kbd>−</kbd>, <kbd>Ctrl</kbd>+<kbd>0</kbd></td><td>Editor text size while typing: bigger, smaller, normal.</td></tr><tr><td><kbd>Alt</kbd>+<kbd class=\"mouse\"></kbd></td><td>Show a descriptor in the Editor's text.</td></tr><tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>In the Editor's descriptor list: move, open and close.</td></tr></tbody></table></div>",
-      "text": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Clés</th><th>Leur fonction</th></tr></thead><tbody><tr><td><kbd class=\"mouse\"></kbd>, <kbd>Ctrl</kbd>+<kbd class=\"mouse\"></kbd>, <kbd>Maj</kbd>+<kbd class=\"mouse\"></kbd></td><td>Sélectionner une ligne, en ajouter ou en supprimer une, sélectionner une plage.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>Sélectionner tout le contenu de la liste.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Annuler, refaire.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Copier, couper et coller des préréglages, des règles, des conditions et des actions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>↑</kbd>, <kbd>Ctrl</kbd>+<kbd>↓</kbd></td><td>Déplacer les règles, conditions ou actions sélectionnées.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>Dans l’onglet « Règles » : ajoutez une règle à modifier.</td></tr><tr><td><kbd>Suppr</kbd></td><td>Supprimez les fichiers sélectionnés de la liste ou supprimez les règles sélectionnées.</td></tr><tr><td><kbd>Entrée</kbd> ou <kbd class=\"mouse double\"></kbd></td><td>Ouvrez le fichier, la règle, la condition ou l’action sélectionné(e).</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd>, <kbd>Ctrl</kbd>+<kbd>H</kbd>, <kbd>Ctrl</kbd>+<kbd>G</kbd></td><td>Dans l’éditeur : rechercher, remplacer, aller à une ligne.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>F</kbd></td><td>Dans l’éditeur : effectuez une recherche dans tous les fichiers.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Molette</kbd></td><td>Taille du texte dans l’éditeur.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Espace</kbd></td><td>Dans les champs d’une règle : afficher les suggestions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>]</kbd>, <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>[</kbd></td><td>Dans l&#x27;onglet « Règles » : développer ou réduire chaque groupe ; dans l&#x27;onglet « Fichiers », chaque dossier ; dans l&#x27;onglet « Unités », chaque type d’unité en Cartes.</td></tr><tr><td><kbd>Échap</kbd></td><td>Fermer un menu, une fenêtre ou la barre de recherche de l’éditeur.</td></tr></tbody></table></div><div class=\"wkcall\"><span>Astuce : les raccourcis ne fonctionnent pas lorsque vous tapez du texte dans un champ.</span></div><h3>Autres raccourcis</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Touches</th><th>Fonction</th></tr></thead><tbody><tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>Z</kbd></td><td>Refaire, comme <kbd>Ctrl</kbd>+<kbd>Y</kbd>.</td></tr><tr><td><kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>Origine</kbd>, <kbd>Fin</kbd></td><td>Fenêtre « Règle » : sélectionnez une autre condition ou action. La touche Maj permet d&#x27;en sélectionner plusieurs.</td></tr><tr><td><kbd>Entrée</kbd>, <kbd>Maj</kbd>+<kbd>Entrée</kbd></td><td>Fenêtre « Condition » ou « Action » : la fermer, ou dans le champ « Valeur », ajouter un saut de ligne.</td></tr><tr><td><kbd>Entrée</kbd>, <kbd>Maj</kbd>+<kbd>Entrée</kbd></td><td>Dans la zone « Rechercher » de l’éditeur : occurrence suivante, occurrence précédente.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>+</kbd>, <kbd>Ctrl</kbd>+<kbd>−</kbd>, <kbd>Ctrl</kbd>+<kbd>0</kbd></td><td>Taille du texte dans l’éditeur pendant la saisie : plus grande, plus petite, normale.</td></tr><tr><td><kbd>Alt</kbd>+<kbd class=\"mouse\"></kbd></td><td>Afficher un descripteur dans le texte de l’éditeur.</td></tr><tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd>, <kbd>Origine</kbd>, <kbd>Fin</kbd></td><td>Dans la liste des descripteurs de l&#x27;éditeur : déplacer, ouvrir et fermer.</td></tr></tbody></table></div>",
+      "english": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Keys</th><th>What they do</th></tr></thead><tbody><tr><td><kbd class=\"mouse\"></kbd>, <kbd>Ctrl</kbd>+<kbd class=\"mouse\"></kbd>, <kbd>Shift</kbd>+<kbd class=\"mouse\"></kbd></td><td>Select one row, add or remove one, select a range.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>Select everything in the list.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Undo, redo.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Copy, cut and paste presets, rules, conditions and actions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>↑</kbd>, <kbd>Ctrl</kbd>+<kbd>↓</kbd></td><td>Move the selected rules, conditions or actions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>On the Rules tab: add an Edit rule.</td></tr><tr><td><kbd>Delete</kbd></td><td>Remove selected files from the list, or delete selected rules.</td></tr><tr><td><kbd>Enter</kbd> or <kbd class=\"mouse double\"></kbd></td><td>Open the selected file, rule, condition or action.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd>, <kbd>Ctrl</kbd>+<kbd>H</kbd>, <kbd>Ctrl</kbd>+<kbd>G</kbd></td><td>In the Editor: find, replace, go to a line.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>In the Editor: search all files.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Scroll</kbd></td><td>Editor text size.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Space</kbd></td><td>In a rule's boxes: show suggestions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>]</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>[</kbd></td><td>On the Rules tab: expand or collapse every group; on the Files tab, every folder; on the Armory tab, every unit type in Cards.</td></tr><tr><td><kbd>Escape</kbd></td><td>Close a menu, a window, or the Editor's find bar.</td></tr></tbody></table></div><div class=\"wkcall\"><b>Tip</b><span>Shortcuts don't work while you're typing in a box.</span></div><h3>More Shortcuts</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Keys</th><th>What they do</th></tr></thead><tbody><tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td><td>Redo, like <kbd>Ctrl</kbd>+<kbd>Y</kbd>.</td></tr><tr><td><kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>Rule window: select another condition or action. Shift selects several.</td></tr><tr><td><kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>Condition or action window: close it, or in Value, add a line break.</td></tr><tr><td><kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>In the Editor's Find box: next match, previous match.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>+</kbd>, <kbd>Ctrl</kbd>+<kbd>−</kbd>, <kbd>Ctrl</kbd>+<kbd>0</kbd></td><td>Editor text size while typing: bigger, smaller, normal.</td></tr><tr><td><kbd>Alt</kbd>+<kbd class=\"mouse\"></kbd></td><td>Show a descriptor in the Editor's text.</td></tr><tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd>, <kbd>Home</kbd>, <kbd>End</kbd></td><td>In the Editor's descriptor list: move, open and close.</td></tr></tbody></table></div>",
+      "text": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Clés</th><th>Leur fonction</th></tr></thead><tbody><tr><td><kbd class=\"mouse\"></kbd>, <kbd>Ctrl</kbd>+<kbd class=\"mouse\"></kbd>, <kbd>Maj</kbd>+<kbd class=\"mouse\"></kbd></td><td>Sélectionner une ligne, en ajouter ou en supprimer une, sélectionner une plage.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>A</kbd></td><td>Sélectionner tout le contenu de la liste.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>Annuler, refaire.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd></td><td>Copier, couper et coller des préréglages, des règles, des conditions et des actions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>↑</kbd>, <kbd>Ctrl</kbd>+<kbd>↓</kbd></td><td>Déplacer les règles, conditions ou actions sélectionnées.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>N</kbd></td><td>Dans l’onglet « Mods » : ajoutez une règle à modifier.</td></tr><tr><td><kbd>Suppr</kbd></td><td>Supprimez les fichiers sélectionnés de la liste ou supprimez les règles sélectionnées.</td></tr><tr><td><kbd>Entrée</kbd> ou <kbd class=\"mouse double\"></kbd></td><td>Ouvrez le fichier, la règle, la condition ou l’action sélectionné(e).</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>F</kbd>, <kbd>Ctrl</kbd>+<kbd>H</kbd>, <kbd>Ctrl</kbd>+<kbd>G</kbd></td><td>Dans l’éditeur : rechercher, remplacer, aller à une ligne.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>F</kbd></td><td>Dans l’éditeur : effectuez une recherche dans tous les fichiers.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Molette</kbd></td><td>Taille du texte dans l’éditeur.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Espace</kbd></td><td>Dans les champs d’une règle : afficher les suggestions.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>]</kbd>, <kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>[</kbd></td><td>Dans l&#x27;onglet « Mods » : développer ou réduire chaque groupe ; dans l&#x27;onglet « Fichiers », chaque dossier ; dans l&#x27;onglet « Armory », chaque type d’unité en Cartes.</td></tr><tr><td><kbd>Échap</kbd></td><td>Fermer un menu, une fenêtre ou la barre de recherche de l’éditeur.</td></tr></tbody></table></div><div class=\"wkcall\"><span>Astuce : les raccourcis ne fonctionnent pas lorsque vous tapez du texte dans un champ.</span></div><h3>Autres raccourcis</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Touches</th><th>Fonction</th></tr></thead><tbody><tr><td><kbd>Ctrl</kbd>+<kbd>Maj</kbd>+<kbd>Z</kbd></td><td>Refaire, comme <kbd>Ctrl</kbd>+<kbd>Y</kbd>.</td></tr><tr><td><kbd>↑</kbd>, <kbd>↓</kbd>, <kbd>Origine</kbd>, <kbd>Fin</kbd></td><td>Fenêtre « Règle » : sélectionnez une autre condition ou action. La touche Maj permet d&#x27;en sélectionner plusieurs.</td></tr><tr><td><kbd>Entrée</kbd>, <kbd>Maj</kbd>+<kbd>Entrée</kbd></td><td>Fenêtre « Condition » ou « Action » : la fermer, ou dans le champ « Valeur », ajouter un saut de ligne.</td></tr><tr><td><kbd>Entrée</kbd>, <kbd>Maj</kbd>+<kbd>Entrée</kbd></td><td>Dans la zone « Rechercher » de l’éditeur : occurrence suivante, occurrence précédente.</td></tr><tr><td><kbd>Ctrl</kbd>+<kbd>+</kbd>, <kbd>Ctrl</kbd>+<kbd>−</kbd>, <kbd>Ctrl</kbd>+<kbd>0</kbd></td><td>Taille du texte dans l’éditeur pendant la saisie : plus grande, plus petite, normale.</td></tr><tr><td><kbd>Alt</kbd>+<kbd class=\"mouse\"></kbd></td><td>Afficher un descripteur dans le texte de l’éditeur.</td></tr><tr><td><kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd>, <kbd>Origine</kbd>, <kbd>Fin</kbd></td><td>Dans la liste des descripteurs de l&#x27;éditeur : déplacer, ouvrir et fermer.</td></tr></tbody></table></div>",
       "machine": true
     },
     "Help.Page.limits.Title": {
@@ -6243,8 +6183,8 @@
       "machine": true
     },
     "Help.Page.about.Html": {
-      "english": "<p class=\"wklead\">The About tab has the version, credits, links, the change log and the license.</p><p>EasyNDF is free software under the GNU General Public License, version 3: you may use it for anything, and change and share it, as long as what you share stays under the same license. Forks may not call themselves EasyNDF or suggest that they are.</p><h3>More Details</h3><ul><li>The About tab also has who made the tool, credits and special thanks.</li><li><b>Change log</b> lists what changed in each version, newest first. Clicking the version next to the title opens it too.</li><li><b>License</b> opens the license: the GNU General Public License, version 3, with two additional terms about the name.</li></ul>",
-      "text": "<p class=\"wklead\">L’onglet « À propos » contient la version, les crédits, les liens, le journal des modifications et la licence.</p><p>EasyNDF est un logiciel libre sous licence GNU General Public License, version 3 : vous pouvez l’utiliser à toutes fins, le modifier et le partager, à condition que ce que vous partagez reste sous la même licence. Les dérivés ne doivent pas s’appeler EasyNDF ni suggérer qu’ils le sont.</p><h3>Plus de détails</h3><ul><li>L’onglet « À propos » indique également qui a développé l’outil, les crédits et les remerciements particuliers.</li><li><b>Le journal des modifications</b> répertorie les changements apportés à chaque version, en commençant par les plus récents. Cliquer sur la version à côté du titre permet également de l&#x27;ouvrir.</li><li><b>« Licence »</b> ouvre le texte de la licence : la Licence publique générale GNU, version 3, assortie de deux clauses supplémentaires concernant le nom.</li></ul>",
+      "english": "<p class=\"wklead\">The About tab has the version, credits, links, the change log and the license.</p><p>EasyNDF is free software under the GNU Affero General Public License, version 3: you may use it for anything, and change and share it, as long as what you share, or let others use over a network, stays under the same license, with its source code. Forks may not call themselves EasyNDF or suggest that they are.</p><h3>More Details</h3><ul><li>The About tab also has who made the tool, credits and special thanks.</li><li><b>Change log</b> lists what changed in each version, newest first. Clicking the version next to the title opens it too.</li><li><b>License</b> opens the license: the GNU Affero General Public License, version 3, with two additional terms about the name.</li></ul>",
+      "text": "<p class=\"wklead\">L’onglet « À propos » contient la version, les crédits, les liens, le journal des modifications et la licence.</p><p>EasyNDF est un logiciel libre sous licence GNU Affero General Public License, version 3 : vous pouvez l’utiliser à toutes fins, le modifier et le partager, à condition que ce que vous partagez, ou laissez d’autres utiliser par un réseau, reste sous la même licence, avec son code source. Les dérivés ne doivent pas s’appeler EasyNDF ni suggérer qu’ils le sont.</p><h3>Plus de détails</h3><ul><li>L’onglet « À propos » indique également qui a développé l’outil, les crédits et les remerciements particuliers.</li><li><b>Le journal des modifications</b> répertorie les changements apportés à chaque version, en commençant par les plus récents. Cliquer sur la version à côté du titre permet également de l&#x27;ouvrir.</li><li><b>« Licence »</b> ouvre le texte de la licence : la Licence publique générale GNU Affero, version 3, assortie de deux clauses supplémentaires concernant le nom.</li></ul>",
       "machine": true
     },
     "Help.Group.MakingaWARNOMod": {
@@ -6323,8 +6263,8 @@
       "machine": true
     },
     "About.Page.Html": {
-      "english": "<!--\n  The About tab's text: the HTML app's #pageAbout, with what only the browser version says put the desktop app's way\n  (where the files are read, and which software it is built on). {version} is the app's version. Pages/AboutPage.xaml.cs\n  draws it with Help/WikiRenderer.cs.\n-->\n<h2>EasyNDF</h2><p>Version <b>{version}</b>. A rule-based editor for WARNO and Steel Division 2 <span class=\"mono\">.ndf</span> files, made to make repetitive edits easier.</p><p>Instead of hand-editing the same fields over and over, you:</p><ul><li>add one or more <span class=\"mono\">.ndf</span> files, or a whole folder of them</li><li>define one or more <b>rules</b></li><li>give each rule one or more <b>conditions</b></li><li>apply one or more <b>actions</b> when those conditions match</li><li>export the rewritten files</li><li>save your rules as presets, and your presets as a mod, to use again later</li></ul><p>Your files stay on your computer. Nothing is uploaded, and your original files are never changed.</p>\n<h2>What It Is Not</h2><ul><li>Not a general-purpose text editor.</li><li>Not a tool for creating or modifying assets or models. You'll want Blender for that.</li><li>Not a mod manager.</li></ul>\n<h2>Who Made It</h2><p>EasyNDF is made by <b>ShadowofChernobyl</b>. Discord: <span class=\"mono\">ShadowofChernobyl#0720</span></p><p>Source code and releases: <a href=\"https://github.com/ShadowofChernobyl/EasyNDF\">github.com/ShadowofChernobyl/EasyNDF</a></p><p>EasyNDF is free software under the GNU General Public License, version 3. Forks may not call themselves EasyNDF or suggest that they are.</p><p>Despite the name, ShadowofChernobyl is not involved with GSC Game World or any of its products.</p>\n<h2>Credits and Special Thanks</h2><ul><li><b>Silver</b>, for assisting in UI design decisions (and being a good friend).</li><li><b>Yokaiste</b>, for creating YSM and YMB.</li><li><b>Chinofchrist</b>, for creating the mod that inspired me to make my own.</li><li><b>etouf fement (CHO KING)</b>, for creating A World in Flames and allowing me to combine my mods with theirs.</li><li><b>Matthew Smith</b>, for designing the AST, parser and writer of the original EasyNDF.</li></ul>\n<h2>Software Credits</h2><ul><li>The Editor is built on <a href=\"https://github.com/icsharpcode/AvalonEdit\">AvalonEdit</a> by the SharpDevelop Team, used under the MIT License.</li><li>.rar files are read with <a href=\"https://github.com/adamhathcock/sharpcompress\">SharpCompress</a> by Adam Hathcock, which includes code from <a href=\"https://www.bouncycastle.org\">Bouncy Castle</a>, both under the MIT License. Their notices are in THIRD-PARTY-NOTICES.txt, beside the app.</li></ul>\n<h2>Theme Credits</h2><ul><li><b>Monokai</b> is based on the Monokai color scheme created by Wimer Hazenberg.</li><li><b>Mariana</b> is based on the Mariana color scheme that ships with Sublime Text.</li><li><b>Solarized Dark</b> and <b>Solarized Light</b> are based on the Solarized palette by Ethan Schoonover.</li><li><b>Dark</b> is the Light theme converted with the color rules of the Dark Reader browser extension.</li><li>Some colors in each were adjusted for readability in this tool. EasyNDF is not affiliated with, or endorsed by, any of the above.</li></ul>\n<h2>Useful Links</h2>\n<h3>Discord Servers</h3><ul><li><a href=\"https://discord.com/invite/pv9VAcN\">Eugen Systems Official</a></li><li><a href=\"https://discord.gg/XmbhaSRqfZ\">YSM Community</a></li><li><a href=\"https://discord.gg/3FsfYNKpZe\">A World In Flames Community</a></li></ul>\n<h3>Steam Workshop</h3><ul><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3387658237\">WARNO Tactical Overhaul</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3554281691\">YSM x WiF x WTO</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3296415395\">Yokaiste's Sandbox Mod</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3388575848\">A World in Flames</a></li></ul>\n<h3>Additional Links</h3><ul><li><a href=\"https://waryes.com/\">WARNO Wiki</a></li><li><a href=\"https://tanks-encyclopedia.com/\">Tank Encyclopedia</a></li><li><a href=\"https://www.eugensystems.com/\">Eugen Systems Official Website</a></li></ul>\n",
-      "text": "<!--\n  The About tab's text: the HTML app's #pageAbout, with what only the browser version says put the desktop app's way\n  (where the files are read, and which software it is built on). {version} is the app's version. Pages/AboutPage.xaml.cs\n  draws it with Help/WikiRenderer.cs.\n-->\n<h2>EasyNDF</h2><p>Version <b>{version}</b>. Un éditeur basé sur des règles pour les fichiers WARNO et Steel Division 2 <span class=\"mono\">.ndf</span>, conçu pour faciliter les modifications répétitives.</p><p>Au lieu de modifier manuellement les mêmes champs à maintes reprises, vous pouvez :</p><ul><li>ajoutez un ou plusieurs fichiers <span class=\"mono\">.ndf</span>, ou un dossier entier contenant ces fichiers</li><li>définissez une ou plusieurs <b>règles</b></li><li>attribuez à chaque règle une ou plusieurs <b>conditions</b></li><li>appliquez une ou plusieurs <b>actions</b> lorsque ces conditions sont remplies</li><li>exportez les fichiers réécrits</li><li>enregistrez vos règles sous forme de préréglages, et vos préréglages sous forme de mod, afin de pouvoir les réutiliser ultérieurement</li></ul><p>Vos fichiers restent sur votre ordinateur. Rien n’est mis en ligne et vos fichiers d’origine ne sont jamais modifiés.</p>\n<h2>Ce que ce n’est pas</h2><ul><li>Ce n’est pas un éditeur de texte polyvalent.</li><li>Ce n’est pas un outil permettant de créer ou de modifier des ressources ou des modèles. Pour cela, vous aurez besoin de Blender.</li><li>Ce n’est pas un gestionnaire de mods.</li></ul>\n<h2>Qui l&#x27;a créé</h2><p>EasyNDF a été développé par <b>ShadowofChernobyl</b>. Discord : <span class=\"mono\">ShadowofChernobyl#0720</span></p><p>Code source et versions : <a href=\"https://github.com/ShadowofChernobyl/EasyNDF\">github.com/ShadowofChernobyl/EasyNDF</a></p><p>EasyNDF est un logiciel libre sous licence GNU General Public License, version 3. Les dérivés ne peuvent pas s&#x27;appeler « EasyNDF » ni suggérer qu&#x27;ils le sont.</p><p>Malgré son nom, ShadowofChernobyl n&#x27;est pas associé à GSC Game World ni à aucun de ses produits.</p>\n<h2>Crédits et remerciements particuliers</h2><ul><li><b>Silver</b>, pour son aide dans les choix de conception de l&#x27;interface utilisateur (et pour être un bon ami).</li><li><b>Yokaiste</b>, pour avoir créé YSM et YMB.</li><li><b>Chinofchrist</b>, pour avoir créé le mod qui m’a inspiré à réaliser le mien.</li><li><b>etouf fement (CHO KING)</b>, pour avoir créé « A World in Flames » et m’avoir permis de combiner mes mods avec les leurs.</li><li><b>Matthew Smith</b>, pour avoir conçu l’AST, le parseur et le générateur de l’EasyNDF original.</li></ul>\n<h2>Crédits logiciels</h2><ul><li>L&#x27;éditeur repose sur <a href=\"https://github.com/icsharpcode/AvalonEdit\">AvalonEdit</a> de l&#x27;équipe SharpDevelop, utilisé sous licence MIT.</li><li>Les fichiers .rar sont lus à l’aide de <a href=\"https://github.com/adamhathcock/sharpcompress\">SharpCompress</a> d’Adam Hathcock, qui inclut du code provenant de <a href=\"https://www.bouncycastle.org\">Bouncy Castle</a>, tous deux sous licence MIT. Leurs mentions figurent dans le fichier THIRD-PARTY-NOTICES.txt, joint à l’application.</li></ul>\n<h2>Crédits du thème</h2><ul><li><b>Monokai</b> s’inspire de la palette de couleurs Monokai créée par Wimer Hazenberg.</li><li><b>Mariana</b> s’inspire de la palette de couleurs Mariana fournie avec Sublime Text.</li><li><b>Solarized Dark</b> et <b>Solarized Light</b> s’inspirent de la palette Solarized d’Ethan Schoonover.</li><li><b>« Dark »</b> est le thème « Light » converti selon les règles de couleurs de l’extension de navigateur Dark Reader.</li><li>Certaines couleurs de chacun de ces thèmes ont été ajustées pour améliorer la lisibilité dans cet outil. EasyNDF n’est affilié à aucun des éléments susmentionnés et n’est pas approuvé par ceux-ci.</li></ul>\n<h2>Liens utiles</h2>\n<h3>Serveurs Discord</h3><ul><li><a href=\"https://discord.com/invite/pv9VAcN\">Eugen Systems officiel</a></li><li><a href=\"https://discord.gg/XmbhaSRqfZ\">Communauté YSM</a></li><li><a href=\"https://discord.gg/3FsfYNKpZe\">Communauté A World In Flames</a></li></ul>\n<h3>Atelier Steam</h3><ul><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3387658237\">WARNO Tactical Overhaul</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3554281691\">YSM x WiF x WTO</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3296415395\">Mod « Sandbox » de Yokaiste</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3388575848\">A World in Flames</a></li></ul>\n<h3>Liens supplémentaires</h3><ul><li><a href=\"https://waryes.com/\">Wiki WARNO</a></li><li><a href=\"https://tanks-encyclopedia.com/\">Encyclopédie des chars</a></li><li><a href=\"https://www.eugensystems.com/\">Site officiel d&#x27;Eugen Systems</a></li></ul>\n",
+      "english": "<!--\n  The About tab's text: the HTML app's #pageAbout, with what only the browser version says put the desktop app's way\n  (where the files are read, and which software it is built on). {version} is the app's version. Pages/AboutPage.xaml.cs\n  draws it with Help/WikiRenderer.cs.\n-->\n<h2>EasyNDF</h2><p>Version <b>{version}</b>. A rule-based editor for WARNO and Steel Division 2 <span class=\"mono\">.ndf</span> files, made to make repetitive edits easier.</p><p>Instead of hand-editing the same fields over and over, you:</p><ul><li>add one or more <span class=\"mono\">.ndf</span> files, or a whole folder of them</li><li>define one or more <b>rules</b></li><li>give each rule one or more <b>conditions</b></li><li>apply one or more <b>actions</b> when those conditions match</li><li>export the rewritten files</li><li>save your rules as presets, and your presets as a mod, to use again later</li></ul><p>Your files stay on your computer. Nothing is uploaded, and your original files are never changed.</p>\n<h2>What It Is Not</h2><ul><li>Not a general-purpose text editor.</li><li>Not a tool for creating or modifying assets or models. You'll want Blender for that.</li><li>Not a mod manager.</li></ul>\n<h2>Who Made It</h2><p>EasyNDF is made by <b>ShadowofChernobyl</b>. Discord: <span class=\"mono\">ShadowofChernobyl#0720</span></p><p>Source code and releases: <a href=\"https://github.com/ShadowofChernobyl/EasyNDF\">github.com/ShadowofChernobyl/EasyNDF</a></p><p>EasyNDF is free software under the GNU Affero General Public License, version 3. Forks may not call themselves EasyNDF or suggest that they are.</p><p>Despite the name, ShadowofChernobyl is not involved with GSC Game World or any of its products.</p>\n<h2>Credits and Special Thanks</h2><ul><li><b>Silver</b>, for assisting in UI design decisions (and being a good friend).</li><li><b>Yokaiste</b>, for creating YSM and YMB.</li><li><b>Chinofchrist</b>, for creating the mod that inspired me to make my own.</li><li><b>etouf fement (CHO KING)</b>, for creating A World in Flames and allowing me to combine my mods with theirs.</li><li><b>Matthew Smith</b>, for designing the AST, parser and writer of the original EasyNDF.</li></ul>\n<h2>Software Credits</h2><ul><li>The Editor is built on <a href=\"https://github.com/icsharpcode/AvalonEdit\">AvalonEdit</a> by the SharpDevelop Team, used under the MIT License.</li><li>.rar files are read with <a href=\"https://github.com/adamhathcock/sharpcompress\">SharpCompress</a> by Adam Hathcock, which includes code from <a href=\"https://www.bouncycastle.org\">Bouncy Castle</a>, both under the MIT License. Their notices are in THIRD-PARTY-NOTICES.txt, beside the app.</li></ul>\n<h2>Theme Credits</h2><ul><li><b>Monokai</b> is based on the Monokai color scheme created by Wimer Hazenberg.</li><li><b>Mariana</b> is based on the Mariana color scheme that ships with Sublime Text.</li><li><b>Solarized Dark</b> and <b>Solarized Light</b> are based on the Solarized palette by Ethan Schoonover.</li><li><b>Dark</b> is the Light theme converted with the color rules of the Dark Reader browser extension.</li><li>Some colors in each were adjusted for readability in this tool. EasyNDF is not affiliated with, or endorsed by, any of the above.</li></ul>\n<h2>Useful Links</h2>\n<h3>Discord Servers</h3><ul><li><a href=\"https://discord.com/invite/pv9VAcN\">Eugen Systems Official</a></li><li><a href=\"https://discord.gg/XmbhaSRqfZ\">YSM Community</a></li><li><a href=\"https://discord.gg/3FsfYNKpZe\">A World In Flames Community</a></li></ul>\n<h3>Steam Workshop</h3><ul><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3387658237\">WARNO Tactical Overhaul</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3554281691\">YSM x WiF x WTO</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3296415395\">Yokaiste's Sandbox Mod</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3388575848\">A World in Flames</a></li></ul>\n<h3>Additional Links</h3><ul><li><a href=\"https://waryes.com/\">WARNO Wiki</a></li><li><a href=\"https://tanks-encyclopedia.com/\">Tank Encyclopedia</a></li><li><a href=\"https://www.eugensystems.com/\">Eugen Systems Official Website</a></li></ul>\n",
+      "text": "<!--\n  The About tab's text: the HTML app's #pageAbout, with what only the browser version says put the desktop app's way\n  (where the files are read, and which software it is built on). {version} is the app's version. Pages/AboutPage.xaml.cs\n  draws it with Help/WikiRenderer.cs.\n-->\n<h2>EasyNDF</h2><p>Version <b>{version}</b>. Un éditeur basé sur des règles pour les fichiers WARNO et Steel Division 2 <span class=\"mono\">.ndf</span>, conçu pour faciliter les modifications répétitives.</p><p>Au lieu de modifier manuellement les mêmes champs à maintes reprises, vous pouvez :</p><ul><li>ajoutez un ou plusieurs fichiers <span class=\"mono\">.ndf</span>, ou un dossier entier contenant ces fichiers</li><li>définissez une ou plusieurs <b>règles</b></li><li>attribuez à chaque règle une ou plusieurs <b>conditions</b></li><li>appliquez une ou plusieurs <b>actions</b> lorsque ces conditions sont remplies</li><li>exportez les fichiers réécrits</li><li>enregistrez vos règles sous forme de préréglages, et vos préréglages sous forme de mod, afin de pouvoir les réutiliser ultérieurement</li></ul><p>Vos fichiers restent sur votre ordinateur. Rien n’est mis en ligne et vos fichiers d’origine ne sont jamais modifiés.</p>\n<h2>Ce que ce n’est pas</h2><ul><li>Ce n’est pas un éditeur de texte polyvalent.</li><li>Ce n’est pas un outil permettant de créer ou de modifier des ressources ou des modèles. Pour cela, vous aurez besoin de Blender.</li><li>Ce n’est pas un gestionnaire de mods.</li></ul>\n<h2>Qui l&#x27;a créé</h2><p>EasyNDF a été développé par <b>ShadowofChernobyl</b>. Discord : <span class=\"mono\">ShadowofChernobyl#0720</span></p><p>Code source et versions : <a href=\"https://github.com/ShadowofChernobyl/EasyNDF\">github.com/ShadowofChernobyl/EasyNDF</a></p><p>EasyNDF est un logiciel libre sous licence GNU Affero General Public License, version 3. Les dérivés ne peuvent pas s&#x27;appeler « EasyNDF » ni suggérer qu&#x27;ils le sont.</p><p>Malgré son nom, ShadowofChernobyl n&#x27;est pas associé à GSC Game World ni à aucun de ses produits.</p>\n<h2>Crédits et remerciements particuliers</h2><ul><li><b>Silver</b>, pour son aide dans les choix de conception de l&#x27;interface utilisateur (et pour être un bon ami).</li><li><b>Yokaiste</b>, pour avoir créé YSM et YMB.</li><li><b>Chinofchrist</b>, pour avoir créé le mod qui m’a inspiré à réaliser le mien.</li><li><b>etouf fement (CHO KING)</b>, pour avoir créé « A World in Flames » et m’avoir permis de combiner mes mods avec les leurs.</li><li><b>Matthew Smith</b>, pour avoir conçu l’AST, le parseur et le générateur de l’EasyNDF original.</li></ul>\n<h2>Crédits logiciels</h2><ul><li>L&#x27;éditeur repose sur <a href=\"https://github.com/icsharpcode/AvalonEdit\">AvalonEdit</a> de l&#x27;équipe SharpDevelop, utilisé sous licence MIT.</li><li>Les fichiers .rar sont lus à l’aide de <a href=\"https://github.com/adamhathcock/sharpcompress\">SharpCompress</a> d’Adam Hathcock, qui inclut du code provenant de <a href=\"https://www.bouncycastle.org\">Bouncy Castle</a>, tous deux sous licence MIT. Leurs mentions figurent dans le fichier THIRD-PARTY-NOTICES.txt, joint à l’application.</li></ul>\n<h2>Crédits du thème</h2><ul><li><b>Monokai</b> s’inspire de la palette de couleurs Monokai créée par Wimer Hazenberg.</li><li><b>Mariana</b> s’inspire de la palette de couleurs Mariana fournie avec Sublime Text.</li><li><b>Solarized Dark</b> et <b>Solarized Light</b> s’inspirent de la palette Solarized d’Ethan Schoonover.</li><li><b>« Dark »</b> est le thème « Light » converti selon les règles de couleurs de l’extension de navigateur Dark Reader.</li><li>Certaines couleurs de chacun de ces thèmes ont été ajustées pour améliorer la lisibilité dans cet outil. EasyNDF n’est affilié à aucun des éléments susmentionnés et n’est pas approuvé par ceux-ci.</li></ul>\n<h2>Liens utiles</h2>\n<h3>Serveurs Discord</h3><ul><li><a href=\"https://discord.com/invite/pv9VAcN\">Eugen Systems officiel</a></li><li><a href=\"https://discord.gg/XmbhaSRqfZ\">Communauté YSM</a></li><li><a href=\"https://discord.gg/3FsfYNKpZe\">Communauté A World In Flames</a></li></ul>\n<h3>Atelier Steam</h3><ul><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3387658237\">WARNO Tactical Overhaul</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3554281691\">YSM x WiF x WTO</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3296415395\">Mod « Sandbox » de Yokaiste</a></li><li><a href=\"https://steamcommunity.com/sharedfiles/filedetails/?id=3388575848\">A World in Flames</a></li></ul>\n<h3>Liens supplémentaires</h3><ul><li><a href=\"https://waryes.com/\">Wiki WARNO</a></li><li><a href=\"https://tanks-encyclopedia.com/\">Encyclopédie des chars</a></li><li><a href=\"https://www.eugensystems.com/\">Site officiel d&#x27;Eugen Systems</a></li></ul>\n",
       "machine": true
     },
     "Help.ChangeLog.Intro.Html": {
@@ -6385,6 +6325,791 @@
     "About.Support.Tip": {
       "english": "EasyNDF is free. Opens its Ko-fi page in your browser",
       "text": "EasyNDF est gratuit. Ouvre sa page Ko-fi dans votre navigateur",
+      "machine": true
+    },
+    "Rules.Kind.Text": {
+      "english": "Texts",
+      "text": "Textes",
+      "machine": true
+    },
+    "Rules.Kind.File": {
+      "english": "File",
+      "text": "Fichier",
+      "machine": true
+    },
+    "Rules.KindSummary.Text": {
+      "english": "Adds texts to a dictionary file such as UNITS.csv: one line per token.",
+      "text": "Ajoute des textes à un fichier dictionnaire tel que UNITS.csv : une ligne par jeton.",
+      "machine": true
+    },
+    "Rules.KindSummary.File": {
+      "english": "Puts a file of your own into the mod on export: a picture, a video, a new NDF file.",
+      "text": "Place un fichier de votre choix dans le mod à l’export : une image, une vidéo, un nouveau fichier NDF.",
+      "machine": true
+    },
+    "Rules.Editor.Text.Note": {
+      "english": "One text per line: `TOKEN;Text`. The rule set must apply to a dictionary file on the Files tab, such as `UNITS.csv` or `INTERFACE_OUTGAME.csv`; the export writes it with these lines added, in place of lines with the same token.",
+      "text": "Un texte par ligne : `TOKEN;Texte`. L’ensemble de règles doit s’appliquer à un fichier dictionnaire de l’onglet « Fichiers », tel que `UNITS.csv` ou `INTERFACE_OUTGAME.csv` ; l’export l’écrit avec ces lignes ajoutées, à la place des lignes du même jeton.",
+      "machine": true
+    },
+    "Rules.Editor.Text.Count": {
+      "english": "{count} text|{count} texts",
+      "text": "{count} texte|{count} textes",
+      "machine": true
+    },
+    "Rules.Editor.File.Note": {
+      "english": "The file is written into the mod's folder on export: the folder that holds the GameData (or CommonData) folder of a file this rule set applies to. EasyNDF keeps its own copy, so the mod still has the file if the chosen one is moved or changed. Export mod carries the file with the mod.",
+      "text": "Le fichier est écrit dans le dossier du mod à l’export : le dossier qui contient le dossier GameData (ou CommonData) d’un fichier auquel cet ensemble de règles s’applique. EasyNDF en garde sa propre copie, si bien que le mod garde le fichier même si celui choisi est déplacé ou modifié. « Exporter le mod » emporte le fichier avec le mod.",
+      "machine": true
+    },
+    "Rules.Editor.File.File": {
+      "english": "File",
+      "text": "Fichier",
+      "machine": true
+    },
+    "Rules.Editor.File.Choose": {
+      "english": "Choose File…",
+      "text": "Choisir un fichier…",
+      "machine": true
+    },
+    "Rules.Editor.File.Choose.Tip": {
+      "english": "Choose the file to put into the mod",
+      "text": "Choisir le fichier à placer dans le mod",
+      "machine": true
+    },
+    "Rules.Editor.File.Choose.Title": {
+      "english": "Choose the File to Put Into the Mod",
+      "text": "Choisir le fichier à placer dans le mod",
+      "machine": true
+    },
+    "Rules.Editor.File.NoneChosen": {
+      "english": "No file chosen",
+      "text": "Aucun fichier choisi",
+      "machine": true
+    },
+    "Rules.Editor.File.Chosen": {
+      "english": "{file} ({size})",
+      "text": "{file} ({size})",
+      "machine": true
+    },
+    "Rules.Editor.File.Missing": {
+      "english": "{file}: EasyNDF no longer has this file. Choose it again.",
+      "text": "{file} : EasyNDF n’a plus ce fichier. Choisissez-le à nouveau.",
+      "machine": true
+    },
+    "Rules.Editor.File.Destination": {
+      "english": "Goes to",
+      "text": "Va dans",
+      "machine": true
+    },
+    "Rules.Editor.File.DestinationHint": {
+      "english": "Where in the mod, such as GameData/Assets/2D/Interface/Logo.png",
+      "text": "L’emplacement dans le mod, par exemple GameData/Assets/2D/Interface/Logo.png",
+      "machine": true
+    },
+    "Files.Run.ModFiles.Written": {
+      "english": "Wrote {count} file of File rules into the mod.|Wrote {count} files of File rules into the mod.",
+      "text": "{count} fichier de règles Fichier écrit dans le mod.|{count} fichiers de règles Fichier écrits dans le mod.",
+      "machine": true
+    },
+    "Files.Run.ModFiles.Removed": {
+      "english": "Took out {count} file of File rules now switched off.|Took out {count} files of File rules now switched off.",
+      "text": "{count} fichier de règles Fichier désormais désactivées retiré.|{count} fichiers de règles Fichier désormais désactivées retirés.",
+      "machine": true
+    },
+    "Files.Run.ModFiles.NoGameData": {
+      "english": "Files of File rules not written: {path} is not in a GameData or CommonData folder. Export into the mod's folder.",
+      "text": "Fichiers des règles Fichier non écrits : {path} n’est pas dans un dossier GameData ou CommonData. Exportez dans le dossier du mod.",
+      "machine": true
+    },
+    "Files.Run.ModFiles.BadPlace": {
+      "english": "File not written: {path} is not a place inside the mod's folder.",
+      "text": "Fichier non écrit : {path} n’est pas un emplacement dans le dossier du mod.",
+      "machine": true
+    },
+    "Files.Run.ModFiles.Missing": {
+      "english": "File not written to {path}: EasyNDF no longer has it. Choose it again in its File rule.",
+      "text": "Fichier non écrit dans {path} : EasyNDF ne l’a plus. Choisissez-le à nouveau dans sa règle Fichier.",
+      "machine": true
+    },
+    "Files.Run.ModFiles.Failed": {
+      "english": "Files of File rules not written: {problem}",
+      "text": "Fichiers des règles Fichier non écrits : {problem}",
+      "machine": true
+    },
+    "Divisions.Rule.GeneratedUnits": {
+      "english": "its units, made at export: {how}",
+      "text": "ses unités, créées à l'export : {how}",
+      "machine": true
+    },
+    "Divisions.Generated.OfNation": {
+      "english": "every unit of {nation}",
+      "text": "toutes les unités de {nation}",
+      "machine": true
+    },
+    "Divisions.Generated.OfSide": {
+      "english": "every unit of the {side} nations",
+      "text": "toutes les unités des nations {side}",
+      "machine": true
+    },
+    "Divisions.Generated.OfEverything": {
+      "english": "every unit of both sides, under the {side} flag",
+      "text": "toutes les unités des deux camps, sous le drapeau {side}",
+      "machine": true
+    },
+    "Divisions.Generated.Unlimited.Short": {
+      "english": "999 a card",
+      "text": "999 par carte",
+      "machine": true
+    },
+    "Divisions.Generated.Same.Short": {
+      "english": "{counts} a card by veterancy",
+      "text": "{counts} par carte selon la vétérance",
+      "machine": true
+    },
+    "Divisions.Generated.AsTheGame.Short": {
+      "english": "numbers as the game's divisions give them",
+      "text": "effectifs tels que les divisions du jeu les donnent",
+      "machine": true
+    },
+    "Divisions.Generate": {
+      "english": "Generate Divisions",
+      "text": "Générer des divisions",
+      "machine": true
+    },
+    "Divisions.Generate.Tip": {
+      "english": "Generate divisions: one for each nation or side and kind you tick, made again from the files on the Files tab each time you export",
+      "text": "Générer des divisions : une pour chaque nation ou camp et chaque type cochés, recréées à partir des fichiers de l'onglet Fichiers à chaque export",
+      "machine": true
+    },
+    "Divisions.Generate.Title": {
+      "english": "Generate Divisions",
+      "text": "Générer des Divisions",
+      "machine": true
+    },
+    "Divisions.Generate.Lead": {
+      "english": "One division for each nation, side and kind ticked, made from the files on the Files tab each time you export.",
+      "text": "Une division pour chaque nation, camp et type cochés, créée à partir des fichiers de l'onglet Fichiers à chaque export.",
+      "machine": true
+    },
+    "Divisions.Generate.ChangeTitle": {
+      "english": "How {division} Is Made",
+      "text": "Comment {division} Est Créée",
+      "machine": true
+    },
+    "Divisions.Generate.ChangeLead": {
+      "english": "Made again from the files on the Files tab each time you export. Your own changes to its units are kept.",
+      "text": "Recréée à partir des fichiers de l'onglet Fichiers à chaque export. Vos propres modifications de ses unités sont conservées.",
+      "machine": true
+    },
+    "Divisions.Generate.Close.Tip": {
+      "english": "Close without making anything",
+      "text": "Fermer sans rien créer",
+      "machine": true
+    },
+    "Divisions.Generate.Cancel.Tip": {
+      "english": "Close without making anything",
+      "text": "Fermer sans rien créer",
+      "machine": true
+    },
+    "Divisions.Generate.Nations": {
+      "english": "Nations",
+      "text": "Nations",
+      "machine": true
+    },
+    "Divisions.Generate.Sides": {
+      "english": "Sides",
+      "text": "Camps",
+      "machine": true
+    },
+    "Divisions.Generate.Side.Note": {
+      "english": "all its nations",
+      "text": "toutes ses nations",
+      "machine": true
+    },
+    "Divisions.Generate.Everything": {
+      "english": "Everything, for {side}",
+      "text": "Tout, pour {side}",
+      "machine": true
+    },
+    "Divisions.Generate.Everything.Note": {
+      "english": "every unit, under the {side} flag",
+      "text": "toutes les unités, sous le drapeau {side}",
+      "machine": true
+    },
+    "Divisions.Generate.Kinds": {
+      "english": "Kinds",
+      "text": "Types",
+      "machine": true
+    },
+    "Divisions.Generate.Unlimited": {
+      "english": "Unlimited",
+      "text": "Illimité",
+      "machine": true
+    },
+    "Divisions.Generate.Unlimited.Note": {
+      "english": "999 a card",
+      "text": "999 par carte",
+      "machine": true
+    },
+    "Divisions.Generate.Unlimited.Tip": {
+      "english": "999 units a card at every veterancy: no limit in practice",
+      "text": "999 unités par carte à chaque vétérance : aucune limite en pratique",
+      "machine": true
+    },
+    "Divisions.Generate.Same": {
+      "english": "Same for every unit",
+      "text": "Identique pour chaque unité",
+      "machine": true
+    },
+    "Divisions.Generate.Same.Tip": {
+      "english": "The same numbers for every unit: the units a card holds at each veterancy, from the lowest",
+      "text": "Les mêmes effectifs pour chaque unité : les unités par carte à chaque vétérance, de la plus basse",
+      "machine": true
+    },
+    "Divisions.Generate.Count.Tip": {
+      "english": "Units a card holds at this veterancy (from the lowest, left)",
+      "text": "Unités par carte à cette vétérance (de la plus basse, à gauche)",
+      "machine": true
+    },
+    "Divisions.Generate.AsTheGame": {
+      "english": "As the game's divisions",
+      "text": "Comme les divisions du jeu",
+      "machine": true
+    },
+    "Divisions.Generate.AsTheGame.Note": {
+      "english": "each unit's own numbers",
+      "text": "les effectifs propres à chaque unité",
+      "machine": true
+    },
+    "Divisions.Generate.AsTheGame.Tip": {
+      "english": "Each unit's numbers from the game division most generous with it; a unit no division has takes those of a similar unit",
+      "text": "Les effectifs de chaque unité pris dans la division du jeu la plus généreuse avec elle ; une unité qu'aucune division n'a prend ceux d'une unité semblable",
+      "machine": true
+    },
+    "Divisions.Generate.ModNations": {
+      "english": "Also {nations}, in every division",
+      "text": "Aussi {nations}, dans chaque division",
+      "machine": true
+    },
+    "Divisions.Generate.ModNations.Tip": {
+      "english": "Also every unit of the nations the mods add of their own (no unit of the game is of them), in every division, of either side",
+      "text": "Aussi toutes les unités des nations que les mods ajoutent eux-mêmes (aucune unité du jeu n'en fait partie), dans chaque division, de l'un ou l'autre camp",
+      "machine": true
+    },
+    "Divisions.Generate.Names": {
+      "english": "Names",
+      "text": "Noms",
+      "machine": true
+    },
+    "Divisions.Generate.Names.Tip": {
+      "english": "How the divisions are named: {mod} is the mod's name, {nation} the nation's or side's code, {kind} the kind",
+      "text": "Comment les divisions sont nommées : {mod} est le nom du mod, {nation} le code de la nation ou du camp, {kind} le type",
+      "machine": true
+    },
+    "Divisions.Generate.Names.Example": {
+      "english": "such as \"{name}\"",
+      "text": "par exemple « {name} »",
+      "machine": true
+    },
+    "Divisions.Generate.Slots": {
+      "english": "Card slots",
+      "text": "Emplacements de cartes",
+      "machine": true
+    },
+    "Divisions.Generate.Slots.Note": {
+      "english": "in each category, each costing 1 point",
+      "text": "dans chaque catégorie, chacun coûtant 1 point",
+      "machine": true
+    },
+    "Divisions.Generate.Slots.Tip": {
+      "english": "How many cards of each category a deck may hold, from 1 to 999; also how many cards of each unit",
+      "text": "Combien de cartes de chaque catégorie un deck peut contenir, de 1 à 999 ; aussi combien de cartes de chaque unité",
+      "machine": true
+    },
+    "Divisions.Generate.Summary": {
+      "english": "{count} division. About {size} MB in DivisionRules.ndf when exported.|{count} divisions. About {size} MB in DivisionRules.ndf when exported.",
+      "text": "{count} division. Environ {size} Mo dans DivisionRules.ndf une fois exporté.|{count} divisions. Environ {size} Mo dans DivisionRules.ndf une fois exporté.",
+      "machine": true
+    },
+    "Divisions.Generate.Summary.One": {
+      "english": "{units} units now. About {size} MB in DivisionRules.ndf when exported.",
+      "text": "{units} unités pour l'instant. Environ {size} Mo dans DivisionRules.ndf une fois exporté.",
+      "machine": true
+    },
+    "Divisions.Generate.Summary.None": {
+      "english": "Tick a nation or side, and a kind.",
+      "text": "Cochez une nation ou un camp, et un type.",
+      "machine": true
+    },
+    "Divisions.Generate.Summary.Wrong": {
+      "english": "The units by veterancy and the card slots must be whole numbers (card slots from 1 to 999).",
+      "text": "Les unités par vétérance et les emplacements de cartes doivent être des nombres entiers (emplacements de 1 à 999).",
+      "machine": true
+    },
+    "Divisions.Generate.Go": {
+      "english": "Generate",
+      "text": "Générer",
+      "machine": true
+    },
+    "Divisions.Generate.Go.Tip": {
+      "english": "Make the divisions in the open mod (one undo step)",
+      "text": "Créer les divisions dans le mod ouvert (une seule étape d'annulation)",
+      "machine": true
+    },
+    "Divisions.Generate.Done": {
+      "english": "Done",
+      "text": "Terminé",
+      "machine": true
+    },
+    "Divisions.Generate.Done.Tip": {
+      "english": "Make the division this way from now on",
+      "text": "Créer la division de cette façon désormais",
+      "machine": true
+    },
+    "Divisions.Generated.Tip": {
+      "english": "Generated: its units are made again from the files on the Files tab each time you export",
+      "text": "Générée : ses unités sont recréées à partir des fichiers de l'onglet Fichiers à chaque export",
+      "machine": true
+    },
+    "Divisions.Generated.Line": {
+      "english": "Made from {how}, each time you export.",
+      "text": "Créée à partir de {how}, à chaque export.",
+      "machine": true
+    },
+    "Divisions.Generated.Line.Tip": {
+      "english": "Its units follow the files on the Files tab, game updates included. A value you change is kept on top, with an asterisk.",
+      "text": "Ses unités suivent les fichiers de l'onglet Fichiers, mises à jour du jeu comprises. Une valeur que vous modifiez est conservée par-dessus, avec un astérisque.",
+      "machine": true
+    },
+    "Divisions.Generated.Change": {
+      "english": "Change…",
+      "text": "Modifier…",
+      "machine": true
+    },
+    "Divisions.Generated.Change.Tip": {
+      "english": "Change which units it takes and how many a card holds",
+      "text": "Modifier les unités qu'elle prend et combien une carte en contient",
+      "machine": true
+    },
+    "Divisions.Generated.MakeFixed": {
+      "english": "Make Fixed",
+      "text": "Figer",
+      "machine": true
+    },
+    "Divisions.Generated.MakeFixed.Tip": {
+      "english": "Keep the units it has now, as an ordinary division you change unit by unit; it no longer follows the files",
+      "text": "Garder les unités qu'elle a maintenant, comme une division ordinaire que vous modifiez unité par unité ; elle ne suit plus les fichiers",
+      "machine": true
+    },
+    "Divisions.Generated.Value.Tip": {
+      "english": "As generated: changes with the files each time you export, until you change it",
+      "text": "Tel que généré : change avec les fichiers à chaque export, jusqu'à ce que vous le modifiiez",
+      "machine": true
+    },
+    "Divisions.Changed.Generated.Tip": {
+      "english": "As generated: {value}",
+      "text": "Tel que généré : {value}",
+      "machine": true
+    },
+    "Files.Run.Generated.NoUnits": {
+      "english": "Not exported: generated divisions are made from the units in {file}. Add it to the Files tab.",
+      "text": "Non exporté : les divisions générées sont créées à partir des unités de {file}. Ajoutez-le à l'onglet Fichiers.",
+      "machine": true
+    },
+    "Divisions.Generate.ModNations.None": {
+      "english": "Also my mods' own nations, in every division (none)",
+      "text": "Aussi les nations propres à mes mods, dans chaque division (aucune)",
+      "machine": true
+    },
+    "Divisions.Generate.Ignored": {
+      "english": "As the game's divisions: not from divisions named",
+      "text": "Comme les divisions du jeu : pas d'après les divisions nommées",
+      "machine": true
+    },
+    "Divisions.Generate.Ignored.Hint": {
+      "english": "parts of names, between commas",
+      "text": "parties de noms, séparées par des virgules",
+      "machine": true
+    },
+    "Divisions.Generate.Ignored.Tip": {
+      "english": "Game divisions whose name holds one of these (between commas) are not learnt from, such as divisions made for single-player challenges",
+      "text": "Les divisions du jeu dont le nom contient l'une de ces parties (séparées par des virgules) ne servent pas de modèle, comme les divisions faites pour les défis en solo",
+      "machine": true
+    },
+    "Divisions.Generate.IgnoredRules": {
+      "english": "nor from rules of",
+      "text": "ni d'après les règles de",
+      "machine": true
+    },
+    "Divisions.Generate.IgnoredRules.Tip": {
+      "english": "A game division's rule for a unit is not learnt from when it gives this many cards or units, or more (such rules are for single-player scenarios); empty to learn from every rule",
+      "text": "La règle d'une division du jeu pour une unité ne sert pas de modèle quand elle donne autant de cartes ou d'unités, ou plus (ces règles sont faites pour les scénarios en solo) ; vide pour tenir compte de toutes les règles",
+      "machine": true
+    },
+    "Divisions.Generate.IgnoredRules.After": {
+      "english": "or more",
+      "text": "ou plus",
+      "machine": true
+    },
+    "Divisions.Generated.WithNations": {
+      "english": ", with every unit of {nations}",
+      "text": ", avec toutes les unités de {nations}",
+      "machine": true
+    },
+    "Divisions.Generated.IgnoringDivisions": {
+      "english": ", not from divisions named {names}",
+      "text": ", pas d'après les divisions nommées {names}",
+      "machine": true
+    },
+    "Divisions.Generated.IgnoringRules": {
+      "english": ", nor from rules of {count} or more",
+      "text": ", ni d'après les règles de {count} ou plus",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Open": {
+      "english": "⚙ Generation Settings…",
+      "text": "⚙ Paramètres de génération…",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Open.Tip": {
+      "english": "How this battlegroup's cards are chosen from the division's units, at each export",
+      "text": "Comment les cartes de ce groupement sont choisies parmi les unités de la division, à chaque export",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Title": {
+      "english": "Generation Settings",
+      "text": "Paramètres de génération",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.StartFrom": {
+      "english": "Start From",
+      "text": "Partir de",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.WhatMatters": {
+      "english": "What Matters Most",
+      "text": "Ce qui compte le plus",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.BackTo": {
+      "english": "Back to {ready}",
+      "text": "Revenir à {ready}",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.BackTo.Tip": {
+      "english": "Sets the weights back to the ready setting chosen last",
+      "text": "Remet les poids du dernier réglage prêt choisi",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Changed.Tip": {
+      "english": "Was {was} when the window opened",
+      "text": "Valait {was} à l'ouverture de la fenêtre",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.ForEachRole": {
+      "english": "For Each Role",
+      "text": "Pour chaque rôle",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Best": {
+      "english": "The best",
+      "text": "Le meilleur",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Best.Tip": {
+      "english": "Each role's unit with the highest score",
+      "text": "L'unité de chaque rôle au meilleur score",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.GoodValue": {
+      "english": "Good value",
+      "text": "Bon rapport",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.GoodValue.Tip": {
+      "english": "Each role's unit with the most score for its cost",
+      "text": "L'unité de chaque rôle au meilleur score pour son coût",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Cheap": {
+      "english": "Cheap",
+      "text": "Bon marché",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Cheap.Tip": {
+      "english": "Each role's cheapest unit with at least half the best one's score",
+      "text": "L'unité la moins chère de chaque rôle ayant au moins la moitié du score de la meilleure",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Size": {
+      "english": "Size",
+      "text": "Taille",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Cards": {
+      "english": "Cards per type at most",
+      "text": "Cartes par type au plus",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Cards.Tip": {
+      "english": "How many cards each type gets at most; never more than the division has room for",
+      "text": "Nombre de cartes au plus pour chaque type ; jamais plus que la division n'a de place",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Points": {
+      "english": "Points at most",
+      "text": "Points au plus",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Points.Tip": {
+      "english": "The activation points the cards may cost; empty: the division's",
+      "text": "Les points d'activation que les cartes peuvent coûter ; vide : ceux de la division",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.WhatChanges": {
+      "english": "What Changes",
+      "text": "Ce qui change",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.CardsWas": {
+      "english": "{cards} cards (was {was})",
+      "text": "{cards} cartes (avant {was})",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.PointsWas": {
+      "english": "{points} points (was {was})",
+      "text": "{points} points (avant {was})",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.NoChange": {
+      "english": "The same cards as now.",
+      "text": "Les mêmes cartes qu'à présent.",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Wrong": {
+      "english": "Sizes must be whole numbers above 0.",
+      "text": "Les tailles doivent être des nombres entiers supérieurs à 0.",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Behind": {
+      "english": "The battlegroup behind shows these settings; new cards are outlined.",
+      "text": "Le groupement derrière montre ces paramètres ; les nouvelles cartes sont encadrées.",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Kept": {
+      "english": "The cards are chosen again at each export, from the units as the files then give them.",
+      "text": "Les cartes sont choisies à nouveau à chaque export, parmi les unités que donnent alors les fichiers.",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.MakeFixed": {
+      "english": "Make Fixed",
+      "text": "Figer",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.MakeFixed.Tip": {
+      "english": "Keeps these cards as they are, to change them by hand; they are no longer chosen at export",
+      "text": "Garde ces cartes telles quelles, pour les changer à la main ; elles ne sont plus choisies à l'export",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Done": {
+      "english": "Done",
+      "text": "Terminé",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Done.Tip": {
+      "english": "Keeps these settings in the mod",
+      "text": "Garde ces paramètres dans le mod",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Cancel.Tip": {
+      "english": "Closes without changing anything",
+      "text": "Ferme sans rien changer",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.Balanced": {
+      "english": "Balanced",
+      "text": "Équilibré",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.Balanced.Tip": {
+      "english": "A bit of everything",
+      "text": "Un peu de tout",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.Strongest": {
+      "english": "Strongest",
+      "text": "Le plus fort",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.Strongest.Tip": {
+      "english": "The strongest units, whatever they cost",
+      "text": "Les unités les plus fortes, quel que soit leur coût",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.Cheapest": {
+      "english": "Cheapest",
+      "text": "Le moins cher",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.Cheapest.Tip": {
+      "english": "The most for the fewest points",
+      "text": "Le plus pour le moins de points",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.AntiTank": {
+      "english": "Anti-tank",
+      "text": "Antichar",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.AntiTank.Tip": {
+      "english": "Units that hit armour hard",
+      "text": "Des unités qui frappent fort les blindés",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.AirDefence": {
+      "english": "Air defence",
+      "text": "Défense aérienne",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.AirDefence.Tip": {
+      "english": "Units that bring aircraft down",
+      "text": "Des unités qui abattent les aéronefs",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.Custom": {
+      "english": "Custom",
+      "text": "Personnalisé",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Ready.Custom.Tip": {
+      "english": "Weights of your own: chosen by moving a slider",
+      "text": "Vos propres poids : choisi en déplaçant un curseur",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.AgainstArmour": {
+      "english": "Against armour",
+      "text": "Contre les blindés",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.AgainstArmour.Tip": {
+      "english": "How hard its weapons hit armour, and from how far",
+      "text": "La force de ses armes contre les blindés, et à quelle distance",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.AgainstInfantry": {
+      "english": "Against infantry",
+      "text": "Contre l'infanterie",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.AgainstInfantry.Tip": {
+      "english": "The damage and suppression its weapons deal, and from how far",
+      "text": "Les dégâts et la suppression de ses armes, et à quelle distance",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.AgainstAircraft": {
+      "english": "Against aircraft",
+      "text": "Contre les aéronefs",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.AgainstAircraft.Tip": {
+      "english": "How well its anti-air weapons hit, and from how far",
+      "text": "L'efficacité de ses armes antiaériennes, et à quelle distance",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.Survivability": {
+      "english": "Survivability",
+      "text": "Survie",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.Survivability.Tip": {
+      "english": "Its strength and front armour",
+      "text": "Sa résistance et son blindage avant",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.Mobility": {
+      "english": "Mobility",
+      "text": "Mobilité",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.Mobility.Tip": {
+      "english": "Its speed",
+      "text": "Sa vitesse",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.ReconAndOptics": {
+      "english": "Recon and optics",
+      "text": "Reconnaissance et optique",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.ReconAndOptics.Tip": {
+      "english": "Its optics and how far it sees",
+      "text": "Son optique et sa portée de vision",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.ValueForPoints": {
+      "english": "Value for points",
+      "text": "Rapport qualité-points",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.ValueForPoints.Tip": {
+      "english": "Its score for its cost: higher favours units that give more for fewer points",
+      "text": "Son score pour son coût : plus haut, il favorise les unités qui donnent plus pour moins de points",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.Variety": {
+      "english": "Variety",
+      "text": "Variété",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Measure.Variety.Tip": {
+      "english": "Spreads the cards across roles, rather than taking the strongest role several times",
+      "text": "Répartit les cartes entre les rôles, plutôt que de prendre plusieurs fois le rôle le plus fort",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Pick.Best": {
+      "english": "the best",
+      "text": "le meilleur",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Pick.GoodValue": {
+      "english": "good value",
+      "text": "bon rapport",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Pick.Cheap": {
+      "english": "cheap",
+      "text": "bon marché",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Why": {
+      "english": "{role} · {pick}",
+      "text": "{role} · {pick}",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.Chosen.Tip": {
+      "english": "Generated: {why}",
+      "text": "Généré : {why}",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Generation.CardsLocked": {
+      "english": "This battlegroup's cards are chosen at each export. To change them by hand, open ⚙ Generation Settings… and click Make Fixed.",
+      "text": "Les cartes de ce groupement sont choisies à chaque export. Pour les changer à la main, ouvrez ⚙ Paramètres de génération… et cliquez sur Figer.",
+      "machine": true
+    },
+    "Divisions.Rule.GeneratedBattlegroup": {
+      "english": "Official Battlegroup {name}, generated: {how}",
+      "text": "Groupement officiel {name}, généré : {how}",
+      "machine": true
+    },
+    "Divisions.Rule.GeneratedCards": {
+      "english": "Official Battlegroup {name}'s generated cards",
+      "text": "Cartes générées du groupement officiel {name}",
+      "machine": true
+    },
+    "Files.Run.Generated.NoWeapons": {
+      "english": "Not exported: generated battlegroups are chosen by the units' weapons, in {file}. Add it to the Files tab.",
+      "text": "Non exporté : les groupements générés sont choisis selon les armes des unités, dans {file}. Ajoutez-le à l'onglet Fichiers.",
       "machine": true
     }
   }

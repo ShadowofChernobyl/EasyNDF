@@ -19,11 +19,12 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
         VersionTag.Content = "v" + AppVersion;
-        // the preset list says how many listed files use each preset
-        RulesTab.FilesUsing = preset => FilesTab.Model.Entries.Count(entry => ReferenceEquals(entry.Preset, preset));
+        // the rule set list says how many listed files each rule set applies to
+        RulesTab.FilesUsing = ruleSet => FilesTab.Model.Entries.Count(entry => Files.FileRunner.AppliesTo(ruleSet, entry));
         History = new UndoHistory(AppData.Current, FilesTab.Model);
         FilesTab.Model.PropertyChanged += (_, _) => History.MarkSoon();
         AppData.Current.ModsChanged += _ => History.ModsChanged();
+        AppData.Current.ModFoldersChanged += History.MarkSoon;
         RulesTab.History = History;
         RuleWindow.Closed += RulesTab.RuleWindowClosed;
         RuleWindow.Rows = RowWindow;
@@ -35,18 +36,18 @@ public partial class MainView : UserControl
             return FilesTab.Model.Entries.LastOrDefault(entry => entry.Name == added.Name);
         };
         FilesTab.OpenInEditor = entry => _ = EditorTab.Open(entry);
-        // one source for the Files, Units and Divisions tabs: choosing it on any of them chooses it on all
+        // one source for the Files and Units tabs: choosing it on either chooses it on both
         UnitsTab.UseSources(Sources);
-        DivisionsTab.UseSources(Sources);
         FilesTab.UseSources(Sources);
-        // the Divisions tab shows the divisions of the source read on the Units tab
-        DivisionsTab.Connect(UnitsTab);
         // the Editor tab's list of files follows the Files tab
         Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs) && Tabs.SelectedItem == EditorTabItem) EditorTab.Refresh(); };
         Watermark.AppVersion = AppVersion;
         RowWindow.OpenChanged += RuleWindow.ShowBeside;
         RuleWindow.ListedFiles = () => FilesTab.Model.Entries;
         RuleWindow.ReadFile = FilesTab.ReadInBackground;
+        FilesTab.Model.FilesChanged += RuleWindow.FilesChanged;
+        // a file added, removed, switched on or off, or given another preset changes the values the Armory shows
+        FilesTab.Model.PropertyChanged += (_, _) => UnitsTab.ModValuesMayHaveChanged();
         VersionTag.Click += (_, _) => ShowLatestChanges();
         HelpTab.WelcomeRequested += Welcome.Open;
         // the window's size can put the Files and Editor tabs' second panes beside or below
@@ -58,6 +59,7 @@ public partial class MainView : UserControl
         SettingChanged += key => { if (key is "lineNumbers" or "wordWrap" or "") EditorTab.ApplyViewSettings(); };
         SettingChanged += key => { if (key is "treeShowsAll" or "") _ = EditorTab.RebuildTree(); };
         SettingChanged += key => { if (key is "uiScale" or "") ApplyScale(); };
+        SettingChanged += key => { if (key is "armoryMarks" or "armoryFileNames" or "") UnitsTab.MarksSettingChanged(); };
         ApplyScale();
         Controls.PaneArrangement.Changed += () => SettingsTab.Show();
         HelpPopup.ShowPage += ShowHelpPage;
@@ -144,10 +146,10 @@ public partial class MainView : UserControl
     /// <summary>"Paste" in a menu of the rule window: what is on the clipboard goes where the Rules tab's Paste puts it.</summary>
     public void PasteFromClipboard() => RulesTab.PasteFromClipboard();
 
-    /// <summary>The game or mod the app works with, chosen in the Source list of the Files, Units or Divisions tab.</summary>
+    /// <summary>The game or mod the app works with, chosen in the Source list of the Files or Units tab.</summary>
     public Units.SourceSelection Sources { get; } = new();
 
-    /// <summary>Undo and Redo, for the changes on the Files and Rules tabs.</summary>
+    /// <summary>Undo and Redo, for the changes on the Files, Rules and Editor tabs and the Armory's.</summary>
     public UndoHistory History { get; }
 
     /// <summary>The Undo button and Ctrl+Z.</summary>
@@ -157,13 +159,14 @@ public partial class MainView : UserControl
     public void Redo() => Tell(History.Redo());
 
     /// <summary>
-    /// Says what Undo or Redo did under the Rules tab's buttons, and above the file list too when something changed or
-    /// the Files tab is showing.
+    /// Says what Undo or Redo did under the Rules tab's buttons, above the file list too when something changed or
+    /// the Files tab is showing, and at the foot of the Armory when it is showing.
     /// </summary>
     private void Tell(UndoResult result)
     {
         RulesTab.Model.Say(result.Message);
         if (result.IsDone || Tabs.SelectedItem == FilesTabItem) FilesTab.Model.Say(result.Message);
+        if (Tabs.SelectedItem == UnitsTabItem) UnitsTab.SayForAMoment(result.Message);
     }
 
     /// <summary>
@@ -228,16 +231,46 @@ public partial class MainView : UserControl
     }
 
     /// <summary>
+    /// What closing the app now would lose, one line each: edits in the File Editor not yet saved, changes to the rule
+    /// open in its window not yet confirmed with Done, and an export still running. Mods, rules and settings are saved
+    /// as they change, so they are never on the list.
+    /// </summary>
+    public List<string> WhatClosingLoses()
+    {
+        var lost = new List<string>();
+        if (EditorTab.EditedFileName is string file) lost.Add(Texts.Get("Main.Close.EditorEdits", ("file", file)));
+        if (RuleWindow.IsOpen && RulesTab.Model.HasUnsavedRuleChanges) lost.Add(Texts.Get("Main.Close.RuleChanges"));
+        if (FilesTab.Model.IsBusy && FilesTab.Model.IsExporting) lost.Add(Texts.Get("Main.Close.Export"));
+        return lost;
+    }
+
+    /// <summary>Asks whether to close although <see cref="WhatClosingLoses"/> names something. True to close.</summary>
+    public async Task<bool> AskBeforeClosing()
+    {
+        List<string> lost = WhatClosingLoses();
+        if (lost.Count == 0) return true;
+        string message = Texts.Get("Main.Close.Ask") + Environment.NewLine + string.Join(Environment.NewLine, lost.Select(line => "• " + line));
+        return await Messages.Confirm(message, Texts.Get("Main.Close.Anyway"));
+    }
+
+    /// <summary>
     /// A key the focused control did not take: on the Files tab, Ctrl+A selects every row shown and Delete removes the
     /// selected rows. Nothing happens while the message window is open.
     /// </summary>
     public void HandleShortcut(KeyEventArgs e)
     {
         // the Watermark window takes its own keys
-        if (Messages.IsOpen || Watermark.IsOpen || (Tabs.SelectedItem != FilesTabItem && Tabs.SelectedItem != RulesTabItem)) return;
-        // Undo and redo work on the Files and Rules tabs outside a text box, which keeps its own, and not while the rule
-        // window is open: its changes are not saved yet, and its × is the way to take them back.
-        bool inTextBox = Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem;
+        bool onArmory = Tabs.SelectedItem == UnitsTabItem;
+        bool onEditor = Tabs.SelectedItem == EditorTabItem;
+        // not on Settings, whose changes Undo never takes back, nor on Help and About, which change nothing
+        if (Messages.IsOpen || Watermark.IsOpen || (Tabs.SelectedItem != FilesTabItem && Tabs.SelectedItem != RulesTabItem && !onArmory && !onEditor)) return;
+        // nor under the Add Units window or a unit's pop-up: they act on the division as it was when they opened, so
+        // an Undo beneath them would be overwritten by their Done, or leave them adding to a division gone
+        if (AddUnits.IsOpen || NewUnit.IsOpen || Floating.IsOpen || GenerateDivisions.IsOpen || GenerationSettings.IsOpen) return;
+        // Undo and redo work on the Files, Rules and Editor tabs and the Armory outside a text box (the File Editor's text
+        // too), which keeps its own, and not while the rule window is open: its changes are not saved yet, and its × is
+        // the way to take them back.
+        bool inTextBox = Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem or ICSharpCode.AvalonEdit.Editing.TextArea;
         ModifierKeys keys = Keyboard.Modifiers;
         if (!inTextBox && !RuleWindow.IsOpen && keys.HasFlag(ModifierKeys.Control) && !keys.HasFlag(ModifierKeys.Alt))
         {
@@ -245,6 +278,7 @@ public partial class MainView : UserControl
             if (e.Key == Key.Z && !shift) { e.Handled = true; Undo(); return; }
             if (e.Key == Key.Y || (e.Key == Key.Z && shift)) { e.Handled = true; Redo(); return; }
         }
+        if (onArmory || onEditor) return;
         if (RuleWindow.IsOpen) RuleWindow.HandleShortcut(e, RulesTab.Paste);
         else if (Tabs.SelectedItem == FilesTabItem) FilesTab.HandleShortcut(e);
         else RulesTab.HandleShortcut(e);

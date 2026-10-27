@@ -18,8 +18,8 @@ public sealed class RunRecord
     /// <summary>How long reading the file and running the rules took.</summary>
     public required long Milliseconds { get; init; }
 
-    /// <summary>The preset whose rules ran.</summary>
-    public required ModPreset Preset { get; init; }
+    /// <summary>The rule sets whose rules ran, by name, joined with commas, as Details' heading names them.</summary>
+    public required string RuleSets { get; init; }
 
     /// <summary>Whether the file was written to its export folder.</summary>
     public bool Wrote { get; set; }
@@ -35,8 +35,8 @@ public sealed class RunRecord
 
     /// <summary>
     /// A rule that changed nothing (the HTML app's <c>idleRule</c>): it is on, it is not a Group, Variable or Check (which
-    /// change nothing by design), and it made no edits.
+    /// change nothing by design) or a Text or File rule (which write outside the NDF file), and it made no edits.
     /// </summary>
     public static bool IsIdle(RuleStats rule) =>
-        rule.Enabled && !rule.OffByGroup && rule.Kind is not ("Group" or "Variable" or "Check") && rule.Edits == 0;
+        rule.Enabled && !rule.OffByGroup && rule.Kind is not ("Group" or "Variable" or "Check" or "Text" or "File") && rule.Edits == 0;
 }

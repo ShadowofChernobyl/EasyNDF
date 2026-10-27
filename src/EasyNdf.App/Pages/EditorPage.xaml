@@ -232,21 +232,25 @@
                 <!-- the find bar stays out of the way until it is asked for, as in Sublime Text -->
                 <ToggleButton x:Name="FindToggle" Style="{StaticResource PressedToggle}" Content="{t:Text Editor.Find}" Click="FindToggleClicked"
                               ToolTip="{t:Text Editor.FindToggle.Tip}" />
-                <!-- .grow: the room left, shared with the file's dropdown -->
-                <Border controls:FlexRow.Grow="1" controls:FlexRow.Basis="0" />
-                <Button x:Name="DiscardButton" Content="{t:Text Editor.DiscardChanges}" ToolTip="{t:Text Editor.Discard.Tip}" Click="DiscardClicked" />
-                <!-- button.swap: as wide as the wider of its two texts -->
-                <Button x:Name="ExportButton" ToolTip="{t:Text Editor.Export.Tip}" IsEnabled="False" Click="ExportClicked">
-                    <Grid>
-                        <TextBlock x:Name="ShowExportText" Text="{t:Text Editor.ShowExport}" HorizontalAlignment="Center" />
-                        <TextBlock x:Name="ShowSourceText" Text="{t:Text Editor.ShowSource}" HorizontalAlignment="Center" Visibility="Hidden" />
-                    </Grid>
-                </Button>
-                <ToggleButton x:Name="ChangesButton" Style="{StaticResource PressedToggle}" Content="{t:Text Editor.ChangesOnly}" ToolTip="{t:Text Editor.Changes.Tip}"
-                              IsEnabled="False" Click="ChangesClicked" />
-                <Button x:Name="UseButton" Content="{t:Text Editor.UseInFileList}" ToolTip="{t:Text Editor.Use.Tip}" Click="UseClicked" />
-                <Button x:Name="SaveButton" Content="{t:Text Editor.SaveAs}" ToolTip="{t:Text Editor.Save.Tip}" Click="SaveClicked" />
-                <Button Style="{StaticResource HelpButton}" controls:QuickHelp.Page="tab-editor" />
+                <!--
+                  what can be done with the file, kept together at the right: it takes the room left, shared with the file's
+                  dropdown, and sits at its right end, also when a narrow pane puts it on a line of its own
+                -->
+                <StackPanel controls:FlexRow.Grow="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="DiscardButton" Margin="6,0,0,0" Content="{t:Text Editor.DiscardChanges}" ToolTip="{t:Text Editor.Discard.Tip}" Click="DiscardClicked" />
+                    <!-- button.swap: as wide as the wider of its two texts -->
+                    <Button x:Name="ExportButton" Margin="6,0,0,0" ToolTip="{t:Text Editor.Export.Tip}" IsEnabled="False" Click="ExportClicked">
+                        <Grid>
+                            <TextBlock x:Name="ShowExportText" Text="{t:Text Editor.ShowExport}" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="ShowSourceText" Text="{t:Text Editor.ShowSource}" HorizontalAlignment="Center" Visibility="Hidden" />
+                        </Grid>
+                    </Button>
+                    <ToggleButton x:Name="ChangesButton" Margin="6,0,0,0" Style="{StaticResource PressedToggle}" Content="{t:Text Editor.ChangesOnly}" ToolTip="{t:Text Editor.Changes.Tip}"
+                                  IsEnabled="False" Click="ChangesClicked" />
+                    <Button x:Name="UseButton" Margin="6,0,0,0" Content="{t:Text Editor.UseInFileList}" ToolTip="{t:Text Editor.Use.Tip}" Click="UseClicked" />
+                    <Button x:Name="SaveButton" Margin="6,0,0,0" Content="{t:Text Editor.SaveAs}" ToolTip="{t:Text Editor.Save.Tip}" Click="SaveClicked" />
+                    <Button Style="{StaticResource HelpButton}" controls:QuickHelp.Page="tab-editor" Margin="6,0,0,0" />
+                </StackPanel>
             </controls:FlexRow>
 
             <!-- .bar: Find, Replace, Go to line and Search all files; shown by Find or Ctrl+F, hidden by × or Escape -->
@@ -303,7 +307,7 @@
             </StackPanel>
         </StackPanel>
 
-        <controls:PanePair x:Name="Panes" Key="editor" FoldedAtFirst="True" FoldedIcon="M 2,2.5 H 6 M 4,2.5 V 11.5 H 7 M 4,7 H 7 M 8.5,7 H 12 M 8.5,11.5 H 12" DefaultBeside="600" DefaultBelow="300">
+        <controls:PanePair x:Name="Panes" Key="editor" FoldedAtFirst="True" FoldedIcon="M 2,2.5 H 6 M 4,2.5 V 11.5 H 7 M 4,7 H 7 M 8.5,7 H 12 M 8.5,11.5 H 12" DefaultBelow="300">
             <controls:PanePair.Main>
                 <DockPanel>
                 <!-- .fhrow: the File Editor heading and the note about the file, on a line (Fold all and Unfold all are in the status strip) -->
@@ -341,12 +345,12 @@
                     <Grid x:Name="DescriptorBox" SizeChanged="DescriptorBoxResized">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition x:Name="TreeColumn" Width="*" />
-                            <ColumnDefinition Width="9" />
+                            <ColumnDefinition x:Name="DescriptorSplitColumn" Width="9" />
                             <ColumnDefinition x:Name="PropertiesColumn" Width="*" />
                         </Grid.ColumnDefinitions>
 
                         <!-- .dvl: the descriptor tree, sunken -->
-                        <controls:Bevel Grid.Column="0" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                        <controls:Bevel x:Name="TreeBox" Grid.Column="0" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
                             <DockPanel>
                                 <!-- .dvbar: This file and All files, the name filter with the property filter, and Scan all -->
                                 <controls:Bevel DockPanel.Dock="Top" Edges="0,0,0,1" BottomRight="{DynamicResource line}" Padding="4,3" MinHeight="27">
@@ -383,7 +387,7 @@
                         <controls:SplitBar x:Name="DescriptorSplit" Grid.Column="1" ToolTip="{t:Text Editor.DescriptorSplit.Tip}" />
 
                         <!-- .dvr: the chosen descriptor's properties, sunken -->
-                        <controls:Bevel Grid.Column="2" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                        <controls:Bevel x:Name="PropertiesBox" Grid.Column="2" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
                             <DockPanel>
                                 <!-- .dvtop: its name and type, and whether its values can be changed -->
                                 <controls:Bevel DockPanel.Dock="Top" Edges="0,0,0,1" BottomRight="{DynamicResource line}" MinHeight="27">
