@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
 using EasyNdf.App.Theming;
 using EasyNdf.Data;
@@ -399,6 +400,60 @@ public partial class SettingsPage : UserControl
         View.SettingsChanged("");
         Show();
         DataNote.Text = Texts.Get("Settings.Reset.Done");
+    }
+
+    /// <summary>
+    /// "Reset look and layout": asks first, listing what goes back to its default and what is kept, with a box to delete
+    /// the themes the user made too (only when there are some); then the app starts again, as pane sizes and the
+    /// window's place are read when it starts.
+    /// </summary>
+    private async void ResetLookClicked(object sender, RoutedEventArgs e)
+    {
+        bool hasOwnThemes = AppData.Current.Themes.Themes.Count > 0;
+        DialogAnswer answer = await View.Messages.Ask(Texts.Get("Settings.ResetLook.Ask"), new DialogOptions
+        {
+            Ok = Texts.Get("Settings.ResetLook.Go"),
+            Extra = ResetLookLists(),
+            CheckText = hasOwnThemes ? Texts.Get("Settings.ResetLook.DeleteThemes") : null,
+        });
+        if (answer.Choice != DialogChoice.Ok) return;
+        AppData.Current.ResetLook(deleteOwnThemes: hasOwnThemes && answer.IsChecked);
+        // the app starts again, as after Clear all data
+        if (Environment.ProcessPath is string app) Process.Start(app);
+        Application.Current.Shutdown();
+    }
+
+    /// <summary>The two lists the question shows side by side: what goes back to its default, and what is kept.</summary>
+    private static Grid ResetLookLists()
+    {
+        var lists = new Grid { Margin = new Thickness(0, 6, 0, 4) };
+        lists.ColumnDefinitions.Add(new ColumnDefinition());
+        lists.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+        lists.ColumnDefinitions.Add(new ColumnDefinition());
+        lists.Children.Add(BulletList(Texts.Get("Settings.ResetLook.ResetHeading"), Texts.Get("Settings.ResetLook.ResetList"), column: 0));
+        lists.Children.Add(BulletList(Texts.Get("Settings.ResetLook.KeptHeading"), Texts.Get("Settings.ResetLook.KeptList"), column: 2));
+        return lists;
+    }
+
+    /// <summary>A heading in the accent colour over dim bullet points, one for each line of <paramref name="lines"/>.</summary>
+    private static StackPanel BulletList(string heading, string lines, int column)
+    {
+        var list = new StackPanel { MaxWidth = 270 };
+        var title = new TextBlock { Text = heading, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 3) };
+        title.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+        list.Children.Add(title);
+        foreach (string line in lines.Split('\n'))
+        {
+            // the bullet in a column of its own, so a line that wraps carries on under its text, not under the bullet
+            var bullet = new TextBlock { Text = "•", FontSize = 11.5, Width = 12 };
+            var text = new TextBlock { Text = line, FontSize = 11.5, TextWrapping = TextWrapping.Wrap };
+            bullet.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+            text.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+            DockPanel.SetDock(bullet, Dock.Left);
+            list.Children.Add(new DockPanel { Margin = new Thickness(0, 0, 0, 2), Children = { bullet, text } });
+        }
+        Grid.SetColumn(list, column);
+        return list;
     }
 
     /// <summary>
