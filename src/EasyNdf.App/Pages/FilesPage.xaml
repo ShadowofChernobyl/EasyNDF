@@ -152,8 +152,6 @@
 
         </StackPanel>
 
-        <!-- the file list and Details, with the run's card over them while Preview or Run export runs -->
-        <Grid>
         <controls:PanePair x:Name="Panes" Key="files" FoldedAtFirst="True" FoldedIcon="M 1.5,1.5 H 12.5 V 12.5 H 1.5 Z M 4,4.5 H 10 M 4,7 H 10 M 4,9.5 H 8" DefaultBelow="300">
             <controls:PanePair.Main>
                 <DockPanel>
@@ -227,6 +225,50 @@
 
                         <Rectangle x:Name="DropHint" Stroke="{DynamicResource accent}" StrokeThickness="2" StrokeDashArray="3 3"
                                    IsHitTestVisible="False" Visibility="Collapsed" />
+                        <!--
+                          while Preview or Run export runs: the list itself (its headings and rows) dimmed, and blocked, under a card as the Armory's reading
+                          card: the title with the count at its right, what it is doing, the bar filling block by block, and Cancel. The
+                          app's tabs, the File List heading, Details and the buttons above stay usable; those that change the list wait for the run.
+                        -->
+                        <Grid x:Name="RunCover" Background="#80000000">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsIdle}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                                            Padding="18,14" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="420">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding RunCount}" FontSize="12" Foreground="{DynamicResource muted}" VerticalAlignment="Bottom" Margin="16,0,0,1" />
+                                        <TextBlock Text="{Binding RunTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" />
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding RunDoing}" FontSize="11.5" Foreground="{DynamicResource muted}" TextTrimming="CharacterEllipsis" MaxWidth="420"
+                                               HorizontalAlignment="Left" Margin="0,2,0,10" />
+                                    <!-- the Armory's bar, filling block by block, always the same size -->
+                                    <controls:BlockBar Fraction="{Binding RunFraction}" />
+                                    <DockPanel Margin="0,12,0,0">
+                                        <Button x:Name="CancelRunButton" DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" ToolTip="{t:Text Files.Run.Cancel.Tip}"
+                                                Click="CancelRunClicked" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCancelRequested}" Value="True">
+                                                            <Setter Property="IsEnabled" Value="False" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <TextBlock Text="{Binding RunNote}" FontSize="11.5" Foreground="{DynamicResource muted}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="320" HorizontalAlignment="Left" />
+                                    </DockPanel>
+                                </StackPanel>
+                            </controls:Bevel>
+                        </Grid>
                     </Grid>
                 </DockPanel>
             </controls:PanePair.Main>
@@ -242,50 +284,5 @@
                 </controls:Bevel>
             </controls:PanePair.Second>
         </controls:PanePair>
-        <!--
-          while Preview or Run export runs: the list and Details dimmed, and blocked, under a card as the Armory's reading
-          card: the title with the count at its right, what it is doing, the bar filling block by block, and Cancel. The
-          app's tabs and the buttons above stay usable; those that change the list wait for the run.
-        -->
-        <Grid x:Name="RunCover" Background="#80000000">
-            <Grid.Style>
-                <Style TargetType="Grid">
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsIdle}" Value="True">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
-            </Grid.Style>
-            <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
-                            Padding="18,14" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="420">
-                <StackPanel>
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Right" Text="{Binding RunCount}" FontSize="12" Foreground="{DynamicResource muted}" VerticalAlignment="Bottom" Margin="16,0,0,1" />
-                        <TextBlock Text="{Binding RunTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" />
-                    </DockPanel>
-                    <TextBlock Text="{Binding RunDoing}" FontSize="11.5" Foreground="{DynamicResource muted}" TextTrimming="CharacterEllipsis" MaxWidth="420"
-                               HorizontalAlignment="Left" Margin="0,2,0,10" />
-                    <!-- the Armory's bar, filling block by block, always the same size -->
-                    <controls:BlockBar Fraction="{Binding RunFraction}" />
-                    <DockPanel Margin="0,12,0,0">
-                        <Button x:Name="CancelRunButton" DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" ToolTip="{t:Text Files.Run.Cancel.Tip}"
-                                Click="CancelRunClicked" Margin="10,0,0,0" VerticalAlignment="Center">
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsCancelRequested}" Value="True">
-                                            <Setter Property="IsEnabled" Value="False" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                        <TextBlock Text="{Binding RunNote}" FontSize="11.5" Foreground="{DynamicResource muted}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="320" HorizontalAlignment="Left" />
-                    </DockPanel>
-                </StackPanel>
-            </controls:Bevel>
-        </Grid>
-        </Grid>
     </DockPanel>
 </UserControl>
