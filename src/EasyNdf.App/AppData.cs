@@ -133,6 +133,61 @@ public sealed class AppData
     /// <summary>Whether Clear all data has deleted everything; nothing is saved after it.</summary>
     private bool isCleared;
 
+    /// <summary>
+    /// Whether Reset look and layout has run: the settings and what the app remembers are not saved again before the
+    /// app starts again, or the window, panes and columns would write back what was just reset as the app closes.
+    /// </summary>
+    private bool isLookReset;
+
+    /// <summary>
+    /// What the app remembers of how it is laid out (<see cref="State"/>): pane sizes and folds, column widths, the
+    /// window, the view each list shows, the Armory's sub-tab and division, the File Editor's filter in use, the Help
+    /// page, the colour picker's colours. Not the mods on and their order, the open mod, export and game folders, the
+    /// file open in the File Editor or the saved filters: those are the user's work.
+    /// </summary>
+    private static readonly string[] LookStateKeys =
+    [
+        "sizes", "folds", "window", "cols", "unitColumns", "modsFolded", "helpPage", "armoryPart", "division",
+        "weaponView", "unitView", "newUnitView", "addUnitsView", "addCardView", "dvFilter", "customColours",
+    ];
+
+    /// <summary>
+    /// The settings that are the app's look and layout: the theme and its bevels and scroll bars, the app's size and
+    /// fonts, the File Editor's text size, the Files tab's columns, sort, grouping and Show, the Armory's zoom, and where
+    /// the panes sit. The settings that decide what the app does (exporting, the editor, the language, Undo) are kept.
+    /// </summary>
+    private static readonly string[] LookSettingKeys =
+    [
+        "theme", "bevel", "treadScrollbars", "uiScale", "panesScale", "uiFont", "codeFont", "edZoom",
+        "cols", "sort", "autoFit", "groupFolders", "showOnly",
+        "unitsZoomCards", "unitsZoomTable", "weaponsZoomCards", "weaponsZoomTable", "panesAuto", "panesSide",
+    ];
+
+    /// <summary>
+    /// "Reset look and layout": the theme, pane sizes and folds, columns, the window, zoom and the views each list
+    /// remembers go back to how they were at first (<see cref="LookStateKeys"/>, <see cref="LookSettingKeys"/>); the
+    /// mods, the file list and the other settings are kept. The file list is saved first, as it is kept; then nothing
+    /// else is saved, as the app starts again.
+    /// </summary>
+    /// <param name="deleteOwnThemes">Whether the themes the user made are deleted too.</param>
+    public void ResetLook(bool deleteOwnThemes)
+    {
+        foreach (string key in LookStateKeys) State.Remove(key);
+        JsonObject defaults = SettingsStore.DefaultSettings();
+        foreach (string key in LookSettingKeys)
+        {
+            // a setting the defaults do not name has its default when it is not there
+            if (defaults[key] is JsonNode value) Settings[key] = value.DeepClone();
+            else Settings.Remove(key);
+        }
+        if (deleteOwnThemes)
+            foreach (Data.CustomTheme theme in Themes.Themes.ToList()) Themes.Delete(theme);
+        SaveSession();
+        SaveSettings();
+        SaveState();
+        isLookReset = true;
+    }
+
     /// <summary>The folders the data is kept in; null for data in memory only.</summary>
     public AppFolders? Folders { get; private set; }
 
@@ -217,10 +272,16 @@ public sealed class AppData
     }
 
     /// <summary>Saves the settings after a change.</summary>
-    public void SaveSettings() => Saving(() => settingsStore?.SaveSettings(Settings));
+    public void SaveSettings()
+    {
+        if (!isLookReset) Saving(() => settingsStore?.SaveSettings(Settings));
+    }
 
     /// <summary>Saves what the app remembers after a change.</summary>
-    public void SaveState() => Saving(() => settingsStore?.SaveState(State));
+    public void SaveState()
+    {
+        if (!isLookReset) Saving(() => settingsStore?.SaveState(State));
+    }
 
     /// <summary>The file list to reopen at the start ("Reopen the last files"), kept as the app last closed; null for none.</summary>
     public JsonNode? Session { get; set; }

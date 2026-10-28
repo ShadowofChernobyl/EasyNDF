@@ -292,6 +292,7 @@
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.Reset}" Note="{t:Text Settings.ResetSettingsKeepsYour.Note}">
                             <controls:WrapRow Gap="6">
+                                <Button Content="{t:Text Settings.ResetLook}" ToolTip="{t:Text Settings.ResetLook.Tip}" Click="ResetLookClicked" />
                                 <Button Content="{t:Text Settings.ResetSettings}" ToolTip="{t:Text Settings.ResetSettings.Tip}" Click="ResetClicked" />
                                 <Button Content="{t:Text Settings.ClearAllData}" ToolTip="{t:Text Settings.ClearAllData.Tip}" Click="ClearClicked" />
                             </controls:WrapRow>
