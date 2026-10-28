@@ -84,6 +84,7 @@ public static class ModFiles
                 if (i == 0 && mod.UnitEdits.Count > 0) entry["UnitEdits"] = UnitEditsToJson(mod);
                 if (i == 0 && mod.WeaponEdits.Count > 0) entry["WeaponEdits"] = WeaponEditsToJson(mod);
                 if (i == 0 && mod.Weapons.Count > 0) entry["Weapons"] = WeaponsToJson(mod);
+                if (i == 0 && mod.UnitDeckNumbers.Count > 0) entry["DeckNumbers"] = DeckNumbersToJson(mod);
                 all.Add(entry);
             }
         }
@@ -103,10 +104,17 @@ public static class ModFiles
         try { json = JsonFiles.Parse(text); }
         catch (JsonException error) { throw new ModFileException(DataTexts.Get("Rules.ModFile.NotJson", ("problem", error.Message))); }
 
+        List<Mod>? mods = null;
         if (json is JsonObject modFile && modFile["Presets"] is JsonArray presets)
-            return [ReadModFile(modFile, presets, NameFromFileName(fileName))];
-        if (json is JsonArray list && IsBackup(list))
-            return ReadBackup(list);
+            mods = [ReadModFile(modFile, presets, NameFromFileName(fileName))];
+        else if (json is JsonArray list && IsBackup(list))
+            mods = ReadBackup(list);
+        if (mods is not null)
+        {
+            // a new division saved without a type would shut the game down
+            foreach (Mod mod in mods) Divisions.NewDivisionStart.GivePlaceholderTypes(mod);
+            return mods;
+        }
         if (LooksLikePresets(json))
             throw new ModFileException(DataTexts.Get("Rules.ModFile.IsPreset"));
         throw new ModFileException(DataTexts.Get("Rules.ModFile.NotAMod"));
@@ -123,6 +131,7 @@ public static class ModFiles
         mod.UnitEdits = UnitEditsFromJson(modFile["UnitEdits"]);
         mod.WeaponEdits = WeaponEditsFromJson(modFile["WeaponEdits"]);
         mod.Weapons = WeaponsFromJson(modFile["Weapons"]);
+        mod.UnitDeckNumbers = DeckNumbersFromJson(modFile["DeckNumbers"]);
         mod.WasOn = modFile["On"] is JsonValue on && on.TryGetValue(out bool isOn) ? isOn : null;
         mod.CarriedFiles = CarriedFilesFromJson(modFile["Files"]);
         return mod;
@@ -156,6 +165,8 @@ public static class ModFiles
             if (withWeaponEdits is not null) mod.WeaponEdits = WeaponEditsFromJson(withWeaponEdits["WeaponEdits"]);
             JsonObject? withWeapons = byMod[name].FirstOrDefault(e => e["Weapons"] is JsonArray);
             if (withWeapons is not null) mod.Weapons = WeaponsFromJson(withWeapons["Weapons"]);
+            JsonObject? withDeckNumbers = byMod[name].FirstOrDefault(e => e["DeckNumbers"] is JsonObject);
+            if (withDeckNumbers is not null) mod.UnitDeckNumbers = DeckNumbersFromJson(withDeckNumbers["DeckNumbers"]);
             // a backup's files ride with its first entry, for every mod
             mod.CarriedFiles = CarriedFilesFromJson(list.OfType<JsonObject>().FirstOrDefault()?["Files"]);
             mods.Add(mod);
@@ -221,6 +232,7 @@ public static class ModFiles
         if (mod.UnitEdits.Count > 0) json["UnitEdits"] = UnitEditsToJson(mod);
         if (mod.WeaponEdits.Count > 0) json["WeaponEdits"] = WeaponEditsToJson(mod);
         if (mod.Weapons.Count > 0) json["Weapons"] = WeaponsToJson(mod);
+        if (mod.UnitDeckNumbers.Count > 0) json["DeckNumbers"] = DeckNumbersToJson(mod);
         return json;
     }
 
@@ -291,6 +303,18 @@ public static class ModFiles
     /// <summary>The weapons a mod file adds; none when it adds none.</summary>
     private static List<Weapons.ModWeapon> WeaponsFromJson(JsonNode? weapons) =>
         [.. (weapons as JsonArray ?? []).OfType<JsonObject>().Select(Weapons.ModWeapon.FromJson)];
+
+    /// <summary>The numbers for deck codes a mod gives units, as the mod file keeps them: { "Descriptor_Unit_X": 4701 }.</summary>
+    private static JsonObject DeckNumbersToJson(Mod mod) => new(mod.UnitDeckNumbers.Select(pair => KeyValuePair.Create(pair.Key, (JsonNode?)pair.Value)));
+
+    /// <summary>The numbers for deck codes a mod file gives units; none when it gives none, or for an entry that is not a whole number.</summary>
+    private static SortedDictionary<string, int> DeckNumbersFromJson(JsonNode? numbers)
+    {
+        var read = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach ((string unit, JsonNode? value) in numbers as JsonObject ?? [])
+            if (value is JsonValue number && number.TryGetValue(out int whole) && unit.Trim() != "") read[unit.Trim()] = whole;
+        return read;
+    }
 
     /// <summary>
     /// A copy of the rules in which every condition and action has a name: an unnamed one is named from what it does,

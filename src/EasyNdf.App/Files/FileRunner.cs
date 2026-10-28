@@ -63,9 +63,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             }
             // (Asking about the mod's watermark first, when it says to ask, comes with the watermark window.)
             FileEntry? namesFile = list.FirstOrDefault(entry => WritesDictionary(entry) && GoesIntoLocalisation(entry));
-            if (namesFile is not null)
+            dictionariesToMake = DictionariesToMake();
+            // a dictionary on the Files tab, or one the export makes, goes into the WARNO mod's Localisation folder
+            string? dictionaryExportFolder = namesFile?.ExportFolder ?? (dictionariesToMake.Count > 0 ? list.Select(entry => entry.ExportFolder).FirstOrDefault(folder => folder is not null) : null);
+            if (dictionaryExportFolder is not null)
             {
-                namesFileMod = await GameModFor(namesFile.ExportFolder!);
+                namesFileMod = await GameModFor(dictionaryExportFolder);
                 if (namesFileMod is null) return;
             }
         }
@@ -77,6 +80,17 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         using IDisposable longWork = Memory.DuringLongWork();
         try
         {
+            if (write)
+            {
+                await GiveDeckNumbers();
+                // DeckSerializer.ndf may run now only for the rules just added: it goes where the other files go
+                foreach (FileEntry entry in FilesThatRun(model.Entries, everyFile).Where(e => skipped?.Contains(e) != true).Except(list).ToList())
+                {
+                    if (entry.ExportFolder is null && list.Select(each => each.ExportFolder).FirstOrDefault(folder => folder is not null) is string folder)
+                        model.SetExportFolder([entry], folder);
+                    list.Add(entry);
+                }
+            }
             model.Say("");
             foreach (FileEntry entry in list) entry.ClearMessage();
             // A row with no rules that is not part of this run drops the message left by an earlier "every file" export.
@@ -118,8 +132,71 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             WriteDivisionExtras(finished);
             RemoveModFilesNoLongerUsed(finished);
             SayModFilesWritten();
+            MakeDictionaries(dictionariesToMake, finished);
+            if (deckNumbersGiven.Count > 0)
+                model.SayAlso(Texts.Get("Files.Run.DeckNumbersGiven", ("units", string.Join(", ", deckNumbersGiven))));
         }
     }
+
+    /// <summary>The units this export gave a number for deck codes (<see cref="GiveDeckNumbers"/>), by name, for the note after it.</summary>
+    private List<string> deckNumbersGiven = [];
+
+    /// <summary>
+    /// Before Run export writes anything: each unit a mod that is on uses in its divisions (set by hand, or in the lists
+    /// of its generated divisions) that has no number for deck codes is given the next free one, kept in the mod
+    /// (<see cref="Mod.UnitDeckNumbers"/>) so it stays the same at every export, with its rule in the mod's Units
+    /// preset. The game refuses a deck with a unit missing from DeckSerializer.ndf; units the Armory makes have a
+    /// number from the start, but units a mod's rules add (Clone rules) have none. The units are read from the files
+    /// on the Files tab as the mods' rules make them, as the generated divisions' lists are, so no source needs to be
+    /// read in the Armory; nothing is given when UniteDescriptor.ndf is not on the Files tab.
+    /// </summary>
+    private async Task GiveDeckNumbers()
+    {
+        deckNumbersGiven = [];
+        List<Mod> mods = [.. ModStack.Running.Where(mod => mod.Divisions.Count > 0 || mod.UnitDeckNumbers.Count > 0)];
+        if (mods.Count == 0) return;
+        // numbers a mod file carries without their rules get them first, so the units are read with those numbers
+        foreach (Mod mod in mods.Where(mod => mod.UnitDeckNumbers.Count > 0)) AddDeckNumberRules(mod, Divisions.BattlegroupView.ShortName);
+        List<GeneratedListsMaker.Input>? inputs = GeneratedListsMaker.InputsFrom([.. model.Entries]);
+        if (inputs is null) return;
+        var rules = new JsonArray([.. mods.SelectMany(mod => ArmoryPresets.RulesOf(mod)).Select(rule => rule?.DeepClone())]);
+        string? cache = AppData.Current.Folders?.Cache;
+        // the units come with the generated lists, so when nothing has changed since the last export both are read
+        // from the cache instead of running the rules on every unit file again
+        GeneratedListsMaker.Results made = await Task.Run(() => GeneratedListsMaker.ResultsFor(rules, inputs, TextAfterRules, cache));
+
+        Dictionary<string, GeneratedListsMaker.KnownUnit> units = made.Units;
+        bool Numbered(string unit) => AppData.Current.Mods.Any(mod => mod.UnitDeckNumbers.ContainsKey(unit) || mod.Units.Any(own => own.Descriptor == unit));
+        int next = units.Values.Select(unit => unit.DeckNumber ?? 0)
+            .Concat(AppData.Current.Mods.SelectMany(mod => mod.Units.Select(unit => unit.DeckNumber ?? 0).Concat(mod.UnitDeckNumbers.Values)))
+            .DefaultIfEmpty(0).Max() + 1;
+        string NameOf(string unit) => units.TryGetValue(unit, out GeneratedListsMaker.KnownUnit? known) && known.Name != "" ? known.Name : Divisions.BattlegroupView.ShortName(unit);
+        foreach (Mod mod in mods)
+        {
+            // the units and their transports; in name order, so the numbers given do not depend on the divisions' order
+            List<string> needing = [.. mod.Divisions.Where(entry => !entry.IsRemoved)
+                .SelectMany(entry => entry.Added.Concat(made.Lists.GetValueOrDefault(entry.Descriptor) ?? []))
+                .SelectMany(rule => rule.Transports.Prepend(rule.Unit))
+                .Distinct(StringComparer.Ordinal)
+                .Where(unit => units.TryGetValue(unit, out GeneratedListsMaker.KnownUnit? known) && known.DeckNumber is null && !Numbered(unit))
+                .Order(StringComparer.Ordinal)];
+            if (needing.Count == 0) continue;
+            foreach (string unit in needing) mod.UnitDeckNumbers[unit] = next++;
+            AddDeckNumberRules(mod, NameOf);
+            deckNumbersGiven.AddRange(needing.Select(NameOf));
+        }
+    }
+
+    /// <summary>The mod's numbers for deck codes that have no rule yet get one, at the end of its Units preset; the mod is saved when one is added.</summary>
+    private static void AddDeckNumberRules(Mod mod, Func<string, string> unitName)
+    {
+        int before = ArmoryPresets.RulesOf(mod).Count;
+        ArmoryPresets.AddDeckNumberRules(mod, Texts.Catalog, unitName, EasyNdf.App.Rules.ArmoryPartTexts.Name(ArmoryPart.Units));
+        if (ArmoryPresets.RulesOf(mod).Count != before) AppData.Current.Save(mod);
+    }
+
+    /// <summary>The dictionaries this export makes, as the Files tab has none of them (see <see cref="DictionariesToMake"/>).</summary>
+    private List<DictionaryToMake> dictionariesToMake = [];
 
     /// <summary>
     /// After Cancel: the files the run did not reach say so, and the note says how many were done. Files already
@@ -175,7 +252,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     {
         string openModName = AppData.Current.OpenMod.Name;
         List<ModRules> stack = StackFor(entry);
-        List<FileAndTextRules.CarriedFile> modFiles = FileAndTextRules.FilesOf(stack.SelectMany(part => part.Rules));
+        // each rule set's File rules judged on their own: a group switched off in one does not reach into the next
+        List<FileAndTextRules.CarriedFile> modFiles = FileAndTextRules.FilesOf(
+            FileAndTextRules.EachInItsOwnRuleSet(stack.SelectMany(part => part.RuleSets.Select(ruleSet => ruleSet.Rules))));
         if (WritesDictionary(entry))
             return new FileWork([], IsNamesFile: true, DictionaryTextsFor(entry), "", null, openModName, [], modFiles);
         if (stack.Count == 0) return new FileWork(stack, IsNamesFile: false, [], "", null, openModName, [], []);
@@ -253,16 +332,91 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// The texts a dictionary file is given, mod by mod in the order they run: each mod's Text rules for it, then, for
     /// UNITS.csv, its Armory presets' texts (division names and the like). A token given twice takes the later text.
     /// </summary>
-    private static List<DictionaryText> DictionaryTextsFor(FileEntry entry)
+    private static List<DictionaryText> DictionaryTextsFor(FileEntry entry) => DictionaryTextsFor(entry.Name, entry.Folder);
+
+    /// <summary>The texts a dictionary file of this name and folder is given (see <see cref="DictionaryTextsFor(FileEntry)"/>).</summary>
+    private static List<DictionaryText> DictionaryTextsFor(string fileName, string folder)
     {
         var texts = new List<DictionaryText>();
         bool byName = RuleSetsApplyByName;
         foreach (Mod mod in ModStack.Running)
         {
-            texts.AddRange(FileAndTextRules.TextsOf(RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, byName).SelectMany(ruleSet => ruleSet.Rules)));
-            if (DivisionExtras.IsNamesFile(entry.Name)) texts.AddRange(DivisionExtras.ArmoryTextsOf(ArmoryPresets.RulesOf(mod)));
+            texts.AddRange(FileAndTextRules.TextsOf(RuleSetFiles.For(fileName, folder, mod.Presets, byName).SelectMany(ruleSet => ruleSet.Rules)));
+            if (DivisionExtras.IsNamesFile(fileName)) texts.AddRange(DivisionExtras.ArmoryTextsOf(ArmoryPresets.RulesOf(mod)));
         }
         return texts;
+    }
+
+    // ---- dictionaries the export makes ----
+
+    /// <summary>A dictionary file the export makes, as the Files tab has none: its name, and the texts the mods give it.</summary>
+    private sealed record DictionaryToMake(string Name, IReadOnlyList<DictionaryText> Texts);
+
+    /// <summary>
+    /// The dictionaries (.csv) the mods that are on give texts to that are not on the Files tab: those their Text rules
+    /// are for, and UNITS.csv for their divisions' names. A dictionary is the mod's own, not a game file (the game has
+    /// none of the mod's), so the export makes it rather than leave the texts out, which the game refuses to start with.
+    /// </summary>
+    private List<DictionaryToMake> DictionariesToMake()
+    {
+        var names = new List<(string Name, string Folder)>();
+        void Note(string name, string folder)
+        {
+            if (!names.Any(each => string.Equals(each.Name, name, StringComparison.OrdinalIgnoreCase))) names.Add((name, folder));
+        }
+        foreach (Mod mod in ModStack.Running)
+        {
+            foreach (ModPreset ruleSet in mod.Presets.Where(ruleSet => !ruleSet.IsArmoryPreset && FileAndTextRules.TextsOf(ruleSet.Rules).Count > 0))
+                foreach (string file in RuleSetFiles.Named(ruleSet).Where(FileAndTextRules.IsDictionaryFile))
+                    Note(Path.GetFileName(file), Path.GetDirectoryName(file)?.Replace('\\', '/') ?? "");
+            if (ArmoryPresets.RulesOf(mod).Any(DivisionExtras.NeedsNamesFile)) Note(DivisionExtras.NamesFile, "");
+        }
+        return [.. names
+            .Where(file => !model.Entries.Any(entry => string.Equals(entry.Name, file.Name, StringComparison.OrdinalIgnoreCase)))
+            .Select(file => new DictionaryToMake(file.Name, DictionaryTextsFor(file.Name, file.Folder)))
+            .Where(file => file.Texts.Count > 0)];
+    }
+
+    /// <summary>
+    /// Writes the dictionaries the export makes into the mod's Localisation folder (GameData\Localisation\&lt;mod&gt;),
+    /// beside the GameData folder of the files just exported. A file already there, from an earlier export or put there
+    /// by hand, keeps its lines and is given the texts, as one on the Files tab would be. The Files tab says which were
+    /// made, so none is made unseen.
+    /// </summary>
+    private void MakeDictionaries(List<DictionaryToMake> toMake, List<FileEntry> run)
+    {
+        if (toMake.Count == 0 || namesFileMod is null) return;
+        string? gameData = run.Where(entry => entry.ExportFolder is not null)
+            .Select(entry => DivisionExtras.GameDataFolderOf(ExportPathOf(entry))).FirstOrDefault(folder => folder is not null);
+        string? exportFolder = run.Select(entry => entry.ExportFolder).FirstOrDefault(folder => folder is not null);
+        gameData ??= exportFolder is null ? null
+            : string.Equals(Path.GetFileName(Path.TrimEndingDirectorySeparator(exportFolder)), "GameData", StringComparison.OrdinalIgnoreCase) ? exportFolder
+            : Path.Combine(exportFolder, "GameData");
+        if (gameData is null) return;
+        string folder = Path.Combine(gameData, "Localisation", namesFileMod);
+        try
+        {
+            Directory.CreateDirectory(folder);
+            foreach (DictionaryToMake dictionary in toMake)
+            {
+                string path = Path.Combine(folder, dictionary.Name);
+                byte[] old = File.Exists(path) ? File.ReadAllBytes(path) : [];
+                // as a dictionary on the Files tab is written: its byte order mark kept (or left out when it had none),
+                // and kept beside it first with "Back up overwritten files"
+                bool hasMark = old.AsSpan().StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]);
+                string oldText = System.Text.Encoding.UTF8.GetString(old, hasMark ? 3 : 0, old.Length - (hasMark ? 3 : 0));
+                (string text, _) = DivisionExtras.WithTexts(oldText, dictionary.Texts);
+                if (old.Length > 0 && AppData.Current.Settings["backupOverwritten"]?.GetValue<bool>() == true) File.Copy(path, path + ".bak", overwrite: true);
+                byte[] mark = hasMark ? [0xEF, 0xBB, 0xBF] : [];
+                WriteWhole(path, [.. mark, .. System.Text.Encoding.UTF8.GetBytes(text)]);
+            }
+            model.SayAlso(Texts.Get("Files.Run.DictionariesMade", ("files", string.Join(", ", toMake.Select(each => each.Name))),
+                ("folder", "Localisation\\" + namesFileMod), ("texts", toMake.Sum(each => each.Texts.Count))));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            model.Warn(Texts.Get("Files.Run.DictionariesNotMade", ("reason", error.Message)));
+        }
     }
 
     /// <summary>The places this export's File rules wrote, under each mod folder, so a file several exported files name is written once.</summary>
@@ -338,23 +492,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     }
 
     /// <summary>
-    /// The rules of every mod's rule sets, with those of the mods that are off copied as switched off. Their group
-    /// headings are left out, so they do not switch off the rules of the mods that are on after them.
+    /// The rules of every mod's rule sets, each rule set judged on its own (<see cref="FileAndTextRules.EachInItsOwnRuleSet"/>),
+    /// with those of the mods that are off copied as switched off.
     /// </summary>
-    private static List<JsonNode?> RuleSetRulesOfEveryMod()
-    {
-        var rules = new List<JsonNode?>();
-        foreach (Mod mod in ModStack.Ordered)
-        {
-            bool isOn = ModStack.IsOn(mod);
-            foreach (JsonNode? rule in mod.Presets.Where(preset => preset.ArmoryPart is null).SelectMany(preset => preset.Rules))
-            {
-                if (isOn) rules.Add(rule);
-                else if (rule is not null && (string?)rule["Kind"] != "Group") rules.Add(SwitchedOff(rule));
-            }
-        }
-        return rules;
-    }
+    private static List<JsonNode?> RuleSetRulesOfEveryMod() =>
+        [.. ModStack.Ordered.SelectMany(mod => FileAndTextRules.EachInItsOwnRuleSet(
+            mod.Presets.Where(preset => preset.ArmoryPart is null).Select(preset => preset.Rules), allOff: !ModStack.IsOn(mod)))];
 
     // ---- the Armory presets ----
 
@@ -605,11 +748,16 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     {
         if (DivisionExtras.GameModOf(exportFolder) is string found) return found;
         string modName = AppData.Current.OpenMod.Name;
-        if (KeptGameMod(modName) is string kept) return kept;
+        // one kept before names were checked (a whole path, say) is asked again: it is joined to the Localisation folder
+        if (KeptGameMod(modName) is string kept && IsFolderName(kept)) return kept;
         if (AskGameMod is null || await AskGameMod(modName) is not string typed || typed == "") return null;
         KeepGameMod(modName, typed);
         return typed;
     }
+
+    /// <summary>Whether a text is one folder's name, which joined to a folder stays inside it: no path, no "..".</summary>
+    public static bool IsFolderName(string name) =>
+        name is not ("" or "." or "..") && name.Trim() == name && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
 
     /// <summary>The WARNO mod folder kept for an EasyNDF mod's UNITS.csv; null when none is.</summary>
     public static string? KeptGameMod(string modName) => (string?)AppData.Current.State["gameMods"]?[modName];

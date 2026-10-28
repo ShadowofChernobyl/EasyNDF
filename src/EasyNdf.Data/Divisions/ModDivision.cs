@@ -76,6 +76,12 @@ public sealed class ModDivision
     /// <summary>The units shown on its card in the game, by descriptor.</summary>
     public List<string>? StandoutUnits { get; set; }
 
+    /// <summary>
+    /// Its tags (DivisionTags) as set by hand, in their order, such as "DEFAULT", "YSM", "NATO", "BEL", "SANDBOX"; null
+    /// for those its nation, side and type give it.
+    /// </summary>
+    public List<string>? Tags { get; set; }
+
     /// <summary>Its activation-point costs, by category: the cost of each card in turn.</summary>
     public Dictionary<string, List<int>>? Costs { get; set; }
 
@@ -203,8 +209,8 @@ public sealed class ModDivision
     /// <summary>A division with the details this one changes, and the rest as it has them.</summary>
     private Division WithDetails(Division division) => division with
     {
-        Tags = IsNew
-            ? TagsOfNew(Country ?? division.Country, Side ?? division.Side, TypeToken ?? division.TypeToken)
+        Tags = Tags is not null ? [.. Tags]
+            : IsNew ? TagsOfNew(Country ?? division.Country, Side ?? division.Side, TypeToken ?? division.TypeToken)
             : TagsWith(division, Country ?? division.Country, Side ?? division.Side, TypeToken ?? division.TypeToken),
         Country = Country ?? division.Country,
         Side = Side ?? division.Side,
@@ -249,6 +255,7 @@ public sealed class ModDivision
         if (ListOrder == start.ListOrder) ListOrder = null;
         if (EmblemTexture == start.EmblemTexture) (EmblemTexture, EmblemSource) = (null, null);
         if (StandoutUnits is not null && StandoutUnits.SequenceEqual(start.StandoutUnits)) StandoutUnits = null;
+        if (Tags is not null && Tags.SequenceEqual(start.Tags)) Tags = null;
         if (Costs is not null && SameCosts(Costs, start.Costs)) Costs = null;
         if (!IsNew && Name == start.Name) Name = "";
         if (BattlegroupCards is not null && start.Battlegroup is not null && BattlegroupCards.SequenceEqual(start.Battlegroup.Cards)) BattlegroupCards = null;
@@ -262,7 +269,7 @@ public sealed class ModDivision
     /// <summary>Whether it changes any of the division's details.</summary>
     private bool ChangesDetails =>
         Country is not null || Side is not null || TypeToken is not null || Summary is not null || History is not null || ActivationPoints is not null || ListOrder is not null
-        || EmblemTexture is not null || EmblemSource is not null || EmblemFile is not null || StandoutUnits is not null || Costs is not null;
+        || EmblemTexture is not null || EmblemSource is not null || EmblemFile is not null || StandoutUnits is not null || Tags is not null || Costs is not null;
 
     /// <summary>Puts a unit in the division: back in when it was removed, else added; nothing when it is already in.</summary>
     /// <param name="unit">How the division is to have the unit.</param>
@@ -313,6 +320,7 @@ public sealed class ModDivision
             case "Type": TypeToken = null; break;
             case "Nation": (Country, Side) = (null, null); break;
             case "Standout": StandoutUnits = null; break;
+            case "Tags": Tags = null; break;
             case "Summary": Summary = null; break;
             case "History": History = null; break;
             case "Emblem": (EmblemTexture, EmblemSource, EmblemFile) = (null, null, null); break;
@@ -419,10 +427,15 @@ public sealed class ModDivision
         var json = new JsonObject();
         if (BattlegroupName != "") json["Name"] = BattlegroupName;
         if (BattlegroupCards is not null)
-            json["Cards"] = new JsonArray([.. BattlegroupCards.Select(card => (JsonNode)new JsonObject
-            {
-                ["Unit"] = card.Unit, ["Veterancy"] = card.Veterancy, ["Transport"] = card.Transport,
-            })]);
+            json["Cards"] = new JsonArray([.. BattlegroupCards.Select(CardToJson)]);
+        return json;
+    }
+
+    /// <summary>A card of the Official Battlegroup, its Number only when it is not the game's usual 1.</summary>
+    private static JsonNode CardToJson(BattlegroupCard card)
+    {
+        var json = new JsonObject { ["Unit"] = card.Unit, ["Veterancy"] = card.Veterancy, ["Transport"] = card.Transport };
+        if (card.Number != 1) json["Number"] = card.Number;
         return json;
     }
 
@@ -433,7 +446,7 @@ public sealed class ModDivision
         division.BattlegroupName = Text(json["Name"]) ?? "";
         if (json["Cards"] is JsonArray cards)
             division.BattlegroupCards = [.. cards.OfType<JsonObject>()
-                .Select(card => new BattlegroupCard(JsonValues.AsText(card["Unit"]), WholeNumber(card["Veterancy"]) ?? 0, Text(card["Transport"])))
+                .Select(card => new BattlegroupCard(JsonValues.AsText(card["Unit"]), WholeNumber(card["Veterancy"]) ?? 0, Text(card["Transport"]), WholeNumber(card["Number"]) ?? 1))
                 .Where(card => card.Unit != "")];
     }
 
@@ -452,6 +465,7 @@ public sealed class ModDivision
         if (EmblemSource is not null) json["EmblemSource"] = EmblemSource;
         if (EmblemFile is not null) json["EmblemFile"] = EmblemFile;
         if (StandoutUnits is not null) json["StandoutUnits"] = new JsonArray([.. StandoutUnits.Select(unit => (JsonNode)JsonValue.Create(unit))]);
+        if (Tags is not null) json["Tags"] = new JsonArray([.. Tags.Select(tag => (JsonNode)JsonValue.Create(tag))]);
         if (Costs is not null)
         {
             var costs = new JsonObject();
@@ -476,6 +490,7 @@ public sealed class ModDivision
         division.EmblemSource = Text(json["EmblemSource"]);
         division.EmblemFile = Text(json["EmblemFile"]);
         if (json["StandoutUnits"] is JsonArray standouts) division.StandoutUnits = [.. standouts.Select(JsonValues.AsText).Where(unit => unit != "")];
+        if (json["Tags"] is JsonArray tags) division.Tags = [.. tags.Select(JsonValues.AsText).Where(tag => tag != "")];
         if (json["Costs"] is JsonObject costs)
             division.Costs = costs.ToDictionary(cost => cost.Key, cost => (cost.Value as JsonArray ?? []).Select(each => WholeNumber(each) ?? 0).ToList());
     }

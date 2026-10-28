@@ -202,7 +202,7 @@ public static class DivisionExtras
     /// The rules that are on, as the engine runs them: switched on themselves, and not under a group heading that is
     /// switched off. A division's names and pictures were written even with its group switched off.
     /// </summary>
-    internal static IEnumerable<JsonNode> RulesThatAreOn(IEnumerable<JsonNode?> rules)
+    public static IEnumerable<JsonNode> RulesThatAreOn(IEnumerable<JsonNode?> rules)
     {
         bool groupIsOn = true;
         foreach (JsonNode? rule in rules)

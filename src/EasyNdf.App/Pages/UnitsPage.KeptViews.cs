@@ -41,9 +41,9 @@ public partial class UnitsPage
 
     /// <summary>
     /// What the nation list's and the type tabs' counts would be drawn for now: they count a division's units on the
-    /// Divisions sub-tab, and every unit on the others, so Units and Battlegroups share them.
+    /// Divisions sub-tab and on Units with a division chosen, and every unit otherwise.
     /// </summary>
-    private DrawnFor CountsDrawnForNow() => new(changesShown, ShowsDivisionUnits ? chosenDivision : null, ArmoryPart.Units);
+    private DrawnFor CountsDrawnForNow() => new(changesShown, ShowsDivisionUnits || UnitsShowOneDivision ? chosenDivision : null, ArmoryPart.Units);
 
     /// <summary>
     /// Whether a view can be shown as it was drawn: on a sub-tab switch (<paramref name="mayKeep"/>), when it was drawn

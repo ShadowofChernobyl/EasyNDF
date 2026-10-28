@@ -104,16 +104,38 @@ public static class BattlegroupView
     private static Border ProblemsBox(IEnumerable<BattlegroupProblem> problems, IReadOnlyDictionary<string, Unit> units)
     {
         var lines = new StackPanel();
-        foreach (BattlegroupProblem problem in problems)
-        {
-            var text = new TextBlock { Text = "⚠ " + ProblemText(problem, units), TextWrapping = TextWrapping.Wrap };
-            text.SetResourceReference(TextBlock.ForegroundProperty, "warn");
-            lines.Children.Add(text);
-        }
+        // cards of units the source does not have, said once for all of them: what to do is the same for each
+        List<string> unknown = [.. problems.Where(problem => IsUnknownUnit(problem, units)).Select(problem => problem.Subject).Distinct()];
+        if (unknown.Count > 1) lines.Children.Add(ProblemLine(UnknownUnitsText(unknown)));
+        foreach (BattlegroupProblem problem in problems.Where(problem => unknown.Count <= 1 || !IsUnknownUnit(problem, units)))
+            lines.Children.Add(ProblemLine(ProblemText(problem, units)));
         var box = new Border { Child = lines, BorderThickness = new Thickness(1), Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(10, 8, 10, 4) };
         box.SetResourceReference(Border.BorderBrushProperty, "warn");
         return box;
     }
+
+    /// <summary>Several cards of units the source does not have, in one line: how many, the first five, and what to do.</summary>
+    public static string UnknownUnitsText(IReadOnlyList<string> units) => Texts.Get("Divisions.Battlegroup.Problem.UnitsUnknown",
+        ("count", units.Count), ("units", string.Join(", ", units.Take(5).Select(ShortName)) + (units.Count > 5 ? "…" : "")));
+
+    /// <summary>A line of the problems box, with the warning sign.</summary>
+    private static TextBlock ProblemLine(string text)
+    {
+        var line = new TextBlock { Text = "⚠ " + text, TextWrapping = TextWrapping.Wrap };
+        line.SetResourceReference(TextBlock.ForegroundProperty, "warn");
+        return line;
+    }
+
+    /// <summary>
+    /// Whether a problem is a card of a unit the source does not have at all. A mod adds such a unit with its rules on
+    /// UniteDescriptor.ndf, which the Armory runs only when that file is on the Files tab.
+    /// </summary>
+    private static bool IsUnknownUnit(BattlegroupProblem problem, IReadOnlyDictionary<string, Unit> units) =>
+        problem.Kind == BattlegroupProblemKind.UnitNotInDivision && !units.ContainsKey(problem.Subject);
+
+    /// <summary>A unit's descriptor without "Descriptor_Unit_": "YS_Doomsday".</summary>
+    public static string ShortName(string descriptor) =>
+        descriptor.StartsWith("Descriptor_Unit_", StringComparison.Ordinal) ? descriptor["Descriptor_Unit_".Length..] : descriptor;
 
     /// <summary>One problem in words: "M1A1 ABRAMS: 7 cards, the division allows 6."</summary>
     public static string ProblemText(BattlegroupProblem problem, IReadOnlyDictionary<string, Unit> units)
@@ -122,6 +144,7 @@ public static class BattlegroupView
         string transport = problem.Transport is string each && units.TryGetValue(each, out Unit? ride) ? ride.Name : problem.Transport ?? "";
         return problem.Kind switch
         {
+            BattlegroupProblemKind.UnitNotInDivision when found is null => Texts.Get("Divisions.Battlegroup.Problem.UnitUnknown", ("unit", ShortName(unit))),
             BattlegroupProblemKind.UnitNotInDivision => Texts.Get("Divisions.Battlegroup.Problem.UnitNotInDivision", ("unit", unit)),
             BattlegroupProblemKind.NeedsTransport => Texts.Get("Divisions.Battlegroup.Problem.NeedsTransport", ("unit", unit)),
             BattlegroupProblemKind.TransportNotAllowed => Texts.Get("Divisions.Battlegroup.Problem.TransportNotAllowed", ("unit", unit), ("transport", transport)),
@@ -177,6 +200,8 @@ public static class BattlegroupView
             : Texts.Get("Divisions.Battlegroup.CardInTransport.Tip", ("unit", unit.Name), ("level", card.Veterancy), ("transport", transport));
         // a generated card says why it was chosen; it can't be dragged, as its place is chosen again at each export
         string more = why is null ? Texts.Get("Divisions.Battlegroup.Drag.Tip") : Texts.Get("Divisions.Battlegroup.Generation.Chosen.Tip", ("why", why));
+        // the game's own cards all have Number 1; another (a mod's, such as YSM's 999) is kept, and said
+        if (card.Number != 1) tip += "\n" + Texts.Get("Divisions.Battlegroup.CardNumber.Tip", ("number", card.Number));
         tile.ShowBattlegroupCard(UnitsInCard(card, division), transport, tip + "\n" + more);
         // its veterancy and transport, chosen on the strip and the button at the picture's right, as on a division's tile
         if (division.Units.FirstOrDefault(each => each.Unit == card.Unit) is DivisionUnit rule)

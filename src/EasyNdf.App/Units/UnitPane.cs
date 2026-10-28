@@ -391,7 +391,9 @@ public static class UnitPane
 
         bool canChange = actions.CanChangeUnit(unit);
         var grid = new Grid();
-        foreach (GridLength width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, new GridLength(1, GridUnitType.Star) })
+        // the values at their own width, the names the rest: a narrow pane, or the names in the files under them, cuts
+        // a name short (its file name whole in its tooltip), never a value
+        foreach (GridLength width in new[] { new GridLength(1, GridUnitType.Star), GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto })
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         int rows = pairs.Count / 2;
         for (int at = 0; at < pairs.Count; at++)
@@ -400,7 +402,10 @@ public static class UnitPane
             if (column == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             bool lastRow = row == rows - 1;
             Bevel name = Cell(pairs[at].Name, row, column, isName: true, lastRow);
-            AddFileName((TextBlock)name.Child, UnitChanges.FileNameOf(pairs[at].Field));
+            var nameText = (TextBlock)name.Child;
+            nameText.TextTrimming = TextTrimming.CharacterEllipsis;
+            AddFileName(nameText, UnitChanges.FileNameOf(pairs[at].Field));
+            if (ModMarks.ShowFileNames && UnitChanges.FileNameOf(pairs[at].Field) is string property) nameText.ToolTip = property;
             grid.Children.Add(name);
             Bevel value = Cell("", row, column + 1, isName: false, lastRow);
             ModMarks.Show((TextBlock)value.Child, unit, pairs[at].Field, pairs[at].Write(unit), pairs[at].Write);
@@ -474,9 +479,10 @@ public static class UnitPane
         for (int side = 0; side < 4; side++)
         {
             grid.ColumnDefinitions.Add(new ColumnDefinition());
-            var name = new TextBlock { Text = names[side], TextAlignment = TextAlignment.Center };
+            var name = new TextBlock { Text = names[side], TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
             name.SetResourceReference(TextBlock.ForegroundProperty, "muted");
             AddFileName(name, UnitChanges.FileNameOf(fields[side]));
+            if (ModMarks.ShowFileNames && UnitChanges.FileNameOf(fields[side]) is string property) name.ToolTip = property;
             var value = new TextBlock { TextAlignment = TextAlignment.Center, FontWeight = FontWeights.Bold, FontSize = 13.5 };
             Func<UnitArmor, int?> read = sides[side];
             string Write(Unit each) => read(each.Armor)?.ToString(Texts.Catalog.Culture) ?? UnitNumbers.None;

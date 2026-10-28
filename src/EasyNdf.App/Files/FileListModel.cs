@@ -48,7 +48,8 @@ public sealed class FileListModel : INotifyPropertyChanged
 
     /// <summary>
     /// Takes the view the app saved last time: columns, order and sort from the settings (the HTML app's <c>cols</c>,
-    /// <c>sort</c> and <c>groupFolders</c>), and column widths from what it remembers (<c>cols.jobsCols</c>).
+    /// <c>sort</c> and <c>groupFolders</c>, and the "Show only" choice, <c>showOnly</c>), and column widths from what it
+    /// remembers (<c>cols.jobsCols</c>).
     /// </summary>
     public void LoadView(JsonObject settings, JsonObject state)
     {
@@ -65,6 +66,8 @@ public sealed class FileListModel : INotifyPropertyChanged
             SortAscending = sort["dir"]?.GetValue<int>() != -1;
         }
         groupByFolder = settings["groupFolders"]?.GetValue<bool>() == true;
+        // kept by name, so a choice added later doesn't shift the saved one
+        if (Enum.TryParse(settings["showOnly"]?.GetValue<string>(), out ShowOnly saved) && Enum.IsDefined(saved)) showOnly = saved;
         if (state["cols"]?["jobsCols"] is JsonObject widths)
         {
             manualWidths = [];
@@ -101,6 +104,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         };
         settings["sort"] = new JsonObject { ["id"] = FileColumnIds.Id(SortColumn), ["dir"] = SortAscending ? 1 : -1 };
         settings["groupFolders"] = groupByFolder;
+        settings["showOnly"] = showOnly.ToString();
         if (state["cols"] is not JsonObject remembered) state["cols"] = remembered = [];
         if (manualWidths is null) remembered.Remove("jobsCols");
         else remembered["jobsCols"] = new JsonObject(manualWidths.Select(pair => KeyValuePair.Create(FileColumnIds.Id(pair.Key), (JsonNode?)pair.Value)));
@@ -276,13 +280,45 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// <summary>Whether the list is sorted A to Z (or smallest first).</summary>
     public bool SortAscending { get; private set; } = true;
 
-    /// <summary>The "Show only" choice.</summary>
-    public ShowOnly ShowOnly { get => showOnly; set { showOnly = value; Refilter(); } }
+    /// <summary>The "Show only" choice, remembered with the rest of the view.</summary>
+    public ShowOnly ShowOnly
+    {
+        get => showOnly;
+        set
+        {
+            if (value == showOnly) return;
+            showOnly = value;
+            Refilter();
+            ViewChanged?.Invoke();
+            FilterChanged?.Invoke();
+        }
+    }
     private ShowOnly showOnly = ShowOnly.All;
 
     /// <summary>The search box's text, trimmed and in small letters.</summary>
-    public string Search { get => search; set { search = value.Trim().ToLowerInvariant(); Refilter(); } }
+    public string Search
+    {
+        get => search;
+        set
+        {
+            string wanted = value.Trim().ToLowerInvariant();
+            if (wanted == search && value == SearchText) return;
+            SearchText = value;
+            search = wanted;
+            Refilter();
+            FilterChanged?.Invoke();
+        }
+    }
     private string search = "";
+
+    /// <summary>The search box's text as it was typed, for the other box that shares it (the Editor tab's file filter).</summary>
+    public string SearchText { get; private set; } = "";
+
+    /// <summary>
+    /// Raised when the "Show only" choice or the search changes, from the Files tab or from the Editor tab's file
+    /// filter, so the other one can show it too.
+    /// </summary>
+    public event Action? FilterChanged;
 
     /// <summary>The widths of the shown columns, worked out by <see cref="ColumnFit"/>.</summary>
     public ColumnWidths Columns { get; } = new();
@@ -564,6 +600,9 @@ public sealed class FileListModel : INotifyPropertyChanged
         flash = message;
         Changed();
     }
+
+    /// <summary>Adds a sentence to the note, after what it says already, so one step of an export does not hide another's.</summary>
+    public void SayAlso(string message) => Say(flash == "" ? message : flash + " " + message);
 
     /// <summary>
     /// Reads a file to learn what it holds (the HTML app's <c>scanJob</c>), for its Status column and the Lines column.

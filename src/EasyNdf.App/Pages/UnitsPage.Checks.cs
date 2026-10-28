@@ -9,6 +9,15 @@ namespace EasyNdf.App.Pages;
 /// <summary>What the workbench's screenshots and checks use to drive the Units tab without a mouse.</summary>
 public partial class UnitsPage
 {
+    /// <summary>
+    /// Set by the screenshots, which draw the tab without a window: it never counts as visible there, so what waits
+    /// for the tab to be shown is drawn at once instead.
+    /// </summary>
+    internal static bool DrawnWithoutWindow { get; set; }
+
+    /// <summary>Whether the tab is on screen, or drawn for the screenshots.</summary>
+    private bool IsDrawn => IsVisible || DrawnWithoutWindow;
+
     /// <summary>Chooses a source and reads it at once, without looking for games first: the workbench's made-up install, and its mods.</summary>
     internal Task ReadNow(UnitSource source)
     {

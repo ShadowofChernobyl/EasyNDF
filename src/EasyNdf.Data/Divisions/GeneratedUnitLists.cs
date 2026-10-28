@@ -31,7 +31,8 @@ public static class GeneratedUnitLists
     /// <param name="units">The units of each generated division, by its descriptor (<see cref="UnitsOf"/>).</param>
     public static void Fill(IEnumerable<JsonNode?> rules, IReadOnlyDictionary<string, IReadOnlyList<DivisionUnit>> units)
     {
-        foreach (JsonNode? rule in rules.Where(IsGeneratedListRule))
+        // a rule made editable (unlocked) is the user's own from then on: its list is not made again over their edits
+        foreach (JsonNode? rule in rules.Where(rule => IsGeneratedListRule(rule) && ArmoryPresets.IsLocked(rule)))
         {
             string division = JsonValues.AsText(rule![DivisionChangeRules.ArmoryKey]![DivisionChangeRules.GeneratedDivisionKey]!["Descriptor"]);
             if (!units.TryGetValue(division, out IReadOnlyList<DivisionUnit>? list)) continue;

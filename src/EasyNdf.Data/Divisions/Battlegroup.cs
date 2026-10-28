@@ -33,13 +33,17 @@ public sealed record Battlegroup
 /// <param name="Unit">The unit's descriptor: "Descriptor_Unit_M1A1_Abrams_US".</param>
 /// <param name="Veterancy">Its veterancy level: 0 for the lowest.</param>
 /// <param name="Transport">Its transport's descriptor; null for none.</param>
-public sealed record BattlegroupCard(string Unit, int Veterancy, string? Transport)
+/// <param name="Number">
+/// The pack's Number in DeckPacks.ndf. The game's own cards all have 1; some mods write the units the card holds
+/// (YSM writes 999 in its Unlimited decks). It is kept as the files give it, and a new card has 1, as the game's.
+/// </param>
+public sealed record BattlegroupCard(string Unit, int Veterancy, string? Transport, int Number = 1)
 {
     /// <summary>
     /// The card's descriptor in DeckPacks.ndf, named as the game names each of its own: the unit, its transport, its
-    /// veterancy and its count (always 1), "Descriptor_Deck_Pack_Rifles_US_M113_US_1_1".
+    /// veterancy and its Number, "Descriptor_Deck_Pack_Rifles_US_M113_US_1_1".
     /// </summary>
-    public string PackName => "Descriptor_Deck_Pack_" + CoreName(Unit) + (Transport is null ? "" : "_" + CoreName(Transport)) + "_" + Veterancy + "_1";
+    public string PackName => "Descriptor_Deck_Pack_" + CoreName(Unit) + (Transport is null ? "" : "_" + CoreName(Transport)) + "_" + Veterancy + "_" + Number;
 
     /// <summary>A unit's descriptor without "Descriptor_Unit_": "Rifles_US".</summary>
     private static string CoreName(string unit) =>

@@ -578,6 +578,61 @@
       "text": "Ouvrez un fichier à partir de l’onglet « Fichiers »",
       "machine": true
     },
+    "Editor.FileFilter.Tip": {
+      "english": "Choose which files the dropdown lists: by name, rules, switch, last run or reading. The same filter as the Files tab's search and Show only",
+      "text": "Choisir les fichiers que la liste affiche : par nom, règles, interrupteur, dernière exécution ou lecture. Le même filtre que la recherche et « Afficher uniquement » de l’onglet Fichiers",
+      "machine": true
+    },
+    "Editor.FileFilter.On.Tip": {
+      "english": "Files listed: {choice} ({listed} of {all}). The same filter as the Files tab's search and Show only",
+      "text": "Fichiers affichés : {choice} ({listed} sur {all}). Le même filtre que la recherche et « Afficher uniquement » de l’onglet Fichiers",
+      "machine": true
+    },
+    "Editor.FileFilter.Named": {
+      "english": "names with \"{name}\"",
+      "text": "noms contenant « {name} »",
+      "machine": true
+    },
+    "Editor.FileFilter.ChoiceAndName": {
+      "english": "{choice}, names with \"{name}\"",
+      "text": "{choice}, noms contenant « {name} »",
+      "machine": true
+    },
+    "Editor.FileFilter.NameHint": {
+      "english": "Find files by name",
+      "text": "Rechercher des fichiers par nom",
+      "machine": true
+    },
+    "Editor.FileFilter.Name.Tip": {
+      "english": "List only the files whose name or folder holds this text. The same box as the Files tab's search",
+      "text": "N’afficher que les fichiers dont le nom ou le dossier contient ce texte. La même zone que la recherche de l’onglet Fichiers",
+      "machine": true
+    },
+    "Editor.FileFilter.Rules": {
+      "english": "Rules",
+      "text": "Règles",
+      "machine": true
+    },
+    "Editor.FileFilter.Switch": {
+      "english": "Switch",
+      "text": "Interrupteur",
+      "machine": true
+    },
+    "Editor.FileFilter.LastRun": {
+      "english": "Last Run",
+      "text": "Dernière exécution",
+      "machine": true
+    },
+    "Editor.FileFilter.Reading": {
+      "english": "Reading",
+      "text": "Lecture",
+      "machine": true
+    },
+    "Editor.FileFilter.Shared": {
+      "english": "Shared with the Files tab's search and Show only",
+      "text": "Partagé avec la recherche et « Afficher uniquement » de l’onglet Fichiers",
+      "machine": true
+    },
     "Editor.OpenFile": {
       "english": "Open file...",
       "text": "Ouvrir un fichier…",
@@ -4212,11 +4267,6 @@
       "text": "Créer un nouveau mod",
       "machine": true
     },
-    "Rules.Preset.FilesUsing": {
-      "english": "{count} file|{count} files",
-      "text": "{count} fichier|{count} fichiers",
-      "machine": true
-    },
     "Rules.Editor.FormulaHint": {
       "english": "For example {sample}",
       "text": "Par exemple {sample}",
@@ -6647,6 +6697,11 @@
       "text": "Les unités par vétérance et les emplacements de cartes doivent être des nombres entiers (emplacements de 1 à 999).",
       "machine": true
     },
+    "Divisions.Generate.Summary.WrongRules": {
+      "english": "\"Nor from rules of … or more\" must be a whole number above 0, or empty to learn from every rule.",
+      "text": "« Ni d'après les règles de … ou plus » doit être un nombre entier supérieur à 0, ou vide pour apprendre de toutes les règles.",
+      "machine": true
+    },
     "Divisions.Generate.Go": {
       "english": "Generate",
       "text": "Générer",
@@ -7110,6 +7165,51 @@
     "Files.Run.Generated.NoWeapons": {
       "english": "Not exported: generated battlegroups are chosen by the units' weapons, in {file}. Add it to the Files tab.",
       "text": "Non exporté : les groupements générés sont choisis selon les armes des unités, dans {file}. Ajoutez-le à l'onglet Fichiers.",
+      "machine": true
+    },
+    "Divisions.Pane.Tags": {
+      "english": "Tags",
+      "text": "Étiquettes",
+      "machine": true
+    },
+    "Divisions.Pane.Tags.Tip": {
+      "english": "The division's tags in the game's files, in order, separated by commas. The game sorts divisions by them (DEFAULT puts it in the list); its nation, side and type give them unless set here",
+      "text": "Les étiquettes de la division dans les fichiers du jeu, dans l’ordre, séparées par des virgules. Le jeu classe les divisions selon elles (DEFAULT la met dans la liste) ; sa nation, son camp et son type les donnent, sauf si elles sont définies ici",
+      "machine": true
+    },
+    "Divisions.Rule.Tags": {
+      "english": "tags {from} → {to}",
+      "text": "étiquettes {from} → {to}",
+      "machine": true
+    },
+    "Divisions.Battlegroup.CardNumber.Tip": {
+      "english": "Number in the game's files: {number} (the game's own cards have 1)",
+      "text": "Number dans les fichiers du jeu : {number} (les cartes du jeu ont 1)",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Problem.UnitUnknown": {
+      "english": "{unit}: no such unit in the source. If a mod adds it, put UniteDescriptor.ndf on the Files tab so the Armory runs the mod's rules on it.",
+      "text": "{unit} : aucune unité de ce nom dans la source. Si un mod l’ajoute, placez UniteDescriptor.ndf dans l’onglet Fichiers pour que l’Armurerie exécute les règles du mod sur ce fichier.",
+      "machine": true
+    },
+    "Divisions.Battlegroup.Problem.UnitsUnknown": {
+      "english": "{count} units of these cards are not in the source ({units}). If a mod adds them, put UniteDescriptor.ndf on the Files tab so the Armory runs the mod's rules on it.",
+      "text": "{count} unités de ces cartes ne sont pas dans la source ({units}). Si un mod les ajoute, placez UniteDescriptor.ndf dans l’onglet Fichiers pour que l’Armurerie exécute les règles du mod sur ce fichier.",
+      "machine": true
+    },
+    "Files.Run.DeckNumbersGiven": {
+      "english": "Gave a number for deck codes, which the game needs for every unit in a deck, to: {units}.",
+      "text": "Numéro de code de deck donné, dont le jeu a besoin pour chaque unité d’un deck, à : {units}.",
+      "machine": true
+    },
+    "Files.Run.DictionariesMade": {
+      "english": "Made {files} in {folder}, as the Files tab has none, with {texts} texts from the mods' rules.",
+      "text": "{files} créé(s) dans {folder}, car l’onglet Fichiers n’en a pas, avec {texts} textes des règles des mods.",
+      "machine": true
+    },
+    "Files.Run.DictionariesNotMade": {
+      "english": "The mods' dictionaries could not be made: {reason}",
+      "text": "Les dictionnaires des mods n’ont pas pu être créés : {reason}",
       "machine": true
     }
   }

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 using EasyNdf.Data.Languages;
 
 namespace EasyNdf.Data;
@@ -76,28 +75,25 @@ public sealed class ModStore
         return taken;
     }
 
-    /// <summary>Saves a mod after a change. A renamed mod moves to a file named after its new name.</summary>
+    /// <summary>
+    /// Saves a mod after a change, in the file named after it: "WTO.mod.json", or "WTO (2).mod.json" while another
+    /// file has that name (a mod "WTO?", whose file name is "WTO" too, or a file the app could not read). A renamed
+    /// mod moves to a file named after its new name, and one kept as "WTO (2)" moves to "WTO" once that is free, so
+    /// its file never keeps a name it no longer has.
+    /// </summary>
     public void Save(Mod mod)
     {
         if (folder is null) { Mods.Sort(ByName); return; }
         pathOf.TryGetValue(mod, out string? oldPath);
-        string path = oldPath is not null && FileFitsName(oldPath, mod.Name)
-            ? oldPath
-            : FileNames.FreePath(folder, mod.Name, ".mod.json", PathsTakenBesides(mod));
+        string path = FileNames.FreePath(folder, mod.Name, ".mod.json", PathsTakenBesides(mod));
+        // Windows names files without minding case: a name changed in case only is the same file, renamed after
+        bool sameFile = string.Equals(oldPath, path, StringComparison.OrdinalIgnoreCase);
 
-        JsonFiles.Write(path, JsonFiles.Parse(ModFiles.StoredText(mod)));
-        if (oldPath is not null && oldPath != path) File.Delete(oldPath);
+        JsonFiles.Write(sameFile ? oldPath! : path, JsonFiles.Parse(ModFiles.StoredText(mod)));
+        if (sameFile && oldPath != path) File.Move(oldPath!, path);
+        else if (oldPath is not null && !sameFile) File.Delete(oldPath);
         pathOf[mod] = path;
         Mods.Sort(ByName);
-    }
-
-    /// <summary>Whether a mod's file is still named after the mod: "WTO.mod.json", or "WTO (2).mod.json" for a second "WTO?".</summary>
-    private static bool FileFitsName(string path, string name)
-    {
-        string file = Path.GetFileName(path), baseName = FileNames.ForName(name);
-        if (string.Equals(file, baseName + ".mod.json", StringComparison.OrdinalIgnoreCase)) return true;
-        return file.StartsWith(baseName + " (", StringComparison.OrdinalIgnoreCase)
-            && Regex.IsMatch(file[baseName.Length..], @"\A \([0-9]+\)\.mod\.json\z", RegexOptions.IgnoreCase);
     }
 
     /// <summary>Deletes a mod and its file.</summary>

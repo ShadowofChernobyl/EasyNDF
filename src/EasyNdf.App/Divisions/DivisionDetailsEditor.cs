@@ -37,6 +37,11 @@ public static class DivisionDetailsEditor
         }), ["Name"], each => each.Name));
         AddRow(grid, "Divisions.Pane.Nation", DivisionMarks.Mark(NationChoice(division, editing), ["Nation"], each => UnitNames.Nation(each.Country) + " · " + UnitNames.Side(each.Side)));
         AddRow(grid, "Divisions.Pane.Type", DivisionMarks.Mark(TypeChoice(division, editing), ["Type"], each => DivisionNames.Type(each.TypeToken)));
+        AddRow(grid, "Divisions.Pane.Tags", DivisionMarks.Mark(new EditBox(TagsText(division.Tags), double.NaN, typed =>
+        {
+            List<string> tags = [.. typed.Split(',').Select(tag => tag.Trim()).Where(tag => tag != "")];
+            return editing.ChangeDetails(change => change.Tags = tags);
+        }) { ToolTip = Texts.Get("Divisions.Pane.Tags.Tip") }, ["Tags"], each => TagsText(each.Tags)));
         AddRow(grid, "Divisions.Pane.Points", DivisionMarks.Mark(new EditBox(Points(division), NumberWidth, typed =>
         {
             if (!int.TryParse(typed, NumberStyles.Integer, Texts.Catalog.Culture, out int points) || points < 0) return false;
@@ -137,6 +142,9 @@ public static class DivisionDetailsEditor
     /// <summary>The height a text box was dragged to, kept with the app's other remembered sizes; null for its own.</summary>
     private static double? RememberedHeight(string sizeKey) =>
         AppData.Current.State["sizes"]?[sizeKey] is System.Text.Json.Nodes.JsonValue value && value.TryGetValue(out double height) ? height : null;
+
+    /// <summary>A division's tags as their box shows them: "DEFAULT, US, NATO, ARMORED".</summary>
+    private static string TagsText(IEnumerable<string> tags) => string.Join(", ", tags);
 
     /// <summary>A division's activation points as its box shows them.</summary>
     private static string Points(Division division) => division.ActivationPoints?.ToString(Texts.Catalog.Culture) ?? "";

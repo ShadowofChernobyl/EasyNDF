@@ -220,6 +220,7 @@
   "Files.Run.NamesInto": "{texts}, into Localisation\\{mod}",
   "Files.Run.AskGameMod": "Which WARNO mod folder is this for?",
   "Files.Run.AskGameMod.Hint": "Mod folder name",
+  "Files.Run.AskGameMod.NotAName": "\"{typed}\" is not a folder name. Type the name of the mod's folder under WARNO\\Mods, such as WTO.",
   "Files.Run.AskGameMod.Note": "The folder's name under WARNO\\Mods, such as WTO. {mod}'s division names go into its GameData\\Localisation\\<folder name>\\UNITS.csv, the only place the game reads them. Exporting into a folder inside a WARNO mod finds it on its own. To change it later, right-click UNITS.csv on the Files tab.",
   "Files.Menu.GameMod": "WARNO Mod Folder...",
   "Files.Menu.GameMod.Tip": "The WARNO mod this UNITS.csv is for, used when the export folder is not inside one: it is written into GameData\\Localisation\\<that mod>",
@@ -241,5 +242,8 @@
   "Files.Run.ModFiles.Missing": "File not written to {path}: EasyNDF no longer has it. Choose it again in its File rule.",
   "Files.Run.ModFiles.Failed": "Files of File rules not written: {problem}",
   "Files.Run.Generated.NoUnits": "Not exported: generated divisions are made from the units in {file}. Add it to the Files tab.",
-  "Files.Run.Generated.NoWeapons": "Not exported: generated battlegroups are chosen by the units' weapons, in {file}. Add it to the Files tab."
+  "Files.Run.Generated.NoWeapons": "Not exported: generated battlegroups are chosen by the units' weapons, in {file}. Add it to the Files tab.",
+  "Files.Run.DictionariesMade": "Made {files} in {folder}, as the Files tab has none, with {texts} texts from the mods' rules.",
+  "Files.Run.DictionariesNotMade": "The mods' dictionaries could not be made: {reason}",
+  "Files.Run.DeckNumbersGiven": "Gave a number for deck codes, which the game needs for every unit in a deck, to: {units}."
 }

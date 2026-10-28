@@ -47,7 +47,7 @@ public static class GeneratedListsMaker
     private const string ReadAsItIs = "DivisionRules.ndf";
 
     /// <summary>Changes when the way lists are made changes, so what an older version made is never used.</summary>
-    private const string MakerVersion = "2";
+    private const string MakerVersion = "3";
 
     /// <summary>How many sets of results are kept, in memory and in the cache folder: one for each file that asks, and more.</summary>
     private const int ResultsKept = 8;
@@ -62,8 +62,18 @@ public static class GeneratedListsMaker
     /// <param name="Lists">The unit list of each generated division, by its descriptor.</param>
     /// <param name="Battlegroups">The cards of each generated battlegroup, by its division's descriptor.</param>
     /// <param name="PacksInFile">The battlegroup cards DeckPacks.ndf has, as the mods' rules make it.</param>
+    /// <param name="Units">
+    /// Every unit read, by its descriptor, with what Run export needs to give numbers for deck codes; kept with the
+    /// lists so that an export with nothing changed does not read every unit again just for them.
+    /// </param>
     internal sealed record Results(
-        Dictionary<string, IReadOnlyList<DivisionUnit>> Lists, Dictionary<string, IReadOnlyList<BattlegroupCard>> Battlegroups, HashSet<string> PacksInFile);
+        Dictionary<string, IReadOnlyList<DivisionUnit>> Lists, Dictionary<string, IReadOnlyList<BattlegroupCard>> Battlegroups, HashSet<string> PacksInFile,
+        Dictionary<string, KnownUnit> Units);
+
+    /// <summary>A unit read from the files, as Run export's numbers for deck codes need it.</summary>
+    /// <param name="Name">Its name in the game; empty when it has none.</param>
+    /// <param name="DeckNumber">Its number for deck codes (DeckSerializer.ndf's UnitIds); null when it has none.</param>
+    internal sealed record KnownUnit(string Name, int? DeckNumber);
 
     /// <summary>The units read last, with the checksum of the files they were read from.</summary>
     private static (string Key, DivisionRosters Rosters)? lastRosters;
@@ -125,8 +135,12 @@ public static class GeneratedListsMaker
     }
 
     /// <summary>Makes the lists and battlegroups the rules are for from the units read.</summary>
-    private static Results Make(JsonArray rules, DivisionRosters rosters) =>
-        new(GeneratedUnitLists.UnitsOf(rules, rosters), GeneratedBattlegroups.CardsOf(rules, rosters), [.. rosters.PacksInFile]);
+    private static Results Make(JsonArray rules, DivisionRosters rosters)
+    {
+        var units = new Dictionary<string, KnownUnit>(StringComparer.Ordinal);
+        foreach (Unit unit in rosters.AllUnits) units.TryAdd(unit.Descriptor, new KnownUnit(unit.Name, unit.HasDeckNumber ? unit.DeckNumber : null));
+        return new(GeneratedUnitLists.UnitsOf(rules, rosters), GeneratedBattlegroups.CardsOf(rules, rosters), [.. rosters.PacksInFile], units);
+    }
 
     /// <summary>Keeps results in memory, the oldest let go of past <see cref="ResultsKept"/>.</summary>
     private static void Remember(string key, Results results)
@@ -184,7 +198,11 @@ public static class GeneratedListsMaker
             foreach ((string division, JsonNode? cards) in json?["Battlegroups"] as JsonObject ?? [])
                 battlegroups[division] = ModDivision.FromJson(new JsonObject { ["Battlegroup"] = new JsonObject { ["Cards"] = cards?.DeepClone() } }).BattlegroupCards ?? [];
             HashSet<string> packs = [.. (json?["PacksInFile"] as JsonArray ?? []).Select(JsonValues.AsText)];
-            return new Results(lists, battlegroups, packs);
+            // each unit as [name, number for deck codes or null]
+            var knownUnits = new Dictionary<string, KnownUnit>(StringComparer.Ordinal);
+            foreach ((string descriptor, JsonNode? unit) in json?["Units"] as JsonObject ?? [])
+                knownUnits[descriptor] = new KnownUnit(JsonValues.AsText(unit?[0]), unit?[1]?.GetValue<int>());
+            return new Results(lists, battlegroups, packs, knownUnits);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
@@ -211,6 +229,8 @@ public static class GeneratedListsMaker
                 ["Lists"] = lists,
                 ["Battlegroups"] = battlegroups,
                 ["PacksInFile"] = new JsonArray([.. results.PacksInFile.Order(StringComparer.Ordinal).Select(pack => (JsonNode)JsonValue.Create(pack))]),
+                ["Units"] = new JsonObject(results.Units.Select(unit => KeyValuePair.Create<string, JsonNode?>(
+                    unit.Key, new JsonArray(JsonValue.Create(unit.Value.Name), JsonValue.Create(unit.Value.DeckNumber))))),
             };
             File.WriteAllText(path, json.ToJsonString());
             foreach (FileInfo old in new DirectoryInfo(CacheFolderOf(folder)).GetFiles("*.json").OrderByDescending(file => file.LastWriteTimeUtc).Skip(ResultsKept))

@@ -10,7 +10,7 @@ namespace EasyNdf.App.Rules;
 /// One line of the rule list (the HTML app's <c>renderRuleList</c>): its switch, its type's symbol, its name, and the
 /// buttons that move, copy and delete it. A Group's line has a fold button too, and the rules under it are indented.
 /// </summary>
-public sealed class RuleRow
+public sealed class RuleRow : System.ComponentModel.INotifyPropertyChanged
 {
     /// <summary>The rule's place in the preset, from 0.</summary>
     public required int Index { get; init; }
@@ -18,8 +18,47 @@ public sealed class RuleRow
     /// <summary>The rule, as stored in the mod.</summary>
     public required JsonObject Rule { get; init; }
 
-    /// <summary>Whether the line is selected.</summary>
-    public required bool IsSelected { get; init; }
+    /// <summary>
+    /// Whether the line is selected. It can change on a line already shown: a click only changes the selection, so the
+    /// lines are kept and told (see <see cref="ShowsTheSameAs"/>).
+    /// </summary>
+    public required bool IsSelected
+    {
+        get => isSelected;
+        set
+        {
+            if (value == isSelected) return;
+            isSelected = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
+    private bool isSelected;
+
+    /// <inheritdoc/>
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// Whether another line shows the same as this one, apart from being selected: the same rule in the same place,
+    /// with the same name, type, switch, group and fold. Then this line can be kept, and only its selection changed.
+    /// </summary>
+    public bool ShowsTheSameAs(RuleRow other) =>
+        Index == other.Index && ReferenceEquals(Rule, other.Rule) && IsInGroup == other.IsInGroup && IsOff == other.IsOff
+        && HiddenCount == other.HiddenCount && IsLocked == other.IsLocked && Name == other.shownName && Kind == other.shownKind
+        && IsOn == other.shownIsOn && IsFolded == other.shownIsFolded && Shows == other.shownShows;
+
+    /// <summary>
+    /// What the line showed when it was made. The rule is changed in place when its window saves it, so a line kept
+    /// from before compares what it showed then, not what its rule holds now.
+    /// </summary>
+    private string? shownName, shownKind, shownShows;
+    private bool shownIsOn, shownIsFolded;
+
+    /// <summary>Notes what the line shows now, for <see cref="ShowsTheSameAs"/>.</summary>
+    public RuleRow NoteShown()
+    {
+        (shownName, shownKind, shownShows, shownIsOn, shownIsFolded) = (Name, Kind, Shows, IsOn, IsFolded);
+        return this;
+    }
 
     /// <summary>Whether the rule sits under a Group's heading.</summary>
     public required bool IsInGroup { get; init; }

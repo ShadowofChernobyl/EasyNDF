@@ -485,10 +485,14 @@ public partial class EditorPage : UserControl
         ShowProperties();
     }
 
-    /// <summary>The dropdown of the Files tab's files, by file name, with a folder only where two files share a name.</summary>
+    /// <summary>
+    /// The dropdown of the Files tab's files, by file name, with a folder only where two files share a name; only those
+    /// the file filter lets through (the file open stays listed either way).
+    /// </summary>
     public void ShowPick()
     {
-        List<FileEntry> listed = [.. (Files?.Entries ?? []).Where(f => f.Source is not null)];
+        ShowFileFilterButton();
+        List<FileEntry> listed = [.. ListedFiles().Where(f => FileFilterLetsThrough(f) || f == shown?.Entry)];
         var names = new PropertyScans(new Dictionary<string, Data.ScanInfo>(), [.. listed.Select(FileListModel.ScanKey)]);
         var options = new List<ChoiceOption> { new("", Files is { Entries.Count: > 0 } ? Texts.Get("Editor.ChooseFile") : Texts.Get("Editor.NoFiles")) };
         foreach (FileEntry entry in listed.OrderBy(FileListModel.ScanKey, Comparer<string>.Create(PropertyScans.CompareByFileName)))

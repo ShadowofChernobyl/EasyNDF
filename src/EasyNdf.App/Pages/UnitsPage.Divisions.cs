@@ -98,7 +98,8 @@ public partial class UnitsPage
 
     /// <summary>
     /// A source has just been read: its units by descriptor, and its divisions with the open mod's; on Divisions and
-    /// Battlegroups, the division chosen last time is chosen again when the source has it, else the first listed.
+    /// Battlegroups, the division chosen last time is chosen again when the source has it, else the first listed. On
+    /// Units, a division chosen to narrow the units stays chosen, and none is chosen for it otherwise.
     /// </summary>
     private void ReadDivisions()
     {
@@ -108,8 +109,8 @@ public partial class UnitsPage
         foldedBattlegroupCategories.Clear();
         divisions = DivisionsShown();
         MakeArmoryPresetsIfMissing();
-        string? remembered = (string?)AppData.Current.State["division"];
-        chosenDivision = part == ArmoryPart.Units ? null : divisions.FirstOrDefault(division => division.Descriptor == remembered);
+        string? remembered = part == ArmoryPart.Units ? chosenDivision?.Descriptor : (string?)AppData.Current.State["division"];
+        chosenDivision = remembered is null ? null : divisions.FirstOrDefault(division => division.Descriptor == remembered);
         KeepADivisionChosen();
     }
 
@@ -162,7 +163,7 @@ public partial class UnitsPage
         chosenDivision = descriptor is null ? null : divisions.FirstOrDefault(division => division.Descriptor == descriptor);
         KeepADivisionChosen();
         // every change on the Rules tab saves the mod: drawn while hidden, the tab was drawn again for each of them
-        if (!IsVisible)
+        if (!IsDrawn)
         {
             redrawWhenShown = true;
             return;
@@ -217,9 +218,7 @@ public partial class UnitsPage
     {
         NewDivisionButton.IsEnabled = loaded is not null && divisions.Count > 0;
         GenerateDivisionsButton.IsEnabled = NewDivisionButton.IsEnabled;
-        // the Units sub-tab has no division list: it is filled when Divisions or Battlegroups is shown
-        if (loaded is not null && part == ArmoryPart.Units) return;
-        // drawn for Divisions and Battlegroups alike: they share it
+        // drawn for every sub-tab alike: they share it
         var now = new DrawnFor(changesShown, chosenDivision, ArmoryPart.Divisions);
         if (IsDrawnFor(divisionListDrawnFor, now, mayKeep)) return;
         divisionListDrawnFor = now;
@@ -264,7 +263,12 @@ public partial class UnitsPage
         ChosenDivisionEmblem.Content = chosen ? new DivisionEmblem(chosenDivision!.EmblemSource, 16, keepsRoom: true, chosenDivision.EmblemFile) : null;
         // with a division chosen, its units are all in a division, so the toggle has nothing to do
         OnlyInDivision.IsEnabled = !chosen;
+        // Divisions and Battlegroups always show a division; Units can go back to every unit
+        ClearDivisionButton.Visibility = UnitsShowOneDivision ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    /// <summary>The heading's ✕, on the Units sub-tab: every unit again, as before a division was chosen.</summary>
+    private void ClearChosenDivisionClicked(object sender, RoutedEventArgs e) => ChooseDivision(null, keepsPart: true);
 
     /// <summary>The chosen division in the heading is clicked: the list scrolls to its row.</summary>
     private void ChosenDivisionMarkClicked(object sender, MouseButtonEventArgs e)
@@ -292,7 +296,8 @@ public partial class UnitsPage
         bool isRemoved = ShowsOpenMod && DivisionChanges.IsRemoved(OpenMod, division.Descriptor);
         bool isGenerated = EntryShown(division.Descriptor) is { IsGenerated: true };
         var row = new DivisionListRow(division, ReferenceEquals(division, chosenDivision), isChanged, isRemoved, isGenerated);
-        row.Chosen += ChooseDivision;
+        // a click keeps the sub-tab: on Units, it shows only the division's units
+        row.Chosen += chosen => ChooseDivision(chosen, keepsPart: true);
         row.MouseRightButtonUp += (_, e) =>
         {
             e.Handled = true;
@@ -323,7 +328,12 @@ public partial class UnitsPage
     /// A division clicked in the list, or none (null, the Units sub-tab): its units in the centre, on the ALL tab, or its
     /// battlegroup; remembered for next time. The unit selected stays selected when the division has it.
     /// </summary>
-    private void ChooseDivision(Division? division)
+    /// <param name="division">The division; null for every unit.</param>
+    /// <param name="keepsPart">
+    /// Whether the sub-tab shown stays: a click in the division list, after which the Units sub-tab shows only the
+    /// division's units. Otherwise (a link, a new division) the Divisions sub-tab shows it.
+    /// </param>
+    private void ChooseDivision(Division? division, bool keepsPart = false)
     {
         if (ReferenceEquals(division, chosenDivision)) return;
         // a box being typed in (the pane's, or the table's) saves into the division it belongs to first: left later,
@@ -335,7 +345,7 @@ public partial class UnitsPage
             if (ReferenceEquals(division, chosenDivision)) return;
         }
         chosenDivision = division;
-        ShowPartForDivision(division);
+        if (!keepsPart) ShowPartForDivision(division);
         filter.Factory = "";
         if (division is not null && selection.Selected is Unit unit && !division.Units.Any(rule => rule.Unit == unit.Descriptor)) selection.Selected = null;
         // the division is remembered for Divisions and Battlegroups even while Units shows
@@ -485,19 +495,9 @@ public partial class UnitsPage
         ShowPanesSplit(hasDivision: false);
     }
 
-    /// <summary>
-    /// The nations' and divisions' heights: shares of the room in whole thousandths; on the Units sub-tab, which has no
-    /// division list, all of it the nations'.
-    /// </summary>
+    /// <summary>The nations' and divisions' heights: shares of the room in whole thousandths.</summary>
     private void ShowListsSplit()
     {
-        if (part == ArmoryPart.Units)
-        {
-            NationsRow.Height = new GridLength(1, GridUnitType.Star);
-            DivisionsRow.Height = new GridLength(0);
-            DivisionsRow.MinHeight = 0;
-            return;
-        }
         DivisionsRow.MinHeight = 90;
         int share = listsShare is double s && s > 0 && s < 1 ? (int)Math.Round(s * 1000) : 500;
         NationsRow.Height = new GridLength(share, GridUnitType.Star);

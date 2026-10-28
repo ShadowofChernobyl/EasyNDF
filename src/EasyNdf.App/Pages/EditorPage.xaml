@@ -225,9 +225,40 @@
         <StackPanel DockPanel.Dock="Top">
             <!-- .bar: the file, Open file..., and at the right what can be done with the file -->
             <controls:FlexRow Gap="6" LineGap="6" Margin="0,0,0,8">
-                <!-- #edPick: 24rem to start, growing with the room left, from 12rem to 44rem -->
-                <ComboBox x:Name="FilePick" controls:FlexRow.Grow="1" controls:FlexRow.Basis="384" MinWidth="192" MaxWidth="704"
-                          ToolTip="{t:Text Editor.FilePick.Tip}" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
+                <!-- #edPick: 24rem to start, growing with the room left, from 12rem to 44rem; the file filter's funnel joined to its right -->
+                <DockPanel controls:FlexRow.Grow="1" controls:FlexRow.Basis="410" MinWidth="218" MaxWidth="730">
+                    <Grid DockPanel.Dock="Right" Margin="-1,0,0,0">
+                        <!-- pressed in while a filter is on; the same filter as the Files tab's search and Show only -->
+                        <ToggleButton x:Name="FileFilterButton" Style="{StaticResource PressedToggle}" Padding="6,0" Click="FileFilterClicked">
+                            <Path Data="M 1,2 H 11 L 7.2,6.6 V 10.5 L 4.8,9.3 V 6.6 Z" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                  StrokeThickness="1.2" StrokeLineJoin="Round" Width="12" Height="12" />
+                        </ToggleButton>
+                        <Popup x:Name="FileFilterPopup" PlacementTarget="{Binding ElementName=FileFilterButton}" Placement="Bottom" VerticalOffset="2"
+                               StaysOpen="False" AllowsTransparency="True" Closed="FileFilterClosed">
+                            <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                                            Padding="0,8,0,0" TextElement.FontFamily="{DynamicResource ui-font}" TextElement.FontSize="12.5">
+                                <StackPanel>
+                                    <TextBox x:Name="FileNameFilter" Margin="8,0,8,4" Tag="{t:Text Editor.FileFilter.NameHint}" ToolTip="{t:Text Editor.FileFilter.Name.Tip}"
+                                             TextChanged="FileNameFilterChanged" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel x:Name="FilterColumnOne" MinWidth="200" Margin="0,0,0,6" />
+                                        <Border Grid.Column="1" BorderBrush="{DynamicResource line}" BorderThickness="1,0,0,0" Margin="0,0,0,6">
+                                            <StackPanel x:Name="FilterColumnTwo" MinWidth="200" />
+                                        </Border>
+                                    </Grid>
+                                    <Border BorderBrush="{DynamicResource line}" BorderThickness="0,1,0,0">
+                                        <TextBlock Text="{t:Text Editor.FileFilter.Shared}" Foreground="{DynamicResource muted}" FontSize="11" Margin="12,5" />
+                                    </Border>
+                                </StackPanel>
+                            </controls:Bevel>
+                        </Popup>
+                    </Grid>
+                    <ComboBox x:Name="FilePick" ToolTip="{t:Text Editor.FilePick.Tip}" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
+                </DockPanel>
                 <Button Content="{t:Text Editor.OpenFile}" ToolTip="{t:Text Editor.OpenFile.Tip}" Click="OpenFileClicked" />
                 <!-- the find bar stays out of the way until it is asked for, as in Sublime Text -->
                 <ToggleButton x:Name="FindToggle" Style="{StaticResource PressedToggle}" Content="{t:Text Editor.Find}" Click="FindToggleClicked"

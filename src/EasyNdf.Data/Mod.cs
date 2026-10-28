@@ -30,6 +30,13 @@ public sealed class Mod
     public List<Weapons.ModWeapon> Weapons { get; set; } = [];
 
     /// <summary>
+    /// The numbers for deck codes the mod gives units that have none, by descriptor: units its rules add (Clone rules)
+    /// that its divisions use. The game refuses a deck with a unit missing from DeckSerializer.ndf; a number once given
+    /// is kept, so decks shared as codes stay the same from one export to the next.
+    /// </summary>
+    public SortedDictionary<string, int> UnitDeckNumbers { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Whether the mod was switched on on the Mods tab when it was exported, as its mod file says ("On"), so an import
     /// keeps it; null when the file doesn't say, as one made before mods could run together or by another app. Only
     /// a mod just read from a file has it: the app keeps the switch with its own state.
@@ -66,6 +73,7 @@ public sealed class Mod
         UnitEdits = [.. UnitEdits.Select(edit => edit.Copy())],
         WeaponEdits = [.. WeaponEdits.Select(edit => edit.Copy())],
         Weapons = [.. Weapons.Select(weapon => weapon.Copy())],
+        UnitDeckNumbers = new(UnitDeckNumbers, StringComparer.Ordinal),
     };
 }
 

@@ -328,7 +328,6 @@
   "Rules.Menu.MakeCopy": "Make Copy",
   "Rules.Menu.DeleteMod": "Delete Mod",
   "Rules.Menu.CreateNewMod": "Create New Mod",
-  "Rules.Preset.FilesUsing": "{count} file|{count} files",
   "Rules.Editor.FormulaHint": "For example {sample}",
   "Rules.Preset.CopyName": "{name} copy",
   "Rules.Scan.Scanning": "Scanning {file}...",

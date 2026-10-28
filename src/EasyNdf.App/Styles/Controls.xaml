@@ -820,6 +820,11 @@
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Foreground" Value="{DynamicResource accent}" />
             </Trigger>
+            <!-- a link with nothing to do (Back to Strongest when the settings are Strongest's) does not look like one -->
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="TextDecorations" Value="{x:Null}" />
+                <Setter Property="Cursor" Value="Arrow" />
+            </Trigger>
         </Style.Triggers>
     </Style>
 
@@ -862,16 +867,17 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
-                    <!-- label.chk: the box, then its text 4 pixels on, in the dim colour, centred top to bottom -->
-                    <StackPanel Orientation="Horizontal" Background="{TemplateBinding Background}">
-                        <Grid x:Name="BoxArea" Width="14" Height="14" VerticalAlignment="Center">
+                    <!-- label.chk: the box, then its text 4 pixels on, in the dim colour, centred top to bottom; a label
+                         that wraps (a TextBlock given as the content) wraps within the width the tick is given -->
+                    <DockPanel Background="{TemplateBinding Background}">
+                        <Grid x:Name="BoxArea" DockPanel.Dock="Left" Width="14" Height="14" VerticalAlignment="Center">
                             <controls:Bevel x:Name="Box" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" />
                             <!-- the tick: the HTML app's clip-path polygon on an 8 pixel square in the middle -->
                             <Path x:Name="Mark" Width="8" Height="8" Fill="{DynamicResource accent}" Visibility="Collapsed"
                                   Data="M 0.96,3.68 L 0,4.96 L 3.2,8 L 8,1.44 L 6.88,0.32 L 3.04,5.44 Z" />
                         </Grid>
                         <ContentPresenter x:Name="Label" Margin="4,0,0,0" VerticalAlignment="Center" />
-                    </StackPanel>
+                    </DockPanel>
                     <ControlTemplate.Triggers>
                         <Trigger Property="HasContent" Value="False">
                             <Setter TargetName="Label" Property="Visibility" Value="Collapsed" />
@@ -1126,6 +1132,44 @@
                 <Setter Property="Background" Value="{DynamicResource hover}" />
             </Trigger>
         </Style.Triggers>
+    </Style>
+
+    <!--
+      One of a group of choices in a popup, such as the Editor tab's file filter: a round mark, filled in the accent
+      colour when chosen, its text, and its Tag (how many it lists) dimmed at the right; on the hover colour under the
+      mouse, across the popup's whole width.
+    -->
+    <Style x:Key="PopupRadio" TargetType="RadioButton">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
+        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="9,2,10,2" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <DockPanel>
+                            <Grid Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,7,0">
+                                <Ellipse Fill="{DynamicResource well}" Stroke="{DynamicResource hi}" StrokeThickness="1" />
+                                <Ellipse x:Name="Dot" Margin="2.5" Fill="{DynamicResource accent}" Visibility="Collapsed" />
+                            </Grid>
+                            <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding Tag}" Foreground="{DynamicResource muted}" FontSize="12" Margin="16,0,0,0"
+                                       VerticalAlignment="Center" />
+                            <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="False" />
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource hover}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!--

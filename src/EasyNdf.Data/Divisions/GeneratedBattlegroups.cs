@@ -66,7 +66,8 @@ public static partial class GeneratedBattlegroups
     {
         List<JsonNode?> all = [.. rules];
         HashSet<string> packsAdded = [.. packsInFile, .. PacksAddedByOtherRules(all)];
-        foreach (JsonNode? rule in all.Where(IsGeneratedBattlegroupRule))
+        // a rule made editable (unlocked) is the user's own from then on: its text is not made again over their edits
+        foreach (JsonNode? rule in all.Where(rule => IsGeneratedBattlegroupRule(rule) && ArmoryPresets.IsLocked(rule)))
         {
             JsonObject part = (JsonObject)rule![DivisionChangeRules.ArmoryKey]![DivisionChangeRules.GeneratedBattlegroupKey]!;
             string division = JsonValues.AsText(part["Entry"]?["Descriptor"]);
