@@ -67,13 +67,25 @@ public sealed class SourceBar : Bevel
         }
     }
 
-    /// <summary>The source's folder after the list; Add Its Files only once one is chosen.</summary>
+    /// <summary>Whether Preview or Run export runs: Add Its Files then waits, as the Files tab's other buttons that add files do.</summary>
+    public bool RunGoing
+    {
+        get => runGoing;
+        set
+        {
+            runGoing = value;
+            ShowChosen();
+        }
+    }
+    private bool runGoing;
+
+    /// <summary>The source's folder after the list; Add Its Files only once one is chosen, and not while a run goes.</summary>
     private void ShowChosen()
     {
         string? folder = list.Selection?.Chosen?.Folder;
         path.Text = folder ?? "";
         path.ToolTip = folder;
-        addButton.IsEnabled = folder is not null;
+        addButton.IsEnabled = folder is not null && !runGoing;
     }
 
     /// <summary>"✓ 17 of its files listed": how many files of the source the list holds; nothing for none.</summary>

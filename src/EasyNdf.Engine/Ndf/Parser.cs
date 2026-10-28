@@ -15,6 +15,10 @@ public sealed class Parser
     private readonly Tokenizer.TokenStream tokens;
     private int i; // the token being read
 
+    // the lists' items and the objects' properties, gathered as they are read (see Gathering)
+    private readonly Gathering<NdfValue> gatheredItems = new();
+    private readonly Gathering<Property> gatheredProperties = new();
+
     /// <summary>Whether the declarations read are kept: <see cref="Check"/> only wants to know whether they read.</summary>
     private bool KeepsDeclarations { get; init; } = true;
 
@@ -390,7 +394,7 @@ public sealed class Parser
     {
         var headComments = ClaimComments(i);
         i++; // "("
-        var properties = new List<Property>();
+        List<Property> properties = gatheredProperties.Start();
         while (!IsPunct(")"))
         {
             var leadingComments = ClaimComments(i);
@@ -412,7 +416,7 @@ public sealed class Parser
         }
         var endComments = ClaimComments(i);
         i++; // ")"
-        return new ObjectValue(typeName, properties)
+        return new ObjectValue(typeName, gatheredProperties.Finish(properties))
         {
             HeadComments = headComments,
             EndComments = endComments,
@@ -424,7 +428,7 @@ public sealed class Parser
     {
         int openBracketAt = tokens[i].Position;
         Expect("[");
-        var items = new List<NdfValue>();
+        List<NdfValue> items = gatheredItems.Start();
         while (!IsPunct("]"))
         {
             var leadingComments = ClaimComments(i);
@@ -438,6 +442,30 @@ public sealed class Parser
         }
         var endComments = ClaimComments(i);
         Expect("]");
-        return new ListValue(typeName, items) { OpenBracketAt = openBracketAt, EndComments = endComments };
+        return new ListValue(typeName, gatheredItems.Finish(items)) { OpenBracketAt = openBracketAt, EndComments = endComments };
+    }
+
+    /// <summary>
+    /// Lists to gather a list's items or an object's properties in while they are read, one for each list or object
+    /// being read inside another, kept from one to the next. The list the value keeps is then made once, at its final
+    /// size. A list that grows as items are added makes a new, larger copy of itself each time it fills up and keeps up
+    /// to twice the room it needs: in a large file that took about a tenth of the reading, and twice the time spent
+    /// cleaning up memory during it.
+    /// </summary>
+    private sealed class Gathering<T>
+    {
+        private readonly Stack<List<T>> spare = new();
+
+        /// <summary>An empty list to gather into.</summary>
+        public List<T> Start() => spare.Count > 0 ? spare.Pop() : [];
+
+        /// <summary>What was gathered, in a list of its own at its size; the gathering list is kept for the next.</summary>
+        public List<T> Finish(List<T> gathered)
+        {
+            var finished = new List<T>(gathered);
+            gathered.Clear();
+            spare.Push(gathered);
+            return finished;
+        }
     }
 }

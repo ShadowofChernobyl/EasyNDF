@@ -57,6 +57,12 @@ public interface IWeaponActions
     /// <summary>Whether the open mod gives a weapon another picture.</summary>
     bool HasOtherPicture(Weapon weapon);
 
+    /// <summary>
+    /// Gives a weapon these traits, by the game's tokens, in the order the game shows them; a weapon given its own
+    /// traits again keeps its own. Returns false when the change was refused.
+    /// </summary>
+    bool ChangeTraits(Weapon weapon, IReadOnlyList<string> traits);
+
     /// <summary>The levels each kind of damage has, from the game's DamageResistance.ndf; null when not known.</summary>
     IReadOnlyDictionary<string, int>? DamageLevels { get; }
 

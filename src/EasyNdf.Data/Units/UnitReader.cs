@@ -77,37 +77,38 @@ public static class UnitReader
         Dictionary<string, List<string>> divisions, Dictionary<string, string> pictures, Dictionary<string, int> deckNumbers)
     {
         // what transports go by: the unit's tags; as a transport, the tags it carries and its seats; the seats it takes in one
-        ObjectValue? tags = ModuleOf(unit, "TTagsModuleDescriptor");
-        ObjectValue? transporter = ModuleOf(unit, "TTransporterModuleDescriptor");
-        ObjectValue? transportable = ModuleOf(unit, "TTransportableModuleDescriptor");
-        string nation = Text(Find(unit, "MotherCountry")) ?? "";
+        var fields = new UnitFields(unit);
+        ObjectValue? tags = fields.ModuleOf("TTagsModuleDescriptor");
+        ObjectValue? transporter = fields.ModuleOf("TTransporterModuleDescriptor");
+        ObjectValue? transportable = fields.ModuleOf("TTransportableModuleDescriptor");
+        string nation = Text(fields.Find("MotherCountry")) ?? "";
         string? weaponSet = FirstReference(unit, "WeaponDescriptor_");
-        string? pictureKey = Text(Find(unit, "ButtonTexture"));
+        string? pictureKey = Text(fields.Find("ButtonTexture"));
         return new Unit
         {
             Descriptor = descriptor,
             File = file,
-            Name = texts.Get(Text(Find(unit, "NameToken"))) ?? NameFromDescriptor(descriptor, nation),
+            Name = texts.Get(Text(fields.Find("NameToken"))) ?? NameFromDescriptor(descriptor, nation),
             // WARNO: Coalition = TWargameCoalition/NATO; Steel Division 2: Nationalite = ENationalite/Allied
-            Side = Text(Find(unit, "Coalition")) ?? Text(Find(unit, "Nationalite")) ?? "",
+            Side = Text(fields.Find("Coalition")) ?? Text(fields.Find("Nationalite")) ?? "",
             Nation = nation,
-            Factory = Text(Find(unit, "FactoryType")) ?? Text(Find(unit, "Factory")) ?? "",
-            Role = Text(Find(unit, "UnitRole")) ?? Text(Find(unit, "TypeSpecificToken")) ?? "",
-            RoleName = texts.Get(Text(Find(unit, "TypeSpecificToken"))),
-            StrategicType = Text(Find(unit, "TypeStrategicCount")) ?? "",
-            Flies = Text(Find(unit, "PathfindType"))?.EndsWith("Flying", StringComparison.Ordinal) == true,
-            Cost = CommandPoints(unit),
-            UpgradesFrom = Text(Find(unit, "UpgradeFromUnit")),
-            Strength = Number(Find(unit, "MaxPhysicalDamages")) ?? Number(Find(unit, "MaxDamages")),
-            Armor = ArmorOf(unit),
-            ArmorFamilies = ArmorFamiliesOf(unit),
-            Speed = Number(Find(unit, "MaxSpeedInKmph")) ?? Number(Find(unit, "Maxspeed")),
-            RoadSpeed = Number(Find(unit, "DisplayRoadSpeedInKmph")) ?? Number(Find(unit, "RealRoadSpeed")),
-            Optics = NumberFor(Find(unit, "OpticalStrengths"), "Standard") ?? Number(Find(unit, "OpticalStrength")),
-            Vision = NumberFor(Find(unit, "VisionRangesGRU"), "Standard") ?? Number(Find(unit, "PorteeVision")),
-            Stealth = Number(Find(unit, "UnitConcealmentBonus")),
-            Fuel = Number(Find(unit, "FuelCapacity")),
-            Specialties = ItemsOf(Find(unit, "SpecialtiesList")).Select(Text).OfType<string>().Where(s => s != "").ToList(),
+            Factory = Text(fields.Find("FactoryType")) ?? Text(fields.Find("Factory")) ?? "",
+            Role = Text(fields.Find("UnitRole")) ?? Text(fields.Find("TypeSpecificToken")) ?? "",
+            RoleName = texts.Get(Text(fields.Find("TypeSpecificToken"))),
+            StrategicType = Text(fields.Find("TypeStrategicCount")) ?? "",
+            Flies = Text(fields.Find("PathfindType"))?.EndsWith("Flying", StringComparison.Ordinal) == true,
+            Cost = CommandPoints(fields),
+            UpgradesFrom = Text(fields.Find("UpgradeFromUnit")),
+            Strength = Number(fields.Find("MaxPhysicalDamages")) ?? Number(fields.Find("MaxDamages")),
+            Armor = ArmorOf(fields),
+            ArmorFamilies = ArmorFamiliesOf(fields),
+            Speed = Number(fields.Find("MaxSpeedInKmph")) ?? Number(fields.Find("Maxspeed")),
+            RoadSpeed = Number(fields.Find("DisplayRoadSpeedInKmph")) ?? Number(fields.Find("RealRoadSpeed")),
+            Optics = NumberFor(fields.Find("OpticalStrengths"), "Standard") ?? Number(fields.Find("OpticalStrength")),
+            Vision = NumberFor(fields.Find("VisionRangesGRU"), "Standard") ?? Number(fields.Find("PorteeVision")),
+            Stealth = Number(fields.Find("UnitConcealmentBonus")),
+            Fuel = Number(fields.Find("FuelCapacity")),
+            Specialties = ItemsOf(fields.Find("SpecialtiesList")).Select(Text).OfType<string>().Where(s => s != "").ToList(),
             WeaponSet = weaponSet,
             Weapons = weaponSet is not null && weaponSets.TryGetValue(weaponSet, out var mounts)
                 ? mounts.Select(mount => WeaponOf(mount.Ammunition, mount.Count, ammunition)).ToList()
@@ -124,8 +125,32 @@ public static class UnitReader
         };
     }
 
-    /// <summary>A unit's module of a type, such as TTagsModuleDescriptor; null when it has none.</summary>
-    private static ObjectValue? ModuleOf(ObjectValue unit, string type) => AllObjects(unit).FirstOrDefault(each => each.TypeName == type);
+    /// <summary>
+    /// A unit's fields by name and its modules by type, found in one pass over the unit: each name's first property
+    /// and each type's first object, in the order <see cref="NdfValues.Find"/> and <see cref="NdfValues.AllObjects"/>
+    /// look through a unit, so each field is the one they would find. A unit is asked for some forty fields, many of
+    /// which it does not have, and looking through the whole unit again for each took a quarter of reading the units.
+    /// </summary>
+    private sealed class UnitFields
+    {
+        private readonly Dictionary<string, NdfValue> firstByName = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ObjectValue> firstByType = new(StringComparer.Ordinal);
+
+        public UnitFields(ObjectValue unit)
+        {
+            foreach (ObjectValue each in AllObjects(unit))
+            {
+                firstByType.TryAdd(each.TypeName, each);
+                foreach (Property property in each.Properties) firstByName.TryAdd(property.Name, property.Value);
+            }
+        }
+
+        /// <summary>The first property of this name anywhere in the unit (<see cref="NdfValues.Find"/>); null when it has none.</summary>
+        public NdfValue? Find(string name) => firstByName.GetValueOrDefault(name);
+
+        /// <summary>The unit's module of a type, such as TTagsModuleDescriptor; null when it has none.</summary>
+        public ObjectValue? ModuleOf(string type) => firstByType.GetValueOrDefault(type);
+    }
 
     /// <summary>The texts of a list, such as a TagSet's.</summary>
     private static List<string> TextsOf(NdfValue? list) => [.. ItemsOf(list).Select(Text).OfType<string>()];
@@ -203,9 +228,9 @@ public static class UnitReader
     }
 
     /// <summary>The cost: the command points in ProductionRessourcesNeeded.</summary>
-    private static double? CommandPoints(ObjectValue unit)
+    private static double? CommandPoints(UnitFields unit)
     {
-        foreach (var (key, value) in PairsOf(Find(unit, "ProductionRessourcesNeeded")))
+        foreach (var (key, value) in PairsOf(unit.Find("ProductionRessourcesNeeded")))
             if (Text(key) == "Resource_CommandPoints") return Number(value);
         return null;
     }
@@ -215,12 +240,12 @@ public static class UnitReader
     /// Division 2 writes ArmorDescriptorFront = ArmorDescriptor_Blindage_22, where the number is the level and a
     /// name without one (such as ArmorDescriptor_Toit_Lourd) is 0.
     /// </summary>
-    private static UnitArmor ArmorOf(ObjectValue unit)
+    private static UnitArmor ArmorOf(UnitFields unit)
     {
         int? Side(string side)
         {
-            if (Find(unit, "Resistance" + side) is ObjectValue resistance) return (int?)Number(Find(resistance, "Index"));
-            if (Text(Find(unit, "ArmorDescriptor" + side)) is string armor)
+            if (unit.Find("Resistance" + side) is ObjectValue resistance) return (int?)Number(Find(resistance, "Index"));
+            if (Text(unit.Find("ArmorDescriptor" + side)) is string armor)
             {
                 Match level = Regex.Match(armor, "_([0-9]+)\\z");
                 return level.Success ? int.Parse(level.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0;
@@ -231,9 +256,9 @@ public static class UnitReader
     }
 
     /// <summary>The armour family of each side: TResistanceTypeRTTI's Family; none in Steel Division 2.</summary>
-    private static UnitArmorFamilies ArmorFamiliesOf(ObjectValue unit)
+    private static UnitArmorFamilies ArmorFamiliesOf(UnitFields unit)
     {
-        string? Side(string side) => Find(unit, "Resistance" + side) is ObjectValue resistance ? Text(Find(resistance, "Family")) : null;
+        string? Side(string side) => unit.Find("Resistance" + side) is ObjectValue resistance ? Text(Find(resistance, "Family")) : null;
         return new UnitArmorFamilies(Side("Front"), Side("Sides"), Side("Rear"), Side("Top"));
     }
 

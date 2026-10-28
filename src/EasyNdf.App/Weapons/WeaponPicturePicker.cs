@@ -18,16 +18,16 @@ public static class WeaponPicturePicker
     /// <summary>The list's size, and each picture's width in it.</summary>
     private const double ListWidth = 300, ListHeight = 360, PictureWidth = 110;
 
-    /// <summary>Opens the ✎ menu under the pencil.</summary>
-    /// <param name="pencil">The ✎ button.</param>
+    /// <summary>Opens the ✎ menu under the pencil, or under the Picture value's cell.</summary>
+    /// <param name="under">The ✎ button, or the cell, the menu opens under.</param>
     /// <param name="pictures">Every weapon picture of the game: its file, by texture name.</param>
     /// <param name="isChanged">Whether the open mod gives the weapon another picture now.</param>
     /// <param name="choose">Gives the weapon a picture, by texture name; null for its own again.</param>
-    public static void OpenMenu(Button pencil, IReadOnlyDictionary<string, string> pictures, bool isChanged, Action<string?> choose)
+    public static void OpenMenu(FrameworkElement under, IReadOnlyDictionary<string, string> pictures, bool isChanged, Action<string?> choose)
     {
-        var menu = new ContextMenu { PlacementTarget = pencil, Placement = PlacementMode.Bottom };
+        var menu = new ContextMenu { PlacementTarget = under, Placement = PlacementMode.Bottom };
         var another = new MenuItem { Header = Texts.Get("Weapons.Picture.Another"), ToolTip = Texts.Get("Weapons.Picture.Another.Tip") };
-        another.Click += (_, _) => OpenList(pencil, pictures, choose);
+        another.Click += (_, _) => OpenList(under, pictures, choose);
         menu.Items.Add(another);
         if (isChanged)
         {
@@ -38,10 +38,10 @@ public static class WeaponPicturePicker
         menu.IsOpen = true;
     }
 
-    /// <summary>The list of pictures, in a box under the pencil, that closes when a picture is chosen or the user clicks elsewhere.</summary>
-    private static void OpenList(Button pencil, IReadOnlyDictionary<string, string> pictures, Action<string?> choose)
+    /// <summary>The list of pictures, in a box under the pencil (or the cell), that closes when a picture is chosen or the user clicks elsewhere.</summary>
+    private static void OpenList(FrameworkElement under, IReadOnlyDictionary<string, string> pictures, Action<string?> choose)
     {
-        var popup = new Popup { PlacementTarget = pencil, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true };
+        var popup = new Popup { PlacementTarget = under, Placement = PlacementMode.Bottom, StaysOpen = false, AllowsTransparency = true };
         var find = new TextBox { Tag = Texts.Get("Weapons.Picture.Find.Hint"), ToolTip = Texts.Get("Weapons.Picture.Find.Tip"), Margin = new Thickness(0, 0, 0, 6) };
         // only the rows in view are made, and so only their pictures read
         var list = new ListBox { Height = ListHeight, BorderThickness = new Thickness(0) };

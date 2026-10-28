@@ -78,6 +78,11 @@ public partial class FilesPage : UserControl
         // once a burst: reading a thousand files tells of a thousand changes
         var showState = new RunOnceSoon(() => { ShowListState(); ShowSourceCount(); });
         Model.PropertyChanged += (_, _) => showState.Ask();
+        // Add Its Files waits for a run, as Add files does
+        Model.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is null or nameof(FileListModel.IsBusy)) SourceBar.RunGoing = Model.IsBusy;
+        };
         SourceBar.AddFilesRequested += AddSourceFiles;
         DataContext = Model;
         ListBox.SizeChanged += (_, _) => FitColumns();
@@ -122,6 +127,12 @@ public partial class FilesPage : UserControl
     /// <param name="fromFolder">Whether the files came from a folder or an archive.</param>
     public async Task AddAndRead(IReadOnlyList<FileToAdd> files, bool fromFolder)
     {
+        // files dropped on the app, or a source's, wait for a run to finish: the run is using the list
+        if (Model.IsBusy)
+        {
+            Model.Warn(Texts.Get("Files.Run.WaitToAdd"));
+            return;
+        }
         bool several = files.Count > 1;
         IReadOnlyList<FileEntry> toRead = await Model.AddFiles(files, fromFolder, (listed, picked) => AskAboutDuplicate(listed, picked, several));
         await ReadAll(toRead);
@@ -430,8 +441,8 @@ public partial class FilesPage : UserControl
     /// <summary>A key the focused control did not take (see <see cref="MainView.HandleShortcut"/>).</summary>
     public void HandleShortcut(KeyEventArgs e)
     {
-        // Keys typed in a text box or a dropdown are theirs.
-        if (Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem) return;
+        // Keys typed in a text box or a dropdown are theirs; the list's own keys wait while a run goes, as the list does.
+        if (Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem || Model.IsBusy) return;
         if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
         {
             e.Handled = true;

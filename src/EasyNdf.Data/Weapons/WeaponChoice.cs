@@ -16,28 +16,39 @@ public sealed record WeaponChoice(string Field, bool IsSwitch)
     public const string On = "True", Off = "False";
 
     /// <summary>
-    /// Every switch and choice that can be changed, in the order the Weapon pane shows them. Those whose effect is not
-    /// known are left out: the pane shows them, but they are not changed until tried in the game.
+    /// Every switch and choice that can be changed, in the order the Weapon pane shows them, those whose effect is not
+    /// known too (the pane marks them ?). A reference to another descriptor (its missile, its fire, its smoke) is a
+    /// choice among those the game's weapons name, so it is never one the game does not have.
     /// </summary>
     public static IReadOnlyList<WeaponChoice> All { get; } =
     [
         new(WeaponFileValues.DamageFamily, IsSwitch: false),
         new("AllowSuppressDamageWhenNoImpact", IsSwitch: true),
         new("PiercingWeapon", IsSwitch: true),
+        new("DamageTypeEvolutionOverRangeDescriptor", IsSwitch: false),
         new("TandemCharge", IsSwitch: true),
         new("IsHarmlessForAllies", IsSwitch: true),
+        new("FireDescriptor", IsSwitch: false),
+        new("SmokeDescriptor", IsSwitch: false),
         new("ForceHitTopArmor", IsSwitch: true),
         new("ForceHitTopArmorOnSuccess", IsSwitch: true),
         new("ComputeArmorFromImpactLocation", IsSwitch: true),
+        new("IgnoreInflammabilityConditions", IsSwitch: true),
         new("DistanceToTarget", IsSwitch: true),
         new("CanShootWhileMoving", IsSwitch: true),
         new(WeaponFileValues.HasDeploymentTime, IsSwitch: true),
         new("CanShootOnPosition", IsSwitch: true),
         new("TirIndirect", IsSwitch: true),
+        new("TirReflexe", IsSwitch: true),
+        new("ReflexShotDisabledIfPriorityTarget", IsSwitch: true),
+        new("TargetOnlyOneUnitInDistrict", IsSwitch: true),
         new("ProjectileType", IsSwitch: false),
         new("IsFireAndForget", IsSwitch: true),
         new("Guidance", IsSwitch: false),
         new("IsSubAmmunition", IsSwitch: true),
+        new("MissileDescriptor", IsSwitch: false),
+        new("SalvoShotsSorted", IsSwitch: true),
+        new("AffecteParNombre", IsSwitch: true),
         new("MinMaxCategory", IsSwitch: false),
         new("ShowDamageInUI", IsSwitch: true),
         new("DisplaySalveAccuracy", IsSwitch: true),
@@ -53,14 +64,15 @@ public sealed record WeaponChoice(string Field, bool IsSwitch)
     public string? Read(Weapon weapon) => weapon.FileValue(Field);
 
     /// <summary>
-    /// A weapon with the value chosen in place of its own. The kind of damage and whether it must be deployed are also
-    /// the weapon's own properties, which other parts of the Armory read, so they change with it.
+    /// A weapon with the value chosen in place of its own. The kind of damage, whether it must be deployed and the missile
+    /// it fires are also the weapon's own properties, which other parts of the Armory read, so they change with it.
     /// </summary>
     public Weapon Set(Weapon weapon, string written)
     {
         Weapon changed = weapon.WithFileValue(Field, written);
         if (Field == WeaponFileValues.DamageFamily) return changed with { DamageFamily = FamilyName(written) };
         if (Field == WeaponFileValues.HasDeploymentTime) return changed with { MustDeploy = written == On };
+        if (Field == "MissileDescriptor") return changed with { Missile = written == "nil" ? null : written };
         return changed;
     }
 
