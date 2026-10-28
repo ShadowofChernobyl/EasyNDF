@@ -36,7 +36,7 @@ public sealed class PanePair : Grid
 
     /// <summary>Folded beside: the button in the main pane's heading that opens the pane again, with its icon and name.</summary>
     private readonly Button openButton = new();
-    private readonly System.Windows.Shapes.Path openIcon = new() { Width = 14, Height = 14, StrokeThickness = 1.3, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
+    private readonly System.Windows.Shapes.Path openIcon = new() { Width = 14, Height = 14, StrokeThickness = 1.3, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
     private readonly TextBlock openName = new() { VerticalAlignment = VerticalAlignment.Center };
 
     /// <summary>
@@ -51,7 +51,8 @@ public sealed class PanePair : Grid
     /// </summary>
     private readonly FrameworkElement headingSpacer = new() { Width = 0 };
     /// <summary>The pane's own heading: a button with the pane's icon, name and an arrow, open or folded.</summary>
-    private readonly System.Windows.Shapes.Path foldIcon = new() { Width = 14, Height = 14, StrokeThickness = 1.3, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center };
+    // hidden until FoldedIcon gives it a shape: a pane without one has no empty space before its name
+    private readonly System.Windows.Shapes.Path foldIcon = new() { Width = 14, Height = 14, StrokeThickness = 1.3, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
     private readonly TextBlock arrow = new() { Margin = new Thickness(5, 0, 0, 0), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock title = new() { VerticalAlignment = VerticalAlignment.Center };
     private readonly ToggleButton besideButton, belowButton;
@@ -72,7 +73,11 @@ public sealed class PanePair : Grid
         besideButton = PlaceButton("beside");
         belowButton = PlaceButton("below");
         // the same button look as the one that opens the pane when folded beside, so the heading never changes style
-        foldButton = new Button { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 3), ToolTip = Texts.Get("Common.Pane.Fold.Tip"), Content = new StackPanel { Orientation = Orientation.Horizontal, Children = { foldIcon, title, arrow } } };
+        // a long name (Details: a file with its rule sets) is cut short with … rather than pushing the ▾ out of the button
+        title.TextTrimming = TextTrimming.CharacterEllipsis;
+        DockPanel.SetDock(foldIcon, Dock.Left);
+        DockPanel.SetDock(arrow, Dock.Right);
+        foldButton = new Button { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 3), ToolTip = Texts.Get("Common.Pane.Fold.Tip"), Content = new DockPanel { Children = { foldIcon, arrow, title } } };
         foldButton.Click += (_, _) => Fold(!isFolded);
         // 3 pixels kept under the buttons, so they do not sit on the heading's line
         tools = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3), Children = { besideButton, belowButton } };
@@ -142,7 +147,7 @@ public sealed class PanePair : Grid
         {
             openIcon.Data = value;
             foldIcon.Data = value;
-            foldIcon.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible;
+            foldIcon.Visibility = openIcon.Visibility = value is null ? Visibility.Collapsed : Visibility.Visible;
         }
     }
 

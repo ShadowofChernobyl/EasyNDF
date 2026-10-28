@@ -284,7 +284,8 @@ public static partial class WeaponPane
     private static StackPanel Values(Weapon weapon, IWeaponActions actions, PaneValue[] values)
     {
         var grid = new Grid();
-        foreach (GridLength width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, new GridLength(1, GridUnitType.Star) })
+        // the values at their own width, the names the rest, as the Unit pane's stats: a name gives way, never a value
+        foreach (GridLength width in new[] { new GridLength(1, GridUnitType.Star), GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto })
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         int rows = (values.Length + 1) / 2;
         bool canChange = actions.CanChangeWeapon(weapon);
@@ -327,6 +328,8 @@ public static partial class WeaponPane
     {
         Bevel cell = UnitPane.Cell(Texts.Get(value.NameKey), row, column, isName: true, lastRow);
         var name = (TextBlock)cell.Child;
+        // cut short with … when the pane is narrow: the tooltip says it whole, with its name in the file
+        name.TextTrimming = TextTrimming.CharacterEllipsis;
         if (value.Certainty != Certainty.Known)
         {
             var mark = new Run(value.Certainty == Certainty.Likely ? "≈" : "?") { FontSize = 9.5, BaselineAlignment = BaselineAlignment.Superscript };

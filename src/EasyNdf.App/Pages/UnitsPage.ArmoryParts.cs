@@ -6,8 +6,9 @@ namespace EasyNdf.App.Pages;
 
 /// <summary>
 /// The Armory's sub-tabs: Units (every unit of the source), Divisions (a division's units, card slots and details),
-/// Battlegroups (a division's Official Battlegroup) and Weapons (every weapon the units carry). Divisions and
-/// Battlegroups share the division list and the division chosen in it; Units has no list, and shows every unit.
+/// Battlegroups (a division's Official Battlegroup) and Weapons (every weapon the units carry). Units, Divisions and
+/// Battlegroups share the division list and the division chosen in it; on Units, a division chosen narrows the units
+/// to its own, and ✕ shows every unit again.
 /// </summary>
 public partial class UnitsPage
 {
@@ -16,6 +17,9 @@ public partial class UnitsPage
 
     /// <summary>Whether the centre shows a division's units: the Divisions sub-tab, with a division chosen.</summary>
     private bool ShowsDivisionUnits => part == ArmoryPart.Divisions && chosenDivision is not null;
+
+    /// <summary>Whether the Units sub-tab shows only a division's units: one is chosen in its division list.</summary>
+    private bool UnitsShowOneDivision => part == ArmoryPart.Units && chosenDivision is not null;
 
     /// <summary>Whether the centre shows a division's Official Battlegroup: the Battlegroups sub-tab, with a division chosen.</summary>
     private bool ShowsBattlegroup => part == ArmoryPart.Battlegroups && chosenDivision is not null;
@@ -78,8 +82,8 @@ public partial class UnitsPage
     }
 
     /// <summary>
-    /// The sub-tab shown stays pressed; the left column has the division list on Divisions and Battlegroups only, and
-    /// the "in a division" filter on Units only (a division's units are all in one), and "Only modded units" on both but Battlegroups.
+    /// The sub-tab shown stays pressed; the left column has the division list on Units, Divisions and Battlegroups,
+    /// the "in a division" filter on Units only (a division's units are all in one), and "Only modded units" on all but Battlegroups.
     /// </summary>
     private void ShowPartButtons()
     {
@@ -90,10 +94,7 @@ public partial class UnitsPage
         // the Weapons sub-tab has a left column and a pane of its own, in the units' place
         UnitsView.Visibility = part == ArmoryPart.Weapons ? Visibility.Collapsed : Visibility.Visible;
         WeaponsView.Visibility = part == ArmoryPart.Weapons ? Visibility.Visible : Visibility.Collapsed;
-        bool hasList = part is ArmoryPart.Divisions or ArmoryPart.Battlegroups;
-        DivisionsBox.Visibility = hasList ? Visibility.Visible : Visibility.Collapsed;
-        ListsSplit.Visibility = hasList ? Visibility.Visible : Visibility.Collapsed;
-        OnlyInDivision.Visibility = hasList ? Visibility.Collapsed : Visibility.Visible;
+        OnlyInDivision.Visibility = part == ArmoryPart.Units ? Visibility.Visible : Visibility.Collapsed;
         // a battlegroup shows its cards whatever the filters
         OnlyModded.Visibility = part == ArmoryPart.Battlegroups ? Visibility.Collapsed : Visibility.Visible;
         // a new division is made from the Divisions sub-tab

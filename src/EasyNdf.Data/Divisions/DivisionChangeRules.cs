@@ -233,6 +233,11 @@ public sealed class DivisionChangeRules
                 Action("CountryId", "Set To [int, float, string, boolean]", Quoted(shown.Country)),
                 Action("DivisionCoalition", "Set To [int, float, string, boolean]", "TWargameCoalition/" + shown.Side),
                 Action("DivisionTags", "Set To [list, object]", TagsWithNation(before, shown)));
+        changeBeingWritten = "Tags";
+        // after the nation and type: tags set by hand take the place of those they give
+        if (change.Tags is not null && !change.Tags.SequenceEqual(before.Tags))
+            Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.Tags", ("from", string.Join(", ", before.Tags)), ("to", string.Join(", ", shown.Tags))),
+                Action("DivisionTags", "Set To [list, object]", TagsText(shown.Tags)));
         TextRule(change.Summary, before.Summary, division, shown, "summary", "SummaryTextToken", "Summary", "Divisions.Rule.Summary");
         TextRule(change.History, before.History, division, shown, "history", "HistoryTextToken", "History", "Divisions.Rule.History");
         changeBeingWritten = "Standout";
@@ -574,7 +579,7 @@ public sealed class DivisionChangeRules
         if (card.Veterancy > 0) lines.Add("    Xp = " + Whole(card.Veterancy));
         if (card.Transport is string transport) lines.Add("    Transport = " + UnitReference(transport));
         lines.Add("    Unit = " + UnitReference(card.Unit));
-        lines.Add("    Number = 1");
+        lines.Add("    Number = " + Whole(card.Number));
         lines.Add(")");
         return string.Join("\n", lines);
     }

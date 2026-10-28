@@ -13,6 +13,13 @@ public partial class App : Application
     /// <summary>Runs before anything of WPF's: how the app is scaled on each monitor can only be set this early.</summary>
     static App() => Windowing.MonitorScaling.ApplySaved();
 
+    /// <summary>
+    /// Set by the test runs (screenshots, timings, checks) before the app starts. The app then keeps its data in memory
+    /// only, so a run never changes the user's saved data nor depends on what an earlier run saved, and leaves an error
+    /// nothing caught to the test run to report, rather than showing a box that would wait for a click.
+    /// </summary>
+    public static bool RunsTests { get; set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -25,9 +32,9 @@ public partial class App : Application
         // Switches for a PC that draws the app oddly (see README): "--render software" draws without the graphics
         // card, "--frame native" uses Windows' own title bar.
         if (HasSwitch(e.Args, "--render", "software")) RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
-        AppData.Load();
+        if (!RunsTests) AppData.Load();
         Mods.ModStack.Start();
-        DispatcherUnhandledException += ErrorNotCaught;
+        if (!RunsTests) DispatcherUnhandledException += ErrorNotCaught;
         Text.Texts.UseSaved();
         ThemeManager.ApplySaved();
         Controls.ListText.ApplySaved();

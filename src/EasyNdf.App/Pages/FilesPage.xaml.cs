@@ -69,9 +69,11 @@ public partial class FilesPage : UserControl
         ListScroller.ScrollChanged += ListScrolled;
         ListHeader.RenderTransform = headingsOffset;
         Model = new FileListModel();
-        // the columns, sort, grouping and sizes as the user left them
+        // the columns, sort, grouping, "Show only" choice and sizes as the user left them
         Model.LoadView(AppData.Current.Settings, AppData.Current.State);
+        ShowOnlyChoice.SelectedIndex = (int)Model.ShowOnly;
         Model.ViewChanged += SaveView;
+        Model.FilterChanged += ShowFilter;
         AppData.Current.ModsChanged += FollowMods;
         // once a burst: reading a thousand files tells of a thousand changes
         var showState = new RunOnceSoon(() => { ShowListState(); ShowSourceCount(); });
@@ -500,7 +502,16 @@ public partial class FilesPage : UserControl
             Note = Texts.Get("Files.Run.AskGameMod.Note", ("mod", modName)),
             NeedsInput = true,
         });
-        return typed == "" ? null : typed;
+        if (typed == "") return null;
+        // a path to the folder, as copied from Explorer, is taken for its last folder's name; it is joined to the export's
+        // Localisation folder, so anything else that is not a folder name (".." or a drive) would send the files elsewhere
+        string name = Path.GetFileName(typed.Trim().TrimEnd('\\', '/'));
+        if (!FileRunner.IsFolderName(name))
+        {
+            await Messages.Tell(Texts.Get("Files.Run.AskGameMod.NotAName", ("typed", typed)));
+            return null;
+        }
+        return name;
     }
 
     /// <summary>"WARNO Mod Folder…" in UNITS.csv's menu: the mod folder its export goes into, asked again and kept.</summary>
@@ -547,7 +558,10 @@ public partial class FilesPage : UserControl
     private async Task<bool> DivisionsAreChecked()
     {
         if (divisionCheckHidden) return true;
-        List<string> warnings = MainView.Of(this).UnitsTab.DivisionWarnings();
+        // the Armory may not have seen the Files tab's files since they changed: its units are brought up to date first
+        UnitsPage armory = MainView.Of(this).UnitsTab;
+        await armory.BringModValuesUpToDate();
+        List<string> warnings = armory.DivisionWarnings();
         if (warnings.Count == 0) return true;
         DialogAnswer answer = await Messages.Ask(Texts.Get("Divisions.Check.Ask"), new DialogOptions
         {
@@ -916,7 +930,17 @@ public partial class FilesPage : UserControl
         await ReadAll(toRead);
     }
 
-    /// <summary>Saves the list's columns, sort and grouping, for next time.</summary>
+    /// <summary>
+    /// "Show only" or the search changed, maybe from the Editor tab's file filter, which shares them: the dropdown and the
+    /// search box show them.
+    /// </summary>
+    private void ShowFilter()
+    {
+        ShowOnlyChoice.SelectedIndex = (int)Model.ShowOnly;
+        if (SearchBox.Text != Model.SearchText) SearchBox.Text = Model.SearchText;
+    }
+
+    /// <summary>Saves the list's columns, sort, grouping and "Show only" choice, for next time.</summary>
     private void SaveView()
     {
         Model.SaveView(AppData.Current.Settings, AppData.Current.State);

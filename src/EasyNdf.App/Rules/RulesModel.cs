@@ -969,8 +969,23 @@ public sealed partial class RulesModel : INotifyPropertyChanged
             if (isGroup && folded) for (int k = i + 1; k < rules.Count && (string?)rules[k]?["Kind"] != "Group"; k++) hidden++;
             rows.Add(new RuleRow { Index = i, Rule = rule, IsSelected = selectedRules.Contains(i), IsInGroup = !isGroup && inGroup, IsOff = off, HiddenCount = hidden, IsLocked = IsLocked(i) });
         }
-        RuleRows = rows;
+        ShowRows(rows);
         Changed();
+    }
+
+    /// <summary>
+    /// Takes the rule list's new lines. When they show the same as those on screen but for which are selected (a click),
+    /// the lines on screen are kept and only told which are selected: making the whole list again on every click took
+    /// up to a quarter of a second with a large mod's rule sets.
+    /// </summary>
+    private void ShowRows(List<RuleRow> rows)
+    {
+        if (RuleRows.Count == rows.Count && rows.Zip(RuleRows).All(pair => pair.First.ShowsTheSameAs(pair.Second)))
+        {
+            for (int i = 0; i < rows.Count; i++) RuleRows[i].IsSelected = rows[i].IsSelected;
+            return;
+        }
+        RuleRows = [.. rows.Select(row => row.NoteShown())];
     }
 
     private static int IndexIn(IReadOnlyList<ModPreset> list, ModPreset preset)

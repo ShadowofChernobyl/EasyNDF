@@ -62,7 +62,7 @@ public partial class RulesPage : UserControl
 
         IReadOnlyList<ModPreset> presets = Model.Presets;
         bool several = Model.SelectedPresets.Count > 1;
-        PresetLines.ItemsSource = presets.Select(p => new PresetLine(p, Model.IsSelected(p), several && ReferenceEquals(p, Model.OpenPreset), FilesUsing(p))).ToList();
+        ShowPresetLines(presets, several);
         NoPresets.Visibility = presets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         ArmoryLines.ItemsSource = ArmoryPresets.Parts.Select(ArmoryLineOf).ToList();
 
@@ -93,11 +93,53 @@ public partial class RulesPage : UserControl
         });
     }
 
-    /// <summary>A line of the preset list: its name, whether it is selected, and how many files use it.</summary>
-    public sealed record PresetLine(ModPreset Preset, bool IsSelected, bool IsOpenAmongSeveral, int FilesUsing)
+    /// <summary>
+    /// The preset list's lines. A click only changes which are selected, so the lines are kept and told what changed:
+    /// making all of them again on every click took a quarter of a second with a large mod's 70 rule sets. They are made
+    /// again only when the presets themselves change (added, removed, renamed, moved, another mod).
+    /// </summary>
+    private void ShowPresetLines(IReadOnlyList<ModPreset> presets, bool several)
     {
-        /// <summary>The preset's name.</summary>
-        public string Name => Preset.Name;
+        if (PresetLines.ItemsSource is not List<PresetLine> lines || lines.Count != presets.Count
+            || lines.Zip(presets).Any(pair => !ReferenceEquals(pair.First.Preset, pair.Second) || pair.First.Name != pair.Second.Name))
+        {
+            lines = [.. presets.Select(preset => new PresetLine(preset))];
+            PresetLines.ItemsSource = lines;
+        }
+        foreach (PresetLine line in lines) line.Show(Model.IsSelected(line.Preset), several && ReferenceEquals(line.Preset, Model.OpenPreset));
+    }
+
+    /// <summary>A line of the preset list: its name, whether it is selected, and how many rules it has.</summary>
+    public sealed class PresetLine(ModPreset preset) : System.ComponentModel.INotifyPropertyChanged
+    {
+        /// <summary>The preset the line shows.</summary>
+        public ModPreset Preset { get; } = preset;
+
+        /// <summary>The preset's name, as it was when the line was made (a rename makes the lines again).</summary>
+        public string Name { get; } = preset.Name;
+
+        /// <summary>Whether the line is selected.</summary>
+        public bool IsSelected { get; private set; }
+
+        /// <summary>Whether it is the open one while several are selected (then drawn in bold).</summary>
+        public bool IsOpenAmongSeveral { get; private set; }
+
+        /// <inheritdoc/>
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+        /// <summary>Sets whether the line is selected and open, and shows its rule count again (rules may have been added).</summary>
+        public void Show(bool isSelected, bool isOpenAmongSeveral)
+        {
+            if (isSelected != IsSelected) { IsSelected = isSelected; Raise(nameof(IsSelected)); }
+            if (isOpenAmongSeveral != IsOpenAmongSeveral) { IsOpenAmongSeveral = isOpenAmongSeveral; Raise(nameof(IsOpenAmongSeveral)); }
+            string use = UseText;
+            if (use != shownUseText) { shownUseText = use; Raise(nameof(UseText)); Raise(nameof(UseTip)); Raise(nameof(AppliesToNothing)); }
+        }
+
+        /// <summary>The count last shown, so a click that changes no count tells WPF nothing.</summary>
+        private string? shownUseText;
+
+        private void Raise(string property) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(property));
 
         /// <summary>
         /// Whether the rule set applies to no file at all: it has no files of its own and its name holds no file name,
@@ -105,8 +147,8 @@ public partial class RulesPage : UserControl
         /// </summary>
         public bool AppliesToNothing => RuleSetFiles.Named(Preset).Count == 0;
 
-        /// <summary>"3 files" on the Files tab it applies to; "⚠ no file" when it applies to none at all; nothing otherwise.</summary>
-        public string UseText => AppliesToNothing ? Texts.Get("Rules.Preset.NoFile") : FilesUsing == 0 ? "" : Texts.Count("Rules.Preset.FilesUsing", FilesUsing);
+        /// <summary>"12 rules"; "⚠ no file" when it applies to no file at all, as it then never runs.</summary>
+        public string UseText => AppliesToNothing ? Texts.Get("Rules.Preset.NoFile") : Texts.Count("Rules.RuleCount", Preset.Rules.Count);
 
         /// <summary>The tooltip of "⚠ no file".</summary>
         public string? UseTip => AppliesToNothing ? Texts.Get("Rules.AppliesTo.None.Tip") : null;
@@ -400,7 +442,9 @@ public partial class RulesPage : UserControl
         foreach (string path in paths)
         {
             List<Mod> incoming;
-            try { incoming = ModFiles.Read(File.ReadAllText(path), Path.GetFileName(path)); }
+            // read away from the window: a mod carrying files can be 100 MB, a second or more to read, and the window
+            // would stop answering ("Not Responding") meanwhile
+            try { incoming = await Task.Run(() => ModFiles.Read(File.ReadAllText(path), Path.GetFileName(path))); }
             catch (Exception error) when (error is ModFileException or IOException or UnauthorizedAccessException)
             {
                 problems.Add(Path.GetFileName(path) + " (" + error.Message + ")");

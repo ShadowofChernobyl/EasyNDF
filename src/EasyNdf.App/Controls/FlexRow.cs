@@ -43,11 +43,20 @@ public sealed class FlexRow : Panel
     /// <summary>Where each child goes, worked out by <see cref="MeasureOverride"/> and used by <see cref="ArrangeOverride"/>.</summary>
     private readonly List<Rect> places = [];
 
+    /// <summary>The width the children were last laid out for in a measure.</summary>
+    private double laidOutFor = double.NaN;
+
     protected override Size MeasureOverride(Size availableSize)
     {
         double width = availableSize.Width;
         foreach (UIElement child in InternalChildren) child.Measure(new Size(width, double.PositiveInfinity));
         Lay(width);
+        // a child given less than its own width is measured again at the width it gets: arranged narrower than it
+        // measured, WPF keeps its wider layout and cuts it off (a text box's button docked to its right lands past the edge)
+        for (int i = 0; i < InternalChildren.Count; i++)
+            if (places[i].Width + 0.5 < InternalChildren[i].DesiredSize.Width)
+                InternalChildren[i].Measure(new Size(places[i].Width, double.PositiveInfinity));
+        laidOutFor = width;
         double right = 0, bottom = 0;
         foreach (Rect place in places)
         {
@@ -59,7 +68,8 @@ public sealed class FlexRow : Panel
 
     protected override Size ArrangeOverride(Size finalSize)
     {
-        Lay(finalSize.Width);
+        // laid out again only for a new width: for the measured one, the children measured again to fit keep their places
+        if (Math.Abs(finalSize.Width - laidOutFor) > 0.01) Lay(finalSize.Width);
         for (int i = 0; i < InternalChildren.Count; i++) InternalChildren[i].Arrange(places[i]);
         return finalSize;
     }

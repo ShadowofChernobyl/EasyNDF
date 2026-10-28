@@ -30,7 +30,8 @@ public partial class UnitsPage
             WarnAboutTexts(division, warnings);
             WarnAboutCards(division, warnings);
             WarnAboutBattlegroup(division, warnings);
-            foreach (DivisionUnit rule in division.Units) WarnAboutTransports(division, rule, warnings);
+            bool generated = DivisionChanges.EntryOf(OpenMod, division.Descriptor) is { IsGenerated: true };
+            foreach (DivisionUnit rule in UnitsSetByHand(division)) WarnAboutTransports(division, rule, warnings, checkAccepted: !generated);
         }
         return warnings;
     }
@@ -69,6 +70,20 @@ public partial class UnitsPage
         _ => Texts.Get("Units.Pane.Top"),
     };
 
+    /// <summary>
+    /// The division's units set by hand: all of them, but in a generated division only those the user changed. A
+    /// generated division's own transports follow the rules it was made by (nations in every division and "Everything"
+    /// divisions take any side's transports, as a large mod's generator does), which the game accepts though they fall
+    /// outside the rules a transport chosen by hand is checked by; a unit the user changed keeps them (a change of its
+    /// cards keeps its transports), so there only whether it can be taken at all is checked.
+    /// </summary>
+    private static IEnumerable<DivisionUnit> UnitsSetByHand(Division division)
+    {
+        if (DivisionChanges.EntryOf(OpenMod, division.Descriptor) is not { IsGenerated: true } entry) return division.Units;
+        HashSet<string> changed = [.. entry.Added.Select(rule => rule.Unit)];
+        return division.Units.Where(rule => changed.Contains(rule.Unit));
+    }
+
     /// <summary>A division with no command unit: the game does not accept a deck without one.</summary>
     private void WarnAboutCommandUnits(Division division, List<string> warnings)
     {
@@ -85,7 +100,8 @@ public partial class UnitsPage
         if (DivisionChanges.EntryOf(OpenMod, division.Descriptor) is not ModDivision entry) return;
         if (IsEmpty(entry.IsNew ? division.Summary : entry.Summary))
             warnings.Add(Texts.Get("Divisions.Check.NoSummary", ("division", division.Name)));
-        if (IsEmpty(entry.IsNew ? division.History : entry.History))
+        // a generated division's history is left empty unless the user writes one (a large mod's give none): not a slip
+        if (!entry.IsGenerated && IsEmpty(entry.IsNew ? division.History : entry.History))
             warnings.Add(Texts.Get("Divisions.Check.NoHistory", ("division", division.Name)));
     }
 
@@ -99,7 +115,13 @@ public partial class UnitsPage
     private void WarnAboutBattlegroup(Division division, List<string> warnings)
     {
         if (division.Battlegroup is not Battlegroup battlegroup) return;
-        foreach (BattlegroupProblem problem in BattlegroupCheck.Problems(battlegroup.Cards, division, unit => unitsByDescriptor.GetValueOrDefault(unit)?.Factory))
+        List<BattlegroupProblem> problems = BattlegroupCheck.Problems(battlegroup.Cards, division, unit => unitsByDescriptor.GetValueOrDefault(unit)?.Factory);
+        // cards of units the source does not have are said once for the battlegroup, as its view says them
+        List<string> unknown = [.. problems.Where(problem => problem.Kind == BattlegroupProblemKind.UnitNotInDivision && !unitsByDescriptor.ContainsKey(problem.Subject))
+            .Select(problem => problem.Subject).Distinct()];
+        if (unknown.Count > 1)
+            warnings.Add(Texts.Get("Divisions.Check.Battlegroup", ("division", division.Name), ("problem", Divisions.BattlegroupView.UnknownUnitsText(unknown))));
+        foreach (BattlegroupProblem problem in problems.Where(problem => unknown.Count <= 1 || !unknown.Contains(problem.Subject) || problem.Kind != BattlegroupProblemKind.UnitNotInDivision))
             warnings.Add(Texts.Get("Divisions.Check.Battlegroup", ("division", division.Name), ("problem", Divisions.BattlegroupView.ProblemText(problem, unitsByDescriptor))));
     }
 
@@ -119,11 +141,13 @@ public partial class UnitsPage
     /// A unit that can ride in a transport but has none and cannot be taken without one, so it cannot be taken at all;
     /// and a transport the game does not accept for the unit.
     /// </summary>
-    private void WarnAboutTransports(Division division, DivisionUnit rule, List<string> warnings)
+    /// <param name="checkAccepted">Whether its transports are checked against those the game accepts: not in a generated division.</param>
+    private void WarnAboutTransports(Division division, DivisionUnit rule, List<string> warnings, bool checkAccepted)
     {
         if (!unitsByDescriptor.TryGetValue(rule.Unit, out Unit? unit) || unit.SeatsTaken is null) return;
         if (rule.Transports.Count == 0 && !rule.AvailableWithoutTransport)
             warnings.Add(Texts.Get("Divisions.Check.NoWayToTake", ("division", division.Name), ("unit", unit.Name)));
+        if (!checkAccepted) return;
         HashSet<string> accepted = [.. TransportsFor(unit).Select(transport => transport.Descriptor)];
         foreach (string transport in rule.Transports.Where(transport => !accepted.Contains(transport)))
             warnings.Add(Texts.Get("Divisions.Check.TransportNotAccepted", ("division", division.Name), ("unit", unit.Name),

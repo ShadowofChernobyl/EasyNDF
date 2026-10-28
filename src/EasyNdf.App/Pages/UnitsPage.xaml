@@ -97,12 +97,11 @@
                         </DockPanel>
                         <!-- drag to share the height; double-click shares it evenly again -->
                         <controls:SplitBar x:Name="ListsSplit" Grid.Row="1" LiesFlat="True" ToolTip="{t:Text Units.ListsSplit.Tip}" />
-                        <!-- on the Units sub-tab there is no division list: the nations have the height -->
                         <DockPanel x:Name="DivisionsBox" Grid.Row="2">
                             <!--
                               the list's heading: "Divisions", or, with a division chosen, that division's emblem and name in its place,
                               with an accent mark at the left on the selection colour fading out to the right; + at the right. The same height either way, so the list never moves (see ShowChosenDivision).
-                              A click on the chosen division scrolls the list to it. The Units sub-tab shows every unit.
+                              A click on the chosen division scrolls the list to it. On the Units sub-tab, ✕ shows every unit again.
                             -->
                             <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}">
                                 <DockPanel>
@@ -112,6 +111,10 @@
                                     <!-- ⚙ makes generated divisions in the open mod: one for each nation or side and kind ticked -->
                                     <Button x:Name="GenerateDivisionsButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Content="&#x2699;" Margin="0,0,4,0"
                                             ToolTip="{t:Text Divisions.Generate.Tip}" AutomationProperties.Name="{t:Text Divisions.Generate}" Click="GenerateDivisionsClicked" />
+                                    <!-- ✕, on the Units sub-tab with a division chosen: every unit again -->
+                                    <Button x:Name="ClearDivisionButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Margin="0,0,3,0" Content="✕"
+                                            Visibility="Collapsed" ToolTip="{t:Text Divisions.Chosen.Clear.Tip}" AutomationProperties.Name="{t:Text Divisions.Chosen.Clear.Tip}"
+                                            Click="ClearChosenDivisionClicked" />
                                     <TextBlock x:Name="DivisionsTitle" Text="{t:Text Divisions.List}" VerticalAlignment="Center" />
                                     <Grid x:Name="ChosenDivisionMark" HorizontalAlignment="Left" Margin="0,0,6,0" Visibility="Collapsed" Cursor="Hand"
                                           MouseLeftButtonUp="ChosenDivisionMarkClicked">

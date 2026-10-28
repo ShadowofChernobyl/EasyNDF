@@ -72,7 +72,8 @@ internal static class BattlegroupReader
             if (unit is null) continue;
             string? transport = Text(Own(pack, "Transport")) ?? Text(Own(pack, "TransporterDescriptor"));
             double veterancy = Number(Own(pack, "Xp")) ?? Number(Own(pack, "ExperienceLevel")) ?? 0;
-            cards.TryAdd(declaration.Name, new BattlegroupCard(unit, (int)veterancy, transport));
+            double number = Number(Own(pack, "Number")) ?? 1;
+            cards.TryAdd(declaration.Name, new BattlegroupCard(unit, (int)veterancy, transport, (int)number));
         }
         return cards;
     }

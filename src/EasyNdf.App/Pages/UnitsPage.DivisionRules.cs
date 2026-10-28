@@ -45,10 +45,7 @@ public partial class UnitsPage
         List<string> missing = FilesMissingFor(change);
         if (missing.Count > 0)
         {
-            string message = Texts.Count("Divisions.FilesMissing", missing.Count, ("files", string.Join(", ", missing)));
-            // the game's own files hold no UNITS.csv: it is the mod's, made with it
-            if (missing.Any(DivisionExtras.IsNamesFile)) message += " " + Texts.Get("Divisions.FilesMissing.NamesFile");
-            _ = MainView.Of(this).Messages.Tell(message);
+            _ = MainView.Of(this).Messages.Tell(Texts.Count("Divisions.FilesMissing", missing.Count, ("files", string.Join(", ", missing))));
             return false;
         }
         change(OpenMod);
@@ -58,8 +55,8 @@ public partial class UnitsPage
 
     /// <summary>
     /// The files a change would write into that are not loaded on the Files tab: those of the rules it adds or
-    /// changes in the Armory presets, UNITS.csv for one that gives a division a text (its name, say), and
-    /// UniteDescriptor.ndf for a generated division, whose units are made from it.
+    /// changes in the Armory presets, and UniteDescriptor.ndf for a generated division, whose units are made from it.
+    /// UNITS.csv is not among them: it is the mod's own, and the export makes it when the Files tab has none.
     /// </summary>
     private List<string> FilesMissingFor(Action<Mod> change)
     {
@@ -71,7 +68,6 @@ public partial class UnitsPage
         List<string> files = [.. changed
             .Select(rule => (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.FileKey])
             .OfType<string>()];
-        if (changed.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFile);
         // a generated division's units are made at export from the units on the Files tab
         if (GeneratedUnitLists.AnyIn(changed)) files.Add(Files.GeneratedListsMaker.UnitsFile);
         // and a generated battlegroup is chosen by its units' weapons, and written into Decks.ndf and DeckPacks.ndf
@@ -162,7 +158,21 @@ public partial class UnitsPage
     /// the rules of units' weapon changes (an earlier version made the presets without them).
     /// </summary>
     private bool ArmoryPresetsNeedMaking() =>
-        (HasArmoryChanges(OpenMod) && !ArmoryPresets.HasAny(OpenMod)) || ArmoryPresets.HasRulesOutOfPlace(OpenMod) || LacksLoadoutRules(OpenMod);
+        (HasArmoryChanges(OpenMod) && !ArmoryPresets.HasAny(OpenMod)) || ArmoryPresets.HasRulesOutOfPlace(OpenMod) || LacksLoadoutRules(OpenMod)
+        || LacksDeckNumberRules(OpenMod);
+
+    /// <summary>
+    /// Whether a number for deck codes the mod gives a unit has no rule in its Armory presets: a mod file can carry the
+    /// numbers without their rules (one made by another tool).
+    /// </summary>
+    private static bool LacksDeckNumberRules(Mod mod)
+    {
+        if (mod.UnitDeckNumbers.Count == 0) return false;
+        HashSet<string> numbered = [.. ArmoryPresets.RulesOf(mod)
+            .Where(rule => (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ChangeKey] == UnitChangeRules.DeckNumberChange)
+            .Select(rule => (string?)rule?[DivisionChangeRules.ArmoryKey]?[UnitChangeRules.UnitKey]).OfType<string>()];
+        return mod.UnitDeckNumbers.Keys.Any(unit => !numbered.Contains(unit));
+    }
 
     /// <summary>
     /// Whether a unit of the mod has weapon changes the Armory presets have no rule for, in WeaponDescriptor.ndf, while

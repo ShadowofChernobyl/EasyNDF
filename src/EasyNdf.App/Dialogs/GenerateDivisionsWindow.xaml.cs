@@ -114,9 +114,14 @@ public partial class GenerateDivisionsWindow : UserControl
         FillNations(units);
         FillSides(game);
         UnlimitedTick.IsChecked = SameTick.IsChecked = AsTheGameTick.IsChecked = false;
-        ModNationsTick.Content = everyDivisionNations.Count == 0
-            ? Texts.Get("Divisions.Generate.ModNations.None")
-            : Texts.Get("Divisions.Generate.ModNations", ("nations", string.Join(", ", everyDivisionNations.Select(UnitNames.Nation))));
+        // wrapped: the nations named can be many, and the column is a third of the window
+        ModNationsTick.Content = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            Text = everyDivisionNations.Count == 0
+                ? Texts.Get("Divisions.Generate.ModNations.None")
+                : Texts.Get("Divisions.Generate.ModNations", ("nations", string.Join(", ", everyDivisionNations.Select(UnitNames.Nation)))),
+        };
         ModNationsTick.IsEnabled = everyDivisionNations.Count > 0;
         // a new set of divisions takes the mods' own nations unless told not to; a division being changed keeps its choice
         ModNationsTick.IsChecked = everyDivisionNations.Count > 0 && (!IsChanging || start.EveryDivisionNations.Count > 0);
@@ -257,7 +262,8 @@ public partial class GenerateDivisionsWindow : UserControl
 
     /// <summary>The number typed in "nor from rules of … or more"; null when empty or not a whole number above nothing.</summary>
     private int? IgnoredRulesTyped() =>
-        int.TryParse(IgnoredRulesBox.Text.Trim(), System.Globalization.NumberStyles.Integer, Texts.Catalog.Culture, out int from) && from > 0 ? from : null;
+        int.TryParse(IgnoredRulesBox.Text.Trim(), System.Globalization.NumberStyles.Integer | System.Globalization.NumberStyles.AllowThousands,
+            Texts.Catalog.Culture, out int from) && from > 0 ? from : null;
 
     /// <summary>The card slots typed; null when not a whole number from 1 to 999.</summary>
     private int? SlotsTyped() =>
@@ -324,6 +330,13 @@ public partial class GenerateDivisionsWindow : UserControl
         if (CountsTyped() is null || SlotsTyped() is null)
         {
             Summary.Text = Texts.Get("Divisions.Generate.Summary.Wrong");
+            return;
+        }
+        // read as empty, it would learn from every rule, the opposite of what was typed: said, and Generate waits
+        if (IgnoredRulesBox.Text.Trim() != "" && IgnoredRulesTyped() is null)
+        {
+            GoButton.IsEnabled = false;
+            Summary.Text = Texts.Get("Divisions.Generate.Summary.WrongRules");
             return;
         }
         if (generations.Count == 0)

@@ -52,7 +52,7 @@ public partial class UnitsPage
     /// </summary>
     public void ModValuesMayHaveChanged()
     {
-        if (IsVisible && gameUnits is not null) modValuesSoon.Ask();
+        if (IsDrawn && gameUnits is not null) modValuesSoon.Ask();
     }
 
     /// <summary>
@@ -68,7 +68,7 @@ public partial class UnitsPage
     public void MarksSettingChanged()
     {
         if (loaded is null) return;
-        if (!IsVisible)
+        if (!IsDrawn)
         {
             redrawWhenShown = true;
             return;
@@ -276,6 +276,33 @@ public partial class UnitsPage
         ReadDivisions();
         foldedCategories.UnionWith(folded);
         foldedBattlegroupCategories.UnionWith(foldedInBattlegroup);
+        // brought up to date for the export's check while the tab is hidden: drawn when next shown
+        if (onlyBringingUpToDate && !IsVisible)
+        {
+            redrawWhenShown = true;
+            return;
+        }
         ShowAll();
     }
+
+    /// <summary>
+    /// The units as the mods that are on make them now, worked out even while the tab is hidden: Run export checks the
+    /// divisions with them, and the Files tab's files may have changed since the Armory was last shown.
+    /// </summary>
+    public async Task BringModValuesUpToDate()
+    {
+        if (gameUnits is null) return;
+        onlyBringingUpToDate = true;
+        try
+        {
+            await ShowModValues();
+        }
+        finally
+        {
+            onlyBringingUpToDate = false;
+        }
+    }
+
+    /// <summary>Whether the units are being worked out for the export's check alone, so not drawn while the tab is hidden.</summary>
+    private bool onlyBringingUpToDate;
 }

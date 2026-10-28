@@ -499,8 +499,8 @@ public partial class UnitsPage : UserControl
         if (!onlyPartChanged) ShownThingsChanged();
         KeepADivisionChosen();
         UseDivisionMarks();
-        // on the Divisions sub-tab, only the division's units: the filters narrow them further
-        filter.InDivision = ShowsDivisionUnits ? ChosenDivisionUnits() : null;
+        // on the Divisions sub-tab, and on Units with a division chosen, only the division's units: the filters narrow them further
+        filter.InDivision = ShowsDivisionUnits || UnitsShowOneDivision ? ChosenDivisionUnits() : null;
         FillNationList(mayKeep: onlyPartChanged);
         FillFactoryTabs(mayKeep: onlyPartChanged);
         FillDivisionList(mayKeep: onlyPartChanged);

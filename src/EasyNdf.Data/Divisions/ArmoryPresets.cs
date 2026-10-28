@@ -65,7 +65,7 @@ public static class ArmoryPresets
         IReadOnlyDictionary<string, Weapons.Loadout>? gameLoadouts = null)
     {
         JsonArray rules = DivisionChangeRules.For(mod, game, texts, unitName, gameCards);
-        foreach (JsonNode? rule in Units.UnitChangeRules.For(mod, gameUnits, texts, gameLoadouts)) rules.Add(rule!.DeepClone());
+        foreach (JsonNode? rule in Units.UnitChangeRules.For(mod, gameUnits, texts, gameLoadouts, unitName)) rules.Add(rule!.DeepClone());
         foreach (JsonNode? rule in Weapons.WeaponChangeRules.For(mod, gameWeapons, texts, loadout => UnitsWithLoadout(gameUnits, loadout))) rules.Add(rule!.DeepClone());
         return rules;
     }
@@ -124,6 +124,33 @@ public static class ArmoryPresets
     }
 
     /// <summary>
+    /// Adds, at the end of the mod's Units preset, the rules of the numbers for deck codes it gives
+    /// (<see cref="Mod.UnitDeckNumbers"/>) that have none yet, leaving the other presets as they are: the export gives
+    /// numbers without the Armory, which writes them in their place the next time it makes the presets again.
+    /// </summary>
+    /// <param name="mod">The mod.</param>
+    /// <param name="texts">The language the rules are named in.</param>
+    /// <param name="unitName">A unit's name, by its descriptor.</param>
+    /// <param name="presetName">The name the Units preset gets when the mod has none.</param>
+    public static void AddDeckNumberRules(Mod mod, TextCatalog texts, Func<string, string> unitName, string presetName)
+    {
+        HashSet<string> written = [.. RulesOf(mod)
+            .Where(rule => (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ChangeKey] == Units.UnitChangeRules.DeckNumberChange)
+            .Select(rule => (string?)rule?[DivisionChangeRules.ArmoryKey]?[Units.UnitChangeRules.UnitKey]).OfType<string>()];
+        List<KeyValuePair<string, int>> missing = [.. mod.UnitDeckNumbers.Where(pair => !written.Contains(pair.Key))];
+        if (missing.Count == 0) return;
+        ModPreset? preset = Of(mod, ArmoryPart.Units);
+        if (preset is null)
+        {
+            preset = new ModPreset { Name = mod.FreePresetName(presetName), ArmoryPart = ArmoryPart.Units };
+            mod.Presets.Add(preset);
+        }
+        foreach ((string unit, int number) in missing)
+            foreach (JsonNode? rule in Units.UnitChangeRules.DeckNumberRules(unit, unitName(unit), number, texts))
+                preset.Rules.Add(rule!.DeepClone());
+    }
+
+    /// <summary>
     /// Deleting rules of an Armory preset on the Rules tab takes back the Armory changes they make, so the Armory and
     /// the rules never disagree: a game division gets those values back as the game has them, and a division or unit
     /// the mod makes is deleted whole, as its rules only make sense together (a unit is taken out of the divisions too); its battlegroup's rules take back only its
@@ -173,6 +200,7 @@ public static class ArmoryPresets
     private static void TakeBackUnit(Mod mod, string unit, string? change)
     {
         if (change == Units.UnitChangeRules.EditChange) mod.UnitEdits.RemoveAll(edit => edit.Descriptor == unit);
+        else if (change == Units.UnitChangeRules.DeckNumberChange) mod.UnitDeckNumbers.Remove(unit);
         else Units.ModUnit.RemoveFrom(mod, unit);
     }
 
@@ -249,6 +277,7 @@ public static class ArmoryPresets
                 other[DivisionChangeRules.LockedKey] = false;
         mod.Units.RemoveAll(each => each.Descriptor == unit);
         mod.UnitEdits.RemoveAll(each => each.Descriptor == unit);
+        mod.UnitDeckNumbers.Remove(unit);
     }
 
     /// <summary>

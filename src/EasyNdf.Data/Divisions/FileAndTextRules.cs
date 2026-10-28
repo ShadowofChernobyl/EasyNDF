@@ -180,6 +180,33 @@ public static class FileAndTextRules
         return removed;
     }
 
+    /// <summary>
+    /// The rules of several rule sets in one list, for what the File rules write and remove: each rule judged within its
+    /// own rule set, so a group switched off at the end of one does not switch off the rules of the next, as joining
+    /// them would (an export then removed a file another rule set had just written). Group headings are left out, and
+    /// a rule that is off is a copy switched off.
+    /// </summary>
+    /// <param name="allOff">Every rule as off: the rule sets of a mod that is off.</param>
+    public static IEnumerable<JsonNode?> EachInItsOwnRuleSet(IEnumerable<IEnumerable<JsonNode?>> ruleSets, bool allOff = false)
+    {
+        foreach (IEnumerable<JsonNode?> ruleSet in ruleSets)
+        {
+            List<JsonNode?> rules = [.. ruleSet];
+            HashSet<JsonNode> on = allOff ? [] : [.. DivisionExtras.RulesThatAreOn(rules)];
+            foreach (JsonNode? rule in rules)
+            {
+                if (rule is null || (string?)rule["Kind"] == "Group") continue;
+                if (on.Contains(rule)) yield return rule;
+                else
+                {
+                    JsonNode off = rule.DeepClone();
+                    off["Enabled"] = false;
+                    yield return off;
+                }
+            }
+        }
+    }
+
     /// <summary>Whether two places name the same file, as Windows reads them: "/" or "\", in any case.</summary>
     private static bool SamePlace(string one, string other) =>
         string.Equals(one.Replace('\\', '/').Trim('/'), other.Replace('\\', '/').Trim('/'), StringComparison.OrdinalIgnoreCase);

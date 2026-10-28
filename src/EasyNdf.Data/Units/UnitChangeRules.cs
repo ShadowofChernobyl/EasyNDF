@@ -28,9 +28,10 @@ public sealed class UnitChangeRules
 
     /// <summary>
     /// What the Armory keeps of a rule (its <see cref="DivisionChangeRules.ChangeKey"/>): "New" for the rules of a unit
-    /// the mod adds, "Edit" for those of its changes to one of the game's units.
+    /// the mod adds, "Edit" for those of its changes to one of the game's units, "DeckNumber" for the number for deck
+    /// codes it gives a unit its rules add (<see cref="Mod.UnitDeckNumbers"/>).
     /// </summary>
-    public const string NewChange = "New", EditChange = "Edit";
+    public const string NewChange = "New", EditChange = "Edit", DeckNumberChange = "DeckNumber";
 
     /// <summary>The operator that sets a single value, such as a number or a text.</summary>
     private const string SetValue = "Set To [int, float, string, boolean]";
@@ -49,13 +50,16 @@ public sealed class UnitChangeRules
     /// The rules for the mod's changes to the game's units, then for the units it adds, in the order it keeps them. The
     /// changes come first, so a unit added as a copy of a changed one is copied with the changes, as the Armory shows
     /// it. A change to a unit the game does not have, and a unit made from one (another source chosen), get none; a
-    /// unit without a deck number is given one, so the caller saves the mod after.
+    /// unit without a deck number is given one, so the caller saves the mod after. Last come the numbers for deck codes
+    /// the mod gives units its rules add (<see cref="Mod.UnitDeckNumbers"/>).
     /// </summary>
     /// <param name="mod">The mod.</param>
     /// <param name="game">The game's units, before the mod's changes.</param>
     /// <param name="texts">The language the rules are named in.</param>
     /// <param name="loadouts">The game's loadouts by descriptor, for the units whose weapons the mod changes.</param>
-    public static JsonArray For(Mod mod, IReadOnlyList<Unit> game, TextCatalog texts, IReadOnlyDictionary<string, Weapons.Loadout>? loadouts = null)
+    /// <param name="unitName">A unit's name as the Armory shows it, by its descriptor, for the units the mod's rules add; their descriptor when not given.</param>
+    public static JsonArray For(Mod mod, IReadOnlyList<Unit> game, TextCatalog texts, IReadOnlyDictionary<string, Weapons.Loadout>? loadouts = null,
+        Func<string, string>? unitName = null)
     {
         var byDescriptor = new Dictionary<string, Unit>(StringComparer.Ordinal);
         foreach (Unit unit in game) byDescriptor.TryAdd(unit.Descriptor, unit);
@@ -76,10 +80,16 @@ public sealed class UnitChangeRules
             unit.DeckNumber ??= ModUnit.NextDeckNumber(game, mod);
             writer.Group(unit.Name);
             writer.CloneRule(unit, madeFrom);
-            writer.DeckNumberRule(unit);
+            writer.DeckNumberRule(unit.Descriptor, unit.Name, unit.DeckNumber ?? 0, NewChange);
             if (unit.PictureFile is string pictureFile)
                 writer.PictureRule(unit.Descriptor, unit.Name, pictureFile, NewChange, PictureTexture(unit.Descriptor), PicturePath(unit, madeFrom));
             writer.LoadoutRules(unit, unit.Descriptor, unit.Name, madeFrom.WeaponSet, UnitsFile, NewChange);
+        }
+        foreach ((string descriptor, int number) in mod.UnitDeckNumbers)
+        {
+            string name = unitName?.Invoke(descriptor) ?? descriptor;
+            writer.Group(name);
+            writer.DeckNumberRule(descriptor, name, number, DeckNumberChange);
         }
         return writer.rules;
     }
@@ -208,15 +218,28 @@ public sealed class UnitChangeRules
         }, LoadoutsFile, descriptor, "Weapons", change);
     }
 
-    /// <summary>The unit's number for deck codes, added to DeckSerializer.ndf: without one, a deck with the unit cannot be shared as a code.</summary>
-    private void DeckNumberRule(ModUnit unit) => Rule(new JsonObject
+    /// <summary>
+    /// The rules that give a unit its rules add its number for deck codes, under a heading with its name: those
+    /// <see cref="For"/> makes from <see cref="Mod.UnitDeckNumbers"/>.
+    /// </summary>
+    public static JsonArray DeckNumberRules(string descriptor, string unitName, int number, TextCatalog texts)
     {
-        ["Name"] = Line(unit.Name, "Units.Rule.DeckNumber", ("number", unit.DeckNumber)),
+        var writer = new UnitChangeRules(texts, null);
+        writer.Group(unitName);
+        writer.DeckNumberRule(descriptor, unitName, number, DeckNumberChange);
+        return writer.rules;
+    }
+
+    /// <summary>The unit's number for deck codes, added to DeckSerializer.ndf: without one, a deck with the unit cannot be shared as a code.</summary>
+    /// <param name="change">Whether it is for a unit the mod adds (<see cref="NewChange"/>) or one its rules add (<see cref="DeckNumberChange"/>).</param>
+    private void DeckNumberRule(string descriptor, string unitName, int number, string change) => Rule(new JsonObject
+    {
+        ["Name"] = Line(unitName, "Units.Rule.DeckNumber", ("number", number)),
         ["Kind"] = "Edit",
         ["Params"] = new JsonObject { ["Scope"] = "type", ["ScopeType"] = "TDeckSerializerEntries" },
         ["Actions"] = new JsonArray(Action("UnitIds", "Insert [array]",
-            "LastIndex: ($/GFX/Unit/" + unit.Descriptor + ", " + (unit.DeckNumber ?? 0).ToString(CultureInfo.InvariantCulture) + ")")),
-    }, DeckNumbersFile, unit.Descriptor, "Edit", NewChange);
+            "LastIndex: ($/GFX/Unit/" + descriptor + ", " + number.ToString(CultureInfo.InvariantCulture) + ")")),
+    }, DeckNumbersFile, descriptor, "Edit", change);
 
     /// <summary>
     /// A card picture of the user's own: added to the game's list of unit pictures, under the texture name the unit's
