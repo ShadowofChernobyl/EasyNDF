@@ -46,6 +46,19 @@ public sealed class NdfEngine
         return Summarise(document, text);
     }
 
+    /// <summary>
+    /// Reads a file to run rules on it when only the counts of what it holds are wanted (declarations, descriptors,
+    /// constants, unnamed values, lines), as an export wants them: the summary's lists of names, types, titles and
+    /// references are left empty. Going through a large file for those lists takes a good part of reading it.
+    /// Throws <see cref="NdfParseException"/> when it is not valid NDF.
+    /// </summary>
+    public LoadSummary LoadForRun(string text)
+    {
+        if (text.Length > 0 && text[0] == '﻿') text = text[1..];
+        document = Parser.Parse(text);
+        return Count(document, text);
+    }
+
     /// <summary>Runs rules over the loaded file. The file itself is not changed, so it can be run again.</summary>
     public RunResult Run(List<Rule?> rules, RunOptions options)
     {
@@ -59,23 +72,15 @@ public sealed class NdfEngine
     /// <summary>A text with its comments taken out, as "Keep source comments" off does.</summary>
     public static string RemoveComments(string text, bool startsAtLineStart) => CommentText.RemoveComments(text, startsAtLineStart);
 
+    /// <summary>What a file holds: its counts (<see cref="Count"/>), and every name, type, title and reference in it.</summary>
     private static LoadSummary Summarise(NdfDocument doc, string text)
     {
         var names = new HashSet<string>();
         var types = new HashSet<string>();
-        int descriptors = 0, constants = 0, unnamed = 0;
 
+        // a top-level constant can be a rule's target, like a property
         foreach (var d in doc.Declarations)
-        {
-            if (d.IsUnnamed) unnamed++;
-            else if (d.Value is not ObjectValue)
-            {
-                // a top-level constant can be a rule's target, like a property
-                constants++;
-                names.Add(d.Name);
-            }
-            if (!d.IsUnnamed && d.Value is ObjectValue) descriptors++;
-        }
+            if (!d.IsUnnamed && d.Value is not ObjectValue) names.Add(d.Name);
 
         void Scan(NdfValue value)
         {
@@ -107,15 +112,30 @@ public sealed class NdfEngine
         }
         foreach (var d in doc.Declarations) Scan(d.Value);
 
+        return Count(doc, text) with
+        {
+            Names = names.Order(StringComparer.Ordinal).ToList(),
+            Types = types.Order(StringComparer.Ordinal).ToList(),
+            Titles = doc.Declarations.Where(d => !d.IsUnnamed).Select(d => d.Name).ToList(),
+            References = doc.Declarations.Select(References).ToList(),
+        };
+    }
+
+    /// <summary>How many declarations, descriptors, constants, unnamed values and lines a file holds; its lists left empty.</summary>
+    private static LoadSummary Count(NdfDocument doc, string text)
+    {
+        int descriptors = 0, constants = 0, unnamed = 0;
+        foreach (var d in doc.Declarations)
+        {
+            if (d.IsUnnamed) unnamed++;
+            else if (d.Value is ObjectValue) descriptors++;
+            else constants++;
+        }
+
         int lines = text.Length > 0 ? 1 : 0;
         foreach (char c in text) if (c == '\n') lines++;
 
-        return new LoadSummary(
-            doc.Declarations.Count, descriptors, constants, unnamed, lines,
-            names.Order(StringComparer.Ordinal).ToList(),
-            types.Order(StringComparer.Ordinal).ToList(),
-            doc.Declarations.Where(d => !d.IsUnnamed).Select(d => d.Name).ToList(),
-            doc.Declarations.Select(References).ToList());
+        return new LoadSummary(doc.Declarations.Count, descriptors, constants, unnamed, lines, [], [], [], []);
     }
 
     /// <summary>A declaration's name, its type, and every name its values refer to, in the order they first appear.</summary>

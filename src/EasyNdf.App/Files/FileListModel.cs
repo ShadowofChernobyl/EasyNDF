@@ -133,9 +133,14 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// Works out which mods run on each of these files (<see cref="FileEntry.ModsOnFile"/>), and whether the Armory has
     /// changes for them. The mods are looked at once for the whole list, as a list can hold thousands of files.
     /// </summary>
-    private static void MarkModsOnFiles(IEnumerable<FileEntry> files)
+    private static void MarkModsOnFiles(IEnumerable<FileEntry> files) => MarkModsOnFiles(files, FileRunner.ArmoryFilesByMod());
+
+    /// <summary>
+    /// Works out which mods run on each of these files, with the files each mod's Armory presets have rules for already
+    /// worked out (<see cref="FileRunner.ArmoryFilesByMod"/>), so files added one by one can share them.
+    /// </summary>
+    private static void MarkModsOnFiles(IEnumerable<FileEntry> files, List<(Mod Mod, IReadOnlySet<string> Files)> armoryFiles)
     {
-        List<(Mod Mod, IReadOnlySet<string> Files)> armoryFiles = FileRunner.ArmoryFilesByMod();
         foreach (FileEntry entry in files)
         {
             entry.ModsOnFile = FileRunner.ModsOn(entry, armoryFiles);
@@ -371,23 +376,48 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// <summary>Whether the run going is Run export, which writes files, rather than Preview: closing the app then asks first.</summary>
     public bool IsExporting { get; private set; }
 
-    /// <summary>What the progress line under the buttons says while a run goes: "Exporting Ammunition.ndf: 3 of 17 (18%)".</summary>
-    public string RunProgress { get; private set; } = "";
+    // ---- the run's card, over the file list while Preview or Run export runs ----
 
-    /// <summary>How far the run has got, from 0 to 100, by the files finished.</summary>
-    public double RunPercent { get; private set; }
+    /// <summary>The card's title: "Run export" or "Preview".</summary>
+    public string RunTitle { get; private set; } = "";
+
+    /// <summary>The count at the right of the title: "File 3 of 17"; "Starting..." before the first file.</summary>
+    public string RunCount { get; private set; } = "";
+
+    /// <summary>What the run is doing, under the title: "Exporting Ammunition.ndf", "Reading the units for deck codes...".</summary>
+    public string RunDoing { get; private set; } = "";
+
+    /// <summary>How far the run has got, from 0 to 1, by the files finished: the card's bar.</summary>
+    public double RunFraction { get; private set; }
+
+    /// <summary>The line beside Cancel: what cancelling leaves.</summary>
+    public string RunNote { get; private set; } = "";
 
     /// <summary>Whether Cancel was pressed: the run stops once the file it is on is finished.</summary>
     public bool IsCancelRequested { get; private set; }
 
-    /// <summary>Starts a run's progress line, at nothing done.</summary>
+    /// <summary>The file being worked on, which the card names again once Cancel is pressed.</summary>
+    private string runFile = "";
+
+    /// <summary>Starts a run's card, at nothing done.</summary>
     /// <param name="exporting">True for Run export, false for Preview.</param>
     public void StartProgress(bool exporting)
     {
         IsExporting = exporting;
         IsCancelRequested = false;
-        RunPercent = 0;
-        RunProgress = "";
+        runFile = "";
+        RunTitle = Texts.Get(exporting ? "Files.Run.Card.Export" : "Files.Run.Card.Preview");
+        RunCount = Texts.Get("Files.Run.Card.Starting");
+        RunDoing = "";
+        RunFraction = 0;
+        RunNote = Texts.Get(exporting ? "Files.Run.Card.ExportNote" : "Files.Run.Card.PreviewNote");
+        ProgressChanged();
+    }
+
+    /// <summary>Says what the run does before its first file, such as reading the units for deck codes.</summary>
+    public void ShowStep(string doing)
+    {
+        RunDoing = doing;
         ProgressChanged();
     }
 
@@ -397,27 +427,28 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// <param name="total">How many files the run takes.</param>
     public void ShowProgress(string fileName, int finished, int total)
     {
-        RunPercent = total == 0 ? 0 : 100.0 * finished / total;
-        string doing = IsExporting ? "Files.Run.Progress.Exporting" : "Files.Run.Progress.Previewing";
-        RunProgress = Texts.Get(doing, ("file", fileName), ("done", finished + 1), ("total", total), ("percent", (int)RunPercent));
+        runFile = fileName;
+        RunFraction = total == 0 ? 0 : (double)finished / total;
+        RunCount = Texts.Get("Files.Run.Card.Count", ("done", finished + 1), ("total", total));
+        if (!IsCancelRequested) RunDoing = Texts.Get(IsExporting ? "Files.Run.Progress.Exporting" : "Files.Run.Progress.Previewing", ("file", fileName));
         ProgressChanged();
     }
 
-    /// <summary>Cancel on the progress line: the file being worked on is finished, and the rest are left as they are.</summary>
+    /// <summary>Cancel on the card: the file being worked on is finished, and the rest are left as they are.</summary>
     public void CancelRun()
     {
         if (!isBusy) return;
         IsCancelRequested = true;
-        RunProgress = Texts.Get("Files.Run.Progress.Stopping");
+        RunDoing = runFile == "" ? Texts.Get("Files.Run.Card.Stopping") : Texts.Get("Files.Run.Progress.Stopping", ("file", runFile));
+        RunNote = Texts.Get("Files.Run.Card.StoppingNote");
         ProgressChanged();
     }
 
-    /// <summary>Tells the progress line, and only it, to show the run's progress again: a run of thousands of files tells it often.</summary>
+    /// <summary>Tells the card, and only it, to show the run's progress again: a run of thousands of files tells it often.</summary>
     private void ProgressChanged()
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RunProgress)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RunPercent)));
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCancelRequested)));
+        foreach (string name in new[] { nameof(RunTitle), nameof(RunCount), nameof(RunDoing), nameof(RunFraction), nameof(RunNote), nameof(IsCancelRequested) })
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
     /// <summary>Whether the buttons that change the list can be used now.</summary>
@@ -514,6 +545,11 @@ public sealed class FileListModel : INotifyPropertyChanged
         var listed = new Dictionary<string, FileEntry>();
         foreach (FileEntry entry in entries) listed.TryAdd(entry.Key, entry);
 
+        // The files each mod's Armory presets have rules for, worked out once for all the files rather than for each:
+        // a big mod's thousands of rules, gone through again for each of a game's 4,000 files, held the window for
+        // seconds. They are worked out again after asking about a duplicate, as the mods could change while the question waits.
+        List<(Mod Mod, IReadOnlySet<string> Files)>? armoryFiles = null;
+
         foreach (FileToAdd file in files)
         {
             string key = FileReferences.Key(file.Folder, file.Name);
@@ -528,21 +564,23 @@ public sealed class FileListModel : INotifyPropertyChanged
                 else
                 {
                     DuplicateAnswer answer = await askAboutDuplicate(existing, file);
+                    armoryFiles = null;
                     choice = answer.Choice;
                     if (answer.ForAll) choiceForAll = choice;
                 }
             }
 
             if (choice == DuplicateChoice.Skip) { skipped++; continue; }
+            armoryFiles ??= FileRunner.ArmoryFilesByMod();
             if (choice == DuplicateChoice.Replace)
             {
                 Replace(existing!, file);
-                MarkModsOnFiles([existing!]);
+                MarkModsOnFiles([existing!], armoryFiles);
                 fresh.Add(existing!);
                 replaced++;
                 continue;
             }
-            FileEntry row = NewRow(file);
+            FileEntry row = NewRow(file, armoryFiles);
             entries.Add(row);
             fresh.Add(row);
             added++;
@@ -562,7 +600,9 @@ public sealed class FileListModel : INotifyPropertyChanged
     }
 
     /// <summary>A new row for a file, with the mods that run on it.</summary>
-    private FileEntry NewRow(FileToAdd file)
+    /// <param name="file">The file.</param>
+    /// <param name="armoryFiles">The files each mod's Armory presets have rules for (<see cref="FileRunner.ArmoryFilesByMod"/>).</param>
+    private FileEntry NewRow(FileToAdd file, List<(Mod Mod, IReadOnlySet<string> Files)> armoryFiles)
     {
         var row = new FileEntry
         {
@@ -574,7 +614,7 @@ public sealed class FileListModel : INotifyPropertyChanged
             Size = file.Size,
             Modified = file.Modified,
         };
-        MarkModsOnFiles([row]);
+        MarkModsOnFiles([row], armoryFiles);
         // A file with rules starts with the export folder the open mod last used: the mods export together, into it.
         if (row.HasRules) row.ExportFolder = AppData.Current.ExportFolderOf(AppData.Current.OpenMod);
         return row;

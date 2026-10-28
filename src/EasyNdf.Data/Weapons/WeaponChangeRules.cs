@@ -34,6 +34,9 @@ public sealed class WeaponChangeRules
     /// <summary>The operator that sets a single value, such as a number.</summary>
     private const string SetValue = "Set To [int, float, string, boolean]";
 
+    /// <summary>The operator that sets a whole list, such as the traits.</summary>
+    private const string SetList = "Set To [list, object]";
+
     private readonly TextCatalog texts;
     private readonly JsonArray rules = [];
 
@@ -119,6 +122,9 @@ public sealed class WeaponChangeRules
     {
         var actions = new JsonArray();
         if (values.Picture is string picture) actions.Add(Action("InterfaceWeaponTexture", SetValue, "\"" + picture + "\""));
+        // the traits as the game writes them: ['MOTION', 'F&F', 'HEAT']
+        if (values.Traits is IReadOnlyList<string> traits)
+            actions.Add(Action("TraitsToken", SetList, "[" + string.Join(", ", traits.Select(token => "'" + token + "'")) + "]"));
         foreach (WeaponStat stat in WeaponStat.All)
             if (values.Given(stat.Field) is double value) actions.Add(Action(stat.Target, SetValue, stat.Written(value)));
         foreach (WeaponChoice choice in WeaponChoice.All)

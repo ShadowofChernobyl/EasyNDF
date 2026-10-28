@@ -46,10 +46,17 @@ public abstract class WeaponValues
     /// </summary>
     public string? Picture { get; set; }
 
-    /// <summary>The fields of the values given: the picture first, then the numbers, then the switches and choices.</summary>
+    /// <summary>
+    /// The traits given, by the game's tokens ("MOTION", "F&amp;F"), in the order the game shows them; null to keep the
+    /// weapon's own. Interface only: the icons beside the weapon.
+    /// </summary>
+    public IReadOnlyList<string>? Traits { get; set; }
+
+    /// <summary>The fields of the values given: the picture and traits first, then the numbers, then the switches and choices.</summary>
     public IEnumerable<string> FieldsGiven()
     {
         if (Picture is not null) yield return WeaponField.Picture;
+        if (Traits is not null) yield return WeaponField.Traits;
         foreach (WeaponStat stat in WeaponStat.All)
             if (given.ContainsKey(stat.Field)) yield return stat.Field;
         foreach (WeaponChoice choice in WeaponChoice.All)
@@ -57,16 +64,17 @@ public abstract class WeaponValues
     }
 
     /// <summary>Whether it gives any value at all.</summary>
-    public bool GivesAnything => given.Count > 0 || chosen.Count > 0 || Picture is not null;
+    public bool GivesAnything => given.Count > 0 || chosen.Count > 0 || Picture is not null || Traits is not null;
 
     /// <summary>
     /// A weapon as it is with these values: <paramref name="weapon"/> with the values given in place of its own, and
-    /// everything else (its traits, missile, the units carrying it) its own. A picture given changes the texture's
+    /// everything else (the units carrying it, and what the Armory does not change) its own. A picture given changes the texture's
     /// name only: where the texture's file is, the game's list says (<see cref="ModWeaponView"/> looks it up).
     /// </summary>
     protected Weapon Over(Weapon weapon)
     {
         if (Picture is not null) weapon = weapon with { PictureTexture = Picture, PictureSource = null };
+        if (Traits is not null) weapon = weapon with { Traits = Traits };
         foreach (WeaponStat stat in WeaponStat.All)
             if (Given(stat.Field) is double value) weapon = stat.Set(weapon, value);
         // a rule cannot set what the ammunition does not have, so neither does the Armory
@@ -79,11 +87,12 @@ public abstract class WeaponValues
 
     /// <summary>
     /// Adds the values given to an entry of the mod file, as <c>Values: {Damage: 1.5, ...}</c>, and the switches and
-    /// choices as <c>Choices: {FxPower: "EFXPower/Moyen", ...}</c>.
+    /// choices as <c>Choices: {FxPower: "EFXPower/Moyen", ...}</c>, and the traits as <c>Traits: ["MOTION", ...]</c>.
     /// </summary>
     protected void WriteValues(JsonObject json)
     {
         if (Picture is not null) json["Picture"] = Picture;
+        if (Traits is not null) json["Traits"] = new JsonArray([.. Traits.Select(token => (JsonNode?)token)]);
         if (given.Count > 0)
         {
             var values = new JsonObject();
@@ -102,6 +111,7 @@ public abstract class WeaponValues
     protected void ReadValues(JsonObject json)
     {
         if (JsonValues.AsText(json["Picture"]) is string picture && picture != "") Picture = picture;
+        if (json["Traits"] is JsonArray traits) Traits = [.. traits.Select(JsonValues.AsText).Where(token => token != "")];
         if (json["Values"] is JsonObject values)
             foreach ((string field, JsonNode? node) in values)
                 if (node is JsonValue value && value.TryGetValue(out double number)) Give(field, number);

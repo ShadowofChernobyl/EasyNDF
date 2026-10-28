@@ -126,8 +126,8 @@ public sealed class WeaponChanges
         if (game.Name != changed.Name) fields.Add(WeaponField.Name);
         foreach (WeaponStat stat in WeaponStat.All)
             if (!Equals(stat.Read(game), stat.Read(changed))) fields.Add(stat.Field);
-        if (!Equals(game.ShotsPerSalvo, changed.ShotsPerSalvo)) fields.Add(WeaponField.ShotsPerSalvo);
         if (game.PictureTexture != changed.PictureTexture) fields.Add(WeaponField.Picture);
+        if (!game.Traits.SequenceEqual(changed.Traits, StringComparer.Ordinal)) fields.Add(WeaponField.Traits);
         // the values kept as the file writes them, switches, choices and those only shown: a rule may change any of them
         foreach (string name in WeaponFileValues.Names)
             if (!fields.Contains(name) && game.FileValue(name) != changed.FileValue(name)) fields.Add(name);
@@ -149,8 +149,8 @@ public sealed class WeaponChanges
     /// <summary>The ammunition's property a value is in: "Arme" for the damage level; null for one in no single property.</summary>
     private static string? PropertyOf(string field)
     {
-        if (field == WeaponField.ShotsPerSalvo) return "ShotsCountPerSalvo";
         if (field == WeaponField.Picture) return "InterfaceWeaponTexture";
+        if (field == WeaponField.Traits) return "TraitsToken";
         string? target = WeaponStat.Of(field)?.Target ?? (WeaponFileValues.Names.Contains(field) ? field : null);
         return target?.Split(ActionApplier.PathSeparator)[0];
     }

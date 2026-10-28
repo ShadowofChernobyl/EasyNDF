@@ -158,7 +158,33 @@ public sealed class PixelSnapping
     private double SnapY(double y) => Math.Round(y + offset.Y, MidpointRounding.AwayFromZero) - offset.Y;
 
     /// <summary>Where the element's top left is, from the top left of the window (or of whatever it is drawn in).</summary>
+    /// <remarks>
+    /// Every snapped element asks this after every layout, so it adds up the transforms and offsets on the way up
+    /// itself, in the same order and with the same sums as WPF's TransformToAncestor, which gives exactly the same
+    /// position. TransformToAncestor made a new frozen transform on each call (and walked up twice), which with a few
+    /// thousand cards' edges took most of each layout. An element under an effect (a drop shadow) or in 3D is left to
+    /// TransformToAncestor, which allows for those.
+    /// </remarks>
     private Point OffsetOnWindow()
+    {
+        Matrix toWindow = Matrix.Identity;
+        Visual current = element;
+        for (DependencyObject? parent = VisualTreeHelper.GetParent(current); parent is not null; parent = VisualTreeHelper.GetParent(current))
+        {
+            if (parent is not Visual visualParent || VisualTreeHelper.GetEffect(current) is not null) return OffsetByTransformToAncestor();
+            if (VisualTreeHelper.GetTransform(current) is Transform transform) toWindow *= transform.Value;
+            Vector offsetInParent = VisualTreeHelper.GetOffset(current);
+            toWindow.Translate(offsetInParent.X, offsetInParent.Y);
+            current = visualParent;
+        }
+        return toWindow.Transform(new Point());
+    }
+
+    /// <summary>
+    /// <see cref="OffsetOnWindow"/> as WPF works it out, to the topmost visual above the element: for an element under
+    /// an effect or in 3D.
+    /// </summary>
+    private Point OffsetByTransformToAncestor()
     {
         Visual root = element;
         for (DependencyObject? parent = VisualTreeHelper.GetParent(element); parent is Visual visual; parent = VisualTreeHelper.GetParent(parent))

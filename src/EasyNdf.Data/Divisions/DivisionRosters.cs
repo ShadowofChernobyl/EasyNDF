@@ -31,6 +31,8 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
     private readonly Dictionary<string, IReadOnlyList<DivisionUnit>> made = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, DivisionUnit>> gameRules = new(StringComparer.Ordinal);
     private readonly Dictionary<string, DivisionUnit> similarRules = new(StringComparer.Ordinal);
+    // the units with a game rule that gives units, for each set of game rules (see UnitsWithRules)
+    private readonly Dictionary<Dictionary<string, DivisionUnit>, List<Unit>> unitsWithRules = new(ReferenceEqualityComparer.Instance);
 
     /// <summary>
     /// The rosters an export makes generated divisions from: the units and divisions of the files given, as they are on
@@ -72,7 +74,8 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
         string key = generation.ToJson().ToJsonString();
         if (made.TryGetValue(key, out IReadOnlyList<DivisionUnit>? known)) return known;
         List<Unit> taken = UnitsTaken(generation);
-        List<DivisionUnit> rules = [.. taken.Select(unit => RuleFor(unit, generation, taken))];
+        List<Unit> transports = generation.AllTransports ? TransportsInOrder(taken) : [];
+        List<DivisionUnit> rules = [.. taken.Select(unit => RuleFor(unit, generation, transports))];
         made[key] = rules;
         return rules;
     }
@@ -121,8 +124,8 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
     // ---- each unit's rule ----
 
     /// <summary>How the division has one unit: its cards and numbers for the generation, and its transports.</summary>
-    /// <param name="taken">The division's units: its transports are among them.</param>
-    private DivisionUnit RuleFor(Unit unit, DivisionGeneration generation, List<Unit> taken)
+    /// <param name="transports">The division's units that carry others, in the order transports are listed (<see cref="TransportsInOrder"/>).</param>
+    private DivisionUnit RuleFor(Unit unit, DivisionGeneration generation, List<Unit> transports)
     {
         (int perCard, IReadOnlyList<double> shares) = generation.Numbers switch
         {
@@ -137,7 +140,7 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
             UnitsPerCard = perCard,
             VeterancyMultipliers = shares,
             AvailableWithoutTransport = true,
-            Transports = generation.AllTransports ? TransportsFor(unit, generation, taken) : [],
+            Transports = generation.AllTransports ? TransportsFor(unit, generation, transports) : [],
         };
     }
 
@@ -149,19 +152,31 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
     }
 
     /// <summary>
-    /// The transports a unit gets: every unit of the division that carries one of its tags and has the seats for it,
-    /// those that fly first, then the dearest first, then A to Z. In a division of one side, only that side's
-    /// transports; in one of both sides', any; and a unit of a nation in every division rides with either side.
+    /// The units of a division that carry others (they have seats and tags they carry), in the order a unit's
+    /// transports are listed: those that fly first, then the dearest first, then A to Z.
     /// </summary>
-    private static IReadOnlyList<string> TransportsFor(Unit unit, DivisionGeneration generation, List<Unit> taken)
+    /// <remarks>
+    /// Sorted once for the whole division rather than once for each unit: the order does not depend on the unit
+    /// carried, and the sort is stable, so picking each unit's transports from this list keeps the same order as
+    /// sorting them on their own. With every unit of a side, sorting for each unit took seconds.
+    /// </remarks>
+    private static List<Unit> TransportsInOrder(List<Unit> taken) =>
+        [.. taken.Where(transport => transport.CarriesTags is not null && transport.Seats is not null)
+            .OrderBy(transport => transport.Flies ? 0 : 1)
+            .ThenByDescending(transport => transport.Cost ?? double.NegativeInfinity)
+            .ThenBy(transport => transport.Descriptor, NameComparer.Instance)];
+
+    /// <summary>
+    /// The transports a unit gets: every unit of the division that carries one of its tags and has the seats for it,
+    /// in the order of <see cref="TransportsInOrder"/>. In a division of one side, only that side's transports; in one
+    /// of both sides', any; and a unit of a nation in every division rides with either side.
+    /// </summary>
+    private static IReadOnlyList<string> TransportsFor(Unit unit, DivisionGeneration generation, List<Unit> transports)
     {
         HashSet<string> everywhere = [.. generation.EveryDivisionNations];
         // the units of nations in every division are of either side by design, as are all units of a both-sides division
         bool sameSideOnly = generation.Units != GeneratedUnits.Everything && !everywhere.Contains(unit.Nation);
-        return [.. taken.Where(transport => CanCarry(transport, unit, sameSideOnly && !everywhere.Contains(transport.Nation)))
-            .OrderBy(transport => transport.Flies ? 0 : 1)
-            .ThenByDescending(transport => transport.Cost ?? double.NegativeInfinity)
-            .ThenBy(transport => transport.Descriptor, NameComparer.Instance)
+        return [.. transports.Where(transport => CanCarry(transport, unit, sameSideOnly && !everywhere.Contains(transport.Nation)))
             .Select(transport => transport.Descriptor)];
     }
 
@@ -270,16 +285,29 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
     /// <summary>The units closest to one, of the most similar kind any unit with a game rule is (see <see cref="SimilarUnitsRule"/>).</summary>
     private List<Unit> ClosestSimilarUnits(Unit unit, Dictionary<string, DivisionUnit> rules)
     {
-        IEnumerable<IGrouping<int, Unit>> byLikeness = units
-            .Where(other => other.Descriptor != unit.Descriptor && IsDeckable(other) && rules.TryGetValue(other.Descriptor, out DivisionUnit? rule) && GivesUnits(rule))
-            .GroupBy(other => Unlikeness(other, unit))
-            .OrderBy(group => group.Key);
-        IGrouping<int, Unit>? mostAlike = byLikeness.FirstOrDefault();
-        if (mostAlike is null) return [];
-        return [.. mostAlike
+        List<Unit> withRules = UnitsWithRules(rules);
+        int leastUnlike = int.MaxValue;
+        foreach (Unit other in withRules)
+            if (other.Descriptor != unit.Descriptor) leastUnlike = Math.Min(leastUnlike, Unlikeness(other, unit));
+        if (leastUnlike == int.MaxValue) return [];
+        return [.. withRules
+            .Where(other => other.Descriptor != unit.Descriptor && Unlikeness(other, unit) == leastUnlike)
             .OrderBy(other => Math.Abs((other.Cost ?? 0) - (unit.Cost ?? 0)))
             .ThenBy(other => other.Descriptor, NameComparer.Instance)
             .Take(SimilarUnitsCompared)];
+    }
+
+    /// <summary>
+    /// The units a unit no division has can be likened to: those a deck can hold whose game rule gives units, in the
+    /// order of the units to choose from. They are the same for every such unit, so they are found once rather than
+    /// once for each of them (hundreds, each looking through every unit).
+    /// </summary>
+    private List<Unit> UnitsWithRules(Dictionary<string, DivisionUnit> rules)
+    {
+        if (unitsWithRules.TryGetValue(rules, out List<Unit>? known)) return known;
+        List<Unit> found = [.. units.Where(other => IsDeckable(other) && rules.TryGetValue(other.Descriptor, out DivisionUnit? rule) && GivesUnits(rule))];
+        unitsWithRules[rules] = found;
+        return found;
     }
 
     /// <summary>How unlike another unit is: 0, the same in every way below, to 4, of another category.</summary>

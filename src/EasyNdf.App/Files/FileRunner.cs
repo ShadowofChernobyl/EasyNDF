@@ -92,6 +92,11 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 }
             }
             model.Say("");
+            // Every file's work is taken now, before the first one runs: its rules and where its text is. A rule or a
+            // file changed meanwhile (on the Mods tab, in the Armory or the File Editor) then reaches the next export
+            // whole, not just the files this one has not reached yet.
+            var works = new Dictionary<FileEntry, FileWork>();
+            foreach (FileEntry entry in list) works[entry] = WorkFor(entry, model.Entries);
             foreach (FileEntry entry in list) entry.ClearMessage();
             // A row with no rules that is not part of this run drops the message left by an earlier "every file" export.
             foreach (FileEntry entry in model.Entries.Except(list))
@@ -109,7 +114,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 model.ShowProgress(entry.Name, finished.Count, list.Count);
                 entry.Message = Texts.Get("Files.Run.Working");
                 model.RowChanged(entry);
-                FileWork work = WorkFor(entry, model.Entries);
+                FileWork work = works[entry];
                 await Task.Run(() => RunOne(entry, write, everyFile, work));
                 finished.Add(entry);
                 model.DetailsRow ??= entry;
@@ -152,6 +157,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// </summary>
     private async Task GiveDeckNumbers()
     {
+        model.ShowStep(Texts.Get("Files.Run.Card.DeckNumbers"));
         deckNumbersGiven = [];
         List<Mod> mods = [.. ModStack.Running.Where(mod => mod.Divisions.Count > 0 || mod.UnitDeckNumbers.Count > 0)];
         if (mods.Count == 0) return;
@@ -243,7 +249,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// <param name="HeaderMod">The mod the export's header names (<see cref="HeaderModOf"/>); null when no mod runs.</param>
     /// <param name="OpenModName">The open mod's name, for the message when no mod that is on has rules for the file.</param>
     /// <param name="OtherFiles">The other files the Lookup rules read (<see cref="OtherFilesFor(IEnumerable{JsonNode?}, IEnumerable{FileEntry})"/>).</param>
-    private sealed record FileWork(List<ModRules> Stack, bool IsNamesFile, IReadOnlyList<DictionaryText> Texts, string RuleSets, Mod? HeaderMod,
+    private sealed record FileWork(FileContent.Snapshot Content, List<ModRules> Stack, bool IsNamesFile, IReadOnlyList<DictionaryText> Texts, string RuleSets, Mod? HeaderMod,
         string OpenModName, Dictionary<string, string> OtherFiles, IReadOnlyList<FileAndTextRules.CarriedFile> ModFiles,
         List<GeneratedListsMaker.Input>? GeneratedInputs = null);
 
@@ -255,14 +261,15 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         // each rule set's File rules judged on their own: a group switched off in one does not reach into the next
         List<FileAndTextRules.CarriedFile> modFiles = FileAndTextRules.FilesOf(
             FileAndTextRules.EachInItsOwnRuleSet(stack.SelectMany(part => part.RuleSets.Select(ruleSet => ruleSet.Rules))));
+        FileContent.Snapshot content = FileContent.SnapshotOf(entry);
         if (WritesDictionary(entry))
-            return new FileWork([], IsNamesFile: true, DictionaryTextsFor(entry), "", null, openModName, [], modFiles);
-        if (stack.Count == 0) return new FileWork(stack, IsNamesFile: false, [], "", null, openModName, [], []);
+            return new FileWork(content, [], IsNamesFile: true, DictionaryTextsFor(entry), "", null, openModName, [], modFiles);
+        if (stack.Count == 0) return new FileWork(content, stack, IsNamesFile: false, [], "", null, openModName, [], []);
         Dictionary<string, string> otherFiles = OtherFilesFor(stack.SelectMany(part => part.Rules), entries);
         List<GeneratedListsMaker.Input>? generated = HasGeneratedRules(stack)
             ? GeneratedListsMaker.InputsFrom([.. entries]) ?? []
             : null;
-        return new FileWork(stack, IsNamesFile: false, [], RuleSetNames(stack), HeaderModOf(stack), openModName, otherFiles, modFiles, generated);
+        return new FileWork(content, stack, IsNamesFile: false, [], RuleSetNames(stack), HeaderModOf(stack), openModName, otherFiles, modFiles, generated);
     }
 
     /// <summary>Whether a file's rules include those a generated division or battlegroup fills at export.</summary>
@@ -779,14 +786,14 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             if (work.IsNamesFile)
             {
                 string? gameMod = GoesIntoLocalisation(entry) ? namesFileMod : null;
-                RunNamesFile(entry, write, gameMod, work.Texts);
+                RunNamesFile(entry, work.Content, write, gameMod, work.Texts);
                 if (write) WriteModFiles(entry, work.ModFiles, gameMod);
                 return;
             }
             List<ModRules> stack = work.Stack;
             if (stack.Count == 0)
             {
-                RunWithModsOff(entry, write, everyFile, work.OpenModName);
+                RunWithModsOff(entry, work.Content, write, everyFile, work.OpenModName);
                 return;
             }
             Mod? mod = work.HeaderMod;
@@ -798,7 +805,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 entry.IsError = true;
                 return;
             }
-            (RunResult result, LoadSummary info) = RunStack(stack, FileContent.Text(entry), write, settings.LogLimit, work.OtherFiles);
+            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write, settings.LogLimit, work.OtherFiles);
             clock.Stop();
             lock (conflictsFound) conflictsFound[entry.Key] = ConflictsIn(entry.Name, stack, result);
 
@@ -839,9 +846,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             }
             else if (!write) entry.Message = Texts.Get("Files.Run.Preview", ("edits", edits));
             else if (result.Edits == 0 && !everyFile && HoldsEarlierExport(entry))
-                Deliver(entry, FileContent.Bytes(entry), Texts.Get("Files.Run.Restored"));
+                Deliver(entry, work.Content.Bytes(), Texts.Get("Files.Run.Restored"));
             else if (result.Edits == 0 && !everyFile) entry.Message = Texts.Get("Files.Run.NoChanges");
-            else if (result.Edits == 0) Deliver(entry, FileContent.Bytes(entry), Texts.Get("Files.Run.UnchangedCopyNoChanges"));
+            else if (result.Edits == 0) Deliver(entry, work.Content.Bytes(), Texts.Get("Files.Run.UnchangedCopyNoChanges"));
             else Deliver(entry, System.Text.Encoding.UTF8.GetBytes(text!), edits);
             if (write) WriteModFiles(entry, work.ModFiles, null);
         }
@@ -858,10 +865,11 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// copied as it is. Otherwise a copy an earlier export edited would stay in the mod, its changes unseen, so the
     /// file as it is goes over it, as when a mod's rules are all switched off (<see cref="HoldsEarlierExport"/>).
     /// </summary>
-    private static void RunWithModsOff(FileEntry entry, bool write, bool everyFile, string openModName)
+    /// <param name="content">The file, as it was when the run started.</param>
+    private static void RunWithModsOff(FileEntry entry, FileContent.Snapshot content, bool write, bool everyFile, string openModName)
     {
-        if (write && everyFile) Deliver(entry, FileContent.Bytes(entry), Texts.Get("Files.Run.UnchangedCopy"));
-        else if (write && HoldsEarlierExport(entry)) Deliver(entry, FileContent.Bytes(entry), Texts.Get("Files.Run.Restored"));
+        if (write && everyFile) Deliver(entry, content.Bytes(), Texts.Get("Files.Run.UnchangedCopy"));
+        else if (write && HoldsEarlierExport(entry)) Deliver(entry, content.Bytes(), Texts.Get("Files.Run.Restored"));
         else entry.Message = Texts.Get("Files.Run.ModOff", ("mod", openModName));
     }
 
@@ -874,7 +882,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// Runs each mod's rules on a file, one mod after the other, each on what the one before gave (<see cref="StackFor"/>).
     /// A mod's own name goes into the comments its rules write. With one mod it is one run, as before mods could run
     /// together. Stops at a mod whose rules give a file that does not read back. The results are put together: every
-    /// rule's counts and edits, in the order they ran, and the last text.
+    /// rule's counts and edits, in the order they ran, and the last text. Info counts what the file held before the first
+    /// mod (its lists of names and the like are left empty: no caller shows them, and going through a large file for
+    /// them took a good part of reading it).
     /// </summary>
     private (RunResult Result, LoadSummary Info) RunStack(List<ModRules> stack, string text, bool wantText, int logLimit, Dictionary<string, string> otherFiles)
     {
@@ -884,7 +894,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             ModRules part = stack[at];
             var engine = new NdfEngine();
-            LoadSummary loaded = engine.Load(text);
+            LoadSummary loaded = engine.LoadForRun(text);
             info ??= loaded;
             RunResult result = engine.Run(RuleLoading.LoadForEngine(part.Rules), new RunOptions
             {
@@ -951,10 +961,11 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// </summary>
     /// <param name="gameMod">The WARNO mod it is for, by its folder name: it goes into Localisation\&lt;that name&gt;; null keeps its folders.</param>
     /// <param name="dictionaryTexts">The texts it is given (<see cref="DictionaryTextsFor"/>).</param>
-    private static void RunNamesFile(FileEntry entry, bool write, string? gameMod, IReadOnlyList<DictionaryText> dictionaryTexts)
+    /// <param name="content">The file, as it was when the run started.</param>
+    private static void RunNamesFile(FileEntry entry, FileContent.Snapshot content, bool write, string? gameMod, IReadOnlyList<DictionaryText> dictionaryTexts)
     {
-        byte[] source = FileContent.Bytes(entry);
-        (string text, int count) = DivisionExtras.WithTexts(FileContent.Text(entry), dictionaryTexts);
+        byte[] source = content.Bytes();
+        (string text, int count) = DivisionExtras.WithTexts(content.Text(), dictionaryTexts);
         string texts = Texts.Count("Files.Run.DivisionTexts", count, ("count", FileStatus.Count(count)));
         if (!write)
         {

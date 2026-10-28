@@ -16,10 +16,10 @@ namespace EasyNdf.App.Weapons;
 /// <summary>
 /// The Weapon pane's values, as the mock (A) chosen: every value of the weapon's ammunition, in folding sections of two
 /// columns. A value's name has a tooltip saying what it does in the game, its name in the file, and how sure that is;
-/// a value from its name and the game's data only is marked ≈, one whose effect is not known ? (shown only, until tried
-/// in the game). Numbers change in a box, switches with a switch, choices from a list of the values the game's weapons
-/// have; references to other descriptors are shown only. A value the ammunition does not have shows "–": a rule
-/// cannot set it.
+/// a value from its name and the game's data only is marked ≈, one whose effect is not known ?. Every value can be
+/// changed: numbers in a box, switches with a switch, choices and references to other descriptors from a list of the
+/// values the game's weapons have, the picture from the game's pictures and the traits from the game's traits. A value
+/// the ammunition does not have shows "–": a rule cannot set it.
 /// </summary>
 public static partial class WeaponPane
 {
@@ -32,7 +32,7 @@ public static partial class WeaponPane
         /// <summary>From its name and how the game uses it; not documented. Marked ≈.</summary>
         Likely,
 
-        /// <summary>Not known: shown only, until tried in the game. Marked ?.</summary>
+        /// <summary>Not known: what it does in the game is not certain. Marked ?.</summary>
         Unknown,
     }
 
@@ -48,8 +48,14 @@ public static partial class WeaponPane
         /// <summary>One of the values the game's weapons have, chosen from a list (<see cref="WeaponChoice"/>).</summary>
         Choice,
 
-        /// <summary>Shown only: a reference to another descriptor, or a text.</summary>
-        ShownOnly,
+        /// <summary>A reference to another descriptor, chosen from a list of those the game's weapons name (<see cref="WeaponChoice"/>).</summary>
+        Reference,
+
+        /// <summary>The picture, chosen from the game's weapon pictures, as the ✎ on the picture does.</summary>
+        Picture,
+
+        /// <summary>The traits, ticked in a list of the game's traits.</summary>
+        Traits,
     }
 
     /// <summary>
@@ -155,8 +161,8 @@ public static partial class WeaponPane
         ]),
         new("display", "Weapons.Pane.Display", true,
         [
-            new("Weapons.Pane.Picture", "Weapons.About.Picture", WeaponField.Picture, "InterfaceWeaponTexture", Certainty.Known, Shape.ShownOnly, PictureName),
-            new("Weapons.Pane.Traits", "Weapons.About.Traits", "", "TraitsToken", Certainty.Known, Shape.ShownOnly, TraitNames),
+            new("Weapons.Pane.Picture", "Weapons.About.Picture", WeaponField.Picture, "InterfaceWeaponTexture", Certainty.Known, Shape.Picture, PictureName),
+            new("Weapons.Pane.Traits", "Weapons.About.Traits", WeaponField.Traits, "TraitsToken", Certainty.Known, Shape.Traits, TraitNames),
             Choice("Weapons.Pane.ComparedWith", "Weapons.About.ComparedWith", "MinMaxCategory", Certainty.Likely),
             Switch("Weapons.Pane.ShowsDamage", "Weapons.About.ShowsDamage", "ShowDamageInUI", Certainty.Likely),
             Switch("Weapons.Pane.ShowsSalvoAccuracy", "Weapons.About.ShowsSalvoAccuracy", "DisplaySalveAccuracy", Certainty.Likely),
@@ -172,11 +178,11 @@ public static partial class WeaponPane
     private static PaneValue Typed(string nameKey, string aboutKey, string field, Certainty certainty, Func<Weapon, string> write) =>
         new(nameKey, aboutKey, field, PropertyOf(field), certainty, Shape.Number, write);
 
-    /// <summary>A number kept as the file writes it (<see cref="Weapon.FileValues"/>), changed in a box when known or likely.</summary>
+    /// <summary>A number kept as the file writes it (<see cref="Weapon.FileValues"/>), changed in a box.</summary>
     private static PaneValue FileNumber(string nameKey, string aboutKey, string name, Certainty certainty, Func<double?, string> write) =>
         new(nameKey, aboutKey, name, name, certainty, Shape.Number, weapon => write(weapon.FileNumber(name)));
 
-    /// <summary>A switch, True or False, changed with a switch when known or likely.</summary>
+    /// <summary>A switch, True or False, changed with a switch.</summary>
     private static PaneValue Switch(string nameKey, string aboutKey, string name, Certainty certainty) =>
         new(nameKey, aboutKey, name, name, certainty, Shape.Switch, weapon => SwitchName(weapon.FileValue(name)));
 
@@ -184,12 +190,12 @@ public static partial class WeaponPane
     private static PaneValue Choice(string nameKey, string aboutKey, string name, Certainty certainty) =>
         new(nameKey, aboutKey, name, name, certainty, Shape.Choice, weapon => weapon.FileValue(name) is string written ? ChoiceName(name, written) : UnitNumbers.None);
 
-    /// <summary>A reference to another descriptor, shown only: its name, without the path; "none" for nil.</summary>
+    /// <summary>A reference to another descriptor, chosen from a list: shown by its name, without the path; "none" for nil.</summary>
     private static PaneValue Reference(string nameKey, string aboutKey, string name, Certainty certainty) =>
-        new(nameKey, aboutKey, name, name, certainty, Shape.ShownOnly, weapon => ReferenceName(weapon.FileValue(name)));
+        new(nameKey, aboutKey, name, name, certainty, Shape.Reference, weapon => ReferenceName(weapon.FileValue(name)));
 
     /// <summary>The property of the ammunition a value with a property of its own is in, as a rule names it.</summary>
-    private static string PropertyOf(string field) => field == WeaponField.ShotsPerSalvo ? "ShotsCountPerSalvo" : WeaponStat.Of(field)?.Target ?? field;
+    private static string PropertyOf(string field) => WeaponStat.Of(field)?.Target ?? field;
 
     // ---- how values are written ----
 
@@ -238,10 +244,17 @@ public static partial class WeaponPane
         ["Guidance_AntiRadar"] = "Weapons.Value.AntiRadar",
     };
 
-    /// <summary>A choice's value as the pane names it: the kind of damage in capitals ("AP MISSILE"), the others by name.</summary>
+    /// <summary>The values that are references to other descriptors, named by <see cref="ReferenceName"/> in their lists too.</summary>
+    private static readonly HashSet<string> ReferenceFields = new(StringComparer.Ordinal)
+    {
+        "DamageTypeEvolutionOverRangeDescriptor", "FireDescriptor", "SmokeDescriptor", "MissileDescriptor",
+    };
+
+    /// <summary>A choice's value as the pane names it: the kind of damage in capitals ("AP MISSILE"), a reference by its name, the others by name.</summary>
     private static string ChoiceName(string field, string written)
     {
         if (field == WeaponFileValues.DamageFamily) return WeaponChoice.FamilyName(written).Replace('_', ' ').ToUpperInvariant();
+        if (ReferenceFields.Contains(field)) return ReferenceName(written);
         return ChoiceNameKeys.TryGetValue(written, out string? key) ? Texts.Get(key) : Readable(written);
     }
 
@@ -299,25 +312,19 @@ public static partial class WeaponPane
             grid.Children.Add(NameCell(value, row, column, lastRow));
             Bevel cell = UnitPane.Cell("", row, column + 1, isName: false, lastRow);
             ShowValue((TextBlock)cell.Child, weapon, value);
-            if (canChange && value.Certainty != Certainty.Unknown && MakeChangeable(cell, weapon, value, actions)) anyChangeable = true;
-            else if (canChange && value.Field == WeaponField.ShotsPerSalvo && cell.Child is TextBlock { ToolTip: null } perSalvo) perSalvo.ToolTip = Texts.Get("Weapons.Pane.PerSalvo.Tip");
+            if (canChange && MakeChangeable(cell, weapon, value, actions)) anyChangeable = true;
             grid.Children.Add(cell);
         }
         var contents = new StackPanel { Children = { UnitPane.Boxed(grid) } };
-        string note = anyChangeable ? Texts.Get("Units.Pane.ClickToChange") : "";
-        if (values.Any(value => value.Certainty == Certainty.Unknown)) note = (note + " " + Texts.Get("Weapons.Pane.UnknownShownOnly")).Trim();
-        if (note != "") contents.Children.Add(UnitPane.Muted(note, new Thickness(0, 6, 0, 0)));
+        if (anyChangeable) contents.Children.Add(UnitPane.Muted(Texts.Get("Units.Pane.ClickToChange"), new Thickness(0, 6, 0, 0)));
         return contents;
     }
 
-    /// <summary>A value's text: marked when the open mod changes it; dim when not known, or when it is a reference shown only.</summary>
+    /// <summary>A value's text: marked when the open mod changes it; a reference the pane shortens has its full name as its tooltip.</summary>
     private static void ShowValue(TextBlock text, Weapon weapon, PaneValue value)
     {
-        if (value.Field == "") text.Text = value.Write(weapon);
-        else WeaponMarks.Show(text, weapon, value.Field, value.Write(weapon), value.Write);
-        if (value.Certainty == Certainty.Unknown || value.Shape == Shape.ShownOnly) text.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        // a reference's full name, for one the pane shortens
-        if (value.Shape == Shape.ShownOnly && text.ToolTip is null && weapon.FileValue(value.Property) is string written && written != "nil") text.ToolTip = written;
+        WeaponMarks.Show(text, weapon, value.Field, value.Write(weapon), value.Write);
+        if (value.Shape == Shape.Reference && text.ToolTip is null && weapon.FileValue(value.Property) is string written && written != "nil") text.ToolTip = written;
     }
 
     /// <summary>
@@ -369,15 +376,18 @@ public static partial class WeaponPane
     // ---- changing values ----
 
     /// <summary>
-    /// A value made changeable, by its kind: a number in a box, a switch with a switch, a choice from a list. A value
-    /// the weapon's ammunition does not have is not: a rule cannot set it.
+    /// A value made changeable, by its kind: a number in a box, a switch with a switch, a choice or reference from a
+    /// list, the picture from the game's pictures, the traits from the game's traits. A value the weapon's ammunition
+    /// does not have is not: a rule cannot set it.
     /// </summary>
     /// <returns>Whether it was made changeable.</returns>
     private static bool MakeChangeable(Bevel cell, Weapon weapon, PaneValue value, IWeaponActions actions) => value.Shape switch
     {
         Shape.Number => MakeNumberChangeable(cell, weapon, value.Field, actions),
         Shape.Switch => MakeSwitchChangeable(cell, weapon, value.Field, actions),
-        Shape.Choice => MakeChoiceChangeable(cell, weapon, value.Field, actions),
+        Shape.Choice or Shape.Reference => MakeChoiceChangeable(cell, weapon, value.Field, actions),
+        Shape.Picture => MakePictureChangeable(cell, weapon, actions),
+        Shape.Traits => MakeTraitsChangeable(cell, weapon, actions),
         _ => false,
     };
 
@@ -432,8 +442,77 @@ public static partial class WeaponPane
     }
 
     /// <summary>
+    /// The picture, changed with a click on its value as with the ✎ on the picture: another weapon's from the game's
+    /// pictures, or its own again.
+    /// </summary>
+    private static bool MakePictureChangeable(Bevel cell, Weapon weapon, IWeaponActions actions)
+    {
+        if (weapon.PictureTexture is null) return false;
+        OnClick(cell, () => WeaponPicturePicker.OpenMenu(cell, actions.WeaponPictures, actions.HasOtherPicture(weapon), texture => actions.ChangePicture(weapon, texture)));
+        return true;
+    }
+
+    /// <summary>
+    /// The traits, changed with a click on their value: a list of the game's traits opens under it, those the weapon
+    /// has ticked. Ticking one adds it after the others, as the game lists them; the traits are changed once the list
+    /// closes, so ticking several makes one change.
+    /// </summary>
+    private static bool MakeTraitsChangeable(Bevel cell, Weapon weapon, IWeaponActions actions)
+    {
+        // the game's traits by name, and any the weapon has that the game does not describe
+        List<string> offered = [.. TraitIcon.Known.Values.OrderBy(trait => trait.Name, StringComparer.CurrentCultureIgnoreCase).Select(trait => trait.Token)];
+        offered.AddRange(weapon.Traits.Where(token => !TraitIcon.Known.ContainsKey(token)));
+        if (offered.Count == 0) return false;
+        OnClick(cell, () =>
+        {
+            List<string> ticked = [.. weapon.Traits];
+            var menu = new ContextMenu { PlacementTarget = cell, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+            foreach (string token in offered)
+            {
+                // the app's menus draw no ticks or icons, so the item draws its own: a tick, the game's icon, the name
+                var tick = new TextBlock { Width = 16, Text = ticked.Contains(token) ? "✓" : "" };
+                tick.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+                var header = new StackPanel { Orientation = Orientation.Horizontal, Children = { tick } };
+                if (TraitIcon.For(token, 12) is TraitIcon icon)
+                {
+                    icon.Margin = new Thickness(0, 0, 6, 0);
+                    header.Children.Add(icon);
+                }
+                header.Children.Add(new TextBlock { Text = TraitIcon.Known.GetValueOrDefault(token)?.Name ?? token });
+                var item = new MenuItem { Header = header, StaysOpenOnClick = true, ToolTip = token };
+                item.Click += (_, _) =>
+                {
+                    if (!ticked.Remove(token)) ticked.Add(token);
+                    tick.Text = ticked.Contains(token) ? "✓" : "";
+                };
+                menu.Items.Add(item);
+            }
+            menu.Closed += (_, _) =>
+            {
+                if (!ticked.SequenceEqual(weapon.Traits, StringComparer.Ordinal)) menu.Dispatcher.BeginInvoke(() => actions.ChangeTraits(weapon, ticked));
+            };
+            menu.IsOpen = true;
+        });
+        return true;
+    }
+
+    /// <summary>A click anywhere in a value's cell does something, as a click on a value that changes in a box does.</summary>
+    private static void OnClick(Bevel cell, Action clicked)
+    {
+        // a transparent background, so a click anywhere in the cell reaches it
+        cell.Background ??= Brushes.Transparent;
+        cell.Cursor = System.Windows.Input.Cursors.Hand;
+        cell.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            clicked();
+        };
+    }
+
+    /// <summary>
     /// What a number's box takes: the levels its kind of damage has, a chance in percent or from 0 to 1, an angle in
-    /// degrees, shots at once no more than a salvo's, or a number (whole or not, from 0, 1 or -1).
+    /// degrees, shots at once no more than a salvo's, shots a salvo no fewer than at once, or a number (whole or not,
+    /// from 0, 1 or -1).
     /// </summary>
     private static string ValueTip(Weapon weapon, WeaponStat stat, IWeaponActions actions)
     {
@@ -441,6 +520,8 @@ public static partial class WeaponPane
             return Texts.Get("Weapons.Pane.Level.Tip", ("family", weapon.DamageFamily.Replace('_', ' ').ToUpperInvariant()), ("lowest", lowest), ("highest", highest));
         if (stat.Field == WeaponFileValues.SimultaneousShots)
             return Texts.Get("Weapons.Pane.AtOnce.Tip", ("highest", WeaponNames.Number(weapon.ShotsPerSalvo)));
+        if (stat.Field == WeaponField.ShotsPerSalvo)
+            return Texts.Get("Weapons.Pane.PerSalvo.Tip", ("lowest", WeaponNames.Number(weapon.FileNumber(WeaponFileValues.SimultaneousShots) ?? 1)));
         if (stat.ShownTimes != 1 && stat.Highest is double angle) return Texts.Get("Weapons.Pane.Degrees.Tip", ("highest", Math.Round(stat.Shown(angle))));
         if (stat.Highest is 1) return Texts.Get("Weapons.Pane.Chance.Tip");
         if (stat.Highest is double most) return Texts.Get("Weapons.Pane.Percent.Tip", ("highest", most));

@@ -85,7 +85,14 @@ public static class Tokenizer
         private int Count => firstKept + kept.Count;
 
         /// <summary>Whether the text has a token at this index, reading on as far as needed.</summary>
-        public bool Has(int index)
+        /// <remarks>
+        /// The parser asks this before every look at a token, millions of times in a large file, nearly always about a
+        /// token read already: that answer is kept to one comparison, which the compiler can put in place of the call.
+        /// </remarks>
+        public bool Has(int index) => index < Count || ReadUpTo(index);
+
+        /// <summary>Reads on until the token at this index is read or the text ends; whether it is there.</summary>
+        private bool ReadUpTo(int index)
         {
             while (Count <= index && !IsFinished) ReadNext();
             return index < Count;
@@ -154,7 +161,9 @@ public static class Tokenizer
                 }
 
                 FileWaitingComments();
-                kept.Add(new Token(kind, texts.Get(text.AsSpan(at, length)), at));
+                // a punctuation mark is one character, written with the one text kept for it
+                string tokenText = kind == TokenKind.Punctuation ? PunctuationText(text[at]) : texts.Get(text.AsSpan(at, length));
+                kept.Add(new Token(kind, tokenText, at));
                 newLineSeen = false;
                 at += length;
                 return;
@@ -171,6 +180,12 @@ public static class Tokenizer
             waiting = null;
         }
     }
+
+    /// <summary>The punctuation marks' texts, one string each, so that their tokens need not be looked up one by one.</summary>
+    private static readonly string[] PunctuationTexts = [.. Enumerable.Range(0, 128).Select(c => ((char)c).ToString())];
+
+    /// <summary>The text of a punctuation mark (always one of the ASCII characters <see cref="TokenAt"/> takes).</summary>
+    private static string PunctuationText(char mark) => PunctuationTexts[mark];
 
     /// <summary>
     /// The tokens' texts, each kept once. A large game file has nearly two million tokens but only some tens of
@@ -238,7 +253,6 @@ public static class Tokenizer
         return 0;
     }
 
-    /// <summary>The token at a position: the first kind that matches, in the order of the pattern.</summary>
     /// <summary>A { ... } comment, which may hold more braces inside it; 0 when it is never closed.</summary>
     private static int BraceCommentAt(string text, int at)
     {
@@ -251,17 +265,31 @@ public static class Tokenizer
         return 0;
     }
 
+    /// <summary>The token at a position: the first kind that matches, in the order of the pattern.</summary>
+    /// <remarks>
+    /// Each kind can only start with certain characters, so the first character says which kinds to try; they are
+    /// tried in the pattern's order, which decides between kinds that can start alike (a word that starts GUID:{, a
+    /// path or a word, a negative number or a minus sign).
+    /// </remarks>
     private static (TokenKind Kind, int Length) TokenAt(string text, int at)
     {
         int n;
-        if ((n = GuidAt(text, at)) > 0) return (TokenKind.Guid, n);
-        if ((n = RelativeReferenceAt(text, at)) > 0) return (TokenKind.RelativeReference, n);
-        if ((n = AbsoluteReferenceAt(text, at)) > 0) return (TokenKind.AbsoluteReference, n);
-        if ((n = PathAt(text, at)) > 0) return (TokenKind.Path, n);
-        if ((n = WordAt(text, at)) > 0) return (TokenKind.Identifier, n);
-        if ((n = NumberAt(text, at)) > 0) return (TokenKind.Number, n);
-        if ((n = StringAt(text, at)) > 0) return (TokenKind.String, n);
-        if (At(text, at) is '(' or ')' or '[' or ']' or ',' or '=' or '|' or ':' or '*' or '+' or '/' or '%' or '<' or '>' or '-'
+        char c = text[at];
+        if (IsWordStart(c))
+        {
+            if (c == 'G' && (n = GuidAt(text, at)) > 0) return (TokenKind.Guid, n);
+            // a path is a word with more after it; the word read once serves for both
+            int word = WordAt(text, at);
+            if (IsUpperStart(c) && (n = PathAfterWord(text, at, word)) > 0) return (TokenKind.Path, n);
+            return (TokenKind.Identifier, word);
+        }
+        if (c == '~') return (TokenKind.RelativeReference, RelativeReferenceAt(text, at));
+        if (c == '$') return (TokenKind.AbsoluteReference, AbsoluteReferenceAt(text, at));
+        if (c == '<' && (n = PathAt(text, at)) > 0) return (TokenKind.Path, n);
+        if (char.IsAsciiDigit(c) || c is '-' or '.')
+            if ((n = NumberAt(text, at)) > 0) return (TokenKind.Number, n);
+        if (c is '\'' or '"') return (TokenKind.String, StringAt(text, at));
+        if (c is '(' or ')' or '[' or ']' or ',' or '=' or '|' or ':' or '*' or '+' or '/' or '%' or '<' or '>' or '-'
             or '?' or '!' or '&' or '.')
             return (TokenKind.Punctuation, 1);
         return (TokenKind.Punctuation, 0);
@@ -332,7 +360,13 @@ public static class Tokenizer
             return word > 0 && At(text, at + 1 + word) == '>' ? word + 2 : 0;
         }
         if (!IsUpperStart(c)) return 0;
-        int i = at + WordAt(text, at), n, segments = 0;
+        return PathAfterWord(text, at, WordAt(text, at));
+    }
+
+    /// <summary>The path that starts with the word of this length at a position (one that starts with a capital or _); 0 when no segment follows it.</summary>
+    private static int PathAfterWord(string text, int at, int word)
+    {
+        int i = at + word, n, segments = 0;
         while ((n = SegmentAt(text, i, IsUpperStart)) > 0) { i += n; segments++; }
         return segments == 0 ? 0 : i - at;
     }

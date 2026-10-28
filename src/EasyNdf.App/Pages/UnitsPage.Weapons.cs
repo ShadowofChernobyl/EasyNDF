@@ -203,6 +203,31 @@ public partial class UnitsPage : IWeaponActions
     }
 
     /// <inheritdoc/>
+    public bool ChangeTraits(Weapon weapon, IReadOnlyList<string> traits)
+    {
+        string descriptor = weapon.Descriptor;
+        if (IsCopy(weapon))
+        {
+            // a copy given its original's traits again keeps its original's
+            IReadOnlyList<string>? original = OriginalOf(weapon)?.Traits;
+            return ChangeDivisions(mod =>
+            {
+                if (CopyIn(mod, descriptor) is ModWeapon copy) copy.Traits = SameTraits(traits, original) ? null : traits;
+            });
+        }
+        IReadOnlyList<string>? before = WeaponBeforeChanges(descriptor)?.Traits;
+        return ChangeDivisions(mod =>
+        {
+            WeaponEdit.For(mod, descriptor).Traits = SameTraits(traits, before) ? null : traits;
+            WeaponEdit.LetGoOfIfEmpty(mod, descriptor);
+        });
+    }
+
+    /// <summary>Whether two lists of traits are the same, in the same order.</summary>
+    private static bool SameTraits(IReadOnlyList<string> traits, IReadOnlyList<string>? others) =>
+        others is not null && traits.SequenceEqual(others, StringComparer.Ordinal);
+
+    /// <inheritdoc/>
     public bool HasOtherPicture(Weapon weapon) =>
         (CopyIn(OpenMod, weapon.Descriptor)?.Picture ?? WeaponEdit.Of(OpenMod, weapon.Descriptor)?.Picture) is not null;
 

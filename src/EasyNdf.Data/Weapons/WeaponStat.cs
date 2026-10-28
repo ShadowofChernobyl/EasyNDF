@@ -30,13 +30,16 @@ public static class WeaponField
 
     /// <summary>Its picture: the texture the game draws it with (InterfaceWeaponTexture).</summary>
     public const string Picture = "Picture";
+
+    /// <summary>The trait icons the game shows beside it (TraitsToken).</summary>
+    public const string Traits = "Traits";
 }
 
 /// <summary>
 /// A value of a weapon the Armory lets the user change, and how: where the game keeps it in the ammunition (the target
-/// of the rule that changes it), whether the game writes it as a whole number, and the highest it can be. Shots per
-/// salvo is shown but not changed here: weapons sharing an ammo box must fire the same number a salvo, which only the
-/// unit's loadout can check.
+/// of the rule that changes it), whether the game writes it as a whole number, and the highest it can be. Weapons
+/// sharing an ammo box must fire the same number of shots a salvo: shots per salvo can be changed here all the same,
+/// and the unit's loadout says when the weapons in a box no longer match.
 /// </summary>
 /// <param name="Field">Its field (<see cref="WeaponField"/>).</param>
 /// <param name="Read">Reads it from a weapon; null when the weapon has none.</param>
@@ -71,6 +74,7 @@ public sealed record WeaponStat(string Field, Func<Weapon, double?> Read, Func<W
         new(WeaponField.DispersionFar, weapon => weapon.DispersionFar, (weapon, value) => weapon with { DispersionFar = value }, "DispersionAtMaxRangeGRU", IsWhole: true),
         new(WeaponField.DispersionNear, weapon => weapon.DispersionNear, (weapon, value) => weapon with { DispersionNear = value }, "DispersionAtMinRangeGRU", IsWhole: true),
         new(WeaponField.AimingTime, weapon => weapon.AimingTime, (weapon, value) => weapon with { AimingTime = value }, "AimingTime", IsWhole: false),
+        new(WeaponField.ShotsPerSalvo, weapon => weapon.ShotsPerSalvo, (weapon, value) => weapon with { ShotsPerSalvo = value }, "ShotsCountPerSalvo", IsWhole: true, Lowest: 1),
         new(WeaponField.Reload, weapon => weapon.Reload, (weapon, value) => weapon with { Reload = value }, "TimeBetweenTwoSalvos", IsWhole: false),
         new(WeaponField.SupplyCost, weapon => weapon.SupplyCost, (weapon, value) => weapon with { SupplyCost = value }, "SupplyCost", IsWhole: false),
         // the values kept as the file writes them (Weapon.FileValues); whole where every one the game has is written whole
@@ -82,6 +86,9 @@ public sealed record WeaponStat(string Field, Func<Weapon, double?> Read, Func<W
         FromFile("BaseCriticModifier", isWhole: true, highest: 100),
         FromFile("AngleDispersion", isWhole: false),
         FromFile("CorrectedShotDispersionMultiplier", isWhole: false),
+        FromFile("MaxSuccessiveHitCount", isWhole: true),
+        FromFile(WeaponFileValues.AccuracyBase, isWhole: true, highest: 100),
+        FromFile(WeaponFileValues.AccuracyTargeted, isWhole: true, highest: 100),
         FromFile(WeaponFileValues.SimultaneousShots, isWhole: true, lowest: 1),
         FromFile("TimeBetweenTwoShots", isWhole: false),
         FromFile("TimeBetweenTwoSalvos_Min", isWhole: false, lowest: -1),
@@ -116,7 +123,8 @@ public sealed record WeaponStat(string Field, Func<Weapon, double?> Read, Func<W
     /// <summary>
     /// A value typed for this stat of a weapon, when the game takes it; null when it does not: a number no lower than
     /// <see cref="Lowest"/>, whole where the game writes one, no higher than <see cref="Highest"/>, for the damage level
-    /// one its kind of damage has, and no more shots at once than a salvo has. Typed as the pane shows it (an angle in
+    /// one its kind of damage has, and no more shots at once than a salvo has (nor fewer shots a salvo than it fires at
+    /// once). Typed as the pane shows it (an angle in
     /// degrees), as the app writes numbers in its language or with a "." for the decimals.
     /// </summary>
     /// <param name="text">What was typed.</param>
@@ -137,6 +145,7 @@ public sealed record WeaponStat(string Field, Func<Weapon, double?> Read, Func<W
         if (Field == WeaponField.DamageLevel && !ArmorLevels.Allows(levels, DamageFamilyKey(weapon), (int)value)) return null;
         // shots fired at the same moment come out of one salvo
         if (Field == WeaponFileValues.SimultaneousShots && weapon.ShotsPerSalvo is double perSalvo && value > perSalvo) return null;
+        if (Field == WeaponField.ShotsPerSalvo && weapon.FileNumber(WeaponFileValues.SimultaneousShots) is double atOnce && value < atOnce) return null;
         return value;
     }
 

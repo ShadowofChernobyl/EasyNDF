@@ -50,7 +50,7 @@ public static class WeaponFileValues
         "ReflexShotDisabledIfPriorityTarget", "TargetOnlyOneUnitInDistrict",
         // projectile
         "ProjectileType", "ProjectileSpeedGRU", "MaxAccelerationGRU", Arc, "MissileTimeBetweenCorrections", "IsFireAndForget", "Guidance",
-        "IsSubAmmunition", "SalvoShotsSorted", "AffecteParNombre",
+        "IsSubAmmunition", "MissileDescriptor", "SalvoShotsSorted", "AffecteParNombre",
         // detection
         "NoiseDissimulationMalus", "ShotsBeforeMaxNoise",
         // display
