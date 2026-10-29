@@ -1,0 +1,75 @@
+Game: D:\SteamLibrary\steamapps\common\WARNO
+2866 pictures saved, 0 not found; 2898 of 2898 units named
+2898 units, 2911 picture keys
+read Data\PC\169425\ZZ_1.dat: 16109 files
+read Data\PC\169425\ZZ_2.dat: 183 files
+read Data\PC\169425\ZZ_3.dat: 13341 files
+read Data\PC\169425\ZZ_4.dat: 1256 files
+read Data\PC\169425\ZZ_5.dat: 1419 files
+read Data\PC\169425\172762\ZZ_1.dat: 191 files
+read Data\PC\169425\172762\ZZ_2.dat: 12 files
+read Data\PC\169425\172762\ZZ_3.dat: 432 files
+read Data\PC\169425\172762\ZZ_4.dat: 10 files
+read Data\PC\169425\172762\ZZ_5.dat: 82 files
+read Data\PC\172762\172972\ZZ_1.dat: 0 files
+read Data\PC\172762\172972\ZZ_2.dat: 0 files
+read Data\PC\172762\172972\ZZ_3.dat: 0 files
+read Data\PC\172762\172972\ZZ_4.dat: 0 files
+read Data\PC\172762\172972\ZZ_5.dat: 0 files
+read Data\PC\172972\173446\ZZ_1.dat: 8 files
+read Data\PC\172972\173446\ZZ_2.dat: 0 files
+read Data\PC\172972\173446\ZZ_3.dat: 0 files
+read Data\PC\172972\173446\ZZ_4.dat: 0 files
+read Data\PC\172972\173446\ZZ_5.dat: 2 files
+read Data\PC\173446\174602\ZZ_1.dat: 8 files
+read Data\PC\173446\174602\ZZ_2.dat: 0 files
+read Data\PC\173446\174602\ZZ_3.dat: 0 files
+read Data\PC\173446\174602\ZZ_4.dat: 0 files
+read Data\PC\173446\174602\ZZ_5.dat: 0 files
+read Data\PC\174602\178307\ZZ_1.dat: 13176 files
+read Data\PC\174602\178307\ZZ_2.dat: 1526 files
+read Data\PC\174602\178307\ZZ_3.dat: 448 files
+read Data\PC\174602\178307\ZZ_4.dat: 6 files
+read Data\PC\174602\178307\ZZ_5.dat: 12 files
+read Data\PC\178307\178863\ZZ_1.dat: 11 files
+read Data\PC\178307\178863\ZZ_2.dat: 0 files
+read Data\PC\178307\178863\ZZ_3.dat: 3 files
+read Data\PC\178307\178863\ZZ_4.dat: 0 files
+read Data\PC\178307\178863\ZZ_5.dat: 0 files
+read Data\PC\178863\183203\ZZ_1.dat: 4228 files
+read Data\PC\178863\183203\ZZ_2.dat: 16 files
+read Data\PC\178863\183203\ZZ_3.dat: 309 files
+read Data\PC\178863\183203\ZZ_4.dat: 13 files
+read Data\PC\178863\183203\ZZ_5.dat: 94 files
+read Data\PC\183203\183326\ZZ_1.dat: 1 files
+read Data\PC\183203\183326\ZZ_2.dat: 1 files
+read Data\PC\183203\183326\ZZ_3.dat: 0 files
+read Data\PC\183203\183326\ZZ_4.dat: 0 files
+read Data\PC\183203\183326\ZZ_5.dat: 0 files
+read Data\PC\183326\184174\ZZ_1.dat: 41 files
+read Data\PC\183326\184174\ZZ_2.dat: 12 files
+read Data\PC\183326\184174\ZZ_3.dat: 21 files
+read Data\PC\183326\184174\ZZ_4.dat: 0 files
+read Data\PC\183326\184174\ZZ_5.dat: 0 files
+read Data\PC\184174\188908\ZZ_1.dat: 1149 files
+read Data\PC\184174\188908\ZZ_2.dat: 16 files
+read Data\PC\184174\188908\ZZ_3.dat: 1664 files
+read Data\PC\184174\188908\ZZ_4.dat: 24 files
+read Data\PC\184174\188908\ZZ_5.dat: 10 files
+read Data\PC\188908\189668\ZZ_1.dat: 219 files
+read Data\PC\188908\189668\ZZ_2.dat: 12 files
+read Data\PC\188908\189668\ZZ_3.dat: 1649 files
+read Data\PC\189668\193438\ZZ_1.dat: 4844 files
+read Data\PC\189668\193438\ZZ_2.dat: 28 files
+read Data\PC\189668\193438\ZZ_3.dat: 1911 files
+read Data\PC\193438\197351\ZZ_1.dat: 222 files
+read Data\PC\193438\197351\ZZ_2.dat: 263 files
+read Data\PC\193438\197351\ZZ_3.dat: 2906 files
+read Data\PC\197351\201602\ZZ_1.dat: 7625 files
+read Data\PC\197351\201602\ZZ_2.dat: 212 files
+read Data\PC\197351\201602\ZZ_3.dat: 2343 files
+names from AllPlatforms/Localisation/US/Localisation/Core/UNITS.dic
+names from AllPlatforms/Localisation/Localisation/Core/UNITS-US.dic
+names from Localisation/Localisation/Core/UNITS-US.dic
+could not read the atlas PC/Atlas/OutGame-WaitAnim/TextureSmall.atlas: Decompressed content size cannot be determined (e.g. invalid magic number, srcSize too small)
+16 of 16 flags saved: BEL, CAN, DDR, DK, ESP, FR, LUX, NATO, NL, POL, RFA, SOV, TCH, UK, US, WP
