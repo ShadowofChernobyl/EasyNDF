@@ -170,7 +170,16 @@ public sealed partial class RuleRunner
     /// <summary>A note in the rule's edit log that is not an edit, such as "Not run".</summary>
     private void FileNote(string label, string target, string message)
     {
-        if (log.Count < options.LogLimit) log.Add(new EditLogEntry(label, target, "", message));
+        if (log.Count < options.LogLimit) log.Add(new EditLogEntry(label, target, "", message, IsNote: true));
+    }
+
+    /// <summary>
+    /// A descriptor a Clone or Add rule made, or could not make because its name is in the file already: logged as a
+    /// change, not a note, so two mods making the same name are found as a conflict.
+    /// </summary>
+    private void NameLog(string name, string target, string message)
+    {
+        if (log.Count < options.LogLimit) log.Add(new EditLogEntry(name, target, "", message));
     }
 
     /// <summary>A number typed into a setting: null when empty, NaN when it is not a number.</summary>
@@ -533,7 +542,12 @@ public sealed partial class RuleRunner
         if (error != "") { NotAdded("The descriptor text is not valid NDF. " + error); return; }
         if (declarations.Count == 0) { NotAdded("The text holds no descriptor."); return; }
         string? clash = new[] { target }.Concat(names).FirstOrDefault(x => x != "" && HasName(x));
-        if (clash is not null) { NotAdded("\"" + clash + "\" is already in the file."); return; }
+        if (clash is not null)
+        {
+            current.Skipped++;
+            NameLog(label, "Add", "Not added. \"" + clash + "\" is already in the file.");
+            return;
+        }
 
         var item = new WorkItem
         {
@@ -556,7 +570,7 @@ public sealed partial class RuleRunner
         string mismatch = target != "" && names.Count > 0 && !names.Contains(target)
             ? " Note: the name field does not match the name in the text (\"" + names[0] + "\")."
             : "";
-        FileNote(label, "Add", where + mismatch);
+        NameLog(label, "Add", where + mismatch);
     }
 
     /// <summary>Clone: copies a descriptor under a new name, with new GUIDs, and applies the rule's actions to the copy.</summary>
@@ -573,7 +587,12 @@ public sealed partial class RuleRunner
 
         if (from == "" || to == "") { NotCloned("The rule needs a source name and a new name."); return; }
         if (!DescriptorName().IsMatch(to)) { NotCloned("\"" + to + "\" is not a valid descriptor name."); return; }
-        if (HasName(to)) { NotCloned("\"" + to + "\" is already in the file."); return; }
+        if (HasName(to))
+        {
+            current.Skipped++;
+            NameLog(to, "Clone", "Not cloned. \"" + to + "\" is already in the file.");
+            return;
+        }
 
         int sourceAt = work.FindIndex(w => !w.IsRemoved && !w.IsAdded && !w.Declaration!.IsUnnamed && w.Declaration.Name == from);
         Declaration? source = sourceAt >= 0 ? work[sourceAt].Declaration : null;
@@ -626,7 +645,7 @@ public sealed partial class RuleRunner
             NewIds(copy.Value);
         }
 
-        FileNote(to, "Clone", "Cloned from \"" + from + "\".");
+        NameLog(to, "Clone", "Cloned from \"" + from + "\".");
         var c = NewContext();
         if (copy.Value is ObjectValue)
             foreach (var a in PrepareActions(rule)) ActionApplier.Apply(copy, a, c);

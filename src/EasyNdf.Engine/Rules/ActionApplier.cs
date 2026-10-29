@@ -11,7 +11,12 @@ namespace EasyNdf.Engine.Rules;
 /// <param name="Target">The property or setting changed.</param>
 /// <param name="Old">The value before, shortened to 120 characters.</param>
 /// <param name="New">The value after, shortened to 120 characters.</param>
-public sealed record EditLogEntry(string Descriptor, string Target, string Old, string New);
+/// <param name="IsNote">
+/// Whether it is a note rather than a change: "Not run", "Removed from the file.", a failed check and the like. The
+/// conflicts between mods leave notes out; a descriptor a Clone or Add rule makes, or cannot make because its name is
+/// taken, is not a note, so two mods making one name are found.
+/// </param>
+public sealed record EditLogEntry(string Descriptor, string Target, string Old, string New, bool IsNote = false);
 
 /// <summary>Counts and logs for the rule that is running.</summary>
 public sealed class EditContext

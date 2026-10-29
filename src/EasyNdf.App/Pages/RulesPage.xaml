@@ -110,7 +110,8 @@
                                                       VerticalAlignment="Center" ToolTip="{t:Text Rules.ModSwitch.Tip}" Click="ModSwitchClicked" />
                                             <!-- a value another mod that is on also changes, found by the last Preview or export -->
                                             <TextBlock x:Name="Conflict" DockPanel.Dock="Right" Text="&#x26A0;" FontWeight="Bold" Foreground="{DynamicResource caution}"
-                                                       VerticalAlignment="Center" Margin="4,0,0,0" ToolTip="{Binding ConflictsTip}" Visibility="Collapsed" />
+                                                       VerticalAlignment="Center" Margin="4,0,0,0" ToolTip="{Binding ConflictsTip}" Visibility="Collapsed"
+                                                       Cursor="Hand" MouseLeftButtonUp="ConflictMarkClicked" />
                                             <!-- the Armory parts with changes in the mod, as the Files tab's letters: a click opens the part -->
                                             <ItemsControl DockPanel.Dock="Right" ItemsSource="{Binding Letters}" Focusable="False" VerticalAlignment="Center" Margin="4,0,0,0">
                                                 <ItemsControl.ItemsPanel>

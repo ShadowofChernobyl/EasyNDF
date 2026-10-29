@@ -105,6 +105,8 @@
         <dialogs:WatermarkWindow x:Name="Watermark" />
         <!-- the Applies To window: which files a rule set applies to -->
         <dialogs:AppliesToWindow x:Name="AppliesTo" />
+        <!-- the Mod Conflicts window, from the Files tab's Conflicts button or a mod's ⚠ on the Mods tab -->
+        <dialogs:ModConflictsWindow x:Name="Conflicts" />
         <!-- the Filter Descriptors window of the Editor tab's descriptor viewer -->
         <dialogs:FilterWindow x:Name="Filters" />
         <!-- the License and the change log -->
