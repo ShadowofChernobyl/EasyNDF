@@ -805,9 +805,13 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 entry.IsError = true;
                 return;
             }
-            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write, settings.LogLimit, work.OtherFiles);
+            // with more than one mod, each mod's text is kept for the Mod Conflicts window's panels, and every change is
+            // logged so no conflict is missed; Details keeps its usual number of them (ForDetails)
+            List<string>? stages = stack.Count > 1 ? [] : null;
+            int logLimit = stack.Count > 1 ? int.MaxValue : settings.LogLimit;
+            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write, logLimit, work.OtherFiles, stages);
             clock.Stop();
-            lock (conflictsFound) conflictsFound[entry.Key] = ConflictsIn(entry.Name, stack, result);
+            lock (conflictsFound) conflictsFound[entry.Key] = ConflictsIn(entry.Name, stack, result, stages ?? []);
 
             string? text = result.Text;
             if (write && text is not null)
@@ -823,7 +827,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             entry.Info = FileStatus.Holds(info.Descriptors, info.Constants, info.Unnamed);
             entry.LastRun = new RunRecord
             {
-                Result = ForDetails(result),
+                Result = ForDetails(result, settings.LogLimit),
                 // Details shows only the counts; the names the file declares are not kept with every file run
                 Info = info with { Names = [], Titles = [], Types = [], References = [] },
                 Milliseconds = clock.ElapsedMilliseconds,
@@ -876,7 +880,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     // ---- running the mods one after the other ----
 
     /// <summary>What each file run found of mods changing the same values, by the file's key, given to the Mods tab when the run ends.</summary>
-    private readonly Dictionary<string, List<ModConflict>> conflictsFound = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<ConflictedValue>> conflictsFound = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Runs each mod's rules on a file, one mod after the other, each on what the one before gave (<see cref="StackFor"/>).
@@ -886,10 +890,16 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// mod (its lists of names and the like are left empty: no caller shows them, and going through a large file for
     /// them took a good part of reading it).
     /// </summary>
-    private (RunResult Result, LoadSummary Info) RunStack(List<ModRules> stack, string text, bool wantText, int logLimit, Dictionary<string, string> otherFiles)
+    /// <param name="stages">
+    /// When given, filled with the text before the first mod and after each mod that ran, for the Mod Conflicts window;
+    /// the last mod then makes its text even for a Preview.
+    /// </param>
+    private (RunResult Result, LoadSummary Info) RunStack(List<ModRules> stack, string text, bool wantText, int logLimit, Dictionary<string, string> otherFiles,
+        List<string>? stages = null)
     {
         LoadSummary? info = null;
         var results = new List<RunResult>();
+        stages?.Add(text);
         for (int at = 0; at < stack.Count; at++)
         {
             ModRules part = stack[at];
@@ -899,7 +909,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             RunResult result = engine.Run(RuleLoading.LoadForEngine(part.Rules), new RunOptions
             {
                 // a mod before the last needs its text, for the next mod to run on
-                WantText = wantText || at < stack.Count - 1,
+                WantText = wantText || at < stack.Count - 1 || stages is not null,
                 LogLimit = logLimit,
                 OtherFiles = otherFiles,
                 KeepSourceComments = settings.KeepSourceComments,
@@ -910,6 +920,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             results.Add(result);
             if (result.ParseError != "" || result.Text is null) break;
             text = result.Text;
+            stages?.Add(text);
         }
         return (Together(results), info!);
     }
@@ -936,22 +947,42 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         stack.FirstOrDefault(part => ReferenceEquals(part.Mod, AppData.Current.OpenMod))?.Mod ?? stack[^1].Mod;
 
     /// <summary>
-    /// The values more than one mod changed in a file, from each rule's edit log (the edits past the log's limit are
-    /// not seen). The rules' logs follow the mods' order, as they ran.
+    /// The values more than one mod changed in a file, from each rule's edit log (with more than one mod, every change is
+    /// logged), each with the lines around it before the first mod and after each mod (<paramref name="stages"/>). The
+    /// rules' logs follow the mods' order, as they ran.
     /// </summary>
-    private static List<ModConflict> ConflictsIn(string fileName, List<ModRules> stack, RunResult result)
+    private static List<ConflictedValue> ConflictsIn(string fileName, List<ModRules> stack, RunResult result, List<string> stages)
     {
         if (stack.Count < 2) return [];
-        var runs = new List<(string Mod, IEnumerable<(string Descriptor, string Property)> Changed)>();
+        var runs = new List<(string Mod, IEnumerable<(string Rule, int RuleIndex, EditLogEntry Entry)> Logged)>();
+        var stageOf = new Dictionary<string, int>(StringComparer.Ordinal);
         int rule = 0;
-        foreach (ModRules part in stack)
+        for (int at = 0; at < stack.Count; at++)
         {
-            int count = Math.Min(RuleLoading.LoadForEngine(part.Rules).Count, result.Logs.Count - rule);
-            IEnumerable<(string, string)> changed = result.Logs.Skip(rule).Take(count).SelectMany(log => log).Select(edit => (edit.Descriptor, edit.Target)).ToList();
-            runs.Add((part.Mod.Name, changed));
+            ModRules part = stack[at];
+            int first = rule, count = Math.Min(RuleLoading.LoadForEngine(part.Rules).Count, result.Logs.Count - rule);
+            var logged = new List<(string, int, EditLogEntry)>();
+            for (int i = 0; i < count; i++)
+                foreach (EditLogEntry entry in result.Logs[first + i]) logged.Add((result.Stats[first + i].Name, i, entry));
+            runs.Add((part.Mod.Name, logged));
+            stageOf[part.Mod.Name] = at + 1;
             rule += count;
         }
-        return ModConflictFinder.Find(fileName, runs);
+        List<ConflictedValue> found = ModConflictFinder.Find(fileName, runs);
+        if (found.Count == 0 || stages.Count == 0) return found;
+        // each text is read for its lines only when the file has conflicts, and once for all of them
+        var texts = new ValueTexts?[stages.Count];
+        ValueTexts TextAt(int stage) => texts[stage] ??= new ValueTexts(stages[stage]);
+        ValueText? Lines(int stage, ConflictedValue value) => stage < stages.Count ? TextAt(stage).Find(value.Descriptor, value.Property) : null;
+        return [.. found.Select(value => value with
+        {
+            GameText = value.IsNameClash ? null : Lines(0, value),
+            // a mod refused a name it wanted shows its refusal, not the other mod's descriptor
+            Changes = [.. value.Changes.Select(change => change with
+            {
+                Text = value.IsNameClash && !ReferenceEquals(change, value.Kept) ? null : Lines(stageOf[change.Mod], value),
+            })],
+        })];
     }
 
     /// <summary>
@@ -1140,8 +1171,13 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// A run's result as a file's Details shows it: its counts, edits, warnings and any error, without the exported
     /// text, which is saved or held already and would otherwise stay in memory for every file run.
     /// </summary>
-    private static RunResult ForDetails(RunResult result) =>
-        new() { Stats = result.Stats, Logs = result.Logs, Warnings = result.Warnings, ParseError = result.ParseError };
+    /// <param name="logLimit">How many edits Details lists for each rule: a run with every change logged, for the conflicts, is cut back to it.</param>
+    private static RunResult ForDetails(RunResult result, int logLimit) =>
+        new()
+        {
+            Stats = result.Stats, Warnings = result.Warnings, ParseError = result.ParseError,
+            Logs = [.. result.Logs.Select(log => log.Count > logLimit ? log.GetRange(0, logLimit) : log)],
+        };
 
     /// <summary>A mod's watermark as the engine takes it, or null when it has none.</summary>
     private static Watermark? WatermarkOf(Mod? mod) =>

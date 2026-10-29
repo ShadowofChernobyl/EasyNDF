@@ -36,6 +36,9 @@ public partial class FilesPage : UserControl
     public FilesPage()
     {
         InitializeComponent();
+        // the Conflicts button shows what the last run found
+        Mods.ModConflictList.Changed += ShowConflictsButton;
+        Texts.LanguageChanged += ShowConflictsButton;
         Panes.FoldedPlace = PaneSlot;
         ShowPaneTitles();
         Texts.LanguageChanged += () =>
@@ -536,6 +539,17 @@ public partial class FilesPage : UserControl
 
     /// <summary>The progress line's Cancel: the run stops after the file it is on.</summary>
     private void CancelRunClicked(object sender, RoutedEventArgs e) => Model.CancelRun();
+
+    /// <summary>The Conflicts button: shown with how many values more than one mod changes, once a run finds some.</summary>
+    private void ShowConflictsButton()
+    {
+        int count = Mods.ModConflictList.Count;
+        ConflictsButton.Content = Texts.Get("Files.Conflicts", ("count", Texts.Number(count)));
+        ConflictsButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    /// <summary>The Conflicts button: the Mod Conflicts window, on every conflict found.</summary>
+    private void ConflictsClicked(object sender, RoutedEventArgs e) => MainView.Of(this).Conflicts.Open();
 
     /// <summary>What the Preview button does.</summary>
     internal Task Preview() => Runner.Run(write: false, ChooseExportFolder);

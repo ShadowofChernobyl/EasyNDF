@@ -45,6 +45,7 @@
   "Rules.ModSwitch.Tip": "On: the mod runs on export and Preview, after the mods above it. Off: it does not run.",
   "Rules.ModConflicts.Tip": "{count} value another mod that is on also changes (the lower mod wins):|{count} values another mod that is on also changes (the lower mod wins):",
   "Rules.ModConflict.Line": "{file} › {descriptor} › {property}: {winner} wins over {other}",
+  "Rules.ModConflicts.Click": "Click to see them side by side in the Mod Conflicts window.",
   "Rules.ModConflicts.More": "…and {count} more|…and {count} more",
   "Rules.Menu.ModOn": "Switch On",
   "Rules.Menu.ModOff": "Switch Off",

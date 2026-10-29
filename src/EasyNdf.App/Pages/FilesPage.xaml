@@ -85,6 +85,8 @@
                 <!-- takes the spare room, keeping the running buttons at the right -->
                 <FrameworkElement controls:FlexRow.Grow="1" controls:FlexRow.Basis="0" />
                 <controls:SnappedRow Gap="6">
+                    <!-- shown once a run finds values more than one mod changes -->
+                    <Button x:Name="ConflictsButton" ToolTip="{t:Text Files.Conflicts.Tip}" Click="ConflictsClicked" Visibility="Collapsed" Foreground="{DynamicResource caution}" />
                     <Button x:Name="PreviewButton" ToolTip="{t:Text Files.Preview.Tip}" Content="{t:Text Files.Preview}" Click="PreviewClicked" IsEnabled="{Binding IsIdle}" />
                     <!-- the main action once there are files; while the list is empty, Add files is -->
                     <Button x:Name="RunButton" ToolTip="{t:Text Files.Run.Tip}" Content="{t:Text Files.RunExport}" Click="RunClicked" IsEnabled="{Binding IsIdle}" />

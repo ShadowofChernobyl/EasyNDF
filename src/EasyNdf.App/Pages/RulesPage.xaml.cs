@@ -184,6 +184,14 @@ public partial class RulesPage : UserControl
 
     // ---- the mods ----
 
+    /// <summary>A mod's ⚠: the Mod Conflicts window, on the conflicts that mod is in. The mod's line is not opened.</summary>
+    private void ConflictMarkClicked(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ModLine line) return;
+        e.Handled = true;
+        MainView.Of(this).Conflicts.Open(line.Name);
+    }
+
     /// <summary>
     /// A line of the mod list: the mod, whether it is the open one, whether it is on, its Armory parts as letters, and
     /// the values another mod that is on also changes.
@@ -212,6 +220,7 @@ public partial class RulesPage : UserControl
                     lines.Add(Texts.Get("Rules.ModConflict.Line", ("file", conflict.File), ("descriptor", conflict.Descriptor), ("property", conflict.Property),
                         ("winner", conflict.Winner), ("other", conflict.Overridden)));
                 if (Conflicts.Count > TipLines) lines.Add(Texts.Count("Rules.ModConflicts.More", Conflicts.Count - TipLines));
+                lines.Add(Texts.Get("Rules.ModConflicts.Click"));
                 return string.Join("\n", lines);
             }
         }
