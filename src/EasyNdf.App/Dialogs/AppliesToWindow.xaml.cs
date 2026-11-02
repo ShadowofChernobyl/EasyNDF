@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -17,14 +18,45 @@ public partial class AppliesToWindow : UserControl
     /// <summary>What Done does with the choice: the files ticked, or null for the files the name holds.</summary>
     private Action<List<string>?>? done;
 
+    /// <summary>Every file the list can show, in name order, each with whether it is ticked; the search shows some of them.</summary>
+    private List<FileChoice> choices = [];
+
+    /// <summary>The window's widest, as it was made; less in a narrow app window.</summary>
+    private const double Widest = 560;
+
     /// <summary>Builds the window, closed.</summary>
     public AppliesToWindow()
     {
         InitializeComponent();
+        // the window stays inside a small app window, 8 pixels in from each edge: the list gives up its height first
+        Backdrop.SizeChanged += (_, _) => DialogFit.Keep(Box, Backdrop, Widest);
     }
 
     /// <summary>Whether the window is open.</summary>
     public bool IsOpen => Visibility == Visibility.Visible;
+
+    /// <summary>A file in the list: its name as listed, and whether it is ticked.</summary>
+    public sealed class FileChoice(string name, bool isTicked) : INotifyPropertyChanged
+    {
+        /// <summary>The file's name, with its nearest folder when two listed files share the name.</summary>
+        public string Name { get; } = name;
+
+        /// <summary>Whether the file is ticked: the rule set applies to it when "From its name" is off.</summary>
+        public bool IsTicked
+        {
+            get => isTicked;
+            set
+            {
+                if (value == isTicked) return;
+                isTicked = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsTicked)));
+            }
+        }
+        private bool isTicked = isTicked;
+
+        /// <inheritdoc/>
+        public event PropertyChangedEventHandler? PropertyChanged;
+    }
 
     /// <summary>
     /// Opens the window for a rule set. The list holds the files on the Files tab and those the rule set lists, each
@@ -42,49 +74,66 @@ public partial class AppliesToWindow : UserControl
         ByNameNote.Text = named.Count == 0
             ? Texts.Get("Rules.AppliesTo.NameHoldsNone")
             : Texts.Get("Rules.AppliesTo.NameHolds", ("files", string.Join(", ", named)));
-        FileTicks.Children.Clear();
-        foreach (string file in Choices(forRuleSet, files)) AddTick(file, IsTicked(forRuleSet, file, files));
+        choices = Choices(forRuleSet, files);
         TypedFile.Text = "";
+        Search.Text = "";
+        ShowChoices();
         ShowWhatIsUsed();
         Visibility = Visibility.Visible;
+        DialogFit.Keep(Box, Backdrop, Widest);
         Dispatcher.BeginInvoke(() => ByNameSwitch.Focus());
     }
 
     /// <summary>
-    /// The files to choose from, in name order: those on the Files tab, each by its name (with its nearest folder when
-    /// another listed file has the same name, so the two can be told apart), and those the rule set lists already.
+    /// The files to choose from, in name order, each ticked when the rule set applies to it now: those on the Files tab,
+    /// each by its name (with its nearest folder when another listed file has the same name, so the two can be told
+    /// apart), and those the rule set lists already. Each file is looked at once: comparing every file with every other
+    /// one took seconds with thousands of files.
     /// </summary>
-    private static List<string> Choices(ModPreset ruleSet, IReadOnlyList<FileEntry> files)
+    private static List<FileChoice> Choices(ModPreset ruleSet, IReadOnlyList<FileEntry> files)
     {
-        var choices = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (FileEntry file in files) choices.Add(ChoiceFor(file, files));
-        foreach (string listed in ruleSet.AppliesTo ?? []) choices.Add(listed);
-        return [.. choices];
+        // the folders each file name is found in: a name in more than one is shared
+        var foldersOfName = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (FileEntry file in files)
+        {
+            if (!foldersOfName.TryGetValue(file.Name, out HashSet<string>? folders)) foldersOfName[file.Name] = folders = new(StringComparer.Ordinal);
+            folders.Add(file.Folder);
+        }
+        var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var ticked = new HashSet<string>(StringComparer.Ordinal);
+        var byName = new ModPreset { Name = ruleSet.Name };
+        foreach (FileEntry file in files)
+        {
+            string choice = ChoiceFor(file, foldersOfName[file.Name].Count > 1);
+            names.Add(choice);
+            if (ruleSet.AppliesTo is null && RuleSetFiles.For(file.Name, file.Folder, [byName], byName: true).Count > 0) ticked.Add(choice);
+        }
+        foreach (string listed in ruleSet.AppliesTo ?? [])
+        {
+            names.Add(listed);
+            ticked.Add(listed);
+        }
+        return [.. names.Select(name => new FileChoice(name, ticked.Contains(name)))];
     }
 
     /// <summary>How a file on the Files tab is listed: "Ammunition.ndf", or "Strategic/GDConstants.ndf" when two listed files share the name.</summary>
-    private static string ChoiceFor(FileEntry file, IReadOnlyList<FileEntry> files)
+    private static string ChoiceFor(FileEntry file, bool nameIsShared)
     {
-        bool nameIsShared = files.Any(other => other.Name == file.Name && other.Folder != file.Folder);
         string nearestFolder = file.Folder[(file.Folder.LastIndexOf('/') + 1)..];
         return nameIsShared && nearestFolder != "" ? nearestFolder + "/" + file.Name : file.Name;
     }
 
-    /// <summary>Whether a choice starts ticked: the rule set lists it, or applies to it now by its name.</summary>
-    private static bool IsTicked(ModPreset ruleSet, string choice, IReadOnlyList<FileEntry> files)
+    /// <summary>The files the search finds (all of them with no search), or what the list says when it has none.</summary>
+    private void ShowChoices()
     {
-        if (ruleSet.AppliesTo is List<string> listed) return listed.Contains(choice, StringComparer.Ordinal);
-        var byName = new ModPreset { Name = ruleSet.Name };
-        return files.Any(file => ChoiceFor(file, files) == choice
-            && RuleSetFiles.For(file.Name, file.Folder, [byName], byName: true).Count > 0);
+        string search = Search.Text.Trim();
+        List<FileChoice> shown = search == "" ? choices : [.. choices.Where(choice => choice.Name.Contains(search, StringComparison.OrdinalIgnoreCase))];
+        FileTicks.ItemsSource = shown;
+        NoFiles.Text = choices.Count == 0 ? Texts.Get("Rules.AppliesTo.NoFiles") : Texts.Get("Rules.AppliesTo.NoMatch");
+        NoFiles.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void AddTick(string file, bool ticked)
-    {
-        var tick = new CheckBox { Style = (Style)FindResource("Tick"), Content = file, IsChecked = ticked, Margin = new Thickness(0, 2, 0, 2) };
-        tick.SetResourceReference(FontFamilyProperty, "mono");
-        FileTicks.Children.Add(tick);
-    }
+    private void SearchChanged(object sender, TextChangedEventArgs e) => ShowChoices();
 
     /// <summary>With "From its name" on, the list is only a reminder of what the name gives: it can't be changed.</summary>
     private void ShowWhatIsUsed()
@@ -98,15 +147,20 @@ public partial class AppliesToWindow : UserControl
 
     private void ByNameClicked(object sender, RoutedEventArgs e) => ShowWhatIsUsed();
 
-    /// <summary>"Add": a file typed in, ticked, such as one not on the Files tab yet.</summary>
+    /// <summary>"Add": a file typed in, ticked, such as one not on the Files tab yet; the search goes, so it shows.</summary>
     private void AddClicked(object sender, RoutedEventArgs e)
     {
         string file = TypedFile.Text.Trim().Replace('\\', '/').Trim('/');
         if (file == "") return;
-        CheckBox? listed = FileTicks.Children.OfType<CheckBox>().FirstOrDefault(tick => (string)tick.Content == file);
-        if (listed is not null) listed.IsChecked = true;
-        else AddTick(file, ticked: true);
+        if (choices.FirstOrDefault(choice => choice.Name == file) is FileChoice listed) listed.IsTicked = true;
+        else
+        {
+            choices.Add(new FileChoice(file, isTicked: true));
+            choices.Sort((a, b) => StringComparer.OrdinalIgnoreCase.Compare(a.Name, b.Name));
+        }
         TypedFile.Text = "";
+        Search.Text = "";
+        ShowChoices();
     }
 
     private void TypedFileKeyDown(object sender, KeyEventArgs e)
@@ -118,9 +172,7 @@ public partial class AppliesToWindow : UserControl
 
     private void DoneClicked(object sender, RoutedEventArgs e)
     {
-        List<string>? files = ByNameSwitch.IsChecked == true
-            ? null
-            : [.. FileTicks.Children.OfType<CheckBox>().Where(tick => tick.IsChecked == true).Select(tick => (string)tick.Content)];
+        List<string>? files = ByNameSwitch.IsChecked == true ? null : [.. choices.Where(choice => choice.IsTicked).Select(choice => choice.Name)];
         Action<List<string>?>? whenDone = done;
         Close();
         whenDone?.Invoke(files);
@@ -130,15 +182,20 @@ public partial class AppliesToWindow : UserControl
     {
         Visibility = Visibility.Collapsed;
         done = null;
+        // the list's lines go with the window: thousands of them need not be kept while it is closed
+        FileTicks.ItemsSource = null;
+        choices = [];
     }
 
     private void CloseClicked(object sender, RoutedEventArgs e) => Close();
 
+    /// <summary>Escape empties the search first, as the Settings and Help searches do; then it closes the window.</summary>
     private void KeyPressed(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape) return;
         e.Handled = true;
-        Close();
+        if (Search.IsKeyboardFocused && Search.Text != "") Search.Text = "";
+        else Close();
     }
 
     private void BackdropPressed(object sender, MouseButtonEventArgs e)

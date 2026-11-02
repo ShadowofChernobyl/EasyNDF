@@ -7,7 +7,8 @@ namespace EasyNdf.App.Weapons;
 /// A weapon picture as the Armory draws it (<see cref="WeaponPicture"/>), made pixel by pixel: the game's shape (its
 /// pixels' opacity) enlarged by a whole number, each of its pixels a square of the screen's, so its edges stay sharp;
 /// filled with the theme's weapon picture colour, which darkens a little towards the bottom; with a shadow one pixel
-/// below and to the right in the frame's colour, darkened. The pictures drawn are kept, as a list's cards are drawn
+/// below and to the right in the frame's colour, darkened. A picture in colour (Steel Division 2's) keeps its own
+/// colours, with the same shadow. The pictures drawn are kept, as a list's cards are drawn
 /// again and again while it scrolls.
 /// </summary>
 public static class WeaponArt
@@ -18,10 +19,13 @@ public static class WeaponArt
     /// <summary>The most pictures kept; past it they are all let go of, and made again as they are shown.</summary>
     private const int MostKept = 600;
 
-    private static readonly Dictionary<(BitmapSource Picture, int Scale, Color Art, Color Frame), BitmapSource> Kept = [];
+    private static readonly Dictionary<(BitmapSource Picture, int Scale, Color? Art, Color Frame), BitmapSource> Kept = [];
 
-    /// <summary>A picture drawn at a scale (1 for its own size) in a colour, for a frame of a colour.</summary>
-    public static BitmapSource Drawn(BitmapSource picture, int scale, Color art, Color frame)
+    /// <summary>
+    /// A picture drawn at a scale (1 for its own size) in a colour, for a frame of a colour; in its own colours when
+    /// <paramref name="art"/> is null.
+    /// </summary>
+    public static BitmapSource Drawn(BitmapSource picture, int scale, Color? art, Color frame)
     {
         if (Kept.TryGetValue((picture, scale, art, frame), out BitmapSource? kept)) return kept;
         if (Kept.Count >= MostKept) Kept.Clear();
@@ -30,7 +34,7 @@ public static class WeaponArt
         return drawn;
     }
 
-    private static BitmapSource Draw(BitmapSource picture, int scale, Color art, Color frame)
+    private static BitmapSource Draw(BitmapSource picture, int scale, Color? art, Color frame)
     {
         // the picture's opacity, a byte a pixel
         var bgra = new FormatConvertedBitmap(picture, PixelFormats.Bgra32, null, 0);
@@ -44,10 +48,12 @@ public static class WeaponArt
         Color shadow = Mix(frame, Colors.Black, 0.5);
         for (int y = 0; y < drawnHeight; y++)
         {
-            Color fill = Mix(art, frame, Shading * y / drawnHeight);
+            Color fill = art is Color one ? Mix(one, frame, Shading * y / drawnHeight) : default;
             for (int x = 0; x < drawnWidth; x++)
             {
-                byte shape = OpacityAt(source, width, height, x / scale, y / scale, x < width * scale && y < height * scale);
+                bool inside = x < width * scale && y < height * scale;
+                byte shape = OpacityAt(source, width, height, x / scale, y / scale, inside);
+                if (art is null && shape > 0) fill = ColourAt(source, width, x / scale, y / scale);
                 byte shade = x >= 1 && y >= 1 ? OpacityAt(source, width, height, (x - 1) / scale, (y - 1) / scale, true) : (byte)0;
                 Put(drawn, (y * drawnWidth + x) * 4, fill, shape, shadow, shade);
             }
@@ -60,6 +66,13 @@ public static class WeaponArt
     /// <summary>The picture's opacity at a pixel; none outside it.</summary>
     private static byte OpacityAt(byte[] source, int width, int height, int x, int y, bool inside) =>
         inside && x < width && y < height ? source[(y * width + x) * 4 + 3] : (byte)0;
+
+    /// <summary>The picture's own colour at a pixel inside it.</summary>
+    private static Color ColourAt(byte[] source, int width, int x, int y)
+    {
+        int at = (y * width + x) * 4;
+        return Color.FromRgb(source[at + 2], source[at + 1], source[at]);
+    }
 
     /// <summary>A pixel: the shape's colour over its shadow, each as opaque as the picture is there.</summary>
     private static void Put(byte[] drawn, int at, Color fill, byte shape, Color shadow, byte shade)

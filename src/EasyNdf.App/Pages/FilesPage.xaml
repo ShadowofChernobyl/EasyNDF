@@ -19,6 +19,12 @@
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                     <Setter Property="Background" Value="{DynamicResource sel}" />
                 </DataTrigger>
+                <!-- the row the arrow keys are on, outlined while the list has the keyboard -->
+                <DataTrigger Binding="{Binding IsKeyRow}" Value="True">
+                    <Setter Property="TopLeft" Value="{DynamicResource accent}" />
+                    <Setter Property="BottomRight" Value="{DynamicResource accent}" />
+                    <Setter Property="Edges" Value="1" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
         <!-- td.mono: the file's name in the code font; dim while the file is off -->
@@ -74,9 +80,9 @@
                 <!-- wraps when the window is too narrow for it, as the HTML app's .jobbar .grp does (flex-wrap:wrap) -->
                 <controls:SnappedRow Gap="6" Wrap="True">
                     <!-- bold while the list is empty: then adding files is the thing to do -->
-                    <Button x:Name="AddFilesButton" ToolTip="{t:Text Files.AddFiles.Tip}" Click="AddFilesClicked" Content="{t:Text Files.AddFiles}" Style="{StaticResource GoButton}" IsEnabled="{Binding IsIdle}" />
-                    <Button x:Name="AddFolderButton" ToolTip="{t:Text Files.AddFolder.Tip}" Click="AddFolderClicked" Content="{t:Text Files.AddFolder}" IsEnabled="{Binding IsIdle}" />
-                    <Button x:Name="SelectAllButton" ToolTip="{t:Text Files.SelectAll.Tip}" Click="SelectAllClicked" Content="{t:Text Files.SelectAll}" IsEnabled="{Binding IsIdle}" />
+                    <Button x:Name="AddFilesButton" ToolTip="{t:Text Files.AddFiles.Tip}" Click="AddFilesClicked" Content="{t:Text Files.AddFiles}" Style="{StaticResource GoButton}" IsEnabled="{Binding IsIdle}" controls:OffReason.Text="{t:Text Files.Off.Busy}" />
+                    <Button x:Name="AddFolderButton" ToolTip="{t:Text Files.AddFolder.Tip}" Click="AddFolderClicked" Content="{t:Text Files.AddFolder}" IsEnabled="{Binding IsIdle}" controls:OffReason.Text="{t:Text Files.Off.Busy}" />
+                    <Button x:Name="SelectAllButton" ToolTip="{t:Text Files.SelectAll.Tip}" Click="SelectAllClicked" Content="{t:Text Files.SelectAll}" IsEnabled="{Binding IsIdle}" controls:OffReason.Text="{t:Text Files.Off.Busy}" />
                     <controls:Bevel Style="{StaticResource BarSeparator}" />
                     <Button x:Name="ExportFolderButton" ToolTip="{t:Text Files.ExportFolder.Tip}" Content="{t:Text Files.ExportFolder}" Click="ExportFolderClicked" IsEnabled="{Binding CanChangeSelected}" />
                     <Button x:Name="RemoveButton" ToolTip="{t:Text Files.Remove.Tip}" Click="RemoveClicked" Content="{t:Text Files.Remove}" IsEnabled="{Binding CanChangeSelected}" />
@@ -87,12 +93,12 @@
                 <controls:SnappedRow Gap="6">
                     <!-- shown once a run finds values more than one mod changes -->
                     <Button x:Name="ConflictsButton" ToolTip="{t:Text Files.Conflicts.Tip}" Click="ConflictsClicked" Visibility="Collapsed" Foreground="{DynamicResource caution}" />
-                    <Button x:Name="PreviewButton" ToolTip="{t:Text Files.Preview.Tip}" Content="{t:Text Files.Preview}" Click="PreviewClicked" IsEnabled="{Binding IsIdle}" />
+                    <Button x:Name="PreviewButton" ToolTip="{t:Text Files.Preview.Tip}" Content="{t:Text Files.Preview}" Click="PreviewClicked" IsEnabled="{Binding IsIdle}" controls:OffReason.Text="{t:Text Files.Off.Busy}" />
                     <!-- the main action once there are files; while the list is empty, Add files is -->
-                    <Button x:Name="RunButton" ToolTip="{t:Text Files.Run.Tip}" Content="{t:Text Files.RunExport}" Click="RunClicked" IsEnabled="{Binding IsIdle}" />
+                    <Button x:Name="RunButton" ToolTip="{t:Text Files.Run.Tip}" Content="{t:Text Files.RunExport}" Click="RunClicked" IsEnabled="{Binding IsIdle}" controls:OffReason.Text="{t:Text Files.Off.Busy}" />
                     <!-- the HTML app's Download: here the files are already in their folders, so this packs them into one .zip -->
                     <Button x:Name="SaveZipButton" ToolTip="{t:Text Files.SaveZip.Tip}" Content="{t:Text Files.SaveAsZip}" Click="SaveZipClicked" IsEnabled="{Binding CanSaveZip}" />
-                    <Button Style="{StaticResource HelpButton}" VerticalAlignment="Center" controls:QuickHelp.Page="tab-files" />
+                    <Button Style="{StaticResource HelpButton}" controls:QuickHelp.Page="tab-files" AutomationProperties.Name="{t:Text Files.Help.Name}" />
                 </controls:SnappedRow>
             </controls:FlexRow>
 
@@ -100,7 +106,8 @@
             <controls:FlexRow Gap="6" LineGap="6" Margin="0,0,0,8">
                 <TextBox x:Name="SearchBox" ToolTip="{t:Text Files.SearchBox.Tip}" Width="320" Tag="{t:Text Files.SearchBox.Hint}" TextChanged="SearchChanged" />
                 <!-- in the order of the ShowOnly choices in EasyNdf.Data/FileList/FileListView.cs -->
-                <ComboBox x:Name="ShowOnlyChoice" ToolTip="{t:Text Files.ShowOnlyChoice.Tip}" Width="176" SelectedIndex="0" SelectionChanged="ShowOnlyChanged">
+                <!-- as wide as its longest choice, in any language (see SizeShowOnly) -->
+                <ComboBox x:Name="ShowOnlyChoice" ToolTip="{t:Text Files.ShowOnlyChoice.Tip}" SelectedIndex="0" SelectionChanged="ShowOnlyChanged">
                     <ComboBoxItem Content="{t:Text Files.AllFiles}" />
                     <ComboBoxItem Content="{t:Text Files.HasAPreset}" />
                     <ComboBoxItem Content="{t:Text Files.NoPreset}" />
@@ -119,7 +126,7 @@
                         <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                                         Padding="10,8" MinWidth="192" TextElement.FontFamily="{DynamicResource ui-font}" TextElement.FontSize="12.5"
                                         TextBlock.LineHeight="18.125" TextBlock.LineStackingStrategy="BlockLineHeight" TextOptions.TextFormattingMode="Ideal"
-                                        UseLayoutRounding="False">
+                                        UseLayoutRounding="False" KeyboardNavigation.TabNavigation="Cycle" PreviewKeyDown="ColumnsPopupKeyDown">
                             <StackPanel x:Name="ColumnChoices" />
                         </controls:Bevel>
                     </Popup>
@@ -173,7 +180,10 @@
                               The rows, of which only those in view are made, so a list of a thousand files stays quick. The headings
                               sit above them in the list's scrolling frame (Styles/Controls.xaml, ListScroller), set in FilesPage.xaml.cs.
                             -->
-                            <ItemsControl x:Name="Rows" ItemsSource="{Binding ListItems}" Focusable="False"
+                            <!-- it takes the keyboard (see FilesPage.Keys.cs): the arrow keys move along the rows, its own outline is the row's -->
+                            <ItemsControl x:Name="Rows" ItemsSource="{Binding ListItems}" Focusable="True" FocusVisualStyle="{x:Null}"
+                                          AutomationProperties.Name="{t:Text Files.FileList}"
+                                          KeyDown="RowsKeyDown" GotKeyboardFocus="RowsFocusChanged" LostKeyboardFocus="RowsFocusChanged"
                                           VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True">
                                 <ItemsControl.Template>
                                     <ControlTemplate TargetType="ItemsControl">
@@ -207,13 +217,15 @@
                                                 <CheckBox Grid.Column="0" Style="{StaticResource Tick}" Margin="7,8,7,3" HorizontalAlignment="Left" VerticalAlignment="Center"
                                                           IsChecked="{Binding AllOn, Mode=OneWay}" Click="FolderOnClicked"
                                                           ToolTip="{t:Text Files.SwitchEveryFileIn.Tip}" />
-                                                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="7,3" VerticalAlignment="Center">
-                                                    <Button Style="{StaticResource IconButton}" Content="{Binding Arrow}" Click="FolderToggleClicked" ToolTip="{t:Text Files.CollapseOrExpandThis.Tip}" />
+                                                <!-- the count is placed before the path, so a long path is the one cut short and the count stays in sight -->
+                                                <DockPanel Grid.Column="1" Margin="7,3" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                                    <Button DockPanel.Dock="Left" Style="{StaticResource IconButton}" Content="{Binding Arrow}" Click="FolderToggleClicked" ToolTip="{t:Text Files.CollapseOrExpandThis.Tip}"
+                                                            AutomationProperties.Name="{t:Text Files.CollapseOrExpandThis.Tip}" />
                                                     <!-- a space, then the path in the code font, then the count, dim, 8 pixels on -->
-                                                    <TextBlock Text=" " />
-                                                    <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource mono}" FontSize="12" VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding CountText}" Foreground="{DynamicResource muted}" Margin="8,0,0,0" VerticalAlignment="Center" />
-                                                </StackPanel>
+                                                    <TextBlock DockPanel.Dock="Left" Text=" " />
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" Foreground="{DynamicResource muted}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Label}" FontFamily="{DynamicResource mono}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                </DockPanel>
                                             </Grid>
                                         </controls:Bevel>
                                     </DataTemplate>
@@ -242,17 +254,21 @@
                                     </Style.Triggers>
                                 </Style>
                             </Grid.Style>
+                            <!-- 456 pixels wide where there is room; narrower, it shrinks and its note wraps; too low, it scrolls -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                             <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
-                                            Padding="18,14" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="420">
+                                            Padding="18,14" Margin="8" MaxWidth="456" VerticalAlignment="Center">
                                 <StackPanel>
                                     <DockPanel>
                                         <TextBlock DockPanel.Dock="Right" Text="{Binding RunCount}" FontSize="12" Foreground="{DynamicResource muted}" VerticalAlignment="Bottom" Margin="16,0,0,1" />
-                                        <TextBlock Text="{Binding RunTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" />
+                                        <TextBlock Text="{Binding RunTitle}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" TextTrimming="CharacterEllipsis" />
                                     </DockPanel>
-                                    <TextBlock Text="{Binding RunDoing}" FontSize="11.5" Foreground="{DynamicResource muted}" TextTrimming="CharacterEllipsis" MaxWidth="420"
+                                    <TextBlock Text="{Binding RunDoing}" FontSize="11.5" Foreground="{DynamicResource muted}" TextTrimming="CharacterEllipsis"
                                                HorizontalAlignment="Left" Margin="0,2,0,10" />
-                                    <!-- the Armory's bar, filling block by block, always the same size -->
-                                    <controls:BlockBar Fraction="{Binding RunFraction}" />
+                                    <!-- the Armory's bar, filling block by block, always the same size, but made smaller to fit a narrow card -->
+                                    <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
+                                        <controls:BlockBar Fraction="{Binding RunFraction}" />
+                                    </Viewbox>
                                     <DockPanel Margin="0,12,0,0">
                                         <Button x:Name="CancelRunButton" DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" ToolTip="{t:Text Files.Run.Cancel.Tip}"
                                                 Click="CancelRunClicked" Margin="10,0,0,0" VerticalAlignment="Center">
@@ -266,10 +282,11 @@
                                                 </Style>
                                             </Button.Style>
                                         </Button>
-                                        <TextBlock Text="{Binding RunNote}" FontSize="11.5" Foreground="{DynamicResource muted}" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="320" HorizontalAlignment="Left" />
+                                        <TextBlock Text="{Binding RunNote}" FontSize="11.5" Foreground="{DynamicResource muted}" VerticalAlignment="Center" TextWrapping="Wrap" HorizontalAlignment="Left" />
                                     </DockPanel>
                                 </StackPanel>
                             </controls:Bevel>
+                            </ScrollViewer>
                         </Grid>
                     </Grid>
                 </DockPanel>

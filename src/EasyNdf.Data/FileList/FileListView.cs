@@ -112,7 +112,9 @@ public static class FileListView
     /// <param name="ascending">False to reverse the order.</param>
     public static List<FileEntry> Sorted(IReadOnlyList<FileEntry> rows, FileColumn column, bool ascending)
     {
-        var withKeys = rows.Select((row, index) => (row, index, key: SortKey(row, column))).ToList();
+        // asked for once for the whole sort (see ArmoryKeys)
+        Func<FileEntry, string> armoryKey = column == FileColumn.Armory ? ArmoryKeys() : _ => "";
+        var withKeys = rows.Select((row, index) => (row, index, key: SortKey(row, column, armoryKey))).ToList();
         withKeys.Sort((a, b) =>
         {
             if ((a.key is null) != (b.key is null)) return a.key is null ? 1 : -1;
@@ -124,13 +126,26 @@ public static class FileListView
     }
 
     /// <summary>
-    /// What a file is sorted by in the Armory column: the Armory parts with changes for it, by file name, such as "DU";
-    /// empty for none. The Armory is the app's, which sets this.
+    /// The rows that pass "Show only" and the search box (<see cref="Shows"/>), in the order the list shows them
+    /// (<see cref="Sorted"/>). The rows are picked out first and only those are sorted: the order is the same as sorting
+    /// them all and picking them out after, as rows with the same value keep the order they were added in either way,
+    /// but a column whose values take long to work out (Armory) is worked out only for the rows shown. Sorting all
+    /// 4,000 files by Armory again took most of a second after each letter typed in the search box. Tuned for speed:
+    /// pick out first, then sort. Keep it that way when tidying.
     /// </summary>
-    public static Func<string, string> ArmoryKey { get; set; } = _ => "";
+    public static List<FileEntry> SortedAndShown(IReadOnlyList<FileEntry> rows, FileColumn column, bool ascending, ShowOnly showOnly, string search) =>
+        Sorted([.. rows.Where(row => Shows(row, showOnly, search))], column, ascending);
+
+    /// <summary>
+    /// What a file is sorted by in the Armory column: the Armory parts with changes for it (by the mods of its game), such
+    /// as "DU"; empty for none. The Armory is the app's, which sets this. It is asked for once at the start of each sort,
+    /// and the function it gives is asked for each row, so what all the rows share is worked out once for the sort.
+    /// Tuned for speed: Keep it that way when tidying.
+    /// </summary>
+    public static Func<Func<FileEntry, string>> ArmoryKeys { get; set; } = () => _ => "";
 
     /// <summary>The value a row is sorted by in a column, or null when the row has none.</summary>
-    private static SortValue? SortKey(FileEntry row, FileColumn column) => column switch
+    private static SortValue? SortKey(FileEntry row, FileColumn column, Func<FileEntry, string> armoryKey) => column switch
     {
         FileColumn.On => new SortValue(row.On ? 0 : 1),
         FileColumn.File => new SortValue(row.Name.ToLowerInvariant()),
@@ -138,8 +153,8 @@ public static class FileListView
         FileColumn.Lines => row.Lines is int lines ? new SortValue(lines) : null,
         FileColumn.Modified => row.Source is not null && row.Modified is DateTime when ? new SortValue(when.Ticks) : null,
         FileColumn.Mods => row.HasRules ? new SortValue(ModsText(row).ToLowerInvariant()) : null,
-        FileColumn.ExportFolder => row.ExportFolder is not null ? new SortValue(FolderName(row.ExportFolder).ToLowerInvariant()) : null,
-        FileColumn.Armory => ArmoryKey(row.Name) is { Length: > 0 } armory ? new SortValue(armory) : null,
+        FileColumn.ExportFolder => FileFolderOf(row) is string folder ? new SortValue(FolderName(folder).ToLowerInvariant()) : null,
+        FileColumn.Armory => armoryKey(row) is { Length: > 0 } armory ? new SortValue(armory) : null,
         FileColumn.Status => new SortValue(StatusRank(row) + "|" + FileStatus.Of(row).Text.ToLowerInvariant()),
         _ => new SortValue(0),
     };
@@ -164,9 +179,26 @@ public static class FileListView
     /// <summary>The mods that run on a file, in order, as one text: "WARNO Tactical Overhaul › My mod". The Mods column sorts by it.</summary>
     public static string ModsText(FileEntry row) => string.Join(" \u203A ", row.ModsOnFile.Select(mod => mod.Mod));
 
-    /// <summary>The last part of a folder's path: what the Export folder column shows.</summary>
-    public static string FolderName(string folder) =>
-        Path.GetFileName(folder.TrimEnd('\\', '/')) is { Length: > 0 } name ? name : folder;
+    /// <summary>
+    /// The folder a file is exported into: its export folder, with the folders it sat in when it was added from a
+    /// folder ("…\GameData\Generated" and "Gameplay/Gfx"). Null when it has no export folder.
+    /// </summary>
+    public static string? FileFolderOf(FileEntry row) =>
+        row.ExportFolder is null ? null : row.Folder == "" ? row.ExportFolder : Path.Combine([row.ExportFolder, .. row.Folder.Split('/')]);
+
+    /// <summary>
+    /// What the Export folder column and the export's messages show of a folder: in a mod, the mod's folder and the
+    /// last folder ("Test Mod › Decks"); elsewhere, the last folder ("Out"). The row's tip has the whole path.
+    /// </summary>
+    public static string FolderName(string folder)
+    {
+        string[] parts = folder.TrimEnd('\\', '/').Split('\\', '/');
+        // a mod's files sit in its GameData folder, or (Steel Division 2) its CommonData folder beside it
+        int gameData = Array.FindLastIndex(parts, part => part.Equals("GameData", StringComparison.OrdinalIgnoreCase) || part.Equals("CommonData", StringComparison.OrdinalIgnoreCase));
+        if (gameData > 0)
+            return gameData == parts.Length - 1 ? parts[gameData - 1] : parts[gameData - 1] + " › " + parts[^1];
+        return parts[^1] is { Length: > 0 } name && !name.EndsWith(':') ? name : folder;
+    }
 
     /// <summary>A value to sort by: a number or a text. Texts compare by character codes, as the HTML app's do.</summary>
     private sealed record SortValue(IComparable Value) : IComparable<SortValue>

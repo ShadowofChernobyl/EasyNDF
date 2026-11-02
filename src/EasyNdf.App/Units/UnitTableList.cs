@@ -185,6 +185,15 @@ public sealed class UnitTableList : ItemsControl
     /// <summary>The panel the rows sit in, found once its template is in use.</summary>
     private Panel? rowsPanel;
 
+    /// <summary>A unit's row scrolled into view; the list makes only the rows in sight, so a far one is made first.</summary>
+    public void ScrollToUnit(Unit unit)
+    {
+        int at = -1;
+        for (int index = 0; index < UnitsInOrder.Count && at < 0; index++)
+            if (ReferenceEquals(UnitsInOrder[index], unit)) at = index;
+        if (at >= 0 && (rowsPanel ??= ItemsHostIn(this)) is VirtualizingStackPanel panel) panel.BringIndexIntoViewPublic(at);
+    }
+
     /// <summary>The rows made for the units in sight (the list makes only those).</summary>
     private IEnumerable<UnitTableRowView> RowsInSight()
     {

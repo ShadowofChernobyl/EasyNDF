@@ -29,11 +29,16 @@ public static class DivisionCards
     /// <param name="foldClicked">Folds a type away, or brings it back, when its fold button is clicked.</param>
     /// <param name="editing">What the cost buttons, Add Units and the tiles' pop-ups change, saved in the open mod.</param>
     /// <param name="units">The source's units by descriptor, for the tiles' pop-ups to tell the transports' kinds.</param>
+    /// <param name="phase">The phase chosen above the cards, 0 to 2 for A to C, -1 for every phase.</param>
+    /// <param name="phaseChosen">Chooses a phase, -1 for every phase, when one of the phase buttons is clicked.</param>
     public static StackPanel Build(IReadOnlyList<DivisionGroup> groups, string division, Func<string, int> inDivision, GameTitle game,
-        UnitSelection selection, int columns, IReadOnlySet<string> folded, Action<string> foldClicked, IDivisionEditing editing, IReadOnlyDictionary<string, Unit> units)
+        UnitSelection selection, int columns, IReadOnlySet<string> folded, Action<string> foldClicked, IDivisionEditing editing, IReadOnlyDictionary<string, Unit> units,
+        int phase, Action<int> phaseChosen)
     {
         var view = new StackPanel();
         string firstSide = UnitNames.SidesOf(game)[0];
+        // a game whose cards count their units by phase (Steel Division 2) has the phases to choose above the cards
+        if (groups.Any(group => group.Entries.Any(entry => entry.Rule.UnitsPerCardByPhase.Count > 0))) view.Children.Add(PhaseChoice(phase, phaseChosen));
         foreach (DivisionGroup group in groups)
         {
             bool isFolded = folded.Contains(group.Factory);
@@ -47,25 +52,98 @@ public static class DivisionCards
             var tiles = new UniformGrid { Columns = columns, Margin = new Thickness(CardRowView.Gap / 2) };
             foreach (DivisionEntry entry in group.Entries)
             {
-                var tile = new UnitTile(entry.Unit, entry.Unit.Side == firstSide, selection) { Margin = new Thickness(CardRowView.Gap / 2) };
-                tile.ShowCards(Texts.Number(entry.Rule.Cards), DivisionNames.UnitsPerCard(entry.Rule),
-                    Texts.Count("Divisions.Card.Cards.Tip", entry.Rule.Cards),
-                    Texts.Get("Divisions.Card.UnitsPerCard.Tip", ("units", DivisionNames.UnitsPerCard(entry.Rule))));
-                MarkCardsIfChanged(tile, entry.Unit.Descriptor);
-                Unit shownUnit = entry.Unit;
-                tile.ShowTakeOut(Texts.Get("Divisions.Tile.Remove.Tip", ("unit", shownUnit.Name)), () => editing.RemoveUnit(shownUnit));
-                // the game's veterancy marks beside the picture, where the division gives levels
-                if (DivisionNames.UnitsAtEachVeterancy(entry.Rule) is { Count: > 0 } counts)
-                    tile.ShowVeterancy(counts, strip => DivisionUnitPopup.Open(strip, entry.Unit, division, entry.Rule, editing));
-                // under it, the transports' button, for a unit that can ride in one
-                if (entry.Unit.SeatsTaken is not null)
-                    tile.ShowTransports(entry.Rule.Transports.Count > 0, TransportsTip(entry.Rule, units), button =>
-                        DivisionTransportPopup.Open(button, entry.Unit, division, entry.Rule, editing.TransportsFor(entry.Unit), units, unit => unit.Side == firstSide, editing));
-                tiles.Children.Add(tile);
+                DivisionEntry shown = entry;
+                // each tile is made when it comes into view (LazyTile); the grid's first now, which gives every cell its size
+                var place = new LazyTile(entry.Unit, () => Tile(shown, division, units, firstSide, selection, editing, phase)) { Margin = new Thickness(CardRowView.Gap / 2) };
+                if (tiles.Children.Count == 0) place.Make();
+                tiles.Children.Add(place);
             }
             view.Children.Add(tiles);
         }
         return view;
+    }
+
+    /// <summary>A unit's tile in the division: its cards and units per card, its veterancy strip, its transports and its ×.</summary>
+    private static UnitTile Tile(DivisionEntry entry, string division, IReadOnlyDictionary<string, Unit> units, string firstSide, UnitSelection selection,
+        IDivisionEditing editing, int phase)
+    {
+        var tile = new UnitTile(entry.Unit, entry.Unit.Side == firstSide, selection);
+        tile.ShowCards(Texts.Number(entry.Rule.Cards), DivisionNames.UnitsPerCard(entry.Rule),
+            Texts.Count("Divisions.Card.Cards.Tip", entry.Rule.Cards),
+            Texts.Get("Divisions.Card.UnitsPerCard.Tip", ("units", DivisionNames.UnitsPerCard(entry.Rule))));
+        // Steel Division 2's: the units in a card in each phase, in the game's box, and the first phase's letter
+        tile.ShowPhases(entry.Rule.UnitsPerCardByPhase, Texts.Get("Divisions.Card.UnitsPerCard.Tip", ("units", DivisionNames.UnitsPerCard(entry.Rule))), phase);
+        MarkCardsIfChanged(tile, entry.Unit.Descriptor);
+        Unit shownUnit = entry.Unit;
+        tile.ShowTakeOut(Texts.Get("Divisions.Tile.Remove.Tip", ("unit", shownUnit.Name)), () => editing.RemoveUnit(shownUnit));
+        // the game's veterancy marks beside the picture, where the division gives levels
+        if (DivisionNames.UnitsAtEachVeterancy(entry.Rule) is { Count: > 0 } counts)
+            tile.ShowVeterancy(counts, strip => DivisionUnitPopup.Open(strip, entry.Unit, division, entry.Rule, editing), DivisionNames.VeterancyTipsByPhase(entry.Rule));
+        // under it, the transports' button, for a unit that can ride in one
+        if (entry.Unit.SeatsTaken is not null)
+            tile.ShowTransports(entry.Rule.Transports.Count > 0, TransportsTip(entry.Rule, units), button =>
+                DivisionTransportPopup.Open(button, entry.Unit, division, entry.Rule, editing.TransportsFor(entry.Unit), units, unit => unit.Side == firstSide, editing));
+        return tile;
+    }
+
+    /// <summary>
+    /// Makes the tiles of a view made by <see cref="Build"/> that are in sight in its scroller, or about to be (a screen
+    /// above and below), and leaves the others as empty places of the same size.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed: a big division (every unit of both sides, nearly 3,000) took minutes to show, its tiles all
+    /// made at once, and held hundreds of megabytes; only those in sight are made now. Keep it that way when tidying.
+    /// </remarks>
+    public static void MakeTilesInView(StackPanel view, ScrollViewer scroller)
+    {
+        if (!scroller.IsVisible || scroller.ViewportHeight <= 0) return;
+        double reach = scroller.ViewportHeight;
+        var sight = new Rect(0, -reach, scroller.ActualWidth, scroller.ViewportHeight + 2 * reach);
+        foreach (UniformGrid tiles in view.Children.OfType<UniformGrid>())
+        {
+            if (!tiles.IsVisible || !tiles.IsDescendantOf(scroller)) continue;
+            Rect grid = tiles.TransformToAncestor(scroller).TransformBounds(new Rect(tiles.RenderSize));
+            if (!grid.IntersectsWith(sight)) continue;
+            foreach (LazyTile place in tiles.Children.OfType<LazyTile>())
+            {
+                if (place.IsMade) continue;
+                Rect at = place.TransformToAncestor(scroller).TransformBounds(new Rect(place.RenderSize));
+                if (at.IntersectsWith(sight)) place.Make();
+            }
+        }
+    }
+
+    /// <summary>The units of a view's tiles in a grid, in order, made or not.</summary>
+    public static IEnumerable<Unit> UnitsIn(UniformGrid tiles) => tiles.Children.OfType<LazyTile>().Select(place => place.Unit);
+
+    /// <summary>Changes how many tiles sit across a view made by <see cref="Build"/>, its tiles kept.</summary>
+    public static void SetColumns(StackPanel view, int columns)
+    {
+        foreach (UniformGrid tiles in view.Children.OfType<UniformGrid>()) tiles.Columns = columns;
+    }
+
+    /// <summary>
+    /// "Phase: All A B C" above the cards, joined buttons as the sides' are: a phase shows each card's units in that
+    /// phase, and dims the cards that can't be taken in it; All shows every phase's.
+    /// </summary>
+    private static StackPanel PhaseChoice(int phase, Action<int> phaseChosen)
+    {
+        var label = new TextBlock { Text = Texts.Get("Divisions.Phase.Choice"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+        label.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        var line = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(8, 6, 8, 4), Children = { label } };
+        for (int choice = -1; choice <= 2; choice++)
+        {
+            int chosen = choice;
+            var button = new ToggleButton
+            {
+                Content = choice < 0 ? Texts.Get("Divisions.Phase.All") : ((char)('A' + choice)).ToString(), IsChecked = phase == choice,
+                Style = (Style)Application.Current.FindResource("PressedToggle"), Padding = new Thickness(9, 1, 9, 1), Margin = new Thickness(choice < 0 ? 0 : -1, 0, 0, 0),
+                ToolTip = choice < 0 ? Texts.Get("Divisions.Phase.All.Tip") : Texts.Get("Divisions.Phase.One.Tip", ("phase", ((char)('A' + choice)).ToString())),
+            };
+            button.Click += (_, _) => phaseChosen(chosen);
+            line.Children.Add(button);
+        }
+        return line;
     }
 
     /// <summary>The transport button's tooltip: how many transports of each kind the unit has, or that it has none.</summary>
@@ -113,6 +191,7 @@ public static class DivisionCards
             ToolTip = Texts.Get(isFolded ? "Divisions.Heading.Unfold.Tip" : "Divisions.Heading.Fold.Tip"),
         };
         string factory = group.Factory;
+        System.Windows.Automation.AutomationProperties.SetName(fold, (string)fold.ToolTip);
         fold.Click += (_, _) => foldClicked(factory);
         var name = new TextBlock { Text = UnitNames.Factory(group.Factory), FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
         var counts = new TextBlock { Text = Counts(group), Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
@@ -123,6 +202,8 @@ public static class DivisionCards
             Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, ToolTip = Texts.Get("Divisions.Heading.AddUnits.Tip"),
         };
         add.Click += (_, _) => editing.AddUnits(factory);
+        // off, with the reason, for a game whose divisions' units the Armory does not write yet, or a DLC division
+        DivisionDetailsEditor.OffUnless(add, editing, IDivisionEditing.AddingUnits);
         DockPanel.SetDock(fold, Dock.Left);
         DockPanel.SetDock(name, Dock.Left);
         DockPanel.SetDock(add, Dock.Right);

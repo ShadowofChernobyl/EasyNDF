@@ -283,8 +283,8 @@ public partial class GenerationSettingsWindow : UserControl
             return;
         }
         GenerationPreview made = preview(settings);
-        CardsSummary.Text = Texts.Get("Divisions.Battlegroup.Generation.CardsWas", ("cards", made.Cards), ("was", made.WasCards));
-        PointsSummary.Text = Texts.Get("Divisions.Battlegroup.Generation.PointsWas", ("points", made.Points), ("was", made.WasPoints));
+        CardsSummary.Text = Texts.Get("Divisions.Battlegroup.Generation.CardsWas", ("cards", Texts.Number(made.Cards)), ("was", Texts.Number(made.WasCards)));
+        PointsSummary.Text = Texts.Get("Divisions.Battlegroup.Generation.PointsWas", ("points", Texts.Number(made.Points)), ("was", Texts.Number(made.WasPoints)));
         foreach (GenerationChange added in made.Added) Changes.Children.Add(ChangeRow("+", "accent", added, struck: false));
         foreach (GenerationChange dropped in made.Dropped) Changes.Children.Add(ChangeRow("−", "warn", dropped, struck: true));
         if (made.Added.Count == 0 && made.Dropped.Count == 0)
@@ -364,4 +364,14 @@ public partial class GenerationSettingsWindow : UserControl
     }
 
     private void BoxPressed(object sender, MouseButtonEventArgs e) => e.Handled = true;
+
+    /// <summary>
+    /// 820 pixels wide, or 96% of a narrower window; never higher than 96% of the window, the choices scrolling
+    /// between the title and the buttons, which always show.
+    /// </summary>
+    private void BackdropResized(object sender, SizeChangedEventArgs e)
+    {
+        Box.Width = Math.Min(820, (e.NewSize.Width + 20) * 0.96);
+        Box.MaxHeight = e.NewSize.Height * 0.96;
+    }
 }

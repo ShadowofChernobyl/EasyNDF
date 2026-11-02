@@ -22,9 +22,13 @@
             <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" Background="Transparent" Cursor="SizeAll" ToolTip="{t:Text Settings.Colour.DragToMoveThe.Tip}"
                            MouseLeftButtonDown="TitlePressed" MouseMove="TitleDragged" MouseLeftButtonUp="TitleReleased">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Settings.Colour.CancelEscape.Tip}" Click="CancelClicked" />
-                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Settings.Colour.CancelEscape.Tip}" Click="CancelClicked"
+                            AutomationProperties.Name="{t:Text Settings.Colour.CancelEscape.Tip}" />
+                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
                 </DockPanel>
+                <!-- in an app window too small for it, the window scrolls inside rather than being cut off (see PlaceBox) -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Focusable="False">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -35,7 +39,7 @@
                     <!-- left: the basic and custom colours, then OK and Cancel at the bottom -->
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,10,0,0">
-                            <Button Style="{StaticResource GoButton}" Content="OK" MinWidth="72" ToolTip="{t:Text Settings.Colour.KeepThisColorEnter.Tip}" Click="OkClicked" />
+                            <Button Style="{StaticResource GoButton}" Content="{t:Text Common.Ok}" MinWidth="72" ToolTip="{t:Text Settings.Colour.KeepThisColorEnter.Tip}" Click="OkClicked" />
                             <Button Content="{t:Text Settings.Colour.Cancel}" MinWidth="72" Margin="6,0,0,0" ToolTip="{t:Text Settings.Colour.Cancel.Tip}" Click="CancelClicked" />
                         </StackPanel>
                         <StackPanel>
@@ -132,6 +136,7 @@
                         <Button Content="{t:Text Settings.Colour.AddToCustomColors}" Margin="0,8,0,0" HorizontalAlignment="Stretch" ToolTip="{t:Text Settings.Colour.AddToCustomColors.Tip}" Click="AddCustomClicked" />
                     </StackPanel>
                 </Grid>
+                </ScrollViewer>
             </DockPanel>
         </controls:Bevel>
     </Grid>

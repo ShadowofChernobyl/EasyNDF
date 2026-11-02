@@ -70,8 +70,14 @@ public sealed class WeaponChanges
     /// <param name="game">The weapons as the game has them.</param>
     /// <param name="changed">The same weapons read from the files as the mod's rules make them.</param>
     /// <param name="edits">The edits the rules made, to tell which rule changed what.</param>
+    /// <remarks>
+    /// Tuned for speed: the edits are sorted by the weapon they are in once, rather than looked through again for each
+    /// weapon changed (a mod can change hundreds of weapons with tens of thousands of edits). Keep it that way when
+    /// tidying.
+    /// </remarks>
     public static WeaponChanges Between(string modName, IReadOnlyList<Weapon> game, IReadOnlyList<Weapon> changed, IReadOnlyList<RuleEdit> edits)
     {
+        Dictionary<string, List<RuleEdit>> editsByDescriptor = UnitChanges.ByDescriptor(edits);
         var gameWeapons = new Dictionary<string, Weapon>(StringComparer.Ordinal);
         foreach (Weapon weapon in game) gameWeapons.TryAdd(weapon.Descriptor, weapon);
         var found = new Dictionary<string, WeaponChange>(StringComparer.Ordinal);
@@ -84,7 +90,7 @@ public sealed class WeaponChanges
             }
             List<string> fields = FieldsChanged(before, weapon);
             if (fields.Count == 0) continue;
-            List<RuleEdit> inIt = [.. edits.Where(edit => DescriptorOf(edit) == weapon.Descriptor)];
+            List<RuleEdit> inIt = editsByDescriptor.GetValueOrDefault(weapon.Descriptor) ?? [];
             var rules = new Dictionary<string, IReadOnlyList<RuleOfMod>>(StringComparer.Ordinal);
             foreach (string field in fields) rules[field] = RulesThatChanged(modName, field, inIt);
             found[weapon.Descriptor] = new WeaponChange(before, rules);
@@ -136,29 +142,29 @@ public sealed class WeaponChanges
     }
 
     /// <summary>
-    /// The rules that changed a value: of the edits in the weapon's ammunition, those to the property the value is read
+    /// The rules that changed a value: of the edits in the weapon's ammunition, those to a property the value is read
     /// from; all of them when none is.
     /// </summary>
     private static IReadOnlyList<RuleOfMod> RulesThatChanged(string modName, string field, List<RuleEdit> inIt)
     {
-        string? property = PropertyOf(field);
-        List<RuleEdit> toProperty = [.. inIt.Where(edit => property is not null && edit.Target.Contains(property, StringComparison.Ordinal))];
+        List<string> properties = PropertiesOf(field);
+        // a whole step of the target's path: PorteeMaximale is not PorteeMaximaleHA, nor TempsEntreDeuxSalves its _Min
+        List<RuleEdit> toProperty = [.. inIt.Where(edit => edit.Target.Split(ActionApplier.PathSeparator).Any(step => properties.Contains(step.Trim())))];
         return [.. (toProperty.Count > 0 ? toProperty : inIt).Select(edit => edit.Of(modName)).Distinct()];
     }
 
-    /// <summary>The ammunition's property a value is in: "Arme" for the damage level; null for one in no single property.</summary>
-    private static string? PropertyOf(string field)
+    /// <summary>
+    /// The ammunition's properties a value is in, in either game: WARNO's "Arme" for the damage level, and Steel
+    /// Division 2's own where it names it otherwise ("PorteeMaximale" for the range); none for one in no single property.
+    /// </summary>
+    private static List<string> PropertiesOf(string field)
     {
-        if (field == WeaponField.Picture) return "InterfaceWeaponTexture";
-        if (field == WeaponField.Traits) return "TraitsToken";
-        string? target = WeaponStat.Of(field)?.Target ?? (WeaponFileValues.Names.Contains(field) ? field : null);
-        return target?.Split(ActionApplier.PathSeparator)[0];
-    }
-
-    /// <summary>The descriptor an edit is in: "Ammo_X > TDiceHitRollRuleDescriptor" is in Ammo_X.</summary>
-    private static string DescriptorOf(RuleEdit edit)
-    {
-        int inside = edit.Descriptor.IndexOf(" > ", StringComparison.Ordinal);
-        return inside < 0 ? edit.Descriptor : edit.Descriptor[..inside];
+        var properties = new List<string>();
+        string? warno = field == WeaponField.Picture ? "InterfaceWeaponTexture"
+            : field == WeaponField.Traits ? "TraitsToken"
+            : WeaponStat.Of(field)?.Target ?? (WeaponFileValues.Names.Contains(field) ? field : null);
+        if (warno is not null) properties.Add(warno.Split(ActionApplier.PathSeparator)[0]);
+        if (SteelDivisionAmmunition.Of(field) is SteelDivisionAmmunition.Property steelDivision) properties.Add(steelDivision.Name.Split(ActionApplier.PathSeparator)[0]);
+        return properties;
     }
 }

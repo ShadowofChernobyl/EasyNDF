@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -92,20 +93,53 @@ public sealed class ProblemList
         list.Focus();
     }
 
-    /// <summary>Lists the problems: each one's line, dimmed, then what is wrong.</summary>
+    /// <summary>
+    /// Lists the problems: each one's line, dimmed, then what is wrong. Only the rows in sight are drawn, so a file with
+    /// thousands of problems opens the list at once.
+    /// </summary>
     private void FillList()
     {
-        list.Items.Clear();
-        if (problems.Document is null) return;
-        foreach (ProblemMark problem in problems.Problems)
+        if (problems.Document is not { } document)
         {
-            var line = new TextBlock { Text = Texts.Get("Editor.Problems.Line", ("line", problem.Line(problems.Document))), MinWidth = 64 };
-            line.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-            var row = new DockPanel { Tag = problem, ToolTip = Texts.Get("Editor.Problems.GoTo.Tip") };
-            row.Children.Add(line);
-            row.Children.Add(new TextBlock { Text = problem.Message, TextTrimming = TextTrimming.CharacterEllipsis });
-            list.Items.Add(row);
+            list.ItemsSource = null;
+            return;
         }
+        list.ItemsSource = problems.Problems.Select(problem => new ProblemRow(problem, document)).ToList();
+    }
+
+    /// <summary>A row of the list: the problem, its line as shown, and its tooltip, which gives the message in full.</summary>
+    private sealed class ProblemRow(ProblemMark problem, ICSharpCode.AvalonEdit.Document.TextDocument document)
+    {
+        public ProblemMark Problem { get; } = problem;
+
+        /// <summary>"Line 8", worked out only when the row comes into sight.</summary>
+        public string LineText => Texts.Get("Editor.Problems.Line", ("line", Problem.Line(document)));
+
+        public string Message => Problem.Message;
+
+        /// <summary>The message in full, as the row may cut it short, and what a click does.</summary>
+        public string Tip => Texts.Get("Editor.Problems.Row.Tip", ("problem", Message));
+    }
+
+    /// <summary>How a row looks: the line, dimmed, in a column 64 wide, then the message, cut short with "…" if long.</summary>
+    private static DataTemplate RowTemplate()
+    {
+        var row = new FrameworkElementFactory(typeof(DockPanel));
+        row.SetBinding(FrameworkElement.ToolTipProperty, new System.Windows.Data.Binding(nameof(ProblemRow.Tip)));
+        var line = new FrameworkElementFactory(typeof(TextBlock));
+        line.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(ProblemRow.LineText)));
+        line.SetValue(FrameworkElement.MinWidthProperty, 64.0);
+        line.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        var message = new FrameworkElementFactory(typeof(TextBlock));
+        message.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(ProblemRow.Message)));
+        message.SetValue(TextBlock.TextTrimmingProperty, TextTrimming.CharacterEllipsis);
+        // the message's own tooltip is the row's, so the one for cut-short text does not show the bare message instead
+        message.SetBinding(FrameworkElement.ToolTipProperty, new System.Windows.Data.Binding(nameof(ProblemRow.Tip)));
+        row.AppendChild(line);
+        row.AppendChild(message);
+        var template = new DataTemplate { VisualTree = row };
+        template.Seal();
+        return template;
     }
 
     // ---- the list ----
@@ -113,9 +147,10 @@ public sealed class ProblemList
     /// <summary>A raised box with the heading Problems and ×, and the list under them.</summary>
     private Bevel BuildPanel()
     {
-        var title = new TextBlock { Text = Texts.Get("Editor.Problems.Title"), FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
+        var title = new TextBlock { Text = Texts.Get("Editor.Problems.Title"), FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
         title.SetResourceReference(TextBlock.ForegroundProperty, "accent");
         var close = new Button { Content = "×", ToolTip = Texts.Get("Editor.Problems.Close.Tip") };
+        AutomationProperties.SetName(close, Texts.Get("Editor.Problems.Close.Tip"));
         close.SetResourceReference(FrameworkElement.StyleProperty, "IconButton");
         close.Click += (_, _) => Close();
         var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
@@ -124,6 +159,9 @@ public sealed class ProblemList
         heading.Children.Add(title);
 
         list.SetResourceReference(FrameworkElement.StyleProperty, "SuggestionList");
+        list.ItemTemplate = RowTemplate();
+        VirtualizingPanel.SetIsVirtualizing(list, true);
+        VirtualizingPanel.SetVirtualizationMode(list, VirtualizationMode.Recycling);
         list.PreviewMouseLeftButtonUp += (_, e) => GoToRowAt(e);
         list.KeyDown += ListKeyDown;
         var content = new DockPanel();
@@ -138,22 +176,34 @@ public sealed class ProblemList
         panel.HorizontalAlignment = HorizontalAlignment.Left;
         panel.VerticalAlignment = VerticalAlignment.Bottom;
         panel.Margin = new Thickness(6, 0, 0, 4);
+        // 480 wide where there is room; in a narrow or short editor it keeps inside it, and the list scrolls
+        panel.Loaded += (_, _) =>
+        {
+            if (System.Windows.Media.VisualTreeHelper.GetParent(panel) is not FrameworkElement holder) return;
+            void Fit()
+            {
+                panel.MaxWidth = Math.Max(0, holder.ActualWidth - panel.Margin.Left - 6);
+                panel.MaxHeight = Math.Max(0, holder.ActualHeight - panel.Margin.Bottom - 6);
+            }
+            Fit();
+            holder.SizeChanged += (_, _) => Fit();
+        };
         return panel;
     }
 
     /// <summary>Goes to the problem at a place in the list, as a click on it does.</summary>
     internal void GoToRow(int index)
     {
-        if (list.Items[index] is DockPanel { Tag: ProblemMark problem }) problems.Reveal(problem);
+        if (list.Items[index] is ProblemRow row) problems.Reveal(row.Problem);
     }
 
     /// <summary>A click on a problem goes to it in the text; the list stays open.</summary>
     private void GoToRowAt(MouseButtonEventArgs e)
     {
         for (DependencyObject? at = e.OriginalSource as DependencyObject; at is not null && at != list; at = at is System.Windows.Media.Visual ? System.Windows.Media.VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
-            if (at is DockPanel { Tag: ProblemMark problem })
+            if (at is FrameworkElement { DataContext: ProblemRow row })
             {
-                problems.Reveal(problem);
+                problems.Reveal(row.Problem);
                 return;
             }
     }
@@ -166,10 +216,10 @@ public sealed class ProblemList
             e.Handled = true;
             Close();
         }
-        else if (e.Key == Key.Enter && list.SelectedItem is DockPanel { Tag: ProblemMark problem })
+        else if (e.Key == Key.Enter && list.SelectedItem is ProblemRow row)
         {
             e.Handled = true;
-            problems.Reveal(problem);
+            problems.Reveal(row.Problem);
         }
     }
 }

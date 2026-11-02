@@ -2,19 +2,20 @@ using System.IO;
 using System.Text.Json.Nodes;
 using EasyNdf.Data;
 using EasyNdf.Data.FileList;
+using EasyNdf.Data.Game;
 
 namespace EasyNdf.App.Files;
 
 /// <summary>
 /// "Reopen the last files" (the desktop app's own; the browser could not do it): the file list is kept when the app
 /// closes, in session.json (see AppData.Session), and comes back when it starts, with the files that are still where
-/// they were. Each row keeps its On box and its export folder; the mods that run on it are worked out again. A file from a .zip or .rar is read from the archive again.
+/// they were. Each row keeps its On box, its export folder and its game; the mods that run on it are worked out again. A file from a .zip or .rar is read from the archive again.
 /// Text handed over with the File Editor's "Use in file list" is not kept: the file comes back as it is on disk.
 /// </summary>
 public static class FileSession
 {
-    /// <summary>One row as kept: where its file is, its folder and name, and its settings.</summary>
-    public sealed record KeptRow(string Source, string Folder, string Name, bool On, string? ExportFolder);
+    /// <summary>One row as kept: where its file is, its folder and name, its settings, and the game it is for.</summary>
+    public sealed record KeptRow(string Source, string Folder, string Name, bool On, string? ExportFolder, GameTitle Game);
 
     /// <summary>The rows of the file list, as kept.</summary>
     public static JsonArray Keep(IEnumerable<FileEntry> rows)
@@ -30,12 +31,13 @@ public static class FileSession
                 ["name"] = row.Name,
                 ["on"] = row.On,
                 ["exportFolder"] = row.ExportFolder,
+                ["game"] = row.Game.Id,
             });
         }
         return kept;
     }
 
-    /// <summary>The rows kept last time.</summary>
+    /// <summary>The rows kept last time. A row kept before files had a game is WARNO's, as every file was then.</summary>
     public static List<KeptRow> Rows(JsonNode? kept)
     {
         var rows = new List<KeptRow>();
@@ -44,7 +46,8 @@ public static class FileSession
         {
             if (node is not JsonObject row || JsonValues.AsText(row["source"]) is not { Length: > 0 } source) continue;
             rows.Add(new KeptRow(source, JsonValues.AsText(row["folder"]), JsonValues.AsText(row["name"]), row["on"]?.GetValue<bool>() != false,
-                row["exportFolder"] is JsonValue f && f.TryGetValue(out string? folder) ? folder : null));
+                row["exportFolder"] is JsonValue f && f.TryGetValue(out string? folder) ? folder : null,
+                GameTitle.WithId(JsonValues.AsText(row["game"])) ?? GameTitle.Warno));
         }
         return rows;
     }
@@ -63,7 +66,7 @@ public static class FileSession
             int inside = row.Source.IndexOf(" > ", StringComparison.Ordinal);
             if (inside < 0)
             {
-                if (File.Exists(row.Source)) found.Add((new FileToAdd(row.Name, row.Folder, row.Source), row));
+                if (File.Exists(row.Source)) found.Add((new FileToAdd(row.Name, row.Folder, row.Source) { Game = row.Game }, row));
                 continue;
             }
             string archive = row.Source[..inside];
@@ -74,7 +77,7 @@ public static class FileSession
         {
             Dictionary<string, FileToAdd> files = KeptFilesOf(archive, kept);
             foreach (KeptRow row in kept)
-                if (files.TryGetValue(row.Source, out FileToAdd? file)) found.Add((file, row));
+                if (files.TryGetValue(row.Source, out FileToAdd? file)) found.Add((file with { Game = row.Game }, row));
         }
         return found;
     }

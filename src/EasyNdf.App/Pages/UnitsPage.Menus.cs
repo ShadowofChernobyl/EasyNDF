@@ -121,7 +121,7 @@ public partial class UnitsPage : IUnitActions
     /// </summary>
     private MenuChoice? CopyForUnitChoice(Unit unit, UnitWeapon carried)
     {
-        if (unit.WeaponSet is not string loadout || !CanChangeWeapons()) return null;
+        if (unit.WeaponSet is not string loadout || WhyWeaponsCannotBeAdded is not null) return null;
         if (loaded?.Catalog.Weapons?.FirstOrDefault(each => each.Descriptor == carried.Ammunition) is not Weapon weapon) return null;
         IReadOnlyList<Unit> sharing = UnitsSharingLoadout(unit);
         string tip = sharing.Count == 0
@@ -145,6 +145,12 @@ public partial class UnitsPage : IUnitActions
     /// <summary>A file on the Files tab with this name that has been read; null when there is none.</summary>
     private FileEntry? LoadedFile(string file) =>
         MainView.Find(this)?.FilesTab.Model.Entries.FirstOrDefault(entry => entry.Source is not null && string.Equals(entry.Name, file, StringComparison.OrdinalIgnoreCase));
+
+    /// <inheritdoc/>
+    public bool CanShowInEditor(string file) => LoadedFile(file) is not null;
+
+    /// <inheritdoc/>
+    public void ShowInEditor(string descriptor, string file) => ShowInEditor(LoadedFile(file), descriptor);
 
     private void ShowInEditor(FileEntry? entry, string descriptor)
     {

@@ -96,8 +96,31 @@ public sealed class CellText : Decorator
             Show(TextFor(arrangeSize.Width));
             Shown.Measure(arrangeSize);
         }
+        ShowWholeTextTip();
         Shown.Arrange(new Rect(arrangeSize));
         return arrangeSize;
+    }
+
+    /// <summary>Whether the cell's tooltip is the whole text this class gave it, which goes again once the text fits.</summary>
+    private bool tipGiven;
+
+    /// <summary>
+    /// A cut text gives its whole value as the cell's tooltip, so a long value can still be read; the tooltip goes
+    /// when it fits. A tooltip the cell was given by others is left alone.
+    /// </summary>
+    private void ShowWholeTextTip()
+    {
+        bool cut = Shown.Text != Text;
+        if (cut && (tipGiven || ToolTip is null))
+        {
+            if (!Equals(ToolTip, Text)) ToolTip = Text;
+            tipGiven = true;
+        }
+        else if (!cut && tipGiven)
+        {
+            ClearValue(ToolTipProperty);
+            tipGiven = false;
+        }
     }
 
     /// <summary>Gives the text block a text, only when it is a different one, so nothing is laid out again for nothing.</summary>

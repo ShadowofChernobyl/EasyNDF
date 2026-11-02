@@ -16,11 +16,30 @@ public interface IDivisionEditing
     /// <summary>The division types a division can be of: the game's, by key ("ARMORED").</summary>
     IReadOnlyList<string> Types { get; }
 
+    /// <summary>
+    /// The income choices the game's multiplayer divisions (tagged DEFAULT) use: Steel Division 2's DivisionEconomy lists,
+    /// by name, not the many of its historical battles. None in WARNO.
+    /// </summary>
+    IReadOnlyList<string> Economies => [];
+
     /// <summary>Renames the division. Returns whether it was saved: a change can be refused (a file it needs is missing).</summary>
     bool Rename(string name);
 
     /// <summary>Changes the division's details, as <paramref name="change"/> sets them. Returns whether it was saved.</summary>
     bool ChangeDetails(Action<ModDivision> change);
+
+    /// <summary>
+    /// Why one of the division's details (<see cref="DivisionDetail"/>) cannot be changed, for the control that changes
+    /// it to say while it is switched off; null when it can. Some games' divisions lack a detail, or keep it in a way
+    /// the Armory does not write yet.
+    /// </summary>
+    string? WhyDetailCannotChange(string detail) => null;
+
+    /// <summary>For <see cref="WhyDetailCannotChange"/>: units put in the division, which a DLC division of Steel Division 2 cannot take.</summary>
+    const string AddingUnits = "AddingUnits";
+
+    /// <summary>The name of the source's game, for a control switched off to say which game it cannot change yet.</summary>
+    string GameName => "";
 
     /// <summary>"Game's…": the game's emblems to choose one from, under <paramref name="button"/>.</summary>
     void ChooseGameEmblem(FrameworkElement button);

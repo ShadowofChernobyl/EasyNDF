@@ -462,7 +462,7 @@ public partial class SettingsPage : UserControl
     /// </summary>
     private async void ClearClicked(object sender, RoutedEventArgs e)
     {
-        if (!await View.Messages.Confirm(Texts.Get("Settings.Clear.Ask"), Texts.Get("Common.Ok"))) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Clear.Ask"), Texts.Get("Settings.Clear.Confirm"))) return;
         try { AppData.Current.ClearAll(); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {

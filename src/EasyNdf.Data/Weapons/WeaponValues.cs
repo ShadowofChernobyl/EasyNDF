@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using EasyNdf.Data.Game;
 
 namespace EasyNdf.Data.Weapons;
 
@@ -19,10 +20,13 @@ public abstract class WeaponValues
     /// Gives a value, by its field (<see cref="WeaponField"/>), or takes it back with null. Those the game writes as
     /// whole numbers are rounded to one; a field that cannot be changed is not taken.
     /// </summary>
-    public void Give(string field, double? value)
+    /// <param name="field">The value's field.</param>
+    /// <param name="value">The value, as the Armory shows it; null to take it back.</param>
+    /// <param name="game">The game of the weapon, which says what is whole (<see cref="WeaponStat.IsWholeIn"/>); null for WARNO.</param>
+    public void Give(string field, double? value, GameTitle? game = null)
     {
         if (WeaponStat.Of(field) is not WeaponStat stat) return;
-        if (value is double number) given[field] = stat.IsWhole ? Math.Round(number) : number;
+        if (value is double number) given[field] = stat.IsWholeIn(game) ? Math.Round(number) : number;
         else given.Remove(field);
     }
 
@@ -107,14 +111,17 @@ public abstract class WeaponValues
         }
     }
 
-    /// <summary>Reads the values of an entry of the mod file; a field it does not know is left out.</summary>
+    /// <summary>
+    /// Reads the values of an entry of the mod file; a field it does not know is left out. The values are taken as the
+    /// file keeps them, already rounded for their game when given (a Steel Division 2 distance can have decimals).
+    /// </summary>
     protected void ReadValues(JsonObject json)
     {
         if (JsonValues.AsText(json["Picture"]) is string picture && picture != "") Picture = picture;
         if (json["Traits"] is JsonArray traits) Traits = [.. traits.Select(JsonValues.AsText).Where(token => token != "")];
         if (json["Values"] is JsonObject values)
             foreach ((string field, JsonNode? node) in values)
-                if (node is JsonValue value && value.TryGetValue(out double number)) Give(field, number);
+                if (WeaponStat.Of(field) is not null && node is JsonValue value && value.TryGetValue(out double number)) given[field] = number;
         if (json["Choices"] is JsonObject choices)
             foreach ((string field, JsonNode? node) in choices)
                 if (JsonValues.AsText(node) is string written && written != "") Choose(field, written);

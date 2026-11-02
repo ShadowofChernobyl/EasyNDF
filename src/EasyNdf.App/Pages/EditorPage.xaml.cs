@@ -178,6 +178,7 @@ public partial class EditorPage : UserControl
         Text.TextArea.TextView.ElementGenerators.Add(lineHeight);
         lineHeight.KeepGuessesRight(Text.TextArea.TextView);
         Text.TextArea.TextView.BackgroundRenderers.Add(shading);
+        Text.TextArea.TextView.BackgroundRenderers.Add(shading.Outline);
         Text.TextArea.TextView.BackgroundRenderers.Add(new IndentGuides());
         _ = new AutoPairs(Text.TextArea);
         StartFolding();
@@ -219,12 +220,12 @@ public partial class EditorPage : UserControl
     /// <summary>Keeps which file of the Files tab is open, and its top line, for "Reopen the last file".</summary>
     public void KeepOpenFile()
     {
-        if (shown?.Entry is not FileEntry entry) { AppData.Current.State.Remove("editorFile"); return; }
+        if (OpenFilePlace is not (FileEntry entry, int line)) { AppData.Current.State.Remove("editorFile"); return; }
         AppData.Current.State["editorFile"] = new System.Text.Json.Nodes.JsonObject
         {
             ["name"] = entry.Name,
             ["folder"] = entry.Folder,
-            ["line"] = TopLine,
+            ["line"] = line,
         };
     }
 
@@ -266,7 +267,7 @@ public partial class EditorPage : UserControl
         try
         {
             string text = await Task.Run(() => FileContent.Text(entry));
-            Load(entry.Name, text, entry);
+            await LoadAside(entry.Name, text, entry);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -279,16 +280,46 @@ public partial class EditorPage : UserControl
     /// <summary>Puts a file's text into the editor (the HTML app's <c>edLoad</c>). Line ends are kept to be put back on saving.</summary>
     public void Load(string name, string text, FileEntry? entry)
     {
+        loads++;
+        shown = Prepared(name, text, entry, Thread.CurrentThread);
+        ShowText();
+    }
+
+    /// <summary>
+    /// <see cref="Load"/>, with the text's lines and colours worked out off the screen's thread: for Steel Division 2's
+    /// 117 MB UniteDescriptor.ndf they take two seconds. A file opened meanwhile is the one shown.
+    /// </summary>
+    /// <param name="folds">The blocks to fold, where a file let go of had them (see <see cref="BringBackLetGo"/>); null for none.</param>
+    private async Task LoadAside(string name, string text, FileEntry? entry, List<(int Start, int End)>? folds = null)
+    {
+        int load = ++loads;
+        // a file opened now takes the place of one let go of
+        letGo = null;
+        Thread screen = Thread.CurrentThread;
+        ShownText prepared = await Task.Run(() => Prepared(name, text, entry, screen));
+        if (load != loads) return;
+        if (folds is not null) prepared.Folds = folds;
+        shown = prepared;
+        ShowText();
+    }
+
+    /// <summary>How many texts were put in the editor, so a slow one does not replace one opened after it.</summary>
+    private int loads;
+
+    /// <summary>A text to show, its line ends made "\n", its document handed to <paramref name="owner"/> once made.</summary>
+    private static ShownText Prepared(string name, string text, FileEntry? entry, Thread owner)
+    {
         bool windowsLineEnds = text.Contains("\r\n", StringComparison.Ordinal);
         if (text.Length > 0 && text[0] == '﻿') text = text[1..];
         text = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
         var document = new TextDocument(text);
-        shown = new ShownText
+        var colourizer = new NdfColourizer(document);
+        document.SetOwnerThread(owner);
+        return new ShownText
         {
             Name = name, Entry = entry, HasWindowsLineEnds = windowsLineEnds, Original = text,
-            Document = document, Colourizer = new NdfColourizer(document),
+            Document = document, Colourizer = colourizer,
         };
-        ShowText();
     }
 
     /// <summary>
@@ -313,7 +344,7 @@ public partial class EditorPage : UserControl
     {
         var dialog = new OpenFileDialog { Title = Texts.Get("Editor.OpenFile.Title"), Filter = Texts.Get("Files.NdfFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true || !await MayLeave()) return;
-        try { Load(Path.GetFileName(dialog.FileName), await File.ReadAllTextAsync(dialog.FileName), null); }
+        try { await LoadAside(Path.GetFileName(dialog.FileName), await File.ReadAllTextAsync(dialog.FileName), null); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)));
@@ -338,8 +369,10 @@ public partial class EditorPage : UserControl
     {
         if (shown is not { IsFile: true, IsEdited: true } open) return;
         if (!await Messages.Confirm(Texts.Get("Editor.DiscardAll", ("file", open.Name)), Texts.Get("Editor.Discard"))) return;
-        Load(open.Name, open.Original, open.Entry);
-        shown!.HasWindowsLineEnds = open.HasWindowsLineEnds;
+        await LoadAside(open.Name, open.Original, open.Entry);
+        // another file opened while it was read keeps its own line ends
+        if (shown is null || shown.Name != open.Name || shown.Entry != open.Entry) return;
+        shown.HasWindowsLineEnds = open.HasWindowsLineEnds;
     }
 
     /// <summary>
@@ -390,10 +423,13 @@ public partial class EditorPage : UserControl
         Note.Text = Texts.Get("Editor.Note.UsedInFileList", ("file", open.Name));
     }
 
+    /// <summary>Whether a text is being put in the editor, which is no edit: comparing a large one with its original takes a quarter second.</summary>
+    private bool puttingIn;
+
     /// <summary>The first edit of a file marks it as edited: Discard changes and Use in file list can be used.</summary>
     private void TextEdited(object? sender, EventArgs e)
     {
-        if (shown is not { IsFile: true, IsEdited: false } open) return;
+        if (puttingIn || shown is not { IsFile: true, IsEdited: false } open) return;
         // a text of another length differs: only one as long as the original is compared with it, character for character
         if (Text.Document.TextLength == open.OriginalLength && Text.Text == open.Original) return;
         open.IsEdited = true;
@@ -420,7 +456,9 @@ public partial class EditorPage : UserControl
             Show();
             return;
         }
-        Text.Document = shown.Document;
+        puttingIn = true;
+        try { Text.Document = shown.Document; }
+        finally { puttingIn = false; }
         Text.IsReadOnly = shown.IsExport;
         view.LineTransformers.Add(shown.Colourizer!);
         ChangedLines? changes = shown.Changes;
@@ -467,6 +505,7 @@ public partial class EditorPage : UserControl
     {
         Show();
         _ = RebuildTree();
+        _ = BringBackLetGo();
     }
 
     /// <summary>
@@ -501,11 +540,14 @@ public partial class EditorPage : UserControl
             options.Add(new ChoiceOption(entry.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), entry.Name, folder != "" ? PropertyScans.FolderTag(folder) : ""));
         }
         showingPick = true;
-        FilePick.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
         FilePick.ItemsSource = options;
         string current = shown?.Entry?.Id.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "";
         FilePick.SelectedItem = options.FirstOrDefault(o => o.Value == current) ?? options[0];
         showingPick = false;
+        // a long name is cut short in the dropdown, so its tooltip names the file in full, and where it is
+        FilePick.ToolTip = shown?.Entry is FileEntry open
+            ? Texts.Get("Editor.FilePick.File.Tip", ("file", open.Name), ("path", open.Source ?? open.Name))
+            : Texts.Get("Editor.FilePick.Tip");
     }
 
     /// <summary>
@@ -626,6 +668,21 @@ public partial class EditorPage : UserControl
         else if (!show && Text.IsVisible) Text.TextArea.Focus();
     }
 
+    /// <summary>
+    /// What is selected in the text becomes the text to find, when the text has the keyboard and the selection is on one
+    /// line, as Ctrl+F does in Sublime Text; a selection over several lines is not something to find.
+    /// </summary>
+    private void TakeSelectionToFind()
+    {
+        if (shown is null || !Text.TextArea.IsKeyboardFocusWithin || Text.SelectionLength == 0) return;
+        string selected = Text.SelectedText;
+        if (selected.IndexOfAny(LineBreaks) >= 0) return;
+        FindBox.Text = selected;
+    }
+
+    /// <summary>The characters that end a line, which a text to find cannot hold.</summary>
+    private static readonly char[] LineBreaks = ['\r', '\n'];
+
     /// <summary>Whether the search-all results were showing when the find bar was hidden, to show them again with it.</summary>
     private bool resultsHiddenWithBar;
 
@@ -642,11 +699,15 @@ public partial class EditorPage : UserControl
         shown.PointedAt = null;
         shading.PointedAt = null;
         Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
+        // the pointed line's outline is drawn above the selection, on the caret layer
+        Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Caret);
     }
 
     /// <summary>
-    /// The tab's keys, anywhere on it: Ctrl+F finds, Ctrl+H replaces, Ctrl+G goes to a line, Ctrl+Shift+F searches all
-    /// files; Ctrl+Shift+[ folds every descriptor and Ctrl+Shift+] unfolds them; Escape in the find bar hides it.
+    /// The tab's keys, anywhere on it, as Sublime Text has them: Ctrl+F finds (what is selected in the text, when it is
+    /// on one line), Ctrl+H replaces, Ctrl+G goes to a line, Ctrl+Shift+F searches all files; F3 and Shift+F3 find the
+    /// next and previous match; Ctrl+Shift+[ folds every descriptor and Ctrl+Shift+] unfolds them; Escape closes the file
+    /// filter, or hides the find bar and gives the text the keyboard.
     /// </summary>
     private void FindBarKeys(object sender, KeyEventArgs e)
     {
@@ -660,10 +721,29 @@ public partial class EditorPage : UserControl
             Key.G => GoBox,
             _ => null,
         };
-        if (box is not null)
+        if (e.Key == Key.Escape && FileFilterPopup.IsOpen)
+        {
+            // the popup keeps the keyboard in its name box, so Escape comes here first
+            e.Handled = true;
+            FileFilterPopup.IsOpen = false;
+            FileFilterButton.Focus();
+        }
+        else if (box is not null)
         {
             e.Handled = true;
+            if (box == FindBox || box == ReplaceBox) TakeSelectionToFind();
             ShowFindBar(true, box);
+        }
+        else if (e.Key == Key.F3 && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && shown is not null)
+        {
+            e.Handled = true;
+            // with nothing to find yet, F3 opens the bar to type it, as Sublime Text does
+            if (FindBox.Text == "")
+            {
+                TakeSelectionToFind();
+                ShowFindBar(true, FindBox);
+            }
+            if (FindBox.Text != "") FindNext(shift ? -1 : 1);
         }
         // the keys that fold and unfold the Rules tab's groups fold and unfold the file's descriptors here
         else if (RulesPage.IsCollapseAllKey(e))
@@ -695,6 +775,8 @@ public partial class EditorPage : UserControl
         Text.TextArea.TextView.Redraw();
         lineNumbers.InvalidateVisual();
         markColumn.InvalidateVisual();
+        // the descriptor's state is in two theme colours mixed, which cannot follow the theme by itself
+        ShowState();
     }
 
     /// <summary>

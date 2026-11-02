@@ -39,7 +39,10 @@ public static class WeaponMarks
         WeaponChange? change = Changes.Of(weapon);
         bool changed = change is not null && change.Changed(field) && text != "";
         ModMarks.ShowText(block, text, changed && ModMarks.AreShown);
-        block.ToolTip = changed ? TipFor(change!, field, write) : null;
+        // a name is often cut short, so its tooltip starts with the whole of it; with no change, the tooltip is cleared
+        // rather than set to nothing, so a cut-short value shows whole on hover (TrimmedTip)
+        if (changed) block.ToolTip = (field == WeaponField.Name ? text + "\n" : "") + TipFor(change!, field, write);
+        else block.ClearValue(System.Windows.FrameworkElement.ToolTipProperty);
     }
 
     /// <summary>

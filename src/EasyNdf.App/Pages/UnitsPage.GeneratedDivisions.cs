@@ -1,4 +1,6 @@
-using System.Windows;
+﻿using System.Windows;
+using System.Windows.Controls;
+using EasyNdf.App.Controls;
 using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
 using EasyNdf.Data;
@@ -7,20 +9,33 @@ using EasyNdf.Data.Divisions;
 namespace EasyNdf.App.Pages;
 
 /// <summary>
-/// The Armory's generated divisions: ⚙ beside the Divisions heading opens the Generate Divisions window, and a
+/// The Armory's generated divisions: ⚙ beside the Divisions heading opens the Division Generator, and a
 /// generated division shows a line above its units saying how it is made, with Change… and Make Fixed. What they are
 /// made from and how is in <see cref="DivisionRosters"/>.
 /// </summary>
 public partial class UnitsPage
 {
-    /// <summary>"⚙": the Generate Divisions window; the divisions ticked are made in the mod as one change.</summary>
+    /// <summary>
+    /// The Division Generator's icon (<see cref="GeneratorIcon"/>) on its button beside the Divisions heading, in the
+    /// accent colour under the mouse, and in the accent colour on the line above a generated division's units.
+    /// </summary>
+    private void ShowGeneratorIcons()
+    {
+        Viewbox onButton = GeneratorIcon.Make(14);
+        GenerateDivisionsButton.Content = onButton;
+        GenerateDivisionsButton.MouseEnter += (_, _) => GeneratorIcon.Colour(onButton, "accent");
+        GenerateDivisionsButton.MouseLeave += (_, _) => GeneratorIcon.Colour(onButton, "ink");
+        GeneratedIcon.Content = GeneratorIcon.Make(13, "accent");
+    }
+
+    /// <summary>"⚙": the Division Generator; the divisions chosen are made in the mod as one change.</summary>
     private void GenerateDivisionsClicked(object sender, RoutedEventArgs e)
     {
         if (loaded is null) return;
-        MainView.Of(this).GenerateDivisions.Open(Rosters, Game, OpenMod.Name, ModNations(), Generate);
+        MainView.Of(this).GenerateDivisions.Open(Rosters, Game, OpenMod.Name, OpenMod.Divisions.Select(division => division.Name), ModNations(), Generate);
     }
 
-    /// <summary>Makes the divisions chosen in the Generate Divisions window, one undo step for all, and shows the first.</summary>
+    /// <summary>Makes the divisions chosen in the Division Generator, one undo step for all, and shows the first.</summary>
     private void Generate(List<GeneratedDivisionChoice> choices)
     {
         List<string> made = [];
@@ -38,7 +53,7 @@ public partial class UnitsPage
 
     /// <summary>
     /// The nations the mods that are on add of their own: those of units the Armory shows that no unit of the source
-    /// itself is of, A to Z. Offered in the Generate Divisions window as nations whose units go into every division.
+    /// itself is of, A to Z. Offered in the Division Generator as nations whose units go into every division.
     /// </summary>
     private List<string> ModNations()
     {
@@ -78,7 +93,7 @@ public partial class UnitsPage
         GeneratedText.ToolTip = Texts.Get("Divisions.Generated.Line.Tip");
     }
 
-    /// <summary>"Change…": the Generate Divisions window for the chosen division alone; its new making is saved in the mod.</summary>
+    /// <summary>"Change…": the Division Generator for the chosen division alone; its new making is saved in the mod.</summary>
     private void ChangeGenerationClicked(object sender, RoutedEventArgs e)
     {
         if (chosenDivision is not Division division || EntryShown(division.Descriptor)?.Generation is not DivisionGeneration current) return;

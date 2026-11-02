@@ -74,6 +74,10 @@ public partial class HelpPage : UserControl
         WikiPage? next = index < WikiPages.All.Count - 1 ? WikiPages.All[index + 1] : null;
         ShowPagerButton(PreviousButton, previous, isNext: false);
         ShowPagerButton(NextButton, next, isNext: true);
+        // alone, either button may take the whole width; together, each has its half
+        Grid.SetColumnSpan(PreviousButton, next is null ? 3 : 1);
+        Grid.SetColumn(NextButton, previous is null ? 0 : 2);
+        Grid.SetColumnSpan(NextButton, previous is null ? 3 : 1);
     }
 
     private static void ShowPagerButton(Button button, WikiPage? target, bool isNext)
@@ -81,7 +85,8 @@ public partial class HelpPage : UserControl
         button.Visibility = target is null ? Visibility.Collapsed : Visibility.Visible;
         if (target is null) return;
         button.Tag = target.Id;
-        var text = new TextBlock();
+        // a long title is cut with "…", and the whole of it shows on hover (Controls/TrimmedTip.cs)
+        var text = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis };
         var labelRun = new System.Windows.Documents.Run(isNext ? Texts.Get("Help.Next") : Texts.Get("Help.Previous"));
         // the label is dim, except under the mouse (Styles/Controls.xaml, PagerLabel)
         labelRun.Style = (Style)Application.Current.FindResource("PagerLabel");
@@ -101,6 +106,8 @@ public partial class HelpPage : UserControl
     private void ShowList()
     {
         string search = Find.Text.Trim().ToLowerInvariant();
+        // a page opened from the list with the keys keeps the keyboard on its line, though the lines are made again
+        bool listHadKeyboard = PageList.IsKeyboardFocusWithin;
         PageList.Children.Clear();
         string group = "";
         foreach (WikiPage page in WikiPages.All)
@@ -119,9 +126,12 @@ public partial class HelpPage : UserControl
                 Content = new TextBlock { Text = page.Title, TextWrapping = TextWrapping.Wrap },
                 IsChecked = page.Id == shownId,
                 Tag = page.Id,
+                // the WikiNavItem style gives no hand, though the lines open pages as links do
+                Cursor = Cursors.Hand,
             };
             item.Click += (_, _) => Go((string)item.Tag);
             PageList.Children.Add(item);
+            if (listHadKeyboard && page.Id == shownId) Dispatcher.BeginInvoke(() => item.Focus());
         }
         if (PageList.Children.Count == 0)
         {
@@ -133,12 +143,48 @@ public partial class HelpPage : UserControl
 
     private void FindChanged(object sender, TextChangedEventArgs e) => ShowList();
 
-    /// <summary>Enter in the search box opens the first page found.</summary>
+    /// <summary>Enter in the search box opens the first page found; Escape empties it, as on the Settings tab.</summary>
     private void FindKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && Find.Text != "")
+        {
+            e.Handled = true;
+            Find.Text = "";
+            return;
+        }
         if (e.Key != Key.Enter) return;
         e.Handled = true;
         if (PageList.Children.OfType<ToggleButton>().FirstOrDefault() is { Tag: string id }) Go(id);
+    }
+
+    /// <summary>
+    /// The keys in the list of pages: Up and Down go to the page above or below, Home and End to the first or last, and
+    /// Enter opens the page (Space does, as on any button).
+    /// </summary>
+    private void PageListKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.None) return;
+        List<ToggleButton> items = [.. PageList.Children.OfType<ToggleButton>()];
+        int at = items.FindIndex(item => item.IsKeyboardFocusWithin);
+        if (items.Count == 0 || at < 0) return;
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            Go((string)items[at].Tag);
+            return;
+        }
+        int to = e.Key switch
+        {
+            Key.Up => Math.Max(0, at - 1),
+            Key.Down => Math.Min(items.Count - 1, at + 1),
+            Key.Home => 0,
+            Key.End => items.Count - 1,
+            _ => -1,
+        };
+        if (to < 0) return;
+        e.Handled = true;
+        items[to].Focus();
+        items[to].BringIntoView();
     }
 
     // ---- the buttons ----

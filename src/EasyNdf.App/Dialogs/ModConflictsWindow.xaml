@@ -37,16 +37,60 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- a panel's rule link: plain text that takes the keyboard, outlined in the accent colour while it has it -->
+        <Style x:Key="RuleLink" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Edge" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" Margin="-2,0">
+                            <ContentPresenter Margin="1,0" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Edge" Property="BorderBrush" Value="{DynamicResource accent}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- a panel's right edge: unseen until the mouse is over it, then a thin line shows where to drag -->
+        <Style x:Key="PanelEdge" TargetType="Thumb">
+            <Setter Property="Cursor" Value="SizeWE" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Grid Background="Transparent">
+                            <Rectangle x:Name="Grip" Width="2" HorizontalAlignment="Center" Fill="{DynamicResource accent}" Opacity="0" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Grip" Property="Opacity" Value="0.6" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="Grip" Property="Opacity" Value="0.9" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <!-- the dimmed backdrop; a click on it closes the window -->
-    <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed">
+    <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed" SizeChanged="BackdropSized">
         <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
-                        Padding="12,10,12,12" Margin="40,30" MaxWidth="1500" MaxHeight="900"
+                        x:Name="Box" Padding="12,10,12,12" Margin="40,30" MaxWidth="1500" MaxHeight="900"
                         MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
-            <DockPanel>
+            <!-- in a very small window the parts keep a smallest size and scroll, rather than being cut off (see RoomChanged) -->
+            <ScrollViewer x:Name="Room" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Focusable="False" ScrollChanged="RoomChanged">
+            <DockPanel x:Name="Inside" MinWidth="520" MinHeight="340">
                 <!-- the title, "read-only", and what was found: how many values, by which run, the mods in their order -->
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Files.Conflicts.Close.Tip}" Click="CloseClicked" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Files.Conflicts.Close.Tip}"
+                            AutomationProperties.Name="{t:Text Files.Conflicts.CloseButton}" Click="CloseClicked" />
                     <TextBlock Text="{t:Text Files.Conflicts.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
                     <Border BorderBrush="{DynamicResource line}" BorderThickness="1" Padding="5,0" Margin="8,0,0,0" VerticalAlignment="Center"
                             ToolTip="{t:Text Files.Conflicts.ReadOnly.Tip}">
@@ -59,16 +103,18 @@
                 <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
                     <Button DockPanel.Dock="Right" Content="{t:Text Files.Conflicts.CloseButton}" ToolTip="{t:Text Files.Conflicts.Close.Tip}" Click="CloseClicked" />
                     <controls:SnappedRow Gap="6">
-                        <Button x:Name="FindAgainButton" Content="{t:Text Files.Conflicts.FindAgain}" ToolTip="{t:Text Files.Conflicts.FindAgain.Tip}" Click="FindAgainClicked" />
-                        <Button Content="{t:Text Files.Conflicts.Copy}" ToolTip="{t:Text Files.Conflicts.Copy.Tip}" Click="CopyClicked" />
+                        <Button x:Name="FindAgainButton" Content="{t:Text Files.Conflicts.FindAgain}" ToolTip="{t:Text Files.Conflicts.FindAgain.Tip}"
+                                controls:OffReason.Text="{t:Text Files.Off.Busy}" Click="FindAgainClicked" />
+                        <Button x:Name="CopyButton" Content="{t:Text Files.Conflicts.Copy}" ToolTip="{t:Text Files.Conflicts.Copy.Tip}" Click="CopyClicked" />
                     </controls:SnappedRow>
                 </DockPanel>
 
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="330" />
+                        <!-- the list takes up to 330 pixels, giving way to the panels in a narrow window -->
+                        <ColumnDefinition Width="3*" MinWidth="200" MaxWidth="330" />
                         <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="7*" />
                     </Grid.ColumnDefinitions>
 
                     <!-- the list: Find, the kinds and the mod, then the values by file and descriptor -->
@@ -81,7 +127,8 @@
                         </DockPanel>
                         <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
                             <Grid>
-                                <ListBox x:Name="List" Style="{StaticResource LongTableLines}" PreviewMouseLeftButtonUp="ListClicked">
+                                <ListBox x:Name="List" Style="{StaticResource LongTableLines}" PreviewMouseLeftButtonUp="ListClicked" Focusable="True" FocusVisualStyle="{x:Null}"
+                                         GotKeyboardFocus="ListFocusChanged" LostKeyboardFocus="ListFocusChanged">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type dialogs:ConflictRow}">
                                             <Border x:Name="Line" Padding="{Binding Indent}" BorderBrush="{DynamicResource line}" BorderThickness="0,0,0,1" Background="Transparent">
@@ -112,11 +159,16 @@
                                                 <DataTrigger Binding="{Binding IsPicked}" Value="True">
                                                     <Setter TargetName="Line" Property="Background" Value="{DynamicResource sel}" />
                                                 </DataTrigger>
+                                                <!-- the line the arrow keys are on, while the list has the keyboard -->
+                                                <DataTrigger Binding="{Binding IsCursor}" Value="True">
+                                                    <Setter TargetName="Line" Property="BorderBrush" Value="{DynamicResource accent}" />
+                                                    <Setter TargetName="Line" Property="BorderThickness" Value="1" />
+                                                </DataTrigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
-                                <TextBlock x:Name="NothingFound" Style="{StaticResource Note}" Margin="8" Visibility="Collapsed" Text="{t:Text Files.Conflicts.NothingMatches}" />
+                                <TextBlock x:Name="NothingFound" Style="{StaticResource Note}" Margin="8" Visibility="Collapsed" TextWrapping="Wrap" />
                             </Grid>
                         </controls:Bevel>
                     </DockPanel>
@@ -129,13 +181,15 @@
                             <!-- previous and next: one raised group, with the place in the list between the arrows -->
                             <controls:Bevel DockPanel.Dock="Right" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}">
                                 <StackPanel Orientation="Horizontal">
-                                    <Button x:Name="PreviousButton" Style="{StaticResource NavArrow}" ToolTip="{t:Text Files.Conflicts.Previous.Tip}" Click="PreviousClicked">
+                                    <Button x:Name="PreviousButton" Style="{StaticResource NavArrow}" ToolTip="{t:Text Files.Conflicts.Previous.Tip}" Click="PreviousClicked"
+                                            AutomationProperties.Name="{t:Text Files.Conflicts.Previous}">
                                         <Path Data="M6.5,1.5 L3,5 L6.5,8.5" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.6" Width="10" Height="10" />
                                     </Button>
                                     <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Padding="8,0">
                                         <TextBlock x:Name="Place" FontSize="11.5" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
                                     </controls:Bevel>
-                                    <Button x:Name="NextButton" Style="{StaticResource NavArrow}" ToolTip="{t:Text Files.Conflicts.Next.Tip}" Click="NextClicked">
+                                    <Button x:Name="NextButton" Style="{StaticResource NavArrow}" ToolTip="{t:Text Files.Conflicts.Next.Tip}" Click="NextClicked"
+                                            AutomationProperties.Name="{t:Text Files.Conflicts.Next}">
                                         <Path Data="M3.5,1.5 L7,5 L3.5,8.5" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.6" Width="10" Height="10" />
                                     </Button>
                                 </StackPanel>
@@ -144,7 +198,9 @@
                         </DockPanel>
                         <controls:Bevel DockPanel.Dock="Bottom" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}"
                                         Padding="9,5" Margin="0,8,0,0">
-                            <TextBlock x:Name="Verdict" TextWrapping="Wrap" Foreground="{DynamicResource muted}" />
+                            <!-- two lines at most, however many mods lost: the rest is in its tooltip -->
+                            <TextBlock x:Name="Verdict" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource muted}"
+                                       LineHeight="18" LineStackingStrategy="BlockLineHeight" MaxHeight="36" />
                         </controls:Bevel>
                         <!-- the panels side by side; more than fit scroll sideways -->
                         <ScrollViewer x:Name="PanelScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Focusable="False" SizeChanged="PanelRoomChanged">
@@ -153,6 +209,7 @@
                     </DockPanel>
                 </Grid>
             </DockPanel>
+            </ScrollViewer>
         </controls:Bevel>
     </Grid>
 

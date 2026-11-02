@@ -63,7 +63,7 @@ public sealed class SettingsStore(string settingsFolder)
         ["openAfterExport"] = false,
         // the window: its size in percent, tooltips, and whether it opens where it was left
         ["uiScale"] = "100",
-        ["panesScale"] = true,
+        ["panesScale"] = false,
         ["uiFont"] = "",
         ["codeFont"] = "",
         ["tooltips"] = true,

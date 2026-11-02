@@ -40,10 +40,12 @@
             <weapons:WeaponsArmory x:Name="WeaponsView" Visibility="Collapsed" />
             <Grid x:Name="UnitsView">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="300" />
+                    <ColumnDefinition x:Name="LeftColumn" Width="300" />
                     <ColumnDefinition Width="14" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
+                <!-- drag to widen the left column, for long names; double-click for its first width (see LeftColumnSplit) -->
+                <controls:SplitBar x:Name="LeftSplit" Grid.Column="1" HorizontalAlignment="Center" ToolTip="{t:Text Units.LeftSplit.Tip}" />
 
                 <!-- the left column: where the units come from, the filters, then the nations and the divisions sharing the height -->
                 <DockPanel Grid.Column="0">
@@ -71,8 +73,8 @@
                         <StackPanel x:Name="SideChoices" Orientation="Horizontal" Margin="0,6,0,0" />
                         <ComboBox x:Name="RoleChoice" ToolTip="{t:Text Units.RoleChoice.Tip}" Margin="0,6,0,0" SelectionChanged="RoleChosen" />
                         <CheckBox x:Name="OnlyInDivision" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyInDivision}" ToolTip="{t:Text Units.OnlyInDivision.Tip}"
-                                  IsChecked="False" Margin="0,6,0,0" Click="OnlyInDivisionClicked" />
-                    <CheckBox x:Name="OnlyModded" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyModded}" ToolTip="{t:Text Units.OnlyModded.Tip}"
+                                  controls:OffReason.Text="{t:Text Units.OnlyInDivision.Off}" IsChecked="False" Margin="0,6,0,0" Click="OnlyInDivisionClicked" />
+                    <CheckBox x:Name="OnlyModded" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyModded}"
                               IsChecked="False" Margin="0,6,0,0" Click="OnlyModdedClicked" />
                     </StackPanel>
                     <!-- the nations above, the divisions below, and a bar between them that shares the height (as in the File Editor's descriptor viewer) -->
@@ -91,7 +93,7 @@
                             </controls:Bevel>
                             <controls:Bevel Style="{StaticResource SunkenBox}">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                    <StackPanel x:Name="NationList" />
+                                    <StackPanel x:Name="NationList" KeyboardNavigation.TabNavigation="Once" />
                                 </ScrollViewer>
                             </controls:Bevel>
                         </DockPanel>
@@ -107,10 +109,12 @@
                                 <DockPanel>
                                     <!-- + makes a new division in the open mod -->
                                     <Button x:Name="NewDivisionButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Content="+" FontWeight="Bold"
-                                            ToolTip="{t:Text Divisions.NewDivision.Tip}" AutomationProperties.Name="{t:Text Divisions.NewDivision}" Click="NewDivisionClicked" />
+                                            ToolTip="{t:Text Divisions.NewDivision.Tip}" AutomationProperties.Name="{t:Text Divisions.NewDivision}" Click="NewDivisionClicked"
+                                            controls:OffReason.Text="{t:Text Divisions.NoDivisionsYet.Off}" />
                                     <!-- ⚙ makes generated divisions in the open mod: one for each nation or side and kind ticked -->
-                                    <Button x:Name="GenerateDivisionsButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Content="&#x2699;" Margin="0,0,4,0"
-                                            ToolTip="{t:Text Divisions.Generate.Tip}" AutomationProperties.Name="{t:Text Divisions.Generate}" Click="GenerateDivisionsClicked" />
+                                    <Button x:Name="GenerateDivisionsButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Margin="0,0,4,0"
+                                            ToolTip="{t:Text Divisions.Generate.Tip}" AutomationProperties.Name="{t:Text Divisions.Generate}" Click="GenerateDivisionsClicked"
+                                            controls:OffReason.Text="{t:Text Divisions.NoDivisionsYet.Off}" />
                                     <!-- ✕, on the Units sub-tab with a division chosen: every unit again -->
                                     <Button x:Name="ClearDivisionButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Margin="0,0,3,0" Content="✕"
                                             Visibility="Collapsed" ToolTip="{t:Text Divisions.Chosen.Clear.Tip}" AutomationProperties.Name="{t:Text Divisions.Chosen.Clear.Tip}"
@@ -138,7 +142,7 @@
                             </controls:Bevel>
                             <controls:Bevel Style="{StaticResource SunkenBox}">
                                 <ScrollViewer x:Name="DivisionScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                    <StackPanel x:Name="DivisionList" />
+                                    <StackPanel x:Name="DivisionList" KeyboardNavigation.TabNavigation="Once" />
                                 </ScrollViewer>
                             </controls:Bevel>
                         </DockPanel>
@@ -151,12 +155,14 @@
                         <!-- the title, then the buttons at the right; in a narrow window the buttons go on a line of their own -->
                         <controls:FlexRow Gap="8" LineGap="4">
                             <!-- "Units in WARNO", or the division chosen with its size -->
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" controls:FlexRow.Grow="1">
-                                <TextBlock x:Name="TitleText" VerticalAlignment="Center" />
-                                <TextBlock x:Name="SummaryText" Foreground="{DynamicResource muted}" FontWeight="Normal" Margin="10,0,0,0" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <!-- a long name is cut short, the size after it first, and shows whole on hover -->
+                            <DockPanel VerticalAlignment="Center" controls:FlexRow.Grow="1" LastChildFill="False">
+                                <TextBlock x:Name="TitleText" DockPanel.Dock="Left" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <TextBlock x:Name="SummaryText" DockPanel.Dock="Left" Foreground="{DynamicResource muted}" FontWeight="Normal" Margin="10,0,0,0" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
                             <!-- with a division chosen: where it comes from, and which mod its changes are saved in, as the two can differ -->
-                            <TextBlock x:Name="SavedInText" Foreground="{DynamicResource muted}" FontWeight="Normal" VerticalAlignment="Center" />
+                            <TextBlock x:Name="SavedInText" Foreground="{DynamicResource muted}" FontWeight="Normal" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Button x:Name="AddUnitsButton" Style="{StaticResource HeadingButton}" Content="{t:Text Units.AddUnits}" ToolTip="{t:Text Units.AddUnits.Tip}"
                                         Margin="0,0,8,0" Click="AddUnitsClicked" />
@@ -179,7 +185,7 @@
                                     </ToggleButton>
                                     <ToggleButton x:Name="CompareButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Margin="-1,0,0,0" Content="{t:Text Units.Compare}" ToolTip="{t:Text Units.Compare.Tip}" Click="ViewClicked" />
                                 </StackPanel>
-                                <Button Style="{StaticResource HelpButton}" Margin="8,0,0,0" FontWeight="Bold" controls:QuickHelp.Page="tab-units" />
+                                <Button Style="{StaticResource HelpButton}" controls:QuickHelp.Page="tab-units" />
                             </StackPanel>
                         </controls:FlexRow>
                     </controls:Bevel>
@@ -204,7 +210,7 @@
                             <controls:PanePair.Main>
                                 <DockPanel>
                                     <!--
-                                      a generated division chosen: how it is made, again at each export, with Change… (the Generate Divisions
+                                      a generated division chosen: how it is made, again at each export, with Change… (the Division Generator
                                       window, for it alone) and Make Fixed (it keeps the units it has now, as an ordinary new division)
                                     -->
                                     <DockPanel x:Name="GeneratedLine" DockPanel.Dock="Top" Margin="0,0,0,6" Visibility="Collapsed">
@@ -212,7 +218,7 @@
                                                 Click="MakeFixedClicked" Margin="4,0,0,0" VerticalAlignment="Center" />
                                         <Button DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{t:Text Divisions.Generated.Change}" ToolTip="{t:Text Divisions.Generated.Change.Tip}"
                                                 Click="ChangeGenerationClicked" Margin="6,0,0,0" VerticalAlignment="Center" />
-                                        <TextBlock DockPanel.Dock="Left" Text="&#x2699;" Foreground="{DynamicResource accent}" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                        <ContentControl x:Name="GeneratedIcon" DockPanel.Dock="Left" Focusable="False" Margin="0,0,6,0" VerticalAlignment="Center" />
                                         <TextBlock x:Name="GeneratedText" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource ink}" />
                                     </DockPanel>
                                     <!-- the factory tabs, with a line under them; the Unit pane's button waits at their right when it is folded beside -->
@@ -268,7 +274,7 @@
 
                                             <!-- the Cards view of a division: its units by category, under headings with the category's slot costs -->
                                             <ScrollViewer x:Name="DivisionCardsScroller" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
-                                                          MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked" SizeChanged="DivisionCardsResized">
+                                                          MouseLeftButtonUp="UnitListClicked" MouseRightButtonUp="UnitListRightClicked" SizeChanged="DivisionCardsResized" ScrollChanged="DivisionCardsScrolled">
                                                 <ContentControl x:Name="DivisionCardsContent" Focusable="False" />
                                             </ScrollViewer>
 
@@ -351,11 +357,12 @@
         -->
         <Grid x:Name="ReadingCardHolder" Visibility="Collapsed" Background="Transparent">
             <controls:Bevel x:Name="ReadingCard" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
-                            Padding="18,14" HorizontalAlignment="Center" VerticalAlignment="Center" MinWidth="420">
+                            Padding="18,14" HorizontalAlignment="Center" VerticalAlignment="Center" Width="420">
+                <!-- always the same width: a long mod name is cut short rather than widening the card -->
                 <StackPanel>
                     <DockPanel>
                         <TextBlock x:Name="ReadingStepCount" DockPanel.Dock="Right" FontSize="12" Foreground="{DynamicResource muted}" VerticalAlignment="Bottom" Margin="16,0,0,1" />
-                        <TextBlock x:Name="ReadingTitle" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" />
+                        <TextBlock x:Name="ReadingTitle" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" TextTrimming="CharacterEllipsis" />
                     </DockPanel>
                     <TextBlock x:Name="ReadingWhere" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" MaxWidth="420" HorizontalAlignment="Left" Margin="0,2,0,10" />
                     <!-- a bar that fills block by block, always the same size -->

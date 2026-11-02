@@ -10,81 +10,18 @@
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              Visibility="Collapsed" KeyDown="KeyPressed">
     <!-- the dimmed backdrop, light enough to see the battlegroup redrawn behind; a click on it cancels -->
-    <Grid x:Name="Backdrop" Background="#60000000" MouseLeftButtonDown="BackdropPressed">
-        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+    <Grid x:Name="Backdrop" Background="#60000000" MouseLeftButtonDown="BackdropPressed" SizeChanged="BackdropResized">
+        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                         Padding="12,10,12,12" Width="820" HorizontalAlignment="Center" VerticalAlignment="Center"
                         MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
-            <StackPanel>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Divisions.Battlegroup.Generation.Cancel.Tip}" Click="CancelClicked" />
+            <!-- the title at the top and Done at the foot always show; in a small window the settings between them scroll -->
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Divisions.Battlegroup.Generation.Cancel.Tip}" AutomationProperties.Name="{t:Text Divisions.Battlegroup.Generation.Cancel.Tip}" Click="CancelClicked" />
                     <TextBlock Text="{t:Text Divisions.Battlegroup.Generation.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
                     <TextBlock x:Name="BattlegroupName" Foreground="{DynamicResource muted}" Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
-                <Grid Margin="0,10,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="290" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Divisions.Battlegroup.Generation.StartFrom}" /></controls:Bevel>
-                        <WrapPanel x:Name="ReadySettings" Margin="0,4,0,8" />
-                        <controls:Bevel Style="{StaticResource Heading}">
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Right" FontWeight="Normal" FontSize="11.5">
-                                    <Hyperlink x:Name="BackToReadyLink" Style="{StaticResource CrumbLink}" ToolTip="{t:Text Divisions.Battlegroup.Generation.BackTo.Tip}" Click="BackToReadyClicked"><Run x:Name="BackToReadyText" /></Hyperlink>
-                                </TextBlock>
-                                <TextBlock Text="{t:Text Divisions.Battlegroup.Generation.WhatMatters}" />
-                            </DockPanel>
-                        </controls:Bevel>
-                        <Grid x:Name="Weights" Margin="0,4,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="130" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="40" />
-                            </Grid.ColumnDefinitions>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="16" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel>
-                                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Divisions.Battlegroup.Generation.ForEachRole}" /></controls:Bevel>
-                                <CheckBox x:Name="BestTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Battlegroup.Generation.Best}" ToolTip="{t:Text Divisions.Battlegroup.Generation.Best.Tip}" Margin="0,4,0,2" Click="ChoiceChanged" />
-                                <CheckBox x:Name="GoodValueTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Battlegroup.Generation.GoodValue}" ToolTip="{t:Text Divisions.Battlegroup.Generation.GoodValue.Tip}" Margin="0,2" Click="ChoiceChanged" />
-                                <CheckBox x:Name="CheapTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Battlegroup.Generation.Cheap}" ToolTip="{t:Text Divisions.Battlegroup.Generation.Cheap.Tip}" Margin="0,2" Click="ChoiceChanged" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Divisions.Battlegroup.Generation.Size}" /></controls:Bevel>
-                                <DockPanel Margin="0,4,0,2">
-                                    <TextBox x:Name="CardsBox" DockPanel.Dock="Right" Width="50" ToolTip="{t:Text Divisions.Battlegroup.Generation.Cards.Tip}" TextChanged="NumberChanged" />
-                                    <TextBlock Text="{t:Text Divisions.Battlegroup.Generation.Cards}" VerticalAlignment="Center" />
-                                </DockPanel>
-                                <DockPanel Margin="0,2">
-                                    <TextBox x:Name="PointsBox" DockPanel.Dock="Right" Width="50" ToolTip="{t:Text Divisions.Battlegroup.Generation.Points.Tip}" TextChanged="NumberChanged" />
-                                    <TextBlock Text="{t:Text Divisions.Battlegroup.Generation.Points}" VerticalAlignment="Center" />
-                                </DockPanel>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                    <!-- what the settings change, against the battlegroup as it is saved -->
-                    <StackPanel Grid.Column="2">
-                        <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Divisions.Battlegroup.Generation.WhatChanges}" /></controls:Bevel>
-                        <DockPanel Margin="0,4,0,4">
-                            <TextBlock x:Name="PointsSummary" DockPanel.Dock="Right" />
-                            <TextBlock x:Name="CardsSummary" />
-                        </DockPanel>
-                        <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Height="250">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                <StackPanel x:Name="Changes" Margin="6,4" />
-                            </ScrollViewer>
-                        </controls:Bevel>
-                        <TextBlock Style="{StaticResource Note}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{t:Text Divisions.Battlegroup.Generation.Behind}" />
-                    </StackPanel>
-                </Grid>
-                <DockPanel Margin="0,12,0,0">
+                <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
                     <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center">
                         <Hyperlink Style="{StaticResource CrumbLink}" ToolTip="{t:Text Divisions.Battlegroup.Generation.MakeFixed.Tip}" Click="MakeFixedClicked"><Run Text="{t:Text Divisions.Battlegroup.Generation.MakeFixed}" /></Hyperlink>
                     </TextBlock>
@@ -94,7 +31,74 @@
                     </controls:SnappedRow>
                     <TextBlock Style="{StaticResource Note}" Margin="12,0,12,0" VerticalAlignment="Center" TextWrapping="Wrap" Text="{t:Text Divisions.Battlegroup.Generation.Kept}" />
                 </DockPanel>
-            </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Focusable="False">
+                    <Grid Margin="0,10,0,0" MinWidth="600">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="290" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Divisions.Battlegroup.Generation.StartFrom}" /></controls:Bevel>
+                            <WrapPanel x:Name="ReadySettings" Margin="0,4,0,8" />
+                            <controls:Bevel Style="{StaticResource Heading}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" FontWeight="Normal" FontSize="11.5">
+                                        <Hyperlink x:Name="BackToReadyLink" Style="{StaticResource CrumbLink}" ToolTip="{t:Text Divisions.Battlegroup.Generation.BackTo.Tip}" Click="BackToReadyClicked"><Run x:Name="BackToReadyText" /></Hyperlink>
+                                    </TextBlock>
+                                    <TextBlock Text="{t:Text Divisions.Battlegroup.Generation.WhatMatters}" />
+                                </DockPanel>
+                            </controls:Bevel>
+                            <Grid x:Name="Weights" Margin="0,4,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <!-- the names' column as wide as the longest name, in any language -->
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="40" />
+                                </Grid.ColumnDefinitions>
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="16" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Divisions.Battlegroup.Generation.ForEachRole}" /></controls:Bevel>
+                                    <CheckBox x:Name="BestTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Battlegroup.Generation.Best}" ToolTip="{t:Text Divisions.Battlegroup.Generation.Best.Tip}" Margin="0,4,0,2" Click="ChoiceChanged" />
+                                    <CheckBox x:Name="GoodValueTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Battlegroup.Generation.GoodValue}" ToolTip="{t:Text Divisions.Battlegroup.Generation.GoodValue.Tip}" Margin="0,2" Click="ChoiceChanged" />
+                                    <CheckBox x:Name="CheapTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Battlegroup.Generation.Cheap}" ToolTip="{t:Text Divisions.Battlegroup.Generation.Cheap.Tip}" Margin="0,2" Click="ChoiceChanged" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Divisions.Battlegroup.Generation.Size}" /></controls:Bevel>
+                                    <DockPanel Margin="0,4,0,2">
+                                        <TextBox x:Name="CardsBox" DockPanel.Dock="Right" Width="50" ToolTip="{t:Text Divisions.Battlegroup.Generation.Cards.Tip}" TextChanged="NumberChanged" />
+                                        <TextBlock Text="{t:Text Divisions.Battlegroup.Generation.Cards}" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                    <DockPanel Margin="0,2">
+                                        <TextBox x:Name="PointsBox" DockPanel.Dock="Right" Width="50" ToolTip="{t:Text Divisions.Battlegroup.Generation.Points.Tip}" TextChanged="NumberChanged" />
+                                        <TextBlock Text="{t:Text Divisions.Battlegroup.Generation.Points}" VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                        <!-- what the settings change, against the battlegroup as it is saved -->
+                        <StackPanel Grid.Column="2">
+                            <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Divisions.Battlegroup.Generation.WhatChanges}" /></controls:Bevel>
+                            <DockPanel Margin="0,4,0,4">
+                                <TextBlock x:Name="PointsSummary" DockPanel.Dock="Right" />
+                                <TextBlock x:Name="CardsSummary" />
+                            </DockPanel>
+                            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Height="250">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                    <StackPanel x:Name="Changes" Margin="6,4" />
+                                </ScrollViewer>
+                            </controls:Bevel>
+                            <TextBlock Style="{StaticResource Note}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{t:Text Divisions.Battlegroup.Generation.Behind}" />
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+            </DockPanel>
         </controls:Bevel>
     </Grid>
 </UserControl>

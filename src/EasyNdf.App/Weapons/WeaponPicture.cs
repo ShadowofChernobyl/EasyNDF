@@ -9,7 +9,8 @@ namespace EasyNdf.App.Weapons;
 /// A weapon's picture from the game (InterfaceWeaponTexture) in a sunken frame. The game's pictures are small black
 /// shapes (132 by 50 pixels) that it draws in a light colour; here they are drawn in the theme's weapon picture colour
 /// ("weapon-art", set in the Theme Designer), a little darker towards the bottom, with a shadow one pixel below and to
-/// the right. So they stay sharp, each of the picture's pixels becomes a whole number of the screen's pixels (one,
+/// the right. Steel Division 2's pictures are drawn in colour, and keep their own colours, with the same shadow. So
+/// they stay sharp, each of the picture's pixels becomes a whole number of the screen's pixels (one,
 /// two, three…), as many as fit; the shape is centred in the frame.
 /// </summary>
 public sealed class WeaponPicture : FrameworkElement
@@ -31,6 +32,9 @@ public sealed class WeaponPicture : FrameworkElement
     private const double Inset = 3;
 
     private BitmapSource? picture;
+
+    /// <summary>Whether <see cref="picture"/> keeps its own colours, as the game's pictures are in colour.</summary>
+    private bool inColour;
 
     /// <summary>Builds an empty frame in the theme's colours.</summary>
     public WeaponPicture()
@@ -60,6 +64,7 @@ public sealed class WeaponPicture : FrameworkElement
     {
         string? source = Source;
         UnitPictureLibrary? library = UnitPictureLibrary.Current;
+        inColour = library?.WeaponPicturesInColour == true;
         if (source is null || library is null)
         {
             Show(null);
@@ -103,11 +108,11 @@ public sealed class WeaponPicture : FrameworkElement
         if (scale < 1)
         {
             // smaller than the picture's own size, as in the table's rows: it is shrunk to fit, smoothly
-            BitmapSource small = WeaponArt.Drawn(picture, 1, art.Color, well.Color);
+            BitmapSource small = WeaponArt.Drawn(picture, 1, inColour ? null : art.Color, well.Color);
             drawing.DrawImage(small, Fitted(new Rect(Inset, Inset, width - 2 * Inset, height - 2 * Inset), small.PixelWidth, small.PixelHeight));
             return;
         }
-        BitmapSource shape = WeaponArt.Drawn(picture, scale, art.Color, well.Color);
+        BitmapSource shape = WeaponArt.Drawn(picture, scale, inColour ? null : art.Color, well.Color);
         // where it goes, centred, on whole screen pixels; its own size in the screen's pixels, so nothing is stretched
         double left = Math.Round(Inset * dpi + (roomWidth - shape.PixelWidth) / 2) / dpi;
         double top = Math.Round(Inset * dpi + (roomHeight - shape.PixelHeight) / 2) / dpi;

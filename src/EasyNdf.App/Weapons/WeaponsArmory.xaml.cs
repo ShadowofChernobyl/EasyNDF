@@ -44,6 +44,50 @@ public partial class WeaponsArmory : UserControl
         view = Enum.TryParse((string?)AppData.Current.State["weaponView"], out WeaponView remembered) ? remembered : WeaponView.Cards;
         PrepareZoom();
         PreviewKeyDown += DeleteKey;
+        LeftColumnSplit.Prepare(LeftColumn, LeftSplit);
+        foreach (Control list in new Control[] { CardsList, Table })
+        {
+            list.Focusable = true;
+            list.IsTabStop = true;
+            list.PreviewKeyDown += WeaponListKeys;
+            System.Windows.Automation.AutomationProperties.SetName(list, Texts.Get("Armory.Weapons"));
+        }
+    }
+
+    /// <summary>
+    /// A key in the Cards or Table view, as on the Units sub-tab: the arrows select the weapon beside, above or below,
+    /// Home and End the first and last, Enter or Space the first when none is, and the menu key opens its menu. The
+    /// views make only the cards in sight, so the keys move through the weapons shown, not through cards.
+    /// </summary>
+    private void WeaponListKeys(object sender, KeyEventArgs e)
+    {
+        // a heading of the table keeps its own keys
+        if (!ReferenceEquals(e.OriginalSource, sender) || Keyboard.Modifiers != ModifierKeys.None) return;
+        IReadOnlyList<Weapon> weapons = view == WeaponView.Table ? Table.WeaponsInOrder : shown;
+        if (weapons.Count == 0) return;
+        int at = -1;
+        for (int index = 0; index < weapons.Count && at < 0; index++)
+            if (weapons[index].Descriptor == selected) at = index;
+        int across = view == WeaponView.Table ? 1 : Math.Max(1, cardColumns);
+        int? to = e.Key switch
+        {
+            Key.Left => at - 1,
+            Key.Right => at + 1,
+            Key.Up => at - across,
+            Key.Down => at + across,
+            Key.Home => 0,
+            Key.End => weapons.Count - 1,
+            Key.Enter or Key.Space or Key.Apps => at,
+            _ => null,
+        };
+        if (to is not int wanted) return;
+        e.Handled = true;
+        // a step past the first or last row stays where it is
+        if (at >= 0 && (wanted < 0 || wanted >= weapons.Count)) return;
+        Weapon weapon = weapons[Math.Max(0, wanted)];
+        Select(weapon);
+        ScrollToSelected();
+        if (e.Key == Key.Apps) OpenWeaponMenu(weapon, (FrameworkElement)sender);
     }
 
     /// <summary>
@@ -70,7 +114,11 @@ public partial class WeaponsArmory : UserControl
             filter.DamageFamily = "";
         }
         TitleText.Text = Texts.Get("Weapons.Title", ("source", sourceName));
-        SavedInText.Text = Texts.Get("Weapons.SavedIn", ("mod", weaponActions.OpenModName));
+        SavedInText.Text = weaponActions.SavedInLine;
+        // switched off, with the reason, for a game the Armory does not add weapons to yet
+        string? noNewWeapons = weaponActions.WhyWeaponsCannotBeAdded;
+        NewWeaponButton.IsEnabled = noNewWeapons is null;
+        OffReason.SetText(NewWeaponButton, noNewWeapons);
         FillSideChoices();
         FillDamageChoice();
         ShowAll();
@@ -81,6 +129,9 @@ public partial class WeaponsArmory : UserControl
 
     /// <summary>The chosen source's folder, under the Source list.</summary>
     public void ShowWhere(string folder) => WhereText.Text = folder;
+
+    /// <summary>The chosen source's game, named in the tooltip of the switch that shows only modded weapons.</summary>
+    public void ShowGame(string gameName) => OnlyModded.ToolTip = Texts.Get("Weapons.OnlyModded.Tip", ("game", gameName));
 
     /// <summary>
     /// What the Armory says while there are no weapons to show: no game found, choose a source, or why it could not be
@@ -223,11 +274,15 @@ public partial class WeaponsArmory : UserControl
         row.SetResourceReference(Bevel.BottomRightProperty, "line");
         row.MouseEnter += (_, _) => row.SetResourceReference(Bevel.BackgroundProperty, "sel");
         row.MouseLeave += (_, _) => row.Background = Brushes.Transparent;
-        row.MouseLeftButtonUp += (_, _) =>
+        void Tick()
         {
             if (!filter.Nations.Remove(nation)) filter.Nations.Add(nation);
             ShowAll();
-        };
+        }
+        row.MouseLeftButtonUp += (_, _) => Tick();
+        // Tab, the arrows and Space tick nations as clicks do
+        KeyPick.Make(row, Tick, "nation:" + nation);
+        System.Windows.Automation.AutomationProperties.SetName(row, UnitNames.Nation(nation));
         return row;
     }
 
@@ -382,7 +437,10 @@ public partial class WeaponsArmory : UserControl
     /// <summary>A click on a card selects its weapon.</summary>
     private void CardsClicked(object sender, MouseButtonEventArgs e)
     {
-        if (CardAt(e.OriginalSource) is { Weapon: Weapon weapon }) Select(weapon);
+        if (CardAt(e.OriginalSource) is not { Weapon: Weapon weapon }) return;
+        // the list takes the keys, so the arrow keys go on from the card clicked
+        CardsList.Focus();
+        Select(weapon);
     }
 
     /// <summary>A right-click on a card selects its weapon and opens its menu.</summary>

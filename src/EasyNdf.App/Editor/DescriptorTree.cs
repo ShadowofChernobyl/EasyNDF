@@ -56,8 +56,16 @@ public sealed class TreeNode
     /// <summary>How deep it is: 0 at the top.</summary>
     public int Depth => Parent is null ? 0 : Parent.Depth + 1;
 
-    /// <summary>Whether it has nothing inside to open.</summary>
-    public bool IsLeaf { get; set; }
+    /// <summary>
+    /// Whether it has nothing inside to open; worked out by <see cref="LeafCheck"/> when first read, as only the rows on
+    /// screen need it and Steel Division 2's UniteDescriptor.ndf has tens of thousands.
+    /// </summary>
+    public bool IsLeaf { get => isLeaf ??= LeafCheck?.Invoke() ?? false; set => isLeaf = value; }
+
+    private bool? isLeaf;
+
+    /// <summary>How <see cref="IsLeaf"/> is worked out when it is not given.</summary>
+    public Func<bool>? LeafCheck { get; init; }
 
     /// <summary>Whether it is open.</summary>
     public bool IsOpen { get; set; }
@@ -176,7 +184,7 @@ public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOn
             {
                 Parent = parent, Key = RootKey(localEntry, entry.Name, count), Kind = TreeNodeKind.Descriptor,
                 Label = entry.Name != "" ? entry.Name : Texts.Get("Editor.Unnamed"), Sub = type, Entry = localEntry, Name = entry.Name, Outline = entry,
-                IsLeaf = !IsDeep(entry) || !OpensToSomething(localEntry, entry.Name),
+                LeafCheck = () => !IsDeep(entry) || !OpensToSomething(localEntry, entry.Name),
             });
         }
         return rows;
@@ -198,7 +206,7 @@ public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOn
             rows.Add(new TreeNode
             {
                 Parent = parent, Key = RootKey(entry, name, count), Kind = TreeNodeKind.Descriptor, Label = name, Sub = shown, Entry = entry, Name = name,
-                IsLeaf = !OpensToSomething(entry, name),
+                LeafCheck = () => !OpensToSomething(entry, name),
             });
         }
         return rows;
@@ -302,7 +310,7 @@ public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOn
             {
                 Parent = parent, Key = parent.Key + "\u0002" + name, Kind = TreeNodeKind.Reference, Label = name, Sub = type != "" ? type : "constant",
                 FileTag = entry.Name, Entry = entry, Name = name, Outline = local, RowIndex = i,
-                IsLeaf = loops || parent.Depth > 60 || !OpensToSomething(entry, name),
+                LeafCheck = () => loops || parent.Depth > 60 || !OpensToSomething(entry, name),
             });
         }
         return children;

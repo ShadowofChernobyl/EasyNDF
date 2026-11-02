@@ -93,6 +93,12 @@ public sealed class UnitPictureStore
         }
     }
 
+    /// <summary>Lets go of the game's textures kept for taking pictures out (<see cref="GamePictures.LetGoOfTextures"/>).</summary>
+    public void LetGoOfGameTextures()
+    {
+        lock (busy) pictures?.LetGoOfTextures();
+    }
+
     /// <summary>The errors a texture in a form not expected can give while it is read.</summary>
     private static bool IsUnreadable(Exception problem) =>
         problem is InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException

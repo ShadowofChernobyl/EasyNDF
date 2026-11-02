@@ -93,9 +93,11 @@ public partial class UnitsPage : IBattlegroupEditing
         RevertBattlegroupButton.Visibility = changed ? Visibility.Visible : Visibility.Collapsed;
         GenerationSettingsButton.Visibility = EntryShown(division.Descriptor) is { IsGenerated: true } ? Visibility.Visible : Visibility.Collapsed;
         Division? game = GameDivisions.FirstOrDefault(each => each.Descriptor == division.Descriptor);
-        TitleText.ToolTip = changed && game?.Battlegroup is Battlegroup before
-            ? Texts.Get("Divisions.Battlegroup.Changed.Tip", ("mod", OpenMod.Name), ("cards", Texts.Count("Divisions.Battlegroup.CardCount", before.Cards.Count)))
-            : null;
+        // the whole name first, as the title is cut short in a narrow window; with no change, the name alone when cut (TrimmedTip)
+        if (changed && game?.Battlegroup is Battlegroup before)
+            TitleText.ToolTip = BattlegroupName(division) + "\n"
+                + Texts.Get("Divisions.Battlegroup.Changed.Tip", ("mod", OpenMod.Name), ("cards", Texts.Count("Divisions.Battlegroup.CardCount", before.Cards.Count)));
+        else TitleText.ClearValue(ToolTipProperty);
     }
 
     /// <summary>Back to the Game's: asked first, the mod's changes to the battlegroup are taken back.</summary>

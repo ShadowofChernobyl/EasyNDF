@@ -411,8 +411,8 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     /// <summary>A dropdown for a setting, whose entries may have a dimmed part (a file's folder).</summary>
     private ComboBox Choice(string key, IReadOnlyList<ChoiceOption> options, bool rebuildAfter)
     {
-        var choice = new ComboBox { ItemsSource = options };
-        choice.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
+        // a long choice (a file's path) is cut with "…", named whole in the tooltip, and its list stays inside the window
+        ComboBox choice = NarrowChoices.OfOptions(new ComboBox { ItemsSource = options }, tipShowsChoice: true);
         // a value that is none of the choices shows the first, as a web page's dropdown does
         string current = JsonValues.AsText(parameters[key]);
         int at = options.ToList().FindIndex(o => o.Value == current);
@@ -442,6 +442,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         var fill = new ComboBox { ToolTip = Texts.Get("Rules.Editor.Fill.Tip") };
         fill.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Fill"), Tag = "" });
         foreach (string name in names) fill.Items.Add(new ComboBoxItem { Content = name, Tag = name });
+        NarrowChoices.OfItems(fill);
         fill.SelectedIndex = 0;
         fill.SelectionChanged += (_, _) =>
         {

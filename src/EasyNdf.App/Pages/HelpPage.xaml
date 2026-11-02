@@ -22,7 +22,8 @@
                 <StackPanel Margin="8">
                     <TextBox x:Name="Find" Margin="0,0,0,8" Tag="{t:Text Help.Find.Hint}" ToolTip="{t:Text Help.Find.Tip}"
                              TextChanged="FindChanged" KeyDown="FindKeyDown" />
-                    <StackPanel x:Name="PageList" />
+                    <!-- the pages: Up and Down go from one to the next, Home and End to the ends, and Enter or Space opens one -->
+                    <StackPanel x:Name="PageList" PreviewKeyDown="PageListKeyDown" AutomationProperties.Name="{t:Text Help.PageList.Name}" />
                 </StackPanel>
             </ScrollViewer>
         </controls:Bevel>
@@ -30,8 +31,10 @@
         <!-- #wkPage: Back, Forward and Welcome window stay put; the page under them scrolls -->
         <DockPanel Grid.Column="2">
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-                <Button x:Name="BackButton" Style="{StaticResource IconButton}" Content="‹" ToolTip="{t:Text Help.Back.Tip}" Click="BackClicked" VerticalAlignment="Center" />
-                <Button x:Name="ForwardButton" Style="{StaticResource IconButton}" Content="›" ToolTip="{t:Text Help.Forward.Tip}" Click="ForwardClicked" Margin="6,0,0,0" VerticalAlignment="Center" />
+                <Button x:Name="BackButton" Style="{StaticResource IconButton}" Content="‹" ToolTip="{t:Text Help.Back.Tip}" Click="BackClicked" VerticalAlignment="Center"
+                        AutomationProperties.Name="{t:Text Help.Back.Tip}" controls:OffReason.Text="{t:Text Help.Back.Off}" />
+                <Button x:Name="ForwardButton" Style="{StaticResource IconButton}" Content="›" ToolTip="{t:Text Help.Forward.Tip}" Click="ForwardClicked" Margin="6,0,0,0" VerticalAlignment="Center"
+                        AutomationProperties.Name="{t:Text Help.Forward.Tip}" controls:OffReason.Text="{t:Text Help.Forward.Off}" />
                 <Button DockPanel.Dock="Right" Content="{t:Text Help.WelcomeWindow}" ToolTip="{t:Text Help.WelcomeWindow.Tip}" HorizontalAlignment="Right" Click="WelcomeClicked" />
             </DockPanel>
             <!-- the page scrolls in a sunken box, so its edge shows where the text is cut off -->
@@ -52,11 +55,19 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <ContentControl x:Name="Body" Focusable="False" />
-                            <!-- .wkpager: Previous and Next -->
-                            <DockPanel x:Name="Pager" LastChildFill="False">
-                                <Button x:Name="PreviousButton" ToolTip="{t:Text Help.Previous.Tip}" Click="PagerClicked" />
-                                <Button x:Name="NextButton" ToolTip="{t:Text Help.Next.Tip}" DockPanel.Dock="Right" Click="PagerClicked" />
-                            </DockPanel>
+                            <!--
+                              .wkpager: Previous at the left and Next at the right, each in its half, so long titles never
+                              run into each other: a title too long for its half is cut with "…" (whole on hover)
+                            -->
+                            <Grid x:Name="Pager">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="PreviousButton" ToolTip="{t:Text Help.Previous.Tip}" Click="PagerClicked" HorizontalAlignment="Left" />
+                                <Button x:Name="NextButton" Grid.Column="2" ToolTip="{t:Text Help.Next.Tip}" Click="PagerClicked" HorizontalAlignment="Right" />
+                            </Grid>
                         </StackPanel>
                     </Grid>
                 </StackPanel>

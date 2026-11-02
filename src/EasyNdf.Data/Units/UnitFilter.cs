@@ -58,8 +58,7 @@ public sealed class UnitFilter
         if (InDivision is null && OnlyInDivision && unit.Divisions.Count == 0) return false;
         if (OnlyModded && VanillaUnits.Contains(unit.Descriptor)) return false;
         if (ignoring == Ignoring.Nothing && Factory != "" && unit.Factory != Factory) return false;
-        if (Text != "" && !unit.Name.Contains(Text, StringComparison.CurrentCultureIgnoreCase)
-            && !unit.Descriptor.Contains(Text, StringComparison.OrdinalIgnoreCase)) return false;
+        if (!Typed.IsIn(unit.Name, Text) && !Typed.IsIn(unit.Descriptor, Text)) return false;
         return true;
     }
 

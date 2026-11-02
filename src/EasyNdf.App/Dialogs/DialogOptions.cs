@@ -28,6 +28,12 @@ public sealed record DialogOptions
     public UIElement? Extra { get; init; }
 
     /// <summary>
+    /// Something shown under the text box, answered with it, such as the game of a new mod under its name; none when
+    /// null.
+    /// </summary>
+    public UIElement? UnderInput { get; init; }
+
+    /// <summary>
     /// Dim, smaller words under the text box that explain the question, so the question itself can stay short; none when
     /// null.
     /// </summary>

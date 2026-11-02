@@ -26,6 +26,7 @@ public partial class UnitsPage
         {
             if (division.EmblemTexture == "" && division.EmblemFile is null)
                 warnings.Add(Texts.Get("Divisions.Check.NoEmblem", ("division", division.Name)));
+            WarnAboutDlc(division, warnings);
             WarnAboutCommandUnits(division, warnings);
             WarnAboutTexts(division, warnings);
             WarnAboutCards(division, warnings);
@@ -84,6 +85,18 @@ public partial class UnitsPage
         return division.Units.Where(rule => changed.Contains(rule.Unit));
     }
 
+    /// <summary>
+    /// Units the mod put in a Steel Division 2 DLC division, from before the Armory refused them: the export leaves
+    /// them out, as the game stops on a card a mod adds to a DLC division (SteelDivisionDivisions.IsInDlc).
+    /// </summary>
+    private void WarnAboutDlc(Division division, List<string> warnings)
+    {
+        if (!SteelDivisionDivisions.IsInDlc(division.Descriptor) || DivisionChanges.EntryOf(OpenMod, division.Descriptor) is not { IsNew: false } entry) return;
+        foreach (DivisionUnit rule in entry.Added)
+            warnings.Add(Texts.Get("Divisions.Check.DlcUnitLeftOut", ("division", division.Name),
+                ("unit", unitsByDescriptor.GetValueOrDefault(rule.Unit)?.Name ?? rule.Unit)));
+    }
+
     /// <summary>A division with no command unit: the game does not accept a deck without one.</summary>
     private void WarnAboutCommandUnits(Division division, List<string> warnings)
     {
@@ -101,7 +114,8 @@ public partial class UnitsPage
         if (IsEmpty(entry.IsNew ? division.Summary : entry.Summary))
             warnings.Add(Texts.Get("Divisions.Check.NoSummary", ("division", division.Name)));
         // a generated division's history is left empty unless the user writes one (a large mod's give none): not a slip
-        if (!entry.IsGenerated && IsEmpty(entry.IsNew ? division.History : entry.History))
+        // a game whose divisions have no history (Steel Division 2) is not asked for one
+        if (!entry.IsGenerated && DivisionChangeRules.Has(Game, DivisionDetail.History) && IsEmpty(entry.IsNew ? division.History : entry.History))
             warnings.Add(Texts.Get("Divisions.Check.NoHistory", ("division", division.Name)));
     }
 

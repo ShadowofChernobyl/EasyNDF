@@ -55,7 +55,33 @@
             </Setter>
         </Style>
         <Style x:Key="DescriptorTree" TargetType="ListBox" BasedOn="{StaticResource DescriptorList}" />
-        <Style x:Key="DescriptorProperties" TargetType="ListBox" BasedOn="{StaticResource DescriptorList}" />
+        <!-- a property row reached with the keyboard is edged in the accent colour, inside the row so the list does not cut it off -->
+        <Style x:Key="PropertyRowFocus">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle Stroke="{DynamicResource accent}" StrokeThickness="1" SnapsToDevicePixels="True" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="DescriptorProperties" TargetType="ListBox" BasedOn="{StaticResource DescriptorList}">
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="FocusVisualStyle" Value="{StaticResource PropertyRowFocus}" />
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <!-- .dvi: a row of the tree: the arrow, the name, its type dimmed, and another file it is in; chosen, it is marked at its left -->
         <DataTemplate DataType="{x:Type editor:TreeItem}">
@@ -155,6 +181,11 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
+        <!-- the file dropdown's choices: the name and its folder on one line, cut short with "…" when the dropdown is narrow -->
+        <DataTemplate x:Key="TrimmedFileChoice">
+            <TextBlock TextTrimming="CharacterEllipsis"><Run Text="{Binding Label, Mode=OneWay}" /><Run Text="{Binding DimText, Mode=OneWay}" Foreground="{DynamicResource muted}" /></TextBlock>
+        </DataTemplate>
+
         <editor:KeyWidth x:Key="KeyWidth" />
         <!-- .dvrow with input.dvv: a value's key, at most 55% of the row, then the value to the row's end -->
         <DataTemplate DataType="{x:Type editor:ValueItem}">
@@ -229,7 +260,8 @@
                 <DockPanel controls:FlexRow.Grow="1" controls:FlexRow.Basis="410" MinWidth="218" MaxWidth="730">
                     <Grid DockPanel.Dock="Right" Margin="-1,0,0,0">
                         <!-- pressed in while a filter is on; the same filter as the Files tab's search and Show only -->
-                        <ToggleButton x:Name="FileFilterButton" Style="{StaticResource PressedToggle}" Padding="6,0" Click="FileFilterClicked">
+                        <ToggleButton x:Name="FileFilterButton" Style="{StaticResource PressedToggle}" Padding="6,0" Click="FileFilterClicked"
+                                      AutomationProperties.Name="{t:Text Editor.FileFilter.Name}">
                             <Path Data="M 1,2 H 11 L 7.2,6.6 V 10.5 L 4.8,9.3 V 6.6 Z" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
                                   StrokeThickness="1.2" StrokeLineJoin="Round" Width="12" Height="12" />
                         </ToggleButton>
@@ -257,7 +289,7 @@
                             </controls:Bevel>
                         </Popup>
                     </Grid>
-                    <ComboBox x:Name="FilePick" ToolTip="{t:Text Editor.FilePick.Tip}" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
+                    <ComboBox x:Name="FilePick" ToolTip="{t:Text Editor.FilePick.Tip}" ItemTemplate="{StaticResource TrimmedFileChoice}" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
                 </DockPanel>
                 <Button Content="{t:Text Editor.OpenFile}" ToolTip="{t:Text Editor.OpenFile.Tip}" Click="OpenFileClicked" />
                 <!-- the find bar stays out of the way until it is asked for, as in Sublime Text -->
@@ -270,30 +302,33 @@
                 <StackPanel controls:FlexRow.Grow="1" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="DiscardButton" Margin="6,0,0,0" Content="{t:Text Editor.DiscardChanges}" ToolTip="{t:Text Editor.Discard.Tip}" Click="DiscardClicked" />
                     <!-- button.swap: as wide as the wider of its two texts -->
-                    <Button x:Name="ExportButton" Margin="6,0,0,0" ToolTip="{t:Text Editor.Export.Tip}" IsEnabled="False" Click="ExportClicked">
+                    <Button x:Name="ExportButton" Margin="6,0,0,0" ToolTip="{t:Text Editor.Export.Tip}" IsEnabled="False" Click="ExportClicked"
+                            controls:OffReason.Text="{t:Text Editor.Export.Off}">
                         <Grid>
                             <TextBlock x:Name="ShowExportText" Text="{t:Text Editor.ShowExport}" HorizontalAlignment="Center" />
                             <TextBlock x:Name="ShowSourceText" Text="{t:Text Editor.ShowSource}" HorizontalAlignment="Center" Visibility="Hidden" />
                         </Grid>
                     </Button>
                     <ToggleButton x:Name="ChangesButton" Margin="6,0,0,0" Style="{StaticResource PressedToggle}" Content="{t:Text Editor.ChangesOnly}" ToolTip="{t:Text Editor.Changes.Tip}"
-                                  IsEnabled="False" Click="ChangesClicked" />
+                                  IsEnabled="False" Click="ChangesClicked" controls:OffReason.Text="{t:Text Editor.Export.Off}" />
                     <Button x:Name="UseButton" Margin="6,0,0,0" Content="{t:Text Editor.UseInFileList}" ToolTip="{t:Text Editor.Use.Tip}" Click="UseClicked" />
-                    <Button x:Name="SaveButton" Margin="6,0,0,0" Content="{t:Text Editor.SaveAs}" ToolTip="{t:Text Editor.Save.Tip}" Click="SaveClicked" />
-                    <Button Style="{StaticResource HelpButton}" controls:QuickHelp.Page="tab-editor" Margin="6,0,0,0" />
+                    <Button x:Name="SaveButton" Margin="6,0,0,0" Content="{t:Text Editor.SaveAs}" ToolTip="{t:Text Editor.Save.Tip}" Click="SaveClicked"
+                            controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
+                    <Button Style="{StaticResource HelpButton}" controls:QuickHelp.Page="tab-editor" />
                 </StackPanel>
             </controls:FlexRow>
 
             <!-- .bar: Find, Replace, Go to line and Search all files; shown by Find or Ctrl+F, hidden by × or Escape -->
             <controls:FlexRow x:Name="FindBar" Gap="6" LineGap="6" Margin="0,0,0,8" Visibility="Collapsed">
-                <TextBox x:Name="FindBox" Width="224" Tag="{t:Text Editor.FindBox.Hint}" ToolTip="{t:Text Editor.FindBox.Tip}" IsEnabled="False" KeyDown="FindKeyDown" />
-                <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2191;" ToolTip="{t:Text Editor.Previous.Tip}" IsEnabled="False" Click="PreviousClicked" />
-                <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x2193;" ToolTip="{t:Text Editor.Next.Tip}" IsEnabled="False" Click="NextClicked" />
-                <TextBox x:Name="ReplaceBox" Width="224" Tag="{t:Text Editor.ReplaceBox.Hint}" ToolTip="{t:Text Editor.ReplaceBox.Tip}" IsEnabled="False" KeyDown="ReplaceKeyDown" />
-                <Button x:Name="ReplaceButton" Content="{t:Text Editor.Replace}" ToolTip="{t:Text Editor.Replace.Tip}" IsEnabled="False" Click="ReplaceClicked" />
-                <Button x:Name="ReplaceAllButton" Content="{t:Text Editor.ReplaceAll}" ToolTip="{t:Text Editor.ReplaceAll.Tip}" IsEnabled="False" Click="ReplaceAllClicked" />
+                <TextBox x:Name="FindBox" Width="224" Tag="{t:Text Editor.FindBox.Hint}" ToolTip="{t:Text Editor.FindBox.Tip}" IsEnabled="False" KeyDown="FindKeyDown"
+                         controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
+                <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2191;" ToolTip="{t:Text Editor.Previous.Tip}" AutomationProperties.Name="{t:Text Editor.Previous.Name}" IsEnabled="False" Click="PreviousClicked" controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
+                <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x2193;" ToolTip="{t:Text Editor.Next.Tip}" AutomationProperties.Name="{t:Text Editor.Next.Name}" IsEnabled="False" Click="NextClicked" controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
+                <TextBox x:Name="ReplaceBox" Width="224" Tag="{t:Text Editor.ReplaceBox.Hint}" ToolTip="{t:Text Editor.ReplaceBox.Tip}" IsEnabled="False" KeyDown="ReplaceKeyDown" controls:OffReason.Text="{t:Text Editor.Replace.Off}" />
+                <Button x:Name="ReplaceButton" Content="{t:Text Editor.Replace}" ToolTip="{t:Text Editor.Replace.Tip}" IsEnabled="False" Click="ReplaceClicked" controls:OffReason.Text="{t:Text Editor.Replace.Off}" />
+                <Button x:Name="ReplaceAllButton" Content="{t:Text Editor.ReplaceAll}" ToolTip="{t:Text Editor.ReplaceAll.Tip}" IsEnabled="False" Click="ReplaceAllClicked" controls:OffReason.Text="{t:Text Editor.Replace.Off}" />
                 <controls:Bevel Style="{StaticResource BarSeparator}" />
-                <TextBox x:Name="GoBox" Width="104" Tag="{t:Text Editor.GoBox.Hint}" ToolTip="{t:Text Editor.GoBox.Tip}" IsEnabled="False" KeyDown="GoKeyDown" />
+                <TextBox x:Name="GoBox" Width="104" Tag="{t:Text Editor.GoBox.Hint}" ToolTip="{t:Text Editor.GoBox.Tip}" IsEnabled="False" KeyDown="GoKeyDown" controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
                 <controls:Bevel Style="{StaticResource BarSeparator}" />
                 <TextBox x:Name="SearchAllBox" Width="192" Tag="{t:Text Editor.SearchAllBox.Hint}"
                          ToolTip="{t:Text Editor.SearchAllBox.Tip}" KeyDown="SearchAllKeyDown" />
@@ -303,7 +338,7 @@
             <!-- #edAllWrap: what Search all files found: a note and ×, then the lines found, in a box that can be made taller -->
             <StackPanel x:Name="SearchResults" Visibility="Collapsed" Margin="0,0,0,6">
                 <DockPanel Margin="0,0,0,4">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Editor.CloseTheResults.Tip}" Margin="6,0,0,0" Click="CloseResultsClicked" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Editor.CloseTheResults.Tip}" AutomationProperties.Name="{t:Text Editor.CloseTheResults.Tip}" Margin="6,0,0,0" Click="CloseResultsClicked" />
                     <TextBlock x:Name="SearchNote" Style="{StaticResource Note}" Margin="0" VerticalAlignment="Center" TextWrapping="Wrap" />
                 </DockPanel>
                 <!-- #edAllBox: 13rem tall, from 2.5rem to 75% of the window; sunken; 4 by 6 pixels in -->
@@ -311,11 +346,13 @@
                     <controls:Bevel x:Name="ResultsBox" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}"
                                     Height="208" MinHeight="40" PreviewMouseRightButtonUp="ResultsRightClicked">
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Focusable="False">
-                            <ItemsControl x:Name="ResultList" Margin="6,4" Focusable="False">
+                            <!-- Tab comes into the list once, at the row last on; Up and Down go from row to row and Enter opens one -->
+                            <ItemsControl x:Name="ResultList" Margin="6,4" Focusable="False" KeyboardNavigation.TabNavigation="Once" PreviewKeyDown="ResultsKeyDown">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <!-- .hitrow: the file, the line number and the line, 10 pixels apart -->
-                                        <Border x:Name="Row" Padding="4,1" Background="Transparent" Cursor="Hand" MouseLeftButtonUp="ResultClicked">
+                                        <!-- .hitrow: the file, the line number and the line, 10 pixels apart; with the keyboard on it, edged in the accent colour -->
+                                        <Border x:Name="Row" Padding="3,0" BorderThickness="1" BorderBrush="Transparent" Background="Transparent" Cursor="Hand"
+                                                Focusable="True" FocusVisualStyle="{x:Null}" MouseLeftButtonUp="ResultClicked">
                                             <StackPanel Orientation="Horizontal" TextBlock.FontFamily="{DynamicResource mono}" TextBlock.FontSize="12"
                                                         TextBlock.LineHeight="17.390625" TextBlock.LineStackingStrategy="BlockLineHeight">
                                                 <TextBlock Text="{Binding File}" Foreground="{DynamicResource accent}" />
@@ -326,6 +363,10 @@
                                         <DataTemplate.Triggers>
                                             <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="Row" Property="Background" Value="{DynamicResource hover}" />
+                                            </Trigger>
+                                            <Trigger SourceName="Row" Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource hover}" />
+                                                <Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource accent}" />
                                             </Trigger>
                                         </DataTemplate.Triggers>
                                     </DataTemplate>
@@ -394,7 +435,8 @@
                                         <DockPanel controls:FlexRow.Grow="1" controls:FlexRow.Basis="96" MinWidth="64">
                                             <!-- #dvFilt: the funnel, and how many conditions are on; pressed in while the filter is on -->
                                             <ToggleButton x:Name="FilterButton" DockPanel.Dock="Right" Style="{StaticResource PressedToggle}" Padding="6,0" FontSize="12"
-                                                          TextBlock.LineHeight="18" ToolTip="{t:Text Editor.Filter.Tip}" Click="FilterClicked">
+                                                          TextBlock.LineHeight="18" ToolTip="{t:Text Editor.Filter.Tip}" Click="FilterClicked"
+                                                          AutomationProperties.Name="{t:Text Editor.FilterButton.Name}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <Path Data="M 1,2 H 11 L 7.2,6.6 V 10.5 L 4.8,9.3 V 6.6 Z" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
                                                           StrokeThickness="1.2" StrokeLineJoin="Round" Width="12" Height="12" Margin="0,3" />
@@ -422,14 +464,21 @@
                             <DockPanel>
                                 <!-- .dvtop: its name and type, and whether its values can be changed -->
                                 <controls:Bevel DockPanel.Dock="Top" Edges="0,0,0,1" BottomRight="{DynamicResource line}" MinHeight="27">
-                                    <DockPanel Margin="0,0,4,0">
-                                        <TextBlock x:Name="DescriptorState" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" Margin="8,0,0,0" VerticalAlignment="Center" TextWrapping="NoWrap" />
+                                    <!-- the name keeps at least 55% of the width; the state takes what it needs of the rest, cut short with "…" -->
+                                    <Grid Margin="0,0,4,0" SizeChanged="DescriptorTopResized">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
                                         <TextBlock x:Name="DescriptorHead" FontFamily="{DynamicResource mono}" FontSize="12" TextBlock.LineHeight="17" Padding="6,3" VerticalAlignment="Center"
                                                    Foreground="{DynamicResource muted}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-                                    </DockPanel>
+                                        <TextBlock x:Name="DescriptorState" Grid.Column="1" Foreground="{DynamicResource muted}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+                                    </Grid>
                                 </controls:Bevel>
                                 <!-- #dvProps: a row for each property, at every depth -->
-                                <ListBox x:Name="PropertyList" Style="{StaticResource DescriptorProperties}" PreviewMouseLeftButtonDown="PropertiesMouseDown" PreviewMouseRightButtonUp="PropertiesRightClicked" />
+                                <ListBox x:Name="PropertyList" Style="{StaticResource DescriptorProperties}" PreviewMouseLeftButtonDown="PropertiesMouseDown" PreviewMouseRightButtonUp="PropertiesRightClicked"
+                                         PreviewKeyDown="PropertiesKeyDown" />
                             </DockPanel>
                         </controls:Bevel>
                     </Grid>

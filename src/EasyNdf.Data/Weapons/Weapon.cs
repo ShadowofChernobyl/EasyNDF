@@ -44,7 +44,10 @@ public sealed record Weapon
     /// <inheritdoc cref="Suppression"/>
     public double? SuppressionRadius { get; init; }
 
-    /// <summary>How far it shoots at ground targets, and the least distance it can, in the game's range unit.</summary>
+    /// <summary>
+    /// How far it shoots at ground targets, and the least distance it can, in the game's range unit (Steel Division 2's
+    /// in metres as the game shows them, as are its radii and dispersions).
+    /// </summary>
     public double? Range { get; init; }
 
     /// <inheritdoc cref="Range"/>
@@ -55,6 +58,14 @@ public sealed record Weapon
 
     /// <inheritdoc cref="HelicopterRange"/>
     public double? PlaneRange { get; init; }
+
+    /// <summary>
+    /// How many of the files' distance units make one metre as the game shows it, for an ammunition whose distances
+    /// are written ((N) * Metre), as Steel Division 2's are: its ranges, radii and dispersions are then in metres, and
+    /// a change is written back as N (see <see cref="SteelDivisionAmmunition"/>). Null for WARNO's GRU, or when the
+    /// scale is not known: the distances are then the files' own numbers.
+    /// </summary>
+    public double? MetresScale { get; init; }
 
     /// <summary>Its chance to hit, in percent, when the unit is stopped and when it moves.</summary>
     public double? AccuracyStopped { get; init; }

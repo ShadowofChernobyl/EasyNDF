@@ -41,6 +41,12 @@ public interface IUnitActions
     /// <summary>Shows a unit in the File Editor.</summary>
     void ShowInEditor(Unit unit);
 
+    /// <summary>Whether a file of the game is on the Files tab, so a descriptor in it can be shown in the File Editor.</summary>
+    bool CanShowInEditor(string file) => false;
+
+    /// <summary>Shows a descriptor of a file (such as a unit's weapon set) in the File Editor.</summary>
+    void ShowInEditor(string descriptor, string file) { }
+
     /// <summary>Makes a new rule for a unit, on the Rules tab.</summary>
     void NewRuleFor(Unit unit);
 
@@ -66,10 +72,16 @@ public interface IUnitActions
     void Duplicate(Unit unit) { }
 
     /// <summary>
-    /// Whether a unit's values can be changed in the Unit pane: on the Armory tab, for WARNO, the source's own units
-    /// and those the open mod adds.
+    /// Whether a unit's values can be changed in the Unit pane: on the Armory tab, the source's own units and those the
+    /// open mod adds. Some values may still not be changeable in some games (<see cref="WhyValueCannotChange"/>).
     /// </summary>
     bool CanChangeUnit(Unit unit) => false;
+
+    /// <summary>
+    /// Why one of a unit that can be changed's values (<see cref="UnitField"/>) cannot, in the unit's game: the Armory
+    /// cannot write it for that game yet (Steel Division 2's names and pictures). Null when it can.
+    /// </summary>
+    string? WhyValueCannotChange(Unit unit, string field) => null;
 
     /// <summary>
     /// Changes one of a unit's values in the open mod, by its field (<see cref="UnitField"/>): its name, its nation or
@@ -87,7 +99,7 @@ public interface IUnitActions
     /// <summary>The levels of each armour family, from the game's DamageResistance.ndf; null when not known.</summary>
     IReadOnlyDictionary<string, int>? ArmorLevels => null;
 
-    /// <summary>Whether a unit's card picture can be changed from the Unit pane: on the Armory tab, any unit that can be changed.</summary>
+    /// <summary>Whether a unit's card picture can be changed from the Unit pane: on the Armory tab, any unit that can be changed, in a game whose pictures the Armory writes.</summary>
     bool CanChangePicture(Unit unit) => false;
 
     /// <summary>Opens the menu of the Unit pane's ✎ on a unit's picture, under <paramref name="at"/>.</summary>

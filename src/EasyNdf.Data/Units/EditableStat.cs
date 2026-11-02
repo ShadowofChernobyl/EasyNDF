@@ -1,4 +1,5 @@
 using System.Globalization;
+using EasyNdf.Data.Game;
 
 namespace EasyNdf.Data.Units;
 
@@ -10,7 +11,9 @@ namespace EasyNdf.Data.Units;
 /// <param name="Read">Reads it from a unit; null when the unit has none.</param>
 /// <param name="IsWhole">Whether the game writes it as a whole number.</param>
 /// <param name="Family">For an armour side, its armour family among a unit's; null for other stats.</param>
-public sealed record EditableStat(string Field, Func<Unit, double?> Read, bool IsWhole, Func<UnitArmorFamilies, string?>? Family = null)
+/// <param name="WholeInGames">The games that write it as a whole number though others do not, such as Steel Division 2's OpticalStrength.</param>
+public sealed record EditableStat(string Field, Func<Unit, double?> Read, bool IsWhole, Func<UnitArmorFamilies, string?>? Family = null,
+    IReadOnlyList<GameTitle>? WholeInGames = null)
 {
     /// <summary>Every stat that can be changed, in the order the Unit pane shows them: its overview, then its armour.</summary>
     public static IReadOnlyList<EditableStat> All { get; } =
@@ -19,7 +22,7 @@ public sealed record EditableStat(string Field, Func<Unit, double?> Read, bool I
         new(UnitField.Strength, unit => unit.Strength, IsWhole: true),
         new(UnitField.Speed, unit => unit.Speed, IsWhole: true),
         new(UnitField.RoadSpeed, unit => unit.RoadSpeed, IsWhole: true),
-        new(UnitField.Optics, unit => unit.Optics, IsWhole: false),
+        new(UnitField.Optics, unit => unit.Optics, IsWhole: false, WholeInGames: [GameTitle.SteelDivision2]),
         new(UnitField.Stealth, unit => unit.Stealth, IsWhole: false),
         new(UnitField.Fuel, unit => unit.Fuel, IsWhole: true),
         new(UnitField.Vision, unit => unit.Vision, IsWhole: false),
@@ -32,6 +35,9 @@ public sealed record EditableStat(string Field, Func<Unit, double?> Read, bool I
     /// <summary>The stat of a field; null for a field that cannot be changed.</summary>
     public static EditableStat? Of(string field) => All.FirstOrDefault(stat => stat.Field == field);
 
+    /// <summary>Whether a game writes it as a whole number: always when <see cref="IsWhole"/>, else in the games named.</summary>
+    public bool IsWholeIn(GameTitle? game) => IsWhole || (game is not null && WholeInGames?.Contains(game) == true);
+
     /// <summary>The unit's armour family for this armour side; null for other stats, or when it is not known.</summary>
     public string? FamilyOf(Unit unit) => Family?.Invoke(unit.ArmorFamilies);
 
@@ -41,17 +47,19 @@ public sealed record EditableStat(string Field, Func<Unit, double?> Read, bool I
     /// </summary>
     /// <param name="text">What was typed.</param>
     /// <param name="unit">The unit it is for, whose armour families count.</param>
-    /// <param name="levels">The levels of each armour family, from the game's DamageResistance.ndf; null when not known.</param>
+    /// <param name="levels">The levels of each armour family, from the game's files; null when not known.</param>
     /// <param name="culture">How the app writes numbers in its language; null for English. Not this computer's own
     /// settings, which can differ: "2,5" typed in English must be refused, not read as 2.5 or 25.</param>
-    public double? ValueOf(string text, Unit unit, IReadOnlyDictionary<string, int>? levels, CultureInfo? culture = null)
+    /// <param name="game">The game the unit is from, for the stats only some games write as whole numbers; null for none of those.</param>
+    public double? ValueOf(string text, Unit unit, IReadOnlyDictionary<string, int>? levels, CultureInfo? culture = null, GameTitle? game = null)
     {
         string trimmed = text.Trim();
         bool read = double.TryParse(trimmed, NumberStyles.Float, culture ?? CultureInfo.InvariantCulture, out double value)
             || double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
         if (!read || value < 0 || double.IsInfinity(value) || double.IsNaN(value)) return null;
-        if (IsWhole && (value != Math.Floor(value) || value > int.MaxValue)) return null;
-        if (FamilyOf(unit) is string family && !ArmorLevels.Allows(levels, family, (int)value)) return null;
+        if (IsWholeIn(game) && (value != Math.Floor(value) || value > int.MaxValue)) return null;
+        // an armour side takes a level its family allows, and none when its kind of armour has no levels
+        if (FamilyOf(unit) is string family && (ArmorLevels.HasNone(levels, family) || !ArmorLevels.Allows(levels, family, (int)value))) return null;
         return value;
     }
 }

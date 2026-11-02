@@ -14,7 +14,9 @@ namespace EasyNdf.App.Pages;
 /// (<see cref="WeaponEdit"/>), which only keeps what differs from the weapon as the game has it; a copy
 /// (<see cref="ModWeapon"/>) takes its values itself. Each goes through <see cref="ChangeDivisions"/>, as every Armory
 /// change does: refused when a file it is written into is not on the Files tab, otherwise saved in the mod as locked
-/// rules in its Weapons preset, with Undo.
+/// rules in its Weapons preset, with Undo. Steel Division 2's weapons are changed with its own properties
+/// (<see cref="SteelDivisionAmmunition"/>); what the Armory cannot write for it (its missing values, new weapons and
+/// copies) is switched off with the reason.
 /// </summary>
 public partial class UnitsPage : IWeaponActions
 {
@@ -46,8 +48,19 @@ public partial class UnitsPage : IWeaponActions
     private IReadOnlyList<Weapon> GameWeapons => gameUnits?.Catalog.Weapons ?? [];
 
     /// <inheritdoc/>
-    public bool CanChangeWeapon(Weapon weapon) =>
-        CanChangeWeapons() && (IsCopy(weapon) || GameWeapons.Any(each => each.Descriptor == weapon.Descriptor));
+    public bool CanChangeWeapon(Weapon weapon) => IsCopy(weapon) || GameWeapons.Any(each => each.Descriptor == weapon.Descriptor);
+
+    /// <inheritdoc/>
+    public string? WhyValueCannotChange(Weapon weapon, string field)
+    {
+        if (!WeaponChangeRules.Writes(Game, field)) return Texts.Get("Weapons.Pane.Off.NotInGame", ("game", Game.Name));
+        if (!WeaponChangeRules.Writes(Game, field, weapon)) return Texts.Get("Weapons.Pane.Off.NoLevel", ("game", Game.Name));
+        return null;
+    }
+
+    /// <inheritdoc/>
+    public string? WhyWeaponsCannotBeAdded =>
+        WeaponChangeRules.AddsWeapons(Game) ? null : Texts.Get("Weapons.New.NotHere", ("game", Game.Name));
 
     /// <inheritdoc/>
     public bool IsCopy(Weapon weapon) => OpenMod.Weapons.Any(copy => copy.Descriptor == weapon.Descriptor);
@@ -59,6 +72,7 @@ public partial class UnitsPage : IWeaponActions
     public bool ChangeWeapon(Weapon weapon, string field, string typed)
     {
         string descriptor = weapon.Descriptor;
+        if (field != WeaponField.Name && WhyValueCannotChange(weapon, field) is not null) return false;
         if (field == WeaponField.Name)
         {
             string name = typed.Trim();
@@ -69,17 +83,20 @@ public partial class UnitsPage : IWeaponActions
             });
         }
         if (WeaponChoice.Of(field) is WeaponChoice choice) return Choose(weapon, choice, typed);
-        if (WeaponStat.Of(field) is not WeaponStat stat || stat.ValueOf(typed, weapon, DamageLevels, Texts.Catalog.Culture) is not double value) return false;
+        if (WeaponStat.Of(field) is not WeaponStat stat || stat.ValueOf(typed, weapon, DamageLevels, Texts.Catalog.Culture, Game) is not double value) return false;
+        // a game that keeps the level inside the kind of damage (Steel Division 2's AP_26) is given the kind with the level
+        if (field == WeaponField.DamageLevel && WeaponChangeRules.LevelAsDamageType(Game, weapon, (int)value) is string damageType)
+            return ChooseNow(weapon, WeaponChoice.Of(WeaponFileValues.DamageFamily)!, damageType);
         if (IsCopy(weapon))
         {
             // a copy's value back to its original's is let go of, so only what differs is written
             double? original = OriginalOf(weapon) is Weapon from ? stat.Read(from) : null;
-            return ChangeDivisions(mod => CopyIn(mod, descriptor)?.Give(field, value == original ? null : value));
+            return ChangeDivisions(mod => CopyIn(mod, descriptor)?.Give(field, value == original ? null : value, Game));
         }
         double? before = WeaponBeforeChanges(descriptor) is Weapon beforeChanges ? stat.Read(beforeChanges) : null;
         return ChangeDivisions(mod =>
         {
-            WeaponEdit.For(mod, descriptor).Give(field, value == before ? null : value);
+            WeaponEdit.For(mod, descriptor).Give(field, value == before ? null : value, Game);
             WeaponEdit.LetGoOfIfEmpty(mod, descriptor);
         });
     }
@@ -130,7 +147,7 @@ public partial class UnitsPage : IWeaponActions
         string units = string.Join(", ", cannotDeploy.Take(Named));
         if (cannotDeploy.Count > Named) units += " " + Texts.Get("Weapons.Risky.More", ("count", cannotDeploy.Count - Named));
         DialogAnswer answer = await MainView.Of(this).Messages.Ask(
-            Texts.Get("Weapons.Risky.MustDeploy", ("weapon", weapon.Name), ("count", cannotDeploy.Count), ("units", units)),
+            Texts.Get("Weapons.Risky.MustDeploy", ("weapon", weapon.Name), ("count", Texts.Number(cannotDeploy.Count)), ("units", units)),
             new DialogOptions { Ok = Texts.Get("Weapons.Risky.GoOn"), CheckText = Texts.Get("Weapons.Risky.HideForSession") });
         if (answer.Choice != DialogChoice.Ok) return;
         if (answer.IsChecked) riskyChoicesAllowed = true;
@@ -159,14 +176,16 @@ public partial class UnitsPage : IWeaponActions
         WeaponChoice.Of(field)?.Offered(weapon, GameWeapons, DamageLevels) ?? [];
 
     /// <inheritdoc/>
-    public string OpenModName => OpenMod.Name;
+    public string SavedInLine => OtherGameReason is null
+        ? Texts.Get("Weapons.SavedIn", ("mod", OpenMod.Name))
+        : Texts.Get("Weapons.SavedIn.OtherGame", ("mod", OpenMod.Name), ("modGame", OpenMod.Game.Name));
 
     /// <inheritdoc/>
     public void NewWeapon()
     {
-        if (!CanChangeWeapons())
+        if (WhyWeaponsCannotBeAdded is string reason)
         {
-            _ = MainView.Of(this).Messages.Tell(Texts.Get("Weapons.New.NotHere"));
+            _ = MainView.Of(this).Messages.Tell(reason);
             return;
         }
         Dictionary<string, Weapon> weapons = ShownWeapons();
@@ -175,9 +194,6 @@ public partial class UnitsPage : IWeaponActions
             (weapon, _) => CopyWeapon(weapon, Texts.Get("Weapons.Copy.DefaultName", ("weapon", weapon.Name)), []), SwapKind.New);
     }
 
-    /// <summary>Whether the source's weapons can be changed and copied here: WARNO's only, for now.</summary>
-    private bool CanChangeWeapons() => Game == Data.Game.GameTitle.Warno;
-
     /// <inheritdoc/>
     public IReadOnlyDictionary<string, string> WeaponPictures => gameUnits?.Catalog.WeaponPictures ?? new Dictionary<string, string>();
 
@@ -185,6 +201,7 @@ public partial class UnitsPage : IWeaponActions
     public bool ChangePicture(Weapon weapon, string? texture)
     {
         string descriptor = weapon.Descriptor;
+        if (WhyValueCannotChange(weapon, WeaponField.Picture) is not null) return false;
         if (IsCopy(weapon))
         {
             // a copy given its original's picture again keeps its original's
@@ -206,6 +223,7 @@ public partial class UnitsPage : IWeaponActions
     public bool ChangeTraits(Weapon weapon, IReadOnlyList<string> traits)
     {
         string descriptor = weapon.Descriptor;
+        if (WhyValueCannotChange(weapon, WeaponField.Traits) is not null) return false;
         if (IsCopy(weapon))
         {
             // a copy given its original's traits again keeps its original's
@@ -241,6 +259,11 @@ public partial class UnitsPage : IWeaponActions
     /// <inheritdoc/>
     public void CopyWeapon(Weapon weapon, string name, IReadOnlyList<string> loadouts)
     {
+        if (WhyWeaponsCannotBeAdded is string reason)
+        {
+            _ = MainView.Of(this).Messages.Tell(reason);
+            return;
+        }
         IEnumerable<string> taken = (loaded?.Catalog.Weapons ?? []).Select(each => each.Descriptor).Concat(OpenMod.Weapons.Select(copy => copy.Descriptor));
         string descriptor = ModWeapon.NewDescriptor(name, [.. taken]);
         bool made = ChangeDivisions(mod =>
@@ -266,7 +289,7 @@ public partial class UnitsPage : IWeaponActions
     /// <inheritdoc/>
     public void GiveCopy(Weapon to, Weapon from, IReadOnlyList<string> loadouts)
     {
-        if (loadouts.Count == 0) return;
+        if (loadouts.Count == 0 || WhyWeaponsCannotBeAdded is not null) return;
         string toDescriptor = to.Descriptor, fromDescriptor = from.Descriptor;
         ChangeDivisions(mod =>
         {

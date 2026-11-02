@@ -70,6 +70,7 @@ public sealed class SyntaxProblems : IBackgroundRenderer
         if (ReferenceEquals(text, document)) return;
         if (document is not null) document.Changed -= TextChanged;
         document = text;
+        edited.Follow(text);
         marks = null;
         pickedLine = null;
         checkNumber++;
@@ -107,27 +108,83 @@ public sealed class SyntaxProblems : IBackgroundRenderer
     {
         checkNumber++;
         waiting.Stop();
+        // a large text checked before is checked again only where it was typed in, which is quick; one to be checked whole waits longer
+        if (document is not null) waiting.Interval = marks is not null ? Pause : PauseAfterTyping(document.TextLength);
         waiting.Start();
     }
 
-    /// <summary>Checks the text as it is now, away from the screen's thread, and marks what it finds.</summary>
+    /// <summary>
+    /// How long after the last key a text is read again: half a second, longer for a large text, up to five seconds
+    /// for one of 100 MB and more (Steel Division 2's UniteDescriptor.ndf is 117 MB): reading one takes seconds and
+    /// gigabytes, and each pause in typing started a read.
+    /// </summary>
+    public static TimeSpan PauseAfterTyping(int length) =>
+        length < 2_000_000 ? Pause : TimeSpan.FromMilliseconds(Math.Min(5000, 1500 + length / 30_000));
+
+    /// <summary>Where the text was typed in since it was last checked, so a large one is checked a declaration at a time.</summary>
+    private readonly EditedDeclarations edited = new();
+
+    /// <summary>Whether a check is being made, and whether the text changed while it was.</summary>
+    private bool checking, checkAgain;
+
+    /// <summary>
+    /// Checks the text as it is now, away from the screen's thread, and marks what it finds. One check at a time: a
+    /// check asked for while one is made waits for it, then the text is checked once more, as it is then.
+    /// </summary>
     internal async Task CheckNow()
     {
         waiting.Stop();
         if (document is null) return;
-        int mine = ++checkNumber;
-        TextDocument checkedText = document;
-        ITextSource snapshot = checkedText.CreateSnapshot();
-        List<NdfProblem> found = await Task.Run(() => NdfChecker.Check(snapshot.Text));
-        // the text changed since, or another text is shown: the next check marks it
-        if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
+        if (checking)
+        {
+            checkAgain = true;
+            return;
+        }
+        checking = true;
+        try
+        {
+            int mine = ++checkNumber;
+            TextDocument checkedText = document;
+            // a large text checked before: only the declarations typed in since are checked again; the marks of the
+            // others moved with the text as it changed
+            if (marks is not null && checkedText.TextLength >= EditedDeclarations.LargeText && edited.Take() is { } stretches)
+            {
+                int taken = edited.Count;
+                List<(int Start, string Text)> parts = [.. stretches.Select(stretch => (stretch.Start, checkedText.GetText(stretch.Start, stretch.End - stretch.Start)))];
+                List<(int Start, List<NdfProblem> Found)> checkedParts = await Task.Run(() => parts.Select(part => (part.Start, NdfChecker.Check(part.Text))).ToList());
+                if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
+                foreach ((int start, int end) in stretches)
+                    foreach (ProblemMark old in marks.FindOverlappingSegments(start, end - start).ToList()) marks.Remove(old);
+                foreach ((int start, List<NdfProblem> foundIn) in checkedParts)
+                    foreach (NdfProblem problem in foundIn)
+                        marks.Add(new ProblemMark { StartOffset = start + problem.Position, Length = problem.Length, Message = WithoutLine(problem.Message) });
+                edited.Done(taken);
+                Redraw();
+                Changed?.Invoke();
+                return;
+            }
+            ITextSource snapshot = checkedText.CreateSnapshot();
+            List<NdfProblem> found = await Task.Run(() => NdfChecker.Check(snapshot.Text));
+            // the text changed since, or another text is shown: the next check marks it
+            if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
 
-        var newMarks = new TextSegmentCollection<ProblemMark>(checkedText);
-        foreach (NdfProblem problem in found)
-            newMarks.Add(new ProblemMark { StartOffset = problem.Position, Length = problem.Length, Message = WithoutLine(problem.Message) });
-        marks = newMarks;
-        Redraw();
-        Changed?.Invoke();
+            var newMarks = new TextSegmentCollection<ProblemMark>(checkedText);
+            foreach (NdfProblem problem in found)
+                newMarks.Add(new ProblemMark { StartOffset = problem.Position, Length = problem.Length, Message = WithoutLine(problem.Message) });
+            marks = newMarks;
+            edited.ReadWhole();
+            Redraw();
+            Changed?.Invoke();
+        }
+        finally
+        {
+            checking = false;
+            if (checkAgain)
+            {
+                checkAgain = false;
+                waiting.Start();
+            }
+        }
     }
 
     /// <summary>A problem's message without its "Line N: ", which the editor shows on its own.</summary>

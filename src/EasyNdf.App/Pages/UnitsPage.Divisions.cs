@@ -27,6 +27,12 @@ public partial class UnitsPage
     /// <summary>The divisions listed: the game's multiplayer ones with the open mod's changes, then the mod's new ones.</summary>
     private List<Division> divisions = [];
 
+    /// <summary>Set while a division is chosen in the list, which changes nothing else the list shows (see <see cref="FillDivisionList"/>).</summary>
+    private bool onlyDivisionChosen;
+
+    /// <summary>What the division list's rows were last made from: the divisions, the side, the language and the open mod.</summary>
+    private (IReadOnlyList<Division>, string, string, string)? divisionListOf;
+
     /// <summary>The division chosen in the list, whose units the centre shows; null for All units.</summary>
     private Division? chosenDivision;
 
@@ -40,10 +46,18 @@ public partial class UnitsPage
     private static Mod OpenMod => AppData.Current.OpenMod;
 
     /// <summary>
-    /// Whether the Armory shows the open mod's own changes: "Show mods' changes" is on, and the mod is on on the Mods
-    /// tab. The Armory shows only the mods that are on, as export runs only those.
+    /// Whether the Armory shows the open mod's own changes: "Show mods' changes" is on, the mod is on on the Mods tab,
+    /// and it is for the source's game. The Armory shows only the mods that are on, as export runs only those, and
+    /// only those of the source's game, as only those run on its files.
     /// </summary>
-    private static bool ShowsOpenMod => ArmoryShowsModChanges && ModStack.IsOn(OpenMod);
+    private bool ShowsOpenMod => ArmoryShowsModChanges && ModStack.IsOn(OpenMod) && OpenMod.Game == Game;
+
+    /// <summary>
+    /// Why the Armory's changes cannot be saved in the open mod: it is for another game than the source's, and the
+    /// changes are made to the source's units, divisions and weapons; null when it is for the source's game.
+    /// </summary>
+    private string? OtherGameReason => OpenMod.Game == Game ? null
+        : Texts.Get("Units.OtherGame", ("mod", OpenMod.Name), ("modGame", OpenMod.Game.Name), ("game", Game.Name));
 
     /// <summary>"Show mods' changes", under the Source: on, the Armory shows the values as the mods that are on make them; off, as the source has them.</summary>
     internal static bool ArmoryShowsModChanges => AppData.Current.Settings["armoryModChanges"]?.GetValue<bool>() != false;
@@ -72,7 +86,7 @@ public partial class UnitsPage
     }
 
     /// <summary>The open mod's change to a division, when the Armory shows the open mod's changes; null otherwise.</summary>
-    private static ModDivision? EntryShown(string descriptor) => ShowsOpenMod ? DivisionChanges.EntryOf(OpenMod, descriptor) : null;
+    private ModDivision? EntryShown(string descriptor) => ShowsOpenMod ? DivisionChanges.EntryOf(OpenMod, descriptor) : null;
 
     /// <summary>
     /// Every division of the source, multiplayer or not, as the game has it: what the mod's division changes start from
@@ -187,14 +201,19 @@ public partial class UnitsPage
         ShowSource();
         ShowGeneratedLine();
         SummaryText.Text = "";
-        TitleText.ToolTip = null;
+        // cleared, not set to nothing: a cut-short title then shows its whole text on hover (TrimmedTip)
+        TitleText.ClearValue(ToolTipProperty);
         RevertBattlegroupButton.Visibility = Visibility.Collapsed;
         GenerationSettingsButton.Visibility = Visibility.Collapsed;
         SavedInText.Text = "";
-        SavedInText.ToolTip = null;
+        SavedInText.ClearValue(ToolTipProperty);
         if (chosenDivision is null) return;
-        SavedInText.Text = Texts.Get("Divisions.SavedIn", ("source", loaded?.Source.Name), ("mod", OpenMod.Name));
-        SavedInText.ToolTip = Texts.Get("Divisions.SavedIn.Tip", ("mod", OpenMod.Name));
+        // a mod for another game than the source's saves nothing: the line says so, and its tooltip what to do
+        SavedInText.Text = OtherGameReason is null
+            ? Texts.Get("Divisions.SavedIn", ("source", loaded?.Source.Name), ("mod", OpenMod.Name))
+            : Texts.Get("Divisions.SavedIn.OtherGame", ("source", loaded?.Source.Name), ("mod", OpenMod.Name), ("modGame", OpenMod.Game.Name));
+        // the whole line first, as it is cut short in a narrow window
+        SavedInText.ToolTip = SavedInText.Text + "\n" + (OtherGameReason ?? Texts.Get("Divisions.SavedIn.Tip", ("mod", OpenMod.Name)));
         if (ShowsBattlegroup)
         {
             ShowBattlegroupTitle(chosenDivision);
@@ -216,12 +235,31 @@ public partial class UnitsPage
     /// <param name="mayKeep">Whether the list may be left as it was drawn, when nothing it shows changed since (a sub-tab switch).</param>
     private void FillDivisionList(bool mayKeep = false)
     {
-        NewDivisionButton.IsEnabled = loaded is not null && divisions.Count > 0;
-        GenerateDivisionsButton.IsEnabled = NewDivisionButton.IsEnabled;
+        // switched off, with the reason, for a game the Armory does not add divisions to yet
+        string? noNewDivisions = DivisionChangeRules.Writes(Game, DivisionDetail.New)
+            ? null : Texts.Get("Divisions.Off.NotForThisGame", ("game", Game.Name));
+        // generated divisions are a kind of their own, written for fewer games (not Steel Division 2's yet)
+        string? noGeneratedDivisions = noNewDivisions ?? (DivisionChangeRules.Writes(Game, DivisionDetail.Generated)
+            ? null : Texts.Get("Divisions.Off.NotForThisGame", ("game", Game.Name)));
+        NewDivisionButton.IsEnabled = loaded is not null && divisions.Count > 0 && noNewDivisions is null;
+        GenerateDivisionsButton.IsEnabled = NewDivisionButton.IsEnabled && noGeneratedDivisions is null;
+        OffReason.SetText(NewDivisionButton, noNewDivisions);
+        OffReason.SetText(GenerateDivisionsButton, noGeneratedDivisions);
         // drawn for every sub-tab alike: they share it
         var now = new DrawnFor(changesShown, chosenDivision, ArmoryPart.Divisions);
         if (IsDrawnFor(divisionListDrawnFor, now, mayKeep)) return;
         divisionListDrawnFor = now;
+        // only another division chosen: the rows are the same, so only the two that change are drawn again
+        (IReadOnlyList<Division>, string, string, string) listOf = (divisions, filter.Side, Texts.Catalog.Culture.Name, OpenMod.Name);
+        bool sameRows = onlyDivisionChosen && divisionListOf == listOf;
+        onlyDivisionChosen = false;
+        divisionListOf = listOf;
+        if (sameRows)
+        {
+            foreach (DivisionListRow row in DivisionList.Children.OfType<DivisionListRow>())
+                if (row.IsChosen != ReferenceEquals(row.Division, chosenDivision)) row.ShowChosen(!row.IsChosen);
+            return;
+        }
         DivisionList.Children.Clear();
         if (loaded is null) return;
         List<Division> shownDivisions = [.. divisions.Where(division => filter.Side == "" || division.Side == filter.Side)];
@@ -351,7 +389,9 @@ public partial class UnitsPage
         // the division is remembered for Divisions and Battlegroups even while Units shows
         if (division is not null) AppData.Current.State["division"] = division.Descriptor;
         AppData.Current.SaveState();
+        onlyDivisionChosen = true;
         ShowAll();
+        onlyDivisionChosen = false;
         DivisionCardsScroller.ScrollToTop();
         BattlegroupScroller.ScrollToTop();
         DivisionPaneScroller.ScrollToTop();
@@ -375,22 +415,55 @@ public partial class UnitsPage
         DivisionCardsContent.Content = groups.Count == 0
             ? new TextBlock { Text = Texts.Get("Units.NoneMatch"), Margin = new Thickness(10), TextWrapping = TextWrapping.Wrap }
             : DivisionCards.Build(groups, division.Name, factory => inDivision.GetValueOrDefault(factory), Game, selection, divisionCardColumns,
-                foldedCategories, CategoryFoldClicked, this, unitsByDescriptor);
+                foldedCategories, CategoryFoldClicked, this, unitsByDescriptor, divisionPhase, PhaseChosen);
+    }
+
+    /// <summary>
+    /// The division's cards scrolled, resized or drawn again: the tiles now in sight are made (see
+    /// <see cref="DivisionCards.MakeTilesInView"/>).
+    /// </summary>
+    private void DivisionCardsScrolled(object sender, ScrollChangedEventArgs e)
+    {
+        if (DivisionCardsContent.Content is StackPanel cards) DivisionCards.MakeTilesInView(cards, DivisionCardsScroller);
+    }
+
+    /// <summary>The phase chosen above a Steel Division 2 division's cards, 0 to 2 for A to C; -1 for every phase.</summary>
+    private int divisionPhase = -1;
+
+    /// <summary>A phase chosen above the cards: they show their units in it.</summary>
+    private void PhaseChosen(int phase)
+    {
+        divisionPhase = phase;
+        ShowDivisionCards();
     }
 
     /// <summary>The width a division's cards have across, beside the scrollbar, in their own units: less when zoomed in.</summary>
     private double DivisionCardsRoom() => RoomIn(DivisionCardsScroller);
 
     /// <summary>
-    /// The view was resized: a division's cards are laid out again when a different number fits across, once the width
-    /// stays put, as the units' cards are (see <see cref="ReflowCardsSoon"/>).
+    /// The view was resized: a division's cards are laid out again at once when a different number fits across, the
+    /// tiles kept and only the number across changed (see <see cref="ShowDivisionColumns"/>).
     /// </summary>
     private void DivisionCardsResized(object sender, SizeChangedEventArgs e)
     {
         if (!ShowsDivisionUnits || view != UnitView.Cards || drawIsWaiting) return;
         if (CardRowView.ColumnsFor(DivisionCardsRoom()) == divisionCardColumns) return;
         if (e.PreviousSize.Width == 0) ShowDivisionCards();
-        else ReflowCardsSoon();
+        else ShowDivisionColumns();
+    }
+
+    /// <summary>
+    /// A division's cards with as many tiles across as now fit, the tiles kept as they are: they follow a drag of the
+    /// panes beside them at once, rather than stretching out of shape until it pauses.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed: making a big division's tiles again took most of a second (144 units); changing how many sit
+    /// across only lays them out again. Keep it that way when tidying.
+    /// </remarks>
+    private void ShowDivisionColumns()
+    {
+        divisionCardColumns = CardRowView.ColumnsFor(DivisionCardsRoom());
+        if (DivisionCardsContent.Content is StackPanel cards) DivisionCards.SetColumns(cards, divisionCardColumns);
     }
 
     /// <summary>A category's heading clicked: its tiles fold away or come back.</summary>

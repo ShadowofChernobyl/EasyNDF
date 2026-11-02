@@ -180,6 +180,7 @@ public static class WeaponLedger
             Margin = new Thickness(narrow ? 4 : 6, 0, 0, 0), Visibility = Visibility.Hidden, ToolTip = Texts.Get("Units.Weapons.Menu.Tip"),
         };
         DockPanel.SetDock(menuButton, Dock.Right);
+        System.Windows.Automation.AutomationProperties.SetName(menuButton, (string)menuButton.ToolTip);
 
         var name = new TextBlock { TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, LineHeight = (narrow ? 11.5 : 12) * 1.2, ToolTip = weapon.Name, FontSize = narrow ? 11.5 : 12 };
         if (weapon.Count > 1)

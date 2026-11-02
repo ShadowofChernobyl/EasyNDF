@@ -26,8 +26,8 @@ public sealed class FileRowView : Decorator
     public static readonly DependencyProperty ListProperty = DependencyProperty.Register(nameof(List), typeof(FileListModel), typeof(FileRowView),
         new PropertyMetadata(null, (view, _) => ((FileRowView)view).Build()));
 
-    /// <summary>What the Remove button, Save anyway and the export folder buttons say they do, in their Tag.</summary>
-    public const string RemoveAction = "remove", SaveAnywayAction = "save", ChooseFolderAction = "dir", ClearFolderAction = "nodir";
+    /// <summary>What the Remove button, Save anyway and the export folder's Browse button say they do, in their Tag.</summary>
+    public const string RemoveAction = "remove", SaveAnywayAction = "save", ChooseFolderAction = "dir";
 
     /// <summary>What an Armory column letter's Tag starts with, before the part it opens: "armory:Units".</summary>
     public const string ArmoryAction = "armory:";
@@ -199,7 +199,7 @@ public sealed class FileRowView : Decorator
     private void ShowArmory()
     {
         if (armoryLetters is null || DataContext is not FileRow row) return;
-        IReadOnlyDictionary<ArmoryPart, int> counts = FileRunner.ArmoryRuleCountsFor(row.Entry.Name);
+        IReadOnlyDictionary<ArmoryPart, int> counts = FileRunner.ArmoryRuleCountsFor(row.Entry);
         for (int at = 0; at < ArmoryParts.Length; at++)
         {
             ArmoryPart part = ArmoryParts[at];
@@ -217,19 +217,22 @@ public sealed class FileRowView : Decorator
         }
     }
 
-    /// <summary>td.dir: "Browse...", the folder's name 6 pixels either side (or "Not set"), and × to clear it.</summary>
+    /// <summary>
+    /// td.dir: "Browse..." while the file has no export folder, else the folder's name, ending in "…" when the column is
+    /// too narrow for it. The rest is in its right-click menu (see FilesPage.Menus), which its Tag tells apart.
+    /// </summary>
     private static UIElement ExportFolderCell()
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center };
-        row.Children.Add(new Button { Content = Texts.Get("Files.Row.Browse"), Tag = ChooseFolderAction, ToolTip = Texts.Get("Files.Row.Browse.Tip") });
-        var name = new TextBlock { Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        var cell = new Grid { Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center, Tag = FileColumn.ExportFolder, Background = System.Windows.Media.Brushes.Transparent };
+        var browse = new Button { Content = Texts.Get("Files.Row.Browse"), Tag = ChooseFolderAction, ToolTip = Texts.Get("Files.Row.Browse.Tip"), HorizontalAlignment = HorizontalAlignment.Left };
+        browse.SetBinding(VisibilityProperty, new Binding(nameof(FileRow.HasNoExportFolder)) { Converter = (IValueConverter)Application.Current.FindResource("ShowWhenTrue") });
+        cell.Children.Add(browse);
+        var name = new TextBlock { VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         name.SetBinding(TextBlock.TextProperty, nameof(FileRow.ExportFolderText));
         name.SetBinding(ToolTipProperty, nameof(FileRow.ExportFolderTip));
-        row.Children.Add(name);
-        var clear = new Button { Style = (Style)Application.Current.FindResource("IconButton"), Content = "×", Tag = ClearFolderAction, ToolTip = Texts.Get("Files.Row.ClearFolder.Tip") };
-        clear.SetBinding(VisibilityProperty, new Binding(nameof(FileRow.HasExportFolder)) { Converter = (IValueConverter)Application.Current.FindResource("ShowWhenTrue") });
-        row.Children.Add(clear);
-        return row;
+        name.SetBinding(VisibilityProperty, new Binding(nameof(FileRow.HasExportFolder)) { Converter = (IValueConverter)Application.Current.FindResource("ShowWhenTrue") });
+        cell.Children.Add(name);
+        return cell;
     }
 
     private UIElement StatusCell()
@@ -248,7 +251,9 @@ public sealed class FileRowView : Decorator
         saveAnyway.SetBinding(MarginProperty, new Binding(nameof(ColumnWidths.ButtonGap)) { Source = list.Columns });
         saveAnyway.SetBinding(VisibilityProperty, new Binding(nameof(FileRow.HasHeldOutput)) { Converter = (IValueConverter)Application.Current.FindResource("ShowWhenTrue") });
         buttons.Children.Add(saveAnyway);
-        buttons.Children.Add(new Button { Style = (Style)Application.Current.FindResource("IconButton"), Content = "×", Tag = RemoveAction, ToolTip = Texts.Get("Files.Row.Remove.Tip") });
+        var remove = new Button { Style = (Style)Application.Current.FindResource("IconButton"), Content = "×", Tag = RemoveAction, ToolTip = Texts.Get("Files.Row.Remove.Tip") };
+        System.Windows.Automation.AutomationProperties.SetName(remove, Texts.Get("Files.Row.Remove.Tip"));
+        buttons.Children.Add(remove);
         // it stays at the list's right edge while the list scrolls sideways (see ColumnWidths.ButtonsOffset)
         return new Border { Style = (Style)FindResource("FileButtonsCell"), Child = buttons, RenderTransform = list.Columns.ButtonsOffset };
     }

@@ -132,8 +132,9 @@ public sealed class NdfEngine
             else constants++;
         }
 
-        int lines = text.Length > 0 ? 1 : 0;
-        foreach (char c in text) if (c == '\n') lines++;
+        // the line breaks are counted many characters at a time: going through a large file one character at a time
+        // took a good part of reading it. Tuned for speed: Keep it that way when tidying.
+        int lines = (text.Length > 0 ? 1 : 0) + text.AsSpan().Count('\n');
 
         return new LoadSummary(doc.Declarations.Count, descriptors, constants, unnamed, lines, [], [], [], []);
     }

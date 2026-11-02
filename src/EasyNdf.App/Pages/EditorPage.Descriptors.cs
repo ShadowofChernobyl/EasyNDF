@@ -78,6 +78,81 @@ public partial class EditorPage
     /// <summary>Reads the descriptors again a moment after the text changes (the HTML app's <c>dvKick</c>).</summary>
     private readonly DispatcherTimer descriptorsLater = new();
 
+    /// <summary>Whether the descriptors are being read again after typing, so another read waits for it.</summary>
+    private bool readingAfterTyping;
+
+    /// <summary>Where the file the descriptors were read from was typed in since, and that file's text.</summary>
+    private readonly EditedDeclarations editedOutline = new();
+    private TextDocument? editedFor;
+
+    /// <summary>
+    /// For a large file read before, only the declarations typed in since are read again; the others keep their place
+    /// in the list, moved with the text as it changed. The tree is built again only when a descriptor's name, type or
+    /// kind changed (building it for Steel Division 2's 3,810 units held the screen for most of a second). False when
+    /// the file should be read whole instead; true when it was read, or when what was typed does not read yet (the
+    /// list waits for it, as the syntax check shows where).
+    /// </summary>
+    private async Task<bool> ReadEditedDescriptorsOnly()
+    {
+        if (shown is not { IsFile: true, Parent: null } || outlineFor != shown || outlineError != "" || wanted is not null
+            || shown.Document.TextLength < EditedDeclarations.LargeText || !ReferenceEquals(editedFor, shown.Document)) return false;
+        if (editedOutline.Take() is not { } stretches) return false;
+        int taken = editedOutline.Count;
+        ITextSource now = shown.Document.CreateSnapshot();
+        if (outlineText.Version is not { } was || now.Version is not { } current || !was.BelongsToSameDocumentAs(current)) return false;
+        int mine = ++outlineReading, generation = textGeneration;
+        List<(int Start, string Text)> parts = [.. stretches.Select(stretch => (stretch.Start, now.GetText(stretch.Start, stretch.End - stretch.Start)))];
+        List<OutlineEntry> read;
+        try
+        {
+            read = await Task.Run(() => parts.SelectMany(part => DescriptorViewer.Outline(part.Text)
+                .Select(entry => entry with { Start = entry.Start + part.Start, End = entry.End + part.Start })).ToList());
+        }
+        catch (Exception problem) when (problem is NdfParseException or ArgumentException)
+        {
+            // what was typed doesn't read yet: the list stays as it was, marked out of date, and is read again later
+            if (mine == outlineReading)
+            {
+                descriptorsStale = true;
+                SayDescriptors();
+            }
+            return true;
+        }
+        if (mine != outlineReading) return true;
+
+        string? keep = selectedDescriptor >= 0 && selectedDescriptor < outline.Count ? DescriptorKey(selectedDescriptor) : null;
+        var list = new List<OutlineEntry>(outline.Count + read.Count);
+        foreach (OutlineEntry entry in outline)
+        {
+            int start = was.MoveOffsetTo(current, entry.Start, AnchorMovementType.Default);
+            int end = was.MoveOffsetTo(current, entry.End, AnchorMovementType.Default);
+            if (stretches.Any(stretch => start < stretch.End && end > stretch.Start)) continue;
+            list.Add(entry with { Start = start, End = end });
+        }
+        list.AddRange(read);
+        list.Sort((one, other) => one.Start.CompareTo(other.Start));
+        bool sameNames = list.Count == outline.Count
+            && list.Zip(outline).All(pair => pair.First.Name == pair.Second.Name && pair.First.Type == pair.Second.Type && pair.First.Kind == pair.Second.Kind);
+        outline = list;
+        outlineText = now;
+        descriptorsStale = textGeneration != generation;
+        editedOutline.Done(taken);
+
+        int chosen = sameNames ? selectedDescriptor : -1;
+        if (!sameNames && keep is not null)
+            for (int i = 0; i < list.Count; i++)
+                if (DescriptorKey(i) == keep) { chosen = i; break; }
+        if (!sameNames)
+        {
+            selectedDescriptor = -1;
+            _ = RebuildTree();
+        }
+        if (chosen >= 0 && chosen < list.Count) await SelectDescriptor(chosen, reveal: false, keepClosed: true);
+        else ShowProperties();
+        SayDescriptors();
+        return true;
+    }
+
     // ---- the tree (the HTML app's tv) ----
 
     /// <summary>"This file" (false) or "All files" (true).</summary>
@@ -150,7 +225,16 @@ public partial class EditorPage
         descriptorsLater.Tick += async (_, _) =>
         {
             descriptorsLater.Stop();
-            await RefreshDescriptors();
+            // one read after typing at a time: a large file's takes seconds and gigabytes, and reads started on each
+            // pause piled up; one asked for while another is made waits, then reads the text as it is then
+            if (readingAfterTyping)
+            {
+                descriptorsLater.Start();
+                return;
+            }
+            readingAfterTyping = true;
+            try { await RefreshDescriptors(); }
+            finally { readingAfterTyping = false; }
         };
         keysRested.Tick += (_, _) =>
         {
@@ -189,7 +273,10 @@ public partial class EditorPage
             descriptorsStale = true;
             ShowProperties();
         }
-        KickDescriptors(shown.Document.LineCount > 20000 ? 1500 : 600);
+        // a large file read before is read again only where it was typed in, which is quick; one to be read whole waits longer
+        bool byDeclaration = ReferenceEquals(editedFor, shown.Document) && outlineFor == shown && outlineError == "";
+        KickDescriptors(shown.Document.LineCount <= 20000 ? 600
+            : byDeclaration ? 1000 : (int)Math.Max(1500, Editor.SyntaxProblems.PauseAfterTyping(shown.Document.TextLength).TotalMilliseconds));
     }
 
     /// <summary>The whole text the descriptors are read from: with "Changes only" shown, the whole export.</summary>
@@ -231,6 +318,7 @@ public partial class EditorPage
             ShowProperties();
             return;
         }
+        if (await ReadEditedDescriptorsOnly()) return;
         int mine = ++outlineReading, generation = textGeneration;
         string? keep = selectedDescriptor >= 0 && selectedDescriptor < outline.Count ? DescriptorKey(selectedDescriptor) : null;
         ShownText? before = outlineFor;
@@ -251,6 +339,23 @@ public partial class EditorPage
         outlineError = error;
         descriptorsStale = textGeneration != generation;
         outlineFor = shown;
+        // a file read whole: from now on, a large one is read again only where it is typed in (unless it changed
+        // during this read, when the next read reads it whole again)
+        if (shown.Parent is null)
+        {
+            if (!ReferenceEquals(editedFor, shown.Document))
+            {
+                editedOutline.Follow(shown.Document);
+                editedFor = shown.Document;
+            }
+            if (descriptorsStale || error != "") editedOutline.Forget();
+            else editedOutline.ReadWhole();
+        }
+        else
+        {
+            editedOutline.Follow(null);
+            editedFor = null;
+        }
         if (before != shown && wanted is null)
         {
             if (!showsAllFiles)
@@ -274,7 +379,11 @@ public partial class EditorPage
         selectedDescriptor = -1;
         _ = RebuildTree();
         // the first read of a file just opened: opening and reading a large file left a lot behind, which is given back
-        if (before != shown) Memory.GiveBack();
+        // a full give-back stops the app for a fifth of a second with WARNO's 26 MB UniteDescriptor.ndf open, and is worth
+        // it (1 GB to 600 MB in Task Manager); with a far larger text (Steel Division 2's 117 MB) it would stop it for most
+        // of a second, so it runs alongside, and the idle clean-up (Memory.TrimWhenIdle) gives the rest back later
+        if (before != shown && shown?.Document.TextLength > Memory.LargestTextForFullGiveBack) Memory.GiveBackAlongside();
+        else if (before != shown) Memory.GiveBack();
         if (chosen >= 0) await SelectDescriptor(chosen, reveal: false, keepClosed: same);
         else
         {
@@ -1049,6 +1158,7 @@ public partial class EditorPage
         if (other is null && local is null)
         {
             DescriptorHead.Inlines.Clear();
+            DescriptorHead.ClearValue(ToolTipProperty);
             PropertyList.ItemsSource = null;
             return;
         }
@@ -1061,6 +1171,8 @@ public partial class EditorPage
         DescriptorHead.Inlines.Clear();
         DescriptorHead.Inlines.Add(Coloured(name != "" ? name : Texts.Get("Editor.Unnamed"), "s-name"));
         DescriptorHead.Inlines.Add(new Run(isConstant ? "  " + Texts.Get("Editor.Head.Constant") : type != "" ? "  " + Texts.Get("Editor.Head.Is", ("type", type)) : ""));
+        // the heading is made of coloured parts, which the tooltip for cut-short text does not read, so it gets its own
+        DescriptorHead.ToolTip = string.Concat(DescriptorHead.Inlines.OfType<Run>().Select(run => run.Text));
 
         var items = new List<PropertyItem>();
         FileEntry? mine = other?.Entry ?? shown?.Entry;
@@ -1151,6 +1263,57 @@ public partial class EditorPage
             }
             if (at is ListBox) return;
         }
+    }
+
+    /// <summary>
+    /// The keyboard on a row of the properties list (Up and Down move between rows by themselves): Enter, Space, Left or
+    /// Right hide or show an object's or list's inside, and open or close "Used By"; Enter on a descriptor that uses this
+    /// one lists its properties (Alt+Enter shows it in the text); Enter on a value that can be changed goes into its box.
+    /// </summary>
+    private void PropertiesKeyDown(object sender, KeyEventArgs e)
+    {
+        // keys typed in a value's box are the box's own
+        if (e.OriginalSource is not ListBoxItem { DataContext: PropertyItem item } row) return;
+        bool toggleKey = e.Key is Key.Enter or Key.Space or Key.Left or Key.Right;
+        int index = PropertyList.ItemContainerGenerator.IndexFromContainer(row);
+        switch (item)
+        {
+            case ObjectOrListItem group when toggleKey:
+                // Left only hides and Right only shows, as in the Descriptor Tree
+                if (e.Key == Key.Left && group.IsShut || e.Key == Key.Right && !group.IsShut) break;
+                if (!closedRows.Remove(group.Index)) closedRows.Add(group.Index);
+                ShowProperties();
+                FocusPropertyRow(index);
+                break;
+            case UsedByItem usedBy when toggleKey:
+                if (e.Key == Key.Left && !usedBy.IsOpen || e.Key == Key.Right && usedBy.IsOpen) break;
+                usersOpen = !usersOpen;
+                ShowProperties();
+                FocusPropertyRow(index);
+                break;
+            case UserItem user when e.Key == Key.Enter:
+                _ = Pick(NodeOf(user.User), reveal: Keyboard.Modifiers.HasFlag(ModifierKeys.Alt));
+                break;
+            case ValueItem { IsReadOnly: false } when e.Key == Key.Enter:
+                if (FindChild<TextBox>(row) is TextBox box)
+                {
+                    box.Focus();
+                    box.SelectAll();
+                }
+                break;
+            default:
+                return;
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>Gives the keyboard back to a row of the properties list after it was built again, so the arrows go on from there.</summary>
+    private void FocusPropertyRow(int index)
+    {
+        if (index < 0 || index >= PropertyList.Items.Count) return;
+        PropertyList.UpdateLayout();
+        PropertyList.ScrollIntoView(PropertyList.Items[index]);
+        if (PropertyList.ItemContainerGenerator.ContainerFromIndex(index) is ListBoxItem container) container.Focus();
     }
 
     /// <summary>A descriptor in "Used by" clicked: its properties are listed; a double-click (or Alt+click) shows it in the text.</summary>
@@ -1411,6 +1574,8 @@ public partial class EditorPage
             shown.PointedAt = document.CreateAnchor(document.GetLineByNumber(line + 1).Offset);
             shading.PointedAt = shown.PointedAt;
             Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
+            // the pointed line's outline is drawn above the selection, on the caret layer
+            Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Caret);
             if (selectedDescriptor == at)
             {
                 if (read.Rows.Count != propertyRows.Count) closedRows = [];
@@ -1510,6 +1675,13 @@ public partial class EditorPage
 
     /// <summary>The least widths: the tree min(9rem, 30%), the properties min(14rem, 40%); none for a list folded away.</summary>
     private void DescriptorBoxResized(object sender, SizeChangedEventArgs e) => ShowLeastListWidths();
+
+    /// <summary>
+    /// The properties' top line resized: the state beside the descriptor's name takes at most 45% of it, so a long
+    /// "In other file" never squeezes the name out; both are cut short with "…" when there is not room.
+    /// </summary>
+    private void DescriptorTopResized(object sender, SizeChangedEventArgs e) =>
+        DescriptorState.MaxWidth = Math.Max(0, 0.45 * e.NewSize.Width);
 
     private void ShowLeastListWidths()
     {

@@ -56,10 +56,16 @@ public partial class FilesPage
     private UIElement Heading(FileColumn column, bool isLast)
     {
         bool sortable = FileListView.CanSort(column);
-        var label = new StackPanel { Orientation = Orientation.Horizontal };
-        label.Children.Add(new TextBlock { Text = ColumnFit.Heading(column) });
+        // the arrow is placed first so it keeps its room, and a narrow column cuts the name short with "…" rather than
+        // mid-letter; the panel sits at the left, so the arrow follows the name. A name cut short shows whole on hover.
+        var label = new DockPanel { HorizontalAlignment = HorizontalAlignment.Left };
         if (Model.SortColumn == column)
-            label.Children.Add(new TextBlock { Text = Model.SortAscending ? "▴" : "▾", Style = (Style)FindResource("SortArrow") });
+        {
+            var arrow = new TextBlock { Text = Model.SortAscending ? "▴" : "▾", Style = (Style)FindResource("SortArrow") };
+            DockPanel.SetDock(arrow, Dock.Right);
+            label.Children.Add(arrow);
+        }
+        label.Children.Add(new TextBlock { Text = ColumnFit.Heading(column), TextTrimming = TextTrimming.CharacterEllipsis });
         var heading = new Bevel
         {
             Style = (Style)FindResource("ColumnHeading"),
@@ -202,6 +208,7 @@ public partial class FilesPage
                 IsEnabled = column != FileColumn.File, // the file's name is always shown
                 Margin = new Thickness(0, ColumnChoices.Children.Count == 0 ? 0 : 5, 0, 0),
             };
+            OffReason.SetText(choice, Texts.Get("Files.Column.AlwaysShown"));
             FileColumn chosen = column;
             choice.Click += (_, _) => Model.SetColumnShown(chosen, choice.IsChecked == true);
             ColumnChoices.Children.Add(choice);
@@ -220,5 +227,17 @@ public partial class FilesPage
         };
         ColumnChoices.Children.Add(reset);
         ColumnsPopup.IsOpen = true;
+        // the keyboard goes into the popup, so its choices can be ticked with Tab and Space, and Escape closes it
+        Dispatcher.BeginInvoke(() => ColumnChoices.Children.OfType<Control>().FirstOrDefault(choice => choice.IsEnabled)?.Focus(),
+            System.Windows.Threading.DispatcherPriority.Input);
+    }
+
+    /// <summary>Escape in the Columns popup closes it, giving the keyboard back to the Columns button.</summary>
+    private void ColumnsPopupKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape) return;
+        e.Handled = true;
+        ColumnsPopup.IsOpen = false;
+        ColumnsButton.Focus();
     }
 }

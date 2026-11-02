@@ -47,9 +47,12 @@ public static partial class WeaponPane
             copyName.SelectAll();
         }
         pane.Children.Add(Head(weapon, actions, compare, OpenCopy));
-        foreach (ValueSection section in ValueSections) pane.Children.Add(ValuesSection(section, weapon, actions));
-        pane.Children.Add(usedBy);
-        pane.Children.Add(Files(weapon));
+        // two side by side from 560 pixels (PaneLayout)
+        var sections = new SectionColumns();
+        foreach (ValueSection section in ValueSections) sections.Children.Add(ValuesSection(section, weapon, actions));
+        sections.Children.Add(usedBy);
+        sections.Children.Add(Files(weapon, actions));
+        pane.Children.Add(sections);
         return pane;
     }
 
@@ -58,7 +61,7 @@ public static partial class WeaponPane
     /// Kinetic [its traits' pictures] · its descriptor"), the buttons, and, when it can be changed and more than one
     /// unit carries it, a box in the caution colour saying a change reaches all of them; 10 pixels in.
     /// </summary>
-    private static StackPanel Head(Weapon weapon, IWeaponActions actions, Action<Weapon> compare, Action openCopy)
+    private static PictureBeside Head(Weapon weapon, IWeaponActions actions, Action<Weapon> compare, Action openCopy)
     {
         var name = new TextBlock { FontSize = 14, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap };
         WeaponMarks.Show(name, weapon, WeaponField.Name, weapon.Name, each => each.Name);
@@ -66,12 +69,13 @@ public static partial class WeaponPane
         // a copy of the mod's own is renamed here; the game's weapons keep the name made from their descriptor
         if (actions.IsCopy(weapon))
             ClickToChange.WithBox(nameCell, weapon.Name, typed => typed.Trim() != "", typed => actions.ChangeWeapon(weapon, WeaponField.Name, typed), Texts.Get("Weapons.Pane.Name.Tip"));
-        var head = new StackPanel
+        // from 560 pixels wide, the picture beside the rest
+        var head = new PictureBeside
         {
-            Margin = new Thickness(10, 10, 10, 10),
+            Margin = new Thickness(10, 10, 10, 10), SideWidth = PictureWidth,
             Children = { PictureWithPencil(weapon, actions), nameCell, What(weapon), Buttons(weapon, actions, compare, openCopy) },
         };
-        if (actions.CanChangeWeapon(weapon) && weapon.Users.Count > 1) head.Children.Add(SharedBox(weapon, openCopy));
+        if (actions.CanChangeWeapon(weapon) && weapon.Users.Count > 1) head.Children.Add(SharedBox(weapon, openCopy, canCopy: actions.WhyWeaponsCannotBeAdded is null));
         return head;
     }
 
@@ -129,12 +133,14 @@ public static partial class WeaponPane
     /// <summary>
     /// The box saying the weapon is shared: "⚠ 3 units carry it: a change here changes all of them. Copy... makes one
     /// of your own for chosen units.", with a border and a faint background in the caution colour; "Copy..." opens
-    /// Used By with its copy's name.
+    /// Used By with its copy's name. Where weapons cannot be copied (<paramref name="canCopy"/>), the first sentence only.
     /// </summary>
-    private static Border SharedBox(Weapon weapon, Action openCopy)
+    private static Border SharedBox(Weapon weapon, Action openCopy, bool canCopy)
     {
         var text = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12 };
-        string sentence = Texts.Get("Weapons.Pane.Shared", ("units", "\u0001"), ("copy", "\u0002"));
+        string sentence = canCopy
+            ? Texts.Get("Weapons.Pane.Shared", ("units", "\u0001"), ("copy", "\u0002"))
+            : Texts.Get("Weapons.Pane.Shared.NoCopy", ("units", "\u0001"));
         // the sentence with its two places: the units in bold, and Copy... as a link
         string[] pieces = sentence.Split('\u0001', '\u0002');
         int at = 0;
@@ -192,6 +198,10 @@ public static partial class WeaponPane
         {
             var copy = new Button { Content = Texts.Get("Weapons.Pane.Copy"), ToolTip = Texts.Get("Weapons.Pane.Copy.Tip") };
             copy.Click += (_, _) => openCopy();
+            // switched off, with the reason, for a game the Armory does not add weapons to yet
+            string? noCopies = actions.WhyWeaponsCannotBeAdded;
+            copy.IsEnabled = noCopies is null;
+            OffReason.SetText(copy, noCopies);
             row.Children.Add(copy);
         }
         return row;
@@ -211,7 +221,8 @@ public static partial class WeaponPane
     {
         var contents = new StackPanel();
         TextBox? copyName = null;
-        if (!actions.CanChangeWeapon(weapon) || weapon.Users.Count == 0)
+        // the ticks give units copies, which a game the Armory does not add weapons to cannot have
+        if (!actions.CanChangeWeapon(weapon) || weapon.Users.Count == 0 || actions.WhyWeaponsCannotBeAdded is not null)
         {
             contents.Children.Add(UserLinks(weapon.Users, units, actions));
         }
@@ -287,6 +298,9 @@ public static partial class WeaponPane
                 e.Handled = true;
                 actions.ShowUnit(unit.Descriptor);
             };
+            // Tab reaches the link, Enter or Space follows it as a click does
+            Units.KeyPick.Make(link, () => actions.ShowUnit(unit.Descriptor));
+            System.Windows.Automation.AutomationProperties.SetName(link, unit.Name);
             names.Children.Add(link);
         }
         // how many units the row stands for, at its right, as the nations' rows have
@@ -352,34 +366,24 @@ public static partial class WeaponPane
     /// Where the weapon is in the game's files: its descriptor, its file, its GUID, and the keys of its texts in the
     /// game's dictionaries (its name, category, caliber and description). Folded at first.
     /// </summary>
-    private static FoldSection Files(Weapon weapon)
+    private static FoldSection Files(Weapon weapon, IWeaponActions actions)
     {
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        // the descriptor and file show the weapon in the File Editor; the other names are copied
+        var values = new List<FileValue>
+        {
+            new(Texts.Get("Units.Pane.Descriptor"), weapon.Descriptor, () => actions.ShowInEditor(weapon), actions.CanShowInEditor(weapon), weapon.File),
+            new(Texts.Get("Units.Pane.File"), weapon.File, () => actions.ShowInEditor(weapon), actions.CanShowInEditor(weapon), weapon.File),
+        };
         void Add(string nameKey, string? value)
         {
-            if (value is null) return;
-            int row = grid.RowDefinitions.Count;
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            TextBlock name = UnitPane.Muted(Texts.Get(nameKey), new Thickness(0, 1, 10, 1));
-            var text = new TextBlock { Text = value, FontSize = 11, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
-            text.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
-            text.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-            Grid.SetRow(name, row);
-            Grid.SetRow(text, row);
-            Grid.SetColumn(text, 1);
-            grid.Children.Add(name);
-            grid.Children.Add(text);
+            if (value is not null) values.Add(new(Texts.Get(nameKey), value));
         }
-        Add("Units.Pane.Descriptor", weapon.Descriptor);
-        Add("Units.Pane.File", weapon.File);
         Add("Weapons.Pane.Guid", weapon.FileValue("DescriptorId"));
         Add("Weapons.Pane.NameText", Unquoted(weapon.FileValue("Name")));
         Add("Weapons.Pane.CategoryText", Unquoted(weapon.FileValue("TypeCategoryName")));
         Add("Weapons.Pane.CaliberText", Unquoted(weapon.FileValue("Caliber")));
         Add("Weapons.Pane.DescriptionText", Unquoted(weapon.FileValue("WeaponDescriptionToken")));
-        return Section("files", "Units.Pane.Files", grid, foldedAtFirst: true);
+        return Section("files", "Units.Pane.Files", FileValueRows.Build(values), foldedAtFirst: true);
     }
 
     /// <summary>A text as its file writes it, without its quotes; null for none.</summary>

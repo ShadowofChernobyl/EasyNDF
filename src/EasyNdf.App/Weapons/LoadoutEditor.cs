@@ -24,13 +24,13 @@ public interface ILoadoutActions
     /// <summary>A copy of the weapon mounted somewhere, of the user's own, mounted there in its place, to change.</summary>
     void CopyAndChange(LoadoutMount mount);
 
-    /// <summary>Takes the weapon mounted somewhere off, once asked (not yet tried in the game).</summary>
+    /// <summary>Takes the weapon mounted somewhere off, once asked.</summary>
     void Remove(LoadoutMount mount);
 
     /// <summary>Takes back a change: a weapon taken off is put back, a swap undone, an added weapon taken away.</summary>
     void TakeBack(LoadoutChange change);
 
-    /// <summary>Opens the window to pick a weapon to add to a turret (not yet tried in the game).</summary>
+    /// <summary>Opens the window to pick a weapon to add to a turret.</summary>
     void Add(LoadoutTurret turret);
 
     /// <summary>A right-click on a weapon: its menu (show it in the File Editor, a new rule for it...), where there is one.</summary>
@@ -38,6 +38,15 @@ public interface ILoadoutActions
 
     /// <summary>A double-click on a weapon: it shown on the Weapons sub-tab, where it can be.</summary>
     void ShowWeapon(string ammunition) { }
+
+    /// <summary>
+    /// Why the number of a weapon at one place cannot be typed in, shown as its tooltip: a game that does not keep it in
+    /// the loadout (Steel Division 2). Null when it can.
+    /// </summary>
+    string? WhyCountCannotChange => null;
+
+    /// <summary>Why "Copy and Change…" is switched off: copies of weapons the Armory can't make for the game yet. Null when it is on.</summary>
+    string? WhyCopiesCannotBeMade => null;
 
     /// <summary>
     /// Puts a change in the place of another in the list of changes, as a number typed in the editor does: with no
@@ -61,7 +70,7 @@ public sealed record LoadoutFacts(string ModelName, bool IsNewUnit, string GameL
 /// weapon is a row: its picture, its name and kind, its ammo box with the box's salvos and how many of it are
 /// mounted (both can be typed in), and Swap ▾, Copy and Change… and ✕. A changed row has a bar in the accent colour
 /// at its left; a weapon taken off is faded and struck through, with Undo; each turret ends with a dashed
-/// "+ Add to This Turret…". Beside it, the Checks: what the changes do, what has not been tried in the game, and how
+/// "+ Add to This Turret…". Beside it, the Checks: what the changes do, what they leave to look out for, and how
 /// they are written.
 /// </summary>
 public static class LoadoutEditor
@@ -72,8 +81,11 @@ public static class LoadoutEditor
     /// <summary>The highest salvos a box takes, and the highest number of a weapon at one place.</summary>
     private const int HighestSalvos = 9999, HighestCount = 99;
 
-    /// <summary>A row narrower than this puts its buttons on a second line.</summary>
-    private const double NarrowRow = 560;
+    /// <summary>
+    /// The least room a weapon's name keeps beside the box, count and buttons; with less, they go on a second line,
+    /// so a name never breaks inside its words.
+    /// </summary>
+    private const double NameRoom = 160;
 
     /// <summary>The turrets, each in a raised box, with the changes shown in place.</summary>
     /// <param name="original">The loadout as the game has it, which the changes' places are in.</param>
@@ -150,15 +162,20 @@ public static class LoadoutEditor
         else sub.Text = What(weapon);
 
         FrameworkElement box = BoxField(original, mount, salvos, actions);
-        FrameworkElement number = CountField(mount.Count, count?.Number, updated =>
+        FrameworkElement number = actions.WhyCountCannotChange is string why ? FixedCount(mount.Count, why) : CountField(mount.Count, count?.Number, updated =>
             actions.Replace(count, updated == mount.Count ? null : new LoadoutChange(LoadoutChange.Count, mount.Turret, mount.Index, Number: updated)));
 
-        var swapButton = SmallButton(Texts.Get("Weapons.Loadout.SwapMenu"), Texts.Get("Weapons.Loadout.Swap.Tip"), () => { });
-        swapButton.Click += (_, _) => OpenSwapMenu(swapButton, mount, swap, beforeName, actions);
-        Panel buttons = Buttons(
-            swapButton,
-            SmallButton(Texts.Get("Weapons.Loadout.CopyAndChange"), Texts.Get("Weapons.Loadout.CopyAndChange.Tip"), () => actions.CopyAndChange(mount)),
-            SmallButton("✕", Texts.Get("Weapons.Loadout.Remove.Tip"), () => actions.Remove(mount)));
+        // the row's actions in one ⋯ menu (Paul's choice, option B of the mock), rather than a row of buttons on every weapon
+        Panel buttons = Buttons(MoreButton(
+        [
+            new MenuChoice(Texts.Get("Weapons.Loadout.SwapItem"), () => actions.Swap(mount), Tip: Texts.Get("Weapons.Loadout.Swap.Tip")),
+            swap is null ? null : new MenuChoice(Texts.Get("Weapons.Loadout.Unswap"), () => actions.TakeBack(swap), Tip: Texts.Get("Weapons.Loadout.Unswap.Tip", ("weapon", beforeName))),
+            // switched off, with the reason, where copies can't be made for the game yet
+            new MenuChoice(Texts.Get("Weapons.Loadout.CopyAndChange"), () => actions.CopyAndChange(mount), IsEnabled: actions.WhyCopiesCannotBeMade is null,
+                Tip: actions.WhyCopiesCannotBeMade ?? Texts.Get("Weapons.Loadout.CopyAndChange.Tip")),
+            Menus.Line,
+            new MenuChoice(Texts.Get("Weapons.Loadout.TakeOff"), () => actions.Remove(mount), Tip: Texts.Get("Weapons.Loadout.Remove.Tip"), Symbol: "✕", SymbolColour: "warn"),
+        ]));
         bool changed = swap is not null || count is not null || (salvos is not null && FirstInBox(original, mount));
         return WithMenu(Row(Picture(weapon), name, sub, box, number, buttons, changed, gone: false), ammunition, actions);
     }
@@ -174,15 +191,18 @@ public static class LoadoutEditor
         sub.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         sub.Inlines.Add(CautionRun(" · " + Texts.Get("Weapons.Loadout.Added")));
 
-        // the added weapons' boxes come after the game's, in the order they were added
-        int boxNumber = original.AmmoBoxes.Count + changes.Where(change => change.Kind == LoadoutChange.Add).TakeWhile(change => change != add).Count();
+        // the added weapons' boxes are the places the game's list leaves free, in the order they were added
+        int boxNumber = LoadoutRules.BoxOf(original, changes, add);
         int count = LoadoutRules.AddedCount(add);
         FrameworkElement box = Field(
             Texts.Get("Weapons.Loadout.BoxLabel", ("box", boxNumber + 1)), add.Number, null, 1, HighestSalvos, Texts.Get("Weapons.Loadout.Salvos"),
             Texts.Get("Weapons.Loadout.OwnBox.Tip"), salvosTyped => actions.Replace(add, add with { Number = salvosTyped }));
-        FrameworkElement number = CountField(count, null, countTyped =>
+        FrameworkElement number = actions.WhyCountCannotChange is string why ? FixedCount(count, why) : CountField(count, null, countTyped =>
             actions.Replace(add, add with { MountText = WithCount(add.MountText, count, countTyped) }));
-        Panel buttons = Buttons(SmallButton("✕", Texts.Get("Weapons.Loadout.TakeAway.Tip"), () => actions.TakeBack(add)));
+        Panel buttons = Buttons(MoreButton(
+        [
+            new MenuChoice(Texts.Get("Weapons.Loadout.TakeAway"), () => actions.TakeBack(add), Tip: Texts.Get("Weapons.Loadout.TakeAway.Tip"), Symbol: "✕", SymbolColour: "warn"),
+        ]));
         return WithMenu(Row(Picture(weapon), name, sub, box, number, buttons, changed: true, gone: false), add.Ammunition, actions);
     }
 
@@ -197,6 +217,9 @@ public static class LoadoutEditor
         outline.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "caution");
         var dashed = new Grid { Children = { outline, label }, Cursor = Cursors.Hand, Background = Brushes.Transparent, ToolTip = Texts.Get("Weapons.Loadout.Add.Tip") };
         dashed.MouseLeftButtonUp += (_, _) => actions.Add(turret);
+        // Tab reaches it, Enter or Space opens the weapons to add as a click does
+        KeyPick.Make(dashed, () => actions.Add(turret));
+        System.Windows.Automation.AutomationProperties.SetName(dashed, label.Text);
         var line = new WrapRow { Children = { dashed, Small(Texts.Get("Weapons.Loadout.Add.Note"), "muted", new Thickness(0, 2, 0, 0)) } };
         var row = new Border { Child = line, Padding = new Thickness(8, 4, 8, 4) };
         row.SetResourceReference(Border.BackgroundProperty, "bg");
@@ -233,7 +256,7 @@ public static class LoadoutEditor
         if (count is not null) sideParts.Add((count, 3));
         sideParts.Add((buttons, 4));
         PutSideParts(grid, under, sideParts, narrow: false);
-        grid.SizeChanged += (_, _) => PutSideParts(grid, under, sideParts, grid.ActualWidth < NarrowRow);
+        grid.SizeChanged += (_, _) => PutSideParts(grid, under, sideParts, IsNarrow(grid, sideParts));
         if (gone) grid.Opacity = 0.45;
 
         // the bar is drawn over the row's padding, as the mock's inset shadow, so the row's content does not move
@@ -277,6 +300,17 @@ public static class LoadoutEditor
     {
         Grid.SetColumn(element, column);
         grid.Children.Add(element);
+    }
+
+    /// <summary>
+    /// Whether a row is too narrow for the box, count and buttons beside the name: the name would have less than
+    /// <see cref="NameRoom"/> left. Their widths are the ones they asked for, wherever they are now.
+    /// </summary>
+    private static bool IsNarrow(Grid grid, List<(FrameworkElement Part, int Column)> parts)
+    {
+        // the name's 8 pixels either side, and each part's 8 at its left
+        double sides = parts.Sum(entry => entry.Part.DesiredSize.Width - entry.Part.Margin.Left + 8);
+        return grid.ActualWidth - PictureWidth - 16 - sides < NameRoom;
     }
 
     /// <summary>
@@ -324,20 +358,13 @@ public static class LoadoutEditor
         return panel;
     }
 
-    /// <summary>Swap ▾: another weapon in this place (the Swap window), and, once swapped, the game's weapon again.</summary>
-    private static void OpenSwapMenu(Button owner, LoadoutMount mount, LoadoutChange? swap, string beforeName, ILoadoutActions actions)
+    /// <summary>"⋯" at a weapon's right: its menu of what can be done with it, under the button.</summary>
+    private static Button MoreButton(IReadOnlyList<MenuChoice?> choices)
     {
-        var menu = new ContextMenu { PlacementTarget = owner, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
-        var other = new MenuItem { Header = Texts.Get("Weapons.Loadout.SwapOther"), ToolTip = Texts.Get("Weapons.Loadout.Swap.Tip") };
-        other.Click += (_, _) => actions.Swap(mount);
-        menu.Items.Add(other);
-        if (swap is not null)
-        {
-            var back = new MenuItem { Header = Texts.Get("Weapons.Loadout.Unswap"), ToolTip = Texts.Get("Weapons.Loadout.Unswap.Tip", ("weapon", beforeName)) };
-            back.Click += (_, _) => actions.TakeBack(swap);
-            menu.Items.Add(back);
-        }
-        menu.IsOpen = true;
+        Button more = SmallButton("⋯", Texts.Get("Weapons.Loadout.More.Tip"), () => { });
+        more.Padding = new Thickness(6, 0, 6, 0);
+        more.Click += (_, _) => Menus.ShowBelow(more, choices);
+        return more;
     }
 
     // ---- the box and count fields ----
@@ -362,6 +389,15 @@ public static class LoadoutEditor
     /// <param name="keep">Keeps a number typed.</param>
     private static FrameworkElement CountField(int game, int? changed, Action<int> keep) =>
         Field(Texts.Get("Weapons.Loadout.CountLabel"), changed ?? game, changed is null ? null : game, 1, HighestCount, "", Texts.Get("Weapons.Loadout.Count.Tip"), keep);
+
+    /// <summary>"Count · ×1" as a field shows it, but not to type in: its tooltip says why.</summary>
+    private static FrameworkElement FixedCount(int count, string why)
+    {
+        var number = new TextBlock { Text = count.ToString(CultureInfo.InvariantCulture), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 1, 0) };
+        number.SetResourceReference(TextBlock.ForegroundProperty, "ink");
+        var parts = new StackPanel { Orientation = Orientation.Horizontal, Children = { new TextBlock { Text = Texts.Get("Weapons.Loadout.CountLabel"), VerticalAlignment = VerticalAlignment.Center }, number } };
+        return Well(parts, why);
+    }
 
     /// <summary>
     /// A field as the mock's: a well holding a label, a number and a unit after it. The number is text until the field
@@ -392,15 +428,22 @@ public static class LoadoutEditor
         if (unit != "") parts.Children.Add(new TextBlock { Text = " " + unit, VerticalAlignment = VerticalAlignment.Center });
         Border well = Well(parts, tip, new Thickness(8, 0, 0, 0));
         well.Cursor = Cursors.IBeam;
-        well.MouseLeftButtonUp += (_, e) =>
+        void StartTyping()
         {
-            e.Handled = true;
             if (parts.Children.OfType<TextBox>().Any()) return;
             TypeIn(parts, number, shown, lowest, highest, typed =>
             {
                 if (typed != value) keep(typed);
             });
+        }
+        well.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            StartTyping();
         };
+        // Tab reaches the number, Enter or Space opens its box as a click does
+        KeyPick.Make(well, StartTyping);
+        System.Windows.Automation.AutomationProperties.SetName(well, label);
         return well;
     }
 
@@ -473,7 +516,7 @@ public static class LoadoutEditor
 
     /// <summary>
     /// The Checks beside the turrets: a line for each thing the changes do, ✓ when the game takes it, ⚠ for what works
-    /// differently or has not been tried in the game, ✕ for what stops it; then how the changes are written.
+    /// differently or leaves something to look out for, ✕ for what stops it; then how the changes are written.
     /// </summary>
     public static FrameworkElement Checks(Loadout original, IReadOnlyList<LoadoutChange> changes, IReadOnlyDictionary<string, Weapon> weapons, LoadoutFacts facts)
     {
@@ -500,9 +543,8 @@ public static class LoadoutEditor
             if (was is not null && now is not null && was.Kind != now.Kind)
                 panel.Children.Add(Check("⚠", "caution", Texts.Get("Weapons.Checks.OtherKind", ("weapon", now.Name), ("was", was.Name))));
         }
-        int addedBox = original.AmmoBoxes.Count;
         foreach (LoadoutChange add in changes.Where(change => change.Kind == LoadoutChange.Add))
-            panel.Children.Add(Check("⚠", "caution", Texts.Get("Weapons.Checks.Added", ("weapon", NameOf(add.Ammunition)), ("turret", add.Turret + 1), ("box", ++addedBox))));
+            panel.Children.Add(Check("⚠", "caution", Texts.Get("Weapons.Checks.Added", ("weapon", NameOf(add.Ammunition)), ("turret", add.Turret + 1), ("box", LoadoutRules.BoxOf(original, changes, add) + 1))));
         foreach (LoadoutChange remove in changes.Where(change => change.Kind == LoadoutChange.Remove))
         {
             string ammunition = original.Mounts.FirstOrDefault(mount => mount.Turret == remove.Turret && mount.Index == remove.Mount)?.Ammunition ?? "";
@@ -616,6 +658,8 @@ public static class LoadoutEditor
     private static Button SmallButton(string text, string tip, Action click)
     {
         var button = new Button { Content = text, ToolTip = tip, MinHeight = 20, Padding = new Thickness(7, 0, 7, 0), FontSize = 11.5 };
+        // a screen reader says what the button does, not its "✕"
+        System.Windows.Automation.AutomationProperties.SetName(button, tip);
         button.Click += (_, _) => click();
         return button;
     }

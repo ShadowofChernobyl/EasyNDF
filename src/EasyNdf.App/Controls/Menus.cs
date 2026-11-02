@@ -94,13 +94,19 @@ public static class Menus
         }
     }
 
-    /// <summary>A heading's line: 11 pixels, dim, on one line; the mouse and the keys pass over it.</summary>
+    /// <summary>
+    /// A heading's line: 11 pixels, dim; the mouse and the keys pass over it. A heading too long for the menu wraps onto
+    /// another line rather than being cut: a tooltip could not show it, as the mouse passes over the line.
+    /// </summary>
     private static MenuItem HeadingItem(string text)
     {
-        var heading = new TextBlock { Text = text, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = text };
+        var heading = new TextBlock { Text = text, FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxWidth = HeadingWidest };
         heading.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         return new MenuItem { Header = heading, Focusable = false, IsHitTestVisible = false };
     }
+
+    /// <summary>The widest a heading's line is let make its menu; longer, it wraps.</summary>
+    private const double HeadingWidest = 360;
 
     /// <summary>An item's text, after its symbol when it has one (18 pixels wide, in its colour, as in the rule list).</summary>
     private static object HeaderOf(MenuChoice item)

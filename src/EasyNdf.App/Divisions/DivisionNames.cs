@@ -25,14 +25,28 @@ public static class DivisionNames
 
     /// <summary>
     /// The units in one card at each veterancy level, from the lowest: the units per card times that level's share,
-    /// at least one, and 0 where the level is not offered. Empty when the game counts units by phase instead (Steel
-    /// Division 2).
+    /// at least one, and 0 where the level is not offered. Steel Division 2 counts units by phase: there, the units in
+    /// the first phase the card can be taken in, as its phase letter says. Empty when the division gives no count.
     /// </summary>
     public static IReadOnlyList<int> UnitsAtEachVeterancy(DivisionUnit unit)
     {
-        if (unit.UnitsPerCard is not int perCard) return [];
-        return [.. unit.VeterancyMultipliers.Select(share => UnitsAt(perCard, share))];
+        int? perCard = unit.UnitsPerCard ?? (unit.UnitsPerCardByPhase.Count > 0 ? unit.UnitsPerCardByPhase.FirstOrDefault(count => count > 0) : null);
+        if (perCard is not int units) return [];
+        return [.. unit.VeterancyMultipliers.Select(share => UnitsAt(units, share))];
     }
+
+    /// <summary>
+    /// Each level's tooltip on a Steel Division 2 tile's strip: its units per card in each phase, "Veterancy level 2:
+    /// 6 / 12 / 0 units per card in phases A / B / C". Null for a game with one number per card, whose tooltips say it.
+    /// </summary>
+    public static IReadOnlyList<string>? VeterancyTipsByPhase(DivisionUnit unit) =>
+        unit.UnitsPerCard is not null || unit.UnitsPerCardByPhase.Count == 0 ? null
+            : [.. unit.VeterancyMultipliers.Select((share, level) => Texts.Get("Divisions.Veterancy.CountByPhase.Tip",
+                ("level", Texts.Number(level + 1)), ("units", UnitsAtByPhase(unit.UnitsPerCardByPhase, share))))];
+
+    /// <summary>The units in one card at a level with this share in each phase: "6 / 12 / 0".</summary>
+    public static string UnitsAtByPhase(IReadOnlyList<int> unitsByPhase, double share) =>
+        string.Join(" / ", unitsByPhase.Select(count => Texts.Number(count == 0 ? 0 : UnitsAt(count, share))));
 
     /// <summary>The units in one card at a level with this share: the units per card times it, at least one; 0 for a level not offered.</summary>
     public static int UnitsAt(int unitsPerCard, double share) =>

@@ -17,10 +17,23 @@ public static class UnitReader
     private const string UnitPrefix = "Descriptor_Unit_";
 
     /// <summary>
-    /// The files units are read from, in order: UniteDescriptor.ndf, then BuildingDescriptors.ndf, where WARNO keeps
-    /// the units that are buildings, such as each nation's FOB (in the Logistics category). Only the first must exist.
+    /// The start of the name of Steel Division 2's defences (barbed wire, bunkers, nests), which its divisions list as
+    /// units: "Descriptor_Production_Bunker". They are in DefenseProductionsDescriptors.ndf.
     /// </summary>
-    private static readonly (string File, bool MustExist)[] UnitFilesRead = [("UniteDescriptor.ndf", true), ("BuildingDescriptors.ndf", false)];
+    private const string DefencePrefix = "Descriptor_Production_";
+
+    /// <summary>Whether a declaration's name is that of a unit or a defence the game's divisions can list.</summary>
+    private static bool IsUnitName(string name) =>
+        name.StartsWith(UnitPrefix, StringComparison.Ordinal) || name.StartsWith(DefencePrefix, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The files units are read from, in order: UniteDescriptor.ndf, then BuildingDescriptors.ndf, where WARNO keeps
+    /// the units that are buildings, such as each nation's FOB (in the Logistics category), then
+    /// DefenseProductionsDescriptors.ndf, where Steel Division 2 keeps the defences its divisions list (in the Defense
+    /// category). Only the first must exist.
+    /// </summary>
+    private static readonly (string File, bool MustExist)[] UnitFilesRead =
+        [("UniteDescriptor.ndf", true), ("BuildingDescriptors.ndf", false), ("DefenseProductionsDescriptors.ndf", false)];
 
     /// <summary>
     /// The names of the files whose values the units and divisions show (pictures and flags aside): an EasyNDF mod's
@@ -29,7 +42,7 @@ public static class UnitReader
     /// </summary>
     public static IReadOnlyList<string> FilesWithValues { get; } =
     [
-        "UniteDescriptor.ndf", "BuildingDescriptors.ndf", "WeaponDescriptor.ndf", "Ammunition.ndf", "AmmunitionMissiles.ndf", "DeckSerializer.ndf",
+        "UniteDescriptor.ndf", "BuildingDescriptors.ndf", "DefenseProductionsDescriptors.ndf", "WeaponDescriptor.ndf", "Ammunition.ndf", "AmmunitionMissiles.ndf", "DeckSerializer.ndf",
         "Divisions.ndf", "DivisionList.ndf", "DivisionRules.ndf", "DivisionCostMatrix.ndf", "Decks.ndf", "DeckPacks.ndf",
     ];
 
@@ -47,7 +60,8 @@ public static class UnitReader
         Dictionary<string, Loadout> loadouts = [];
         Dictionary<string, List<(string Ammunition, int Count)>> weaponSets = ReadWeaponSets(files, problems, loadouts);
         Dictionary<string, string> weaponPictures = ReadWeaponPictures(files);
-        Dictionary<string, Weapon> ammunition = ReadAmmunition(files, problems, weaponPictures);
+        Scales scales = ReadScales(files);
+        Dictionary<string, Weapon> ammunition = ReadAmmunition(files, problems, weaponPictures, scales);
         var battlegroupCards = new HashSet<string>(StringComparer.Ordinal);
         List<Division> allDivisions = DivisionReader.Read(files, texts, problems, battlegroupCards);
         Dictionary<string, List<string>> divisions = DivisionsOfEachUnit(allDivisions);
@@ -59,10 +73,10 @@ public static class UnitReader
         var units = new List<Unit>();
         foreach ((string file, bool mustExist) in UnitFilesRead)
         {
-            foreach (Declaration declaration in Declarations(files, "Generated/Gameplay/Gfx/" + file, name => name.StartsWith(UnitPrefix, StringComparison.Ordinal), problems, mustExist))
+            foreach (Declaration declaration in Declarations(files, "Generated/Gameplay/Gfx/" + file, IsUnitName, problems, mustExist))
             {
                 if (declaration.Value is not ObjectValue unit) continue;
-                units.Add(ReadUnit(declaration.Name, file, unit, texts, weaponSets, ammunition, divisions, pictures, deckNumbers));
+                units.Add(ReadUnit(declaration.Name, file, unit, texts, weaponSets, ammunition, divisions, pictures, deckNumbers, scales));
             }
         }
         return new UnitCatalog(game, units, flags, problems, allDivisions, battlegroupCards, armorLevels, Weapon.WithUsersAmong(ammunition.Values, units), loadouts,
@@ -74,21 +88,26 @@ public static class UnitReader
     private static Unit ReadUnit(
         string descriptor, string file, ObjectValue unit, GameTexts texts,
         Dictionary<string, List<(string Ammunition, int Count)>> weaponSets, Dictionary<string, Weapon> ammunition,
-        Dictionary<string, List<string>> divisions, Dictionary<string, string> pictures, Dictionary<string, int> deckNumbers)
+        Dictionary<string, List<string>> divisions, Dictionary<string, string> pictures, Dictionary<string, int> deckNumbers, Scales scales)
     {
         // what transports go by: the unit's tags; as a transport, the tags it carries and its seats; the seats it takes in one
         var fields = new UnitFields(unit);
         ObjectValue? tags = fields.ModuleOf("TTagsModuleDescriptor");
         ObjectValue? transporter = fields.ModuleOf("TTransporterModuleDescriptor");
         ObjectValue? transportable = fields.ModuleOf("TTransportableModuleDescriptor");
+        // a Steel Division 2 defence has its name token and picture in its TDefenseUIModuleDescriptor (Name, Vignette)
+        ObjectValue? defenceInterface = fields.ModuleOf("TDefenseUIModuleDescriptor");
         string nation = Text(fields.Find("MotherCountry")) ?? "";
         string? weaponSet = FirstReference(unit, "WeaponDescriptor_");
-        string? pictureKey = Text(fields.Find("ButtonTexture"));
+        string? pictureKey = Text(fields.Find("ButtonTexture")) ?? (defenceInterface is null ? null : Text(Own(defenceInterface, "Vignette")));
+        string? nameToken = Text(fields.Find("NameToken")) ?? (defenceInterface is null ? null : Text(Own(defenceInterface, "Name")));
+        Speeds speed = SpeedOf(fields, scales);
+        (double? vision, double? metresScale) = VisionOf(fields, scales);
         return new Unit
         {
             Descriptor = descriptor,
             File = file,
-            Name = texts.Get(Text(fields.Find("NameToken"))) ?? NameFromDescriptor(descriptor, nation),
+            Name = texts.Get(nameToken) ?? NameFromDescriptor(descriptor, nation),
             // WARNO: Coalition = TWargameCoalition/NATO; Steel Division 2: Nationalite = ENationalite/Allied
             Side = Text(fields.Find("Coalition")) ?? Text(fields.Find("Nationalite")) ?? "",
             Nation = nation,
@@ -102,10 +121,13 @@ public static class UnitReader
             Strength = Number(fields.Find("MaxPhysicalDamages")) ?? Number(fields.Find("MaxDamages")),
             Armor = ArmorOf(fields),
             ArmorFamilies = ArmorFamiliesOf(fields),
-            Speed = Number(fields.Find("MaxSpeedInKmph")) ?? Number(fields.Find("Maxspeed")),
+            Speed = speed.Shown,
+            SpeedScale = speed.Scale,
+            SpeedIsInFlight = speed.IsInFlight,
             RoadSpeed = Number(fields.Find("DisplayRoadSpeedInKmph")) ?? Number(fields.Find("RealRoadSpeed")),
             Optics = NumberFor(fields.Find("OpticalStrengths"), "Standard") ?? Number(fields.Find("OpticalStrength")),
-            Vision = NumberFor(fields.Find("VisionRangesGRU"), "Standard") ?? Number(fields.Find("PorteeVision")),
+            Vision = vision,
+            MetresScale = metresScale,
             Stealth = Number(fields.Find("UnitConcealmentBonus")),
             Fuel = Number(fields.Find("FuelCapacity")),
             Specialties = ItemsOf(fields.Find("SpecialtiesList")).Select(Text).OfType<string>().Where(s => s != "").ToList(),
@@ -210,18 +232,21 @@ public static class UnitReader
     private static readonly Regex AmmunitionDeclarationLine = new(@"^(?:export[ 	]+|private[ 	]+|public[ 	]+)?(Ammo_[A-Za-z0-9_]+)[ 	]+is[ 	]", RegexOptions.Compiled);
 
     // "export Descriptor_Unit_M1A1_Abrams_US is TEntityDescriptor", at the start of a line
-    private static readonly Regex UnitDeclarationLine = new(@"^(?:export[ 	]+|private[ 	]+|public[ 	]+)?(Descriptor_Unit_[A-Za-z0-9_]+)[ 	]+is[ 	]", RegexOptions.Compiled);
+    private static readonly Regex UnitDeclarationLine = new(@"^(?:export[ 	]+|private[ 	]+|public[ 	]+)?(Descriptor_(?:Unit|Production)_[A-Za-z0-9_]+)[ 	]+is[ 	]", RegexOptions.Compiled);
 
-    // "($/GFX/Unit/Descriptor_Unit_M1A1_Abrams_US, 123)", or with "~/" in front, as Steel Division 2 writes it
-    private static readonly Regex DeckNumberLine = new(@"\([ 	]*[$~/A-Za-z]*?(Descriptor_Unit_[A-Za-z0-9_]+)[ 	]*,[ 	]*([0-9]+)[ 	]*\)", RegexOptions.Compiled);
+    // "($/GFX/Unit/Descriptor_Unit_M1A1_Abrams_US, 123)", or with "~/" in front, as Steel Division 2 writes it; its
+    // defences are "(Descriptor_Production_Bunker, 1366)"
+    private static readonly Regex DeckNumberLine = new(@"\([ 	]*[$~/A-Za-z]*?(Descriptor_(?:Unit|Production)_[A-Za-z0-9_]+)[ 	]*,[ 	]*([0-9]+)[ 	]*\)", RegexOptions.Compiled);
 
     /// <summary>
-    /// A name for a unit the game has no name for: its descriptor without "Descriptor_Unit_" and its nation, with
-    /// spaces: "Descriptor_Unit_M1A1_Abrams_US" is "M1A1 Abrams".
+    /// A name for a unit the game has no name for: its descriptor without "Descriptor_Unit_" (a defence's without
+    /// "Descriptor_Production_") and its nation, with spaces: "Descriptor_Unit_M1A1_Abrams_US" is "M1A1 Abrams".
     /// </summary>
     public static string NameFromDescriptor(string descriptor, string nation)
     {
-        string name = descriptor.StartsWith(UnitPrefix, StringComparison.Ordinal) ? descriptor[UnitPrefix.Length..] : descriptor;
+        string name = descriptor;
+        if (descriptor.StartsWith(UnitPrefix, StringComparison.Ordinal)) name = descriptor[UnitPrefix.Length..];
+        else if (descriptor.StartsWith(DefencePrefix, StringComparison.Ordinal)) name = descriptor[DefencePrefix.Length..];
         if (nation != "" && name.EndsWith("_" + nation, StringComparison.Ordinal) && name.Length > nation.Length + 1)
             name = name[..^(nation.Length + 1)];
         return name.Replace('_', ' ');
@@ -233,6 +258,85 @@ public static class UnitReader
         foreach (var (key, value) in PairsOf(unit.Find("ProductionRessourcesNeeded")))
             if (Text(key) == "Resource_CommandPoints") return Number(value);
         return null;
+    }
+
+    // ---- Steel Division 2's units of speed and distance ----
+
+    /// <summary>
+    /// What turns Steel Division 2's numbers into those the game shows. Its files write distances as ((N) * Metre),
+    /// N being <see cref="MetresScale"/> times the metres shown; and speeds as ((N) * Metre) too, N being a "fake
+    /// factor" times the km/h shown, the factor set by the unit's kind (SpeedFakefactorType). Each is missing where
+    /// the game's files do not give it (WARNO has neither).
+    /// </summary>
+    /// <param name="MetresScale">The files' distance units in one metre shown: 1 / MultiplicateurMetreRTSVersDistanceFeedbackTactique.</param>
+    /// <param name="SpeedFactors">The fake factor of each kind of unit, by its name ("Vehicle", "Infantry", "Air").</param>
+    private sealed record Scales(double? MetresScale, IReadOnlyDictionary<string, double> SpeedFactors)
+    {
+        /// <summary>A distance of the files in metres as the game shows them; the files' number when the scale is not known.</summary>
+        public double? InMetres(double? distance) => distance is double number && MetresScale is double scale ? number / scale : distance;
+    }
+
+    /// <summary>
+    /// Steel Division 2's scales, from its constants: GDConstantes.ndf's
+    /// "MultiplicateurMetreRTSVersDistanceFeedbackTactique = 1.0 div 5.0", and UnitDescriptorResource.ndf's
+    /// "SpeedFakeFactorVehicle = 2.0" and the like, whose comment gives the game's formula (the speed's number,
+    /// divided by the factor, "and we say it is km/h"). None for a game without these files.
+    /// </summary>
+    private static Scales ReadScales(GameDataFiles files)
+    {
+        double? metresScale = null;
+        Match multiplier = MetresMultiplier.Match(files.Read("Gameplay/Constantes/GDConstantes.ndf") ?? "");
+        if (multiplier.Success && ParsedNumber(multiplier.Groups[1].Value) is double top && top > 0)
+        {
+            double bottom = multiplier.Groups[2].Success ? ParsedNumber(multiplier.Groups[2].Value) ?? 0 : 1;
+            if (bottom > 0) metresScale = bottom / top;
+        }
+        var factors = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (Match factor in SpeedFakeFactor.Matches(files.Read("Gameplay/Gfx/UnitDescriptorResource.ndf") ?? ""))
+            if (ParsedNumber(factor.Groups[2].Value) is double value && value > 0) factors.TryAdd(factor.Groups[1].Value, value);
+        return new Scales(metresScale, factors);
+    }
+
+    // "MultiplicateurMetreRTSVersDistanceFeedbackTactique = 1.0 div 5.0", or a plain number
+    private static readonly Regex MetresMultiplier = new(@"MultiplicateurMetreRTSVersDistanceFeedbackTactique[ \t]*=[ \t]*([0-9.]+)(?:[ \t]*div[ \t]*([0-9.]+))?", RegexOptions.Compiled);
+
+    // "SpeedFakeFactorVehicle  = 2.0"
+    private static readonly Regex SpeedFakeFactor = new(@"\bSpeedFakeFactor([A-Za-z]+)[ \t]*=[ \t]*([0-9.]+)", RegexOptions.Compiled);
+
+    /// <summary>A number as the files write it ("2.0", "5."); null when it is not one.</summary>
+    private static double? ParsedNumber(string text) =>
+        double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double number) ? number : null;
+
+    /// <summary>A unit's speed as shown, the scale it was turned by (null when not known), and whether it is a plane's in flight.</summary>
+    private sealed record Speeds(double? Shown, double? Scale, bool IsInFlight);
+
+    /// <summary>
+    /// A unit's speed: WARNO's MaxSpeedInKmph as it is; Steel Division 2's Maxspeed (a land unit) or its
+    /// TAirplaneMovementModuleDescriptor's Speed (a plane), divided by its kind's fake factor (SpeedFakefactorType,
+    /// Vehicle or Infantry; a plane's is Air), as the game shows it. When the factor is not known, the files' number,
+    /// with no scale.
+    /// </summary>
+    private static Speeds SpeedOf(UnitFields unit, Scales scales)
+    {
+        if (Number(unit.Find("MaxSpeedInKmph")) is double kilometresPerHour) return new Speeds(kilometresPerHour, 1, false);
+        double? landSpeed = Number(unit.Find("Maxspeed"));
+        ObjectValue? flight = landSpeed is null ? unit.ModuleOf("TAirplaneMovementModuleDescriptor") : null;
+        double? speed = landSpeed ?? (flight is null ? null : Number(Own(flight, "Speed")));
+        if (speed is null) return new Speeds(null, 1, false);
+        string kind = flight is not null ? "Air" : Text(unit.Find("SpeedFakefactorType")) ?? "";
+        double? factor = scales.SpeedFactors.TryGetValue(kind, out double found) ? found : null;
+        return new Speeds(factor is double scale ? speed / scale : speed, factor, flight is not null);
+    }
+
+    /// <summary>
+    /// How far a unit sees: WARNO's standard VisionRangesGRU as it is; Steel Division 2's PorteeVision, in metres
+    /// as the game shows them, with the scale it was turned by (none when not known).
+    /// </summary>
+    private static (double? Vision, double? MetresScale) VisionOf(UnitFields unit, Scales scales)
+    {
+        if (NumberFor(unit.Find("VisionRangesGRU"), "Standard") is double gru) return (gru, null);
+        double? vision = Number(unit.Find("PorteeVision"));
+        return vision is null ? (null, null) : (scales.InMetres(vision), scales.MetresScale);
     }
 
     /// <summary>
@@ -255,17 +359,36 @@ public static class UnitReader
         return new UnitArmor(Side("Front"), Side("Sides"), Side("Rear"), Side("Top"));
     }
 
-    /// <summary>The armour family of each side: TResistanceTypeRTTI's Family; none in Steel Division 2.</summary>
+    /// <summary>
+    /// The armour family of each side: WARNO's TResistanceTypeRTTI Family; for Steel Division 2, the kind of its
+    /// ArmorDescriptor without the level: "Blindage" (armour plate) for ArmorDescriptor_Blindage_22, "Toit_Lourd" for
+    /// ArmorDescriptor_Toit_Lourd. Only Blindage has levels (<see cref="ReadArmorLevels"/>).
+    /// </summary>
     private static UnitArmorFamilies ArmorFamiliesOf(UnitFields unit)
     {
-        string? Side(string side) => unit.Find("Resistance" + side) is ObjectValue resistance ? Text(Find(resistance, "Family")) : null;
+        string? Side(string side)
+        {
+            if (unit.Find("Resistance" + side) is ObjectValue resistance) return Text(Find(resistance, "Family"));
+            if (Text(unit.Find("ArmorDescriptor" + side)) is not string armor || !armor.StartsWith(ArmorDescriptorPrefix, StringComparison.Ordinal)) return null;
+            return ArmorLevelEnd.Replace(armor[ArmorDescriptorPrefix.Length..], "");
+        }
         return new UnitArmorFamilies(Side("Front"), Side("Sides"), Side("Rear"), Side("Top"));
     }
 
+    /// <summary>What Steel Division 2's armour descriptors' names start with: "ArmorDescriptor_Blindage_22".</summary>
+    public const string ArmorDescriptorPrefix = "ArmorDescriptor_";
+
+    /// <summary>Steel Division 2's armour family whose descriptors have levels: ArmorDescriptor_Blindage_1 to _60.</summary>
+    public const string ArmorPlateFamily = "Blindage";
+
+    // the level at the end of an armour descriptor's name: "_22" of "Blindage_22"
+    private static readonly Regex ArmorLevelEnd = new("_[0-9]+\\z", RegexOptions.Compiled);
+
     /// <summary>
-    /// How many levels each armour family has, and each kind of weapon damage: DamageResistance.ndf's
+    /// How many levels each armour family has, and each kind of weapon damage: WARNO's DamageResistance.ndf's
     /// ResistanceFamilyCounts and DamageFamilyCounts, such as "(ResistanceFamily_helico, 3)" and "(DamageFamily_ap, 40)".
-    /// Empty when the game has no such file (Steel Division 2).
+    /// Steel Division 2 has no such file: its armour plates' levels are the ArmorDescriptor_Blindage_N its
+    /// ArmorDescriptor.ndf declares, 1 to the highest with none missing below it (60); its other armour kinds have none.
     /// </summary>
     private static Dictionary<string, int> ReadArmorLevels(GameDataFiles files)
     {
@@ -273,8 +396,27 @@ public static class UnitReader
         string text = files.Read("Generated/Gameplay/Gfx/DamageResistance.ndf") ?? "";
         foreach (Match count in ArmorLevelCount.Matches(text))
             if (int.TryParse(count.Groups[2].Value, out int number)) levels.TryAdd(count.Groups[1].Value, number);
+        var plates = new HashSet<int>();
+        foreach (Match plate in ArmorPlateDeclaration.Matches(files.Read("Generated/Gameplay/Gfx/ArmorDescriptor.ndf") ?? ""))
+            if (int.TryParse(plate.Groups[1].Value, out int level)) plates.Add(level);
+        int highest = 0;
+        while (plates.Contains(highest + 1)) highest++;
+        if (highest > 0) levels.TryAdd(ArmorPlateFamily, highest);
+        // Steel Division 2's AP levels: the EArmeType/AP_N its weapon-against-armour table has, 1 to the highest with none missing
+        var apLevels = new HashSet<int>();
+        foreach (Match type in ApDamageType.Matches(files.Read("Generated/Gameplay/Gfx/ArmesArmures.ndf") ?? ""))
+            if (int.TryParse(type.Groups[1].Value, out int level)) apLevels.Add(level);
+        int highestAp = 0;
+        while (apLevels.Contains(highestAp + 1)) highestAp++;
+        if (highestAp > 0) levels.TryAdd("DamageFamily_" + SteelDivisionAmmunition.LevelledFamily, highestAp);
         return levels;
     }
+
+    // "EArmeType/AP_26," as ArmesArmures.ndf's table names a kind of damage (AP_26_Missile is another kind)
+    private static readonly Regex ApDamageType = new(@"EArmeType/AP_([0-9]+)[ \t]*,", RegexOptions.Compiled);
+
+    // "export ArmorDescriptor_Blindage_22 is TArmorDescriptor", at the start of a line
+    private static readonly Regex ArmorPlateDeclaration = new(@"(?m)^(?:export[ \t]+)?ArmorDescriptor_Blindage_([0-9]+)[ \t]+is[ \t]", RegexOptions.Compiled);
 
     // "(ResistanceFamily_helico, 3)", "(DamageFamily_ap, 40)"
     private static readonly Regex ArmorLevelCount = new(@"\([ 	]*((?:Resistance|Damage)Family_[A-Za-z0-9_]+)[ 	]*,[ 	]*([0-9]+)[ 	]*\)", RegexOptions.Compiled);
@@ -332,18 +474,28 @@ public static class UnitReader
             for (int mountIndex = 0; mountIndex < mountList.Count; mountIndex++)
             {
                 if (mountList[mountIndex] is not ObjectValue mount || Text(Own(mount, "Ammunition")) is not string ammunition) return null;
+                // Steel Division 2 names the box SalvoStockIndex, and numbers its weapons by their effect tag only
+                string effectTag = Text(Own(mount, "EffectTag")) ?? "";
                 mounts.Add(new LoadoutMount(turretIndex, mountIndex, ammunition,
-                    AmmoBox: (int)(Number(Own(mount, "AmmoBoxIndex")) ?? 0),
+                    AmmoBox: (int)(Number(Own(mount, "AmmoBoxIndex") ?? Own(mount, "SalvoStockIndex")) ?? 0),
                     Count: Math.Max(1, (int)(Number(Own(mount, "NbWeapons")) ?? 1)),
-                    EffectTag: Text(Own(mount, "EffectTag")) ?? "",
-                    WeaponNumber: WeaponNumberOf(Text(Own(mount, "HandheldEquipmentKey")))));
+                    EffectTag: effectTag,
+                    WeaponNumber: Text(Own(mount, "HandheldEquipmentKey")) is string key ? WeaponNumberOf(key) : EffectTagNumberOf(effectTag)));
             }
             turrets.Add(new LoadoutTurret(turretIndex, Text(Own(turret, "Tag")) ?? "", turret.TypeName ?? "", mounts));
         }
         int mountsInTurrets = turrets.Sum(turret => turret.Mounts.Count);
         if (mountsInTurrets != AllObjects(manager).Count(each => Own(each, "Ammunition") is not null)) return null;
         List<int> boxes = [.. ItemsOf(Own(manager, "Salves")).Select(box => (int)(Number(box) ?? 0))];
-        return new Loadout(descriptor, boxes, turrets);
+        int? mainSalvos = Own(manager, "SalvoIsMainSalvo") is NdfValue main ? ItemsOf(main).Count : null;
+        return new Loadout(descriptor, boxes, turrets, mainSalvos);
+    }
+
+    /// <summary>The N of Steel Division 2's "weapon_effet_tagN"; 0 when it is not one.</summary>
+    private static int EffectTagNumberOf(string effectTag)
+    {
+        const string Prefix = "weapon_effet_tag";
+        return effectTag.StartsWith(Prefix, StringComparison.Ordinal) && int.TryParse(effectTag[Prefix.Length..], out int number) ? number : 0;
     }
 
     /// <summary>The N of "WeaponAlternative_N"; 0 when there is none.</summary>
@@ -357,24 +509,26 @@ public static class UnitReader
     /// Every ammunition, from Ammunition.ndf and (WARNO's missiles) AmmunitionMissiles.ndf, as the weapons the Weapons
     /// sub-tab shows, by descriptor, in the files' order.
     /// </summary>
-    private static Dictionary<string, Weapon> ReadAmmunition(GameDataFiles files, List<string> problems, Dictionary<string, string> pictures)
+    private static Dictionary<string, Weapon> ReadAmmunition(GameDataFiles files, List<string> problems, Dictionary<string, string> pictures, Scales scales)
     {
         var all = new Dictionary<string, Weapon>(StringComparer.Ordinal);
         foreach (string file in new[] { "Ammunition.ndf", "AmmunitionMissiles.ndf" })
         {
             foreach (Declaration declaration in Declarations(files, "Generated/Gameplay/Gfx/" + file, name => name.StartsWith("Ammo_", StringComparison.Ordinal), problems, mustExist: file == "Ammunition.ndf"))
                 if (declaration.Value is ObjectValue ammunition)
-                    all[declaration.Name] = WeaponOf(declaration.Name, ammunition, file, pictures);
+                    all[declaration.Name] = WeaponOf(declaration.Name, ammunition, file, pictures, scales);
         }
         return all;
     }
 
     /// <summary>
     /// An ammunition as a weapon. WARNO's names first, then Steel Division 2's for the values it keeps under others
-    /// (its ranges in metres, its time between salvos).
+    /// (<see cref="SteelDivisionAmmunition"/>): its distances in metres as the game shows them, with the scale they were
+    /// turned by; its aiming time, shots a salvo and time between salvos.
     /// </summary>
-    private static Weapon WeaponOf(string descriptor, ObjectValue ammunition, string file, Dictionary<string, string> pictures)
+    private static Weapon WeaponOf(string descriptor, ObjectValue ammunition, string file, Dictionary<string, string> pictures, Scales scales)
     {
+        double? Metres(string property) => scales.InMetres(Number(Own(ammunition, property)));
         (string family, int level) = DamageOf(Own(ammunition, "Arme"));
         string name = Weapon.NameOf(descriptor);
         string? missile = Text(Own(ammunition, "MissileDescriptor"));
@@ -391,27 +545,29 @@ public static class UnitReader
             DamageFamily = family,
             DamageLevel = level,
             Damage = Number(Own(ammunition, "PhysicalDamages")),
-            DamageRadius = Number(Own(ammunition, "RadiusSplashPhysicalDamagesGRU")),
+            DamageRadius = Number(Own(ammunition, "RadiusSplashPhysicalDamagesGRU")) ?? Metres("RadiusSplashPhysicalDamages"),
             Suppression = Number(Own(ammunition, "SuppressDamages")),
-            SuppressionRadius = Number(Own(ammunition, "RadiusSplashSuppressDamagesGRU")),
-            Range = Number(Own(ammunition, "MaximumRangeGRU")) ?? Number(Own(ammunition, "PorteeMaximale")),
-            MinimumRange = Number(Own(ammunition, "MinimumRangeGRU")) ?? Number(Own(ammunition, "PorteeMinimale")),
-            HelicopterRange = Number(Own(ammunition, "MaximumRangeHelicopterGRU")) ?? Number(Own(ammunition, "PorteeMaximaleHA")),
-            PlaneRange = Number(Own(ammunition, "MaximumRangeAirplaneGRU")) ?? Number(Own(ammunition, "PorteeMaximaleTBA")),
+            SuppressionRadius = Number(Own(ammunition, "RadiusSplashSuppressDamagesGRU")) ?? Metres("RadiusSplashSuppressDamages"),
+            Range = Number(Own(ammunition, "MaximumRangeGRU")) ?? Metres("PorteeMaximale"),
+            MinimumRange = Number(Own(ammunition, "MinimumRangeGRU")) ?? Metres("PorteeMinimale"),
+            HelicopterRange = Number(Own(ammunition, "MaximumRangeHelicopterGRU")) ?? Metres("PorteeMaximaleHA"),
+            PlaneRange = Number(Own(ammunition, "MaximumRangeAirplaneGRU")) ?? Metres("PorteeMaximaleTBA"),
+            // a game whose ammunition gives its distances ((N) * Metre) shows them in metres
+            MetresScale = Own(ammunition, "PorteeMaximale") is null ? null : scales.MetresScale,
             AccuracyStopped = hitChances is null ? null : NumberFor(hitChances, "Idling"),
             AccuracyMoving = hitChances is null ? null : NumberFor(hitChances, "Moving"),
-            DispersionFar = Number(Own(ammunition, "DispersionAtMaxRangeGRU")),
-            DispersionNear = Number(Own(ammunition, "DispersionAtMinRangeGRU")),
-            AimingTime = Number(Own(ammunition, "AimingTime")),
+            DispersionFar = Number(Own(ammunition, "DispersionAtMaxRangeGRU")) ?? Metres("DispersionAtMaxRange"),
+            DispersionNear = Number(Own(ammunition, "DispersionAtMinRangeGRU")) ?? Metres("DispersionAtMinRange"),
+            AimingTime = Number(Own(ammunition, "AimingTime")) ?? Number(Own(ammunition, "TempsDeVisee")),
             Reload = Number(Own(ammunition, "TimeBetweenTwoSalvos")) ?? Number(Own(ammunition, "TempsEntreDeuxSalves")),
-            ShotsPerSalvo = Number(Own(ammunition, "ShotsCountPerSalvo")),
+            ShotsPerSalvo = Number(Own(ammunition, "ShotsCountPerSalvo")) ?? Number(Own(ammunition, "NbTirParSalves")),
             SupplyCost = Number(Own(ammunition, "SupplyCost")),
             Traits = [.. ItemsOf(Own(ammunition, "TraitsToken")).Select(Text).OfType<string>()],
             PictureTexture = texture,
             PictureSource = texture is null ? null : pictures.GetValueOrDefault(texture),
             Missile = missile,
             MustDeploy = Text(Own(ammunition, "HasDeploymentTime")) == "True",
-            FileValues = WeaponFileValues.Read(ammunition),
+            FileValues = WeaponFileValues.Read(ammunition, scales.InMetres),
         };
     }
 
@@ -443,14 +599,7 @@ public static class UnitReader
             if (family.StartsWith("DamageFamily_", StringComparison.Ordinal)) family = family["DamageFamily_".Length..];
             return (family, (int)(Number(Find(damage, "Index")) ?? 0));
         }
-        if (Text(arme) is string written)
-        {
-            Match parts = Regex.Match(written, "\\A([A-Za-z]+?)_?([0-9]*)\\z");
-            if (parts.Success)
-                return (parts.Groups[1].Value, parts.Groups[2].Value == "" ? 0 : int.Parse(parts.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
-            return (written, 0);
-        }
-        return ("", 0);
+        return Text(arme) is string written ? SteelDivisionAmmunition.DamageOf(written) : ("", 0);
     }
 
     /// <summary>
@@ -498,13 +647,15 @@ public static class UnitReader
     /// Each unit picture's path, by the key units give it (their ButtonTexture), from ButtonTexturesUnites.ndf, as a
     /// "GameData:/....png" path. WARNO writes ("Texture_Button_Unit_X", MAP [(~/ComponentState/Normal,
     /// TUIResourceTexture(FileName = "GameData:/....png"))]); Steel Division 2 writes
-    /// export Texture_Button_Unit_X is ...( FileName = 'Assets\...\X.png' ).
+    /// export Texture_Button_Unit_X is ...( FileName = 'Assets\...\X.png' ). Its defences' pictures are in
+    /// DefenseTextures.ndf, written as WARNO writes its units' but in single quotes:
+    /// ('Texture_Defense_Bunker_vignette', MAP [(~/ComponentState/Normal, TUIResourceTexture_Common (FileName = '...'))]).
     /// </summary>
     private static Dictionary<string, string> ReadPictureSources(GameDataFiles files)
     {
-        string text = (files.Read("ButtonTexturesUnites.ndf") ?? "").Replace("\r\n", "\n", StringComparison.Ordinal);
+        string text = ((files.Read("ButtonTexturesUnites.ndf") ?? "") + "\n" + (files.Read("DefenseTextures.ndf") ?? "")).Replace("\r\n", "\n", StringComparison.Ordinal);
         var sources = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (Match entry in Regex.Matches(text, @"\(\s*""([A-Za-z0-9_]+)""\s*,\s*MAP\s*\[\s*\(\s*~/ComponentState/Normal\s*,\s*[A-Za-z0-9_]+\s*\(\s*FileName\s*=\s*""([^""]+)"""))
+        foreach (Match entry in Regex.Matches(text, @"\(\s*[""']([A-Za-z0-9_]+)[""']\s*,\s*MAP\s*\[\s*\(\s*~/ComponentState/Normal\s*,\s*[A-Za-z0-9_]+\s*\(\s*FileName\s*=\s*[""']([^""']+)[""']"))
             sources[entry.Groups[1].Value] = GamePictures.Normalised(entry.Groups[2].Value);
         foreach (Match texture in Regex.Matches(text, @"(?m)^(?:export |private |public )?(Texture_Button_Unit_[A-Za-z0-9_]+) is [A-Za-z0-9_]+\n\((.*?)\n\)", RegexOptions.Singleline))
         {

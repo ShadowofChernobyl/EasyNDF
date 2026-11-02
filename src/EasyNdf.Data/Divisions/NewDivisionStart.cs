@@ -66,10 +66,12 @@ public static class NewDivisionStart
         // "" is the empty placeholder: no picture, rather than the starting division's
         created.EmblemTexture = "";
         created.EmblemSource = "";
-        created.TypeToken = "";
-        created.StandoutUnits = [];
-        created.ListOrder = (game.Select(division => division.ListOrder).Max() ?? 0) + 1;
         created.DeckNumber = NextDeckNumber(game, mod);
+        // what the game's divisions do not have at all (Steel Division 2's have no type, standout units or place in
+        // the list) is left unset, so nothing is written for it
+        if (DivisionChangeRules.Has(title, DivisionDetail.Type)) created.TypeToken = "";
+        if (DivisionChangeRules.Has(title, DivisionDetail.Standout)) created.StandoutUnits = [];
+        if (DivisionChangeRules.Has(title, DivisionDetail.ListOrder)) created.ListOrder = (game.Select(division => division.ListOrder).Max() ?? 0) + 1;
         if (title != GameTitle.Warno) return;
         created.TypeToken = WarnoPlaceholderType;
         created.ActivationPoints = WarnoActivationPoints;

@@ -19,7 +19,8 @@ namespace EasyNdf.App.Weapons;
 /// a value from its name and the game's data only is marked ≈, one whose effect is not known ?. Every value can be
 /// changed: numbers in a box, switches with a switch, choices and references to other descriptors from a list of the
 /// values the game's weapons have, the picture from the game's pictures and the traits from the game's traits. A value
-/// the ammunition does not have shows "–": a rule cannot set it.
+/// the ammunition does not have shows "–": a rule cannot set it. Each value's name in the file is its game's own
+/// (Steel Division 2's "PorteeMaximale" for the range); a value its game's ammunition does not have says so.
 /// </summary>
 public static partial class WeaponPane
 {
@@ -60,7 +61,7 @@ public static partial class WeaponPane
 
     /// <summary>
     /// A value of the pane: its name's text key, its tooltip's text key, its field (<see cref="WeaponField"/>, or the
-    /// property's name), its name in the file, how sure the pane is of it, its kind, and how it is written.
+    /// property's name), its name in WARNO's files, how sure the pane is of it, its kind, and how it is written.
     /// </summary>
     private sealed record PaneValue(string NameKey, string AboutKey, string Field, string Property, Certainty Certainty, Shape Shape, Func<Weapon, string> Write);
 
@@ -296,7 +297,8 @@ public static partial class WeaponPane
     /// </summary>
     private static StackPanel Values(Weapon weapon, IWeaponActions actions, PaneValue[] values)
     {
-        var grid = new Grid();
+        // one pair a row in a narrow pane
+        var grid = new PairGrid();
         // the values at their own width, the names the rest, as the Unit pane's stats: a name gives way, never a value
         foreach (GridLength width in new[] { new GridLength(1, GridUnitType.Star), GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto })
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
@@ -309,10 +311,13 @@ public static partial class WeaponPane
             if (column == 0) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             bool lastRow = row == rows - 1;
             PaneValue value = values[at];
-            grid.Children.Add(NameCell(value, row, column, lastRow));
+            grid.Children.Add(NameCell(value, WeaponChangeRules.PropertyIn(actions.Game, value.Field, value.Property), row, column, lastRow));
             Bevel cell = UnitPane.Cell("", row, column + 1, isName: false, lastRow);
-            ShowValue((TextBlock)cell.Child, weapon, value);
-            if (canChange && MakeChangeable(cell, weapon, value, actions)) anyChangeable = true;
+            var text = (TextBlock)cell.Child;
+            ShowValue(text, weapon, value);
+            // a value the Armory cannot write for the weapon's game says why, rather than take a change it would lose
+            if (canChange && actions.WhyValueCannotChange(weapon, value.Field) is string why) text.ToolTip ??= why;
+            else if (canChange && MakeChangeable(cell, weapon, value, actions)) anyChangeable = true;
             grid.Children.Add(cell);
         }
         var contents = new StackPanel { Children = { UnitPane.Boxed(grid) } };
@@ -329,9 +334,10 @@ public static partial class WeaponPane
 
     /// <summary>
     /// A value's name, dim on the panel colour, with ≈ after it (dim) when it is likely, or ? (in the caution colour)
-    /// when not known; its tooltip says what it does, its name in the file, and how sure that is.
+    /// when not known; its tooltip says what it does, its name in the file (<paramref name="property"/>, the game's
+    /// own; none when its game's ammunition does not have it), and how sure that is.
     /// </summary>
-    private static Bevel NameCell(PaneValue value, int row, int column, bool lastRow)
+    private static Bevel NameCell(PaneValue value, string? property, int row, int column, bool lastRow)
     {
         Bevel cell = UnitPane.Cell(Texts.Get(value.NameKey), row, column, isName: true, lastRow);
         var name = (TextBlock)cell.Child;
@@ -348,18 +354,19 @@ public static partial class WeaponPane
             name.Inlines.Add(new Run(" ") { FontSize = 6 });
             name.Inlines.Add(mark);
         }
-        UnitPane.AddFileName(name, value.Property);
+        UnitPane.AddFileName(name, property);
         cell.Background ??= Brushes.Transparent;
-        cell.ToolTip = AboutTip(value);
+        cell.ToolTip = AboutTip(value, property);
         ToolTipService.SetInitialShowDelay(cell, 300);
         return cell;
     }
 
-    /// <summary>A value's name's tooltip: what it does in the game, its name in the file in the code font, and how sure that is.</summary>
-    private static StackPanel AboutTip(PaneValue value)
+    /// <summary>A value's name's tooltip: what it does in the game, its name in the file in the code font (when it has one), and how sure that is.</summary>
+    private static StackPanel AboutTip(PaneValue value, string? propertyName)
     {
         var about = new TextBlock { Text = Texts.Get(value.AboutKey), TextWrapping = TextWrapping.Wrap, MaxWidth = 300 };
-        var property = new TextBlock { Text = value.Property, FontSize = 10.5, Margin = new Thickness(0, 4, 0, 0), TextWrapping = TextWrapping.Wrap, MaxWidth = 300 };
+        var property = new TextBlock { Text = propertyName ?? "", FontSize = 10.5, Margin = new Thickness(0, 4, 0, 0), TextWrapping = TextWrapping.Wrap, MaxWidth = 300 };
+        if (propertyName is null) property.Visibility = Visibility.Collapsed;
         property.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
         property.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         string sureKey = value.Certainty switch
@@ -396,7 +403,7 @@ public static partial class WeaponPane
     {
         if (WeaponStat.Of(field) is not WeaponStat stat || stat.Read(weapon) is not double value) return false;
         string typedNow = stat.Shown(value).ToString("0.##########", Texts.Catalog.Culture);
-        ClickToChange.WithBox(cell, typedNow, typed => stat.ValueOf(typed, weapon, actions.DamageLevels, Texts.Catalog.Culture) is not null,
+        ClickToChange.WithBox(cell, typedNow, typed => stat.ValueOf(typed, weapon, actions.DamageLevels, Texts.Catalog.Culture, actions.Game) is not null,
             typed => actions.ChangeWeapon(weapon, field, typed), ValueTip(weapon, stat, actions));
         return true;
     }
@@ -436,8 +443,11 @@ public static partial class WeaponPane
         if (offered.Count < 2) return false;
         List<(string Code, string Shown)> choices = [.. offered.Select(each => (each, ChoiceName(field, each)))];
         ClickToChange.WithChoice(cell, choices, written, chosen => actions.ChangeWeapon(weapon, field, chosen));
+        // a game that writes the level inside the kind of damage (Steel Division 2's AP_26) offers each kind with its level
         if (field == WeaponFileValues.DamageFamily && cell.Child is TextBlock text)
-            text.ToolTip ??= Texts.Get("Weapons.Pane.DamageType.Tip", ("level", weapon.DamageLevel));
+            text.ToolTip ??= WeaponChangeRules.KeepsLevelInDamageType(actions.Game)
+                ? Texts.Get("Weapons.Pane.DamageType.WithLevel.Tip")
+                : Texts.Get("Weapons.Pane.DamageType.Tip", ("level", weapon.DamageLevel));
         return true;
     }
 
@@ -507,6 +517,8 @@ public static partial class WeaponPane
             e.Handled = true;
             clicked();
         };
+        // Tab reaches the cell, Enter or Space changes it as a click does
+        Units.KeyPick.Make(cell, clicked);
     }
 
     /// <summary>
@@ -527,6 +539,6 @@ public static partial class WeaponPane
         if (stat.Highest is double most) return Texts.Get("Weapons.Pane.Percent.Tip", ("highest", most));
         if (stat.Lowest < 0) return Texts.Get("Weapons.Pane.OrOff.Tip");
         if (stat.Lowest >= 1) return Texts.Get("Weapons.Pane.FromOne.Tip");
-        return Texts.Get(stat.IsWhole ? "Units.Pane.Stat.Whole.Tip" : "Units.Pane.Stat.Decimal.Tip");
+        return Texts.Get(stat.IsWholeIn(actions.Game) ? "Units.Pane.Stat.Whole.Tip" : "Units.Pane.Stat.Decimal.Tip");
     }
 }

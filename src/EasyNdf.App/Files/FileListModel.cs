@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using System.Windows.Threading;
 using EasyNdf.Data;
 using EasyNdf.Data.FileList;
+using EasyNdf.Data.Game;
 using EasyNdf.Engine;
 using EasyNdf.Engine.Export;
 using EasyNdf.Engine.Ndf;
@@ -127,6 +128,30 @@ public sealed class FileListModel : INotifyPropertyChanged
             if (Before(entry) != before[entry]) entry.ClearMessage();
         Refilter();
         return entries.Where(e => e.Source is not null && e.HasRules && !e.Scanned).ToList();
+    }
+
+    /// <summary>
+    /// What files are sorted by in the Armory column, for one sort (see <see cref="FileListView.ArmoryKeys"/>): the
+    /// letters of the parts with rules for each file, such as "DU" (<see cref="FileRunner.ArmorySortKey"/>). A file
+    /// whose name no Armory rule of its game names has none, and sorts as such at once: going through every rule of
+    /// every part for each of the thousands of files made sorting by Armory take more than a second. The names the
+    /// rules name are worked out once for the sort, for each game. The game's dictionary (UNITS.csv) is always looked
+    /// at whole, as rules give it texts without naming it. Tuned for speed: the names are worked out once per sort.
+    /// Keep it that way when tidying.
+    /// </summary>
+    public static Func<FileEntry, string> ArmorySortKeys()
+    {
+        var namedByRules = new Dictionary<GameTitle, IReadOnlySet<string>>();
+        return entry =>
+        {
+            if (!Data.Divisions.DivisionExtras.IsNamesFile(entry.Name, entry.Game))
+            {
+                if (!namedByRules.TryGetValue(entry.Game, out IReadOnlySet<string>? named))
+                    namedByRules[entry.Game] = named = FileRunner.FilesWithArmoryRules(entry.Game);
+                if (!named.Contains(entry.Name)) return "";
+            }
+            return FileRunner.ArmorySortKey(entry);
+        };
     }
 
     /// <summary>
@@ -486,12 +511,15 @@ public sealed class FileListModel : INotifyPropertyChanged
         if (anyWithRules) AppData.Current.RememberExportFolder(AppData.Current.OpenMod, folder);
     }
 
-    /// <summary>The × after a row's export folder: the row has none again.</summary>
-    public void ClearExportFolder(FileEntry row)
+    /// <summary>"Clear export folder": the rows have none again.</summary>
+    public void ClearExportFolder(IEnumerable<FileEntry> rows)
     {
-        row.ExportFolder = null;
-        row.ClearMessage();
-        RowChanged(row);
+        foreach (FileEntry row in rows)
+        {
+            row.ExportFolder = null;
+            row.ClearMessage();
+            RowChanged(row);
+        }
     }
 
     /// <summary>The rows selected, in the order shown.</summary>
@@ -613,6 +641,7 @@ public sealed class FileListModel : INotifyPropertyChanged
             ArchivedContent = file.ArchivedContent,
             Size = file.Size,
             Modified = file.Modified,
+            Game = file.Game ?? GameTitle.Warno,
         };
         MarkModsOnFiles([row], armoryFiles);
         // A file with rules starts with the export folder the open mod last used: the mods export together, into it.
@@ -620,10 +649,11 @@ public sealed class FileListModel : INotifyPropertyChanged
         return row;
     }
 
-    /// <summary>Puts a newly picked file in a listed row's place; the row keeps its export folder.</summary>
+    /// <summary>Puts a newly picked file in a listed row's place; the row keeps its export folder, and takes the new file's game when it has one.</summary>
     private static void Replace(FileEntry entry, FileToAdd file)
     {
         entry.Source = file.Source;
+        entry.Game = file.Game ?? entry.Game;
         entry.ArchivedContent = file.ArchivedContent;
         entry.Name = file.Name;
         entry.Size = file.Size;
@@ -953,7 +983,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         Dictionary<string, int> sameFile = entries.GroupBy(e => e.Key).ToDictionary(group => group.Key, group => group.Count());
 
         matching = [];
-        foreach (FileEntry entry in FileListView.Sorted(entries, SortColumn, SortAscending).Where(e => FileListView.Shows(e, ShowOnly, Search)))
+        foreach (FileEntry entry in FileListView.SortedAndShown(entries, SortColumn, SortAscending, ShowOnly, Search))
         {
             if (!rowOf.TryGetValue(entry, out FileRow? row))
             {

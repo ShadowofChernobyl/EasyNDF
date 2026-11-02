@@ -21,31 +21,47 @@ public static class DivisionReader
     /// <param name="cardNames">When given, it gets the descriptor of every battlegroup card in DeckPacks.ndf.</param>
     public static List<Division> Read(GameDataFiles files, GameTexts texts, List<string> problems, HashSet<string>? cardNames = null)
     {
-        Dictionary<string, List<DivisionUnit>> rules = ReadRules(files, problems);
-        Dictionary<string, IReadOnlyDictionary<string, IReadOnlyList<int>>> costs = ReadCosts(files, problems);
+        var transportCaps = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
+        Dictionary<string, List<DivisionUnit>> rules = ReadRules(files, problems, transportCaps);
+        Dictionary<string, CostMatrix> costs = ReadCosts(files, problems);
         HashSet<string>? listed = ReadDivisionList(files, problems);
         Dictionary<string, string> emblems = ReadEmblemSources(files, problems);
         Dictionary<string, int> deckNumbers = ReadDeckNumbers(files);
-        List<(string Division, Battlegroup Battlegroup)> decks = BattlegroupReader.Read(files, texts, problems, cardNames);
+        var deckNames = new Dictionary<string, string>(StringComparer.Ordinal);
+        List<(string Division, Battlegroup Battlegroup)> decks = BattlegroupReader.Read(files, texts, problems, cardNames, deckNames);
 
         var divisions = new List<Division>();
         foreach (Declaration declaration in UnitReader.Declarations(files, DecksFolder + "Divisions.ndf", _ => true, problems))
         {
             if (declaration.Value is not ObjectValue { TypeName: "TDeckDivisionDescriptor" } division) continue;
-            Division read = ReadDivision(declaration.Name, division, texts, rules, costs);
+            Division read = ReadDivision(declaration.Name, division, texts, rules, costs, deckNames);
             divisions.Add(read with
             {
                 IsForMultiplayer = listed?.Contains(read.Descriptor) ?? read.Tags.Contains("DEFAULT"),
                 EmblemSource = emblems.GetValueOrDefault(read.EmblemTexture),
                 DeckNumber = deckNumbers.TryGetValue(read.Descriptor, out int number) ? number : null,
+                TransportCaps = transportCaps.GetValueOrDefault(read.Descriptor) ?? new Dictionary<string, int>(),
             });
         }
-        return WithBattlegroups(divisions, decks);
+        return WithBattlegroups(WithSharedCosts(divisions), decks);
+    }
+
+    /// <summary>
+    /// Each division with how many others name its costs: Steel Division 2's divisions of one kind share theirs
+    /// (MatrixCostName_HB_RemoveConstraints), so a change to one division's costs would change the others'.
+    /// </summary>
+    private static List<Division> WithSharedCosts(List<Division> divisions)
+    {
+        Dictionary<string, int> users = divisions.Where(division => division.CostMatrixName != "")
+            .GroupBy(division => division.CostMatrixName, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        return [.. divisions.Select(division =>
+            users.TryGetValue(division.CostMatrixName, out int count) && count > 1 ? division with { CostsSharedWith = count - 1 } : division)];
     }
 
     private static Division ReadDivision(
         string descriptor, ObjectValue division, GameTexts texts,
-        Dictionary<string, List<DivisionUnit>> rules, Dictionary<string, IReadOnlyDictionary<string, IReadOnlyList<int>>> costs)
+        Dictionary<string, List<DivisionUnit>> rules, Dictionary<string, CostMatrix> costs, Dictionary<string, string> deckNames)
     {
         string cfgName = Text(Own(division, "CfgName")) ?? "";
         string nameToken = Text(Own(division, "DivisionName")) ?? "";
@@ -55,19 +71,22 @@ public static class DivisionReader
         string costName = Text(costMatrix) ?? "";
         // WARNO's rule is found by its own name; Steel Division 2's by the division's
         List<DivisionUnit> units = rules.GetValueOrDefault(ruleName) ?? rules.GetValueOrDefault(descriptor) ?? [];
+        CostMatrix? matrix = costMatrix is ListValue inPlace ? CostsOf(inPlace) : costs.GetValueOrDefault(costName);
         return new Division
         {
             Descriptor = descriptor,
             CfgName = cfgName,
             NameToken = nameToken,
-            Name = texts.Get(nameToken) ?? texts.Get(Text(Own(division, "DivisionNickname")))
+            // a name token not in the dictionaries: its deck's name in full, before its nickname alone ("TATSKINSK")
+            Name = texts.Get(nameToken) ?? deckNames.GetValueOrDefault(descriptor) ?? texts.Get(Text(Own(division, "DivisionNickname")))
                 ?? UnitReader.DivisionNameFromDescriptor(cfgName != "" ? cfgName : descriptor),
             // WARNO: DivisionCoalition = TWargameCoalition/NATO; Steel Division 2: DivisionNationalite = ENationalite/Allied
             Side = Text(Own(division, "DivisionCoalition")) ?? Text(Own(division, "DivisionNationalite")) ?? "",
             Country = Text(Own(division, "CountryId")) ?? "",
             TypeToken = Text(Own(division, "TypeToken")) ?? "",
-            SummaryToken = Text(Own(division, "SummaryTextToken")) ?? "",
-            Summary = texts.Get(Text(Own(division, "SummaryTextToken"))) ?? "",
+            // Steel Division 2 names its summary DivisionDescription
+            SummaryToken = Text(Own(division, "SummaryTextToken") ?? Own(division, SteelDivisionDivisions.SummaryProperty)) ?? "",
+            Summary = texts.Get(Text(Own(division, "SummaryTextToken") ?? Own(division, SteelDivisionDivisions.SummaryProperty))) ?? "",
             HistoryToken = Text(Own(division, "HistoryTextToken")) ?? "",
             History = texts.Get(Text(Own(division, "HistoryTextToken"))) ?? "",
             ActivationPoints = WholeNumber(Own(division, "MaxActivationPoints")),
@@ -78,9 +97,18 @@ public static class DivisionReader
             RuleName = ruleName,
             CostMatrixName = costName,
             Units = units,
-            Costs = costMatrix is ListValue inPlace ? CostsOf(inPlace) : costs.GetValueOrDefault(costName) ?? new Dictionary<string, IReadOnlyList<int>>(),
+            Costs = matrix?.Costs ?? new Dictionary<string, IReadOnlyList<int>>(),
+            CostKeys = matrix?.Keys ?? new Dictionary<string, string>(),
+            FlagTextures = TextsOf(Own(division, "FlagAnimationTextures")),
+            Phases = PhasesOf(division),
+            Economy = Text(Own(division, "DivisionEconomyList")) ?? "",
         };
     }
+
+    /// <summary>A Steel Division 2 division's phases: each TPhaseDescriptor of its PhaseList; none for a division without one.</summary>
+    private static List<DivisionPhase> PhasesOf(ObjectValue division) =>
+        [.. ItemsOf(Own(division, "PhaseList")).OfType<ObjectValue>().Select(phase => new DivisionPhase(
+            WholeNumber(Own(phase, "PhaseStartTimeInSeconds")) ?? 0, WholeNumber(Own(phase, "PhaseIncome")) ?? 0, WholeNumber(Own(phase, "PhaseBonus")) ?? 0))];
 
     /// <summary>
     /// The divisions players can pick, each with the first deck that names it: its Official Battlegroup. (The game
@@ -131,34 +159,55 @@ public static class DivisionReader
     }
 
     /// <summary>
-    /// Each emblem's picture, by its texture's name: WARNO's DivisionTextures.ndf has
-    /// Texture_Division_Emblem_X is TUIResourceTexture_Common ( FileName = "GameData:/Assets/2D/.../X.png" ).
+    /// Each emblem's picture, by its texture's name: DivisionTextures.ndf has
+    /// Texture_Division_Emblem_X is TUIResourceTexture_Common ( FileName = "GameData:/Assets/2D/.../X.png" ), in
+    /// WARNO's UserInterface folder or Steel Division 2's Gameplay/UI/Resources.
     /// </summary>
     private static Dictionary<string, string> ReadEmblemSources(GameDataFiles files, List<string> problems)
     {
         var sources = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (Declaration declaration in UnitReader.Declarations(files, "Generated/UserInterface/Textures/DivisionTextures.ndf",
-            name => name.StartsWith("Texture_Division_Emblem_", StringComparison.Ordinal), problems, mustExist: false))
-            if (Text(Find(declaration.Value, "FileName")) is string file) sources[declaration.Name] = GamePictures.Normalised(file);
+        foreach (string file in EmblemFiles)
+            foreach (Declaration declaration in UnitReader.Declarations(files, file,
+                name => name.StartsWith("Texture_Division_Emblem_", StringComparison.Ordinal), problems, mustExist: false))
+                if (Text(Find(declaration.Value, "FileName")) is string picture) sources.TryAdd(declaration.Name, GamePictures.Normalised(picture));
         return sources;
     }
+
+    /// <summary>Where each game keeps its division textures: WARNO's, then Steel Division 2's.</summary>
+    private static readonly string[] EmblemFiles =
+        ["Generated/UserInterface/Textures/DivisionTextures.ndf", "Generated/Gameplay/UI/Resources/Textures/DivisionTextures.ndf"];
 
     // ---- the rules: which units, and how ----
 
     /// <summary>
     /// Each rule's units: WARNO's by the rule's own name (Descriptor_Deck_Division_US_3rd_Arm_multi_Rule), Steel
-    /// Division 2's by the division's descriptor (the key of its MAP).
+    /// Division 2's by the division's descriptor (the key of its MAP), with its transports' caps.
     /// </summary>
-    private static Dictionary<string, List<DivisionUnit>> ReadRules(GameDataFiles files, List<string> problems)
+    /// <param name="transportCaps">Gets Steel Division 2's caps on each division's transports (<see cref="Division.TransportCaps"/>).</param>
+    private static Dictionary<string, List<DivisionUnit>> ReadRules(GameDataFiles files, List<string> problems, Dictionary<string, Dictionary<string, int>> transportCaps)
     {
         var rules = new Dictionary<string, List<DivisionUnit>>(StringComparer.Ordinal);
         foreach (Declaration declaration in UnitReader.Declarations(files, DecksFolder + "DivisionRules.ndf", _ => true, problems))
         {
             if (declaration.Value is ObjectValue { TypeName: "TDeckDivisionRule" } rule) rules[declaration.Name] = UnitsOf(rule);
             foreach (var (key, value) in PairsOf(Find(declaration.Value, "DivisionRules")))
-                if (Text(key) is string division) rules[division] = UnitsOf(value);
+                if (Text(key) is string division)
+                {
+                    rules[division] = UnitsOf(value);
+                    transportCaps[division] = TransportCapsOf(value);
+                }
         }
         return rules;
+    }
+
+    /// <summary>A Steel Division 2 rule's caps on its transports: each TDeckTransportRule of its TransportRuleList.</summary>
+    private static Dictionary<string, int> TransportCapsOf(NdfValue rule)
+    {
+        var caps = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (NdfValue item in ItemsOf(Find(rule, "TransportRuleList")))
+            if (item is ObjectValue cap && Text(Own(cap, "TransportDescriptor")) is string transport)
+                caps.TryAdd(transport, WholeNumber(Own(cap, "MaxNumber")) ?? 0);
+        return caps;
     }
 
     /// <summary>The units of one rule: each TDeckUniteRule in its UnitRuleList.</summary>
@@ -188,9 +237,9 @@ public static class DivisionReader
     /// Each cost matrix, by name: MatrixCostName_X is MAP [(Factory/Tanks, [1, 1, 2]), ...]. Most are in the generated
     /// DivisionCostMatrix.ndf; Steel Division 2 keeps one more in Gameplay/Decks/DivisionCostMatrix.ndf.
     /// </summary>
-    private static Dictionary<string, IReadOnlyDictionary<string, IReadOnlyList<int>>> ReadCosts(GameDataFiles files, List<string> problems)
+    private static Dictionary<string, CostMatrix> ReadCosts(GameDataFiles files, List<string> problems)
     {
-        var matrices = new Dictionary<string, IReadOnlyDictionary<string, IReadOnlyList<int>>>(StringComparer.Ordinal);
+        var matrices = new Dictionary<string, CostMatrix>(StringComparer.Ordinal);
         // the second is named with GameData/ in front, or it would also match the end of the first's path
         foreach (string file in new[] { DecksFolder + "DivisionCostMatrix.ndf", "GameData/Gameplay/Decks/DivisionCostMatrix.ndf" })
             foreach (Declaration declaration in UnitReader.Declarations(files, file, _ => true, problems, mustExist: false))
@@ -198,18 +247,27 @@ public static class DivisionReader
         return matrices;
     }
 
+    /// <summary>One cost matrix: its costs by category, and each category's key as the file has it.</summary>
+    private sealed record CostMatrix(IReadOnlyDictionary<string, IReadOnlyList<int>> Costs, IReadOnlyDictionary<string, string> Keys);
+
     /// <summary>
     /// One cost matrix's categories and costs. The category is the part after the slash of each key, named as the
     /// units name their factory: WARNO's Factory/Tanks is "Tanks"; Steel Division 2's EDefaultFactories/tank is "Tanks"
-    /// too, as its units say EDefaultFactories/Tanks.
+    /// too, as its units say EDefaultFactories/Tanks. Each key is kept as the rules' engine writes it, for a rule to
+    /// name it: Steel Division 2's reads as a division, "EDefaultFactories / tank".
     /// </summary>
-    private static Dictionary<string, IReadOnlyList<int>> CostsOf(NdfValue matrix)
+    private static CostMatrix CostsOf(NdfValue matrix)
     {
         var categories = new Dictionary<string, IReadOnlyList<int>>(StringComparer.Ordinal);
+        var keys = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var (key, value) in PairsOf(matrix))
-            if (CategoryOf(key) is string category)
-                categories[Sd2CostCategories.GetValueOrDefault(category, category)] = ItemsOf(value).Select(n => WholeNumber(n) ?? 0).ToList();
-        return categories;
+        {
+            if (CategoryOf(key) is not string found) continue;
+            string category = Sd2CostCategories.GetValueOrDefault(found, found);
+            categories[category] = ItemsOf(value).Select(n => WholeNumber(n) ?? 0).ToList();
+            if (key.IsPrimitive) keys[category] = EasyNdf.Engine.Writing.CanonicalWriter.PrimitiveText(key);
+        }
+        return new CostMatrix(categories, keys);
     }
 
     /// <summary>Steel Division 2's cost categories, by the factory names its units use.</summary>

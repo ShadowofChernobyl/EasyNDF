@@ -17,7 +17,7 @@
                         MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
             <DockPanel>
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}" AutomationProperties.Name="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
                     <TextBlock x:Name="TitleText" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
                 </DockPanel>
 
@@ -47,7 +47,7 @@
                     <ComboBox x:Name="NationChoice" Grid.Column="2" ToolTip="{t:Text Units.AddUnits.Nation.Tip}" SelectionChanged="FilterChosen" />
                     <ComboBox x:Name="RoleChoice" Grid.Column="4" ToolTip="{t:Text Units.RoleChoice.Tip}" SelectionChanged="FilterChosen" />
                     <!-- all units, the game's own, or the mod's; shown only when the game's own are known -->
-                    <ComboBox x:Name="ModdedChoice" Grid.Column="6" ToolTip="{t:Text Units.AddUnits.Modded.Tip}" SelectionChanged="FilterChosen" />
+                    <ComboBox x:Name="ModdedChoice" Grid.Column="6" SelectionChanged="FilterChosen" />
                     <ComboBox x:Name="SortChoice" Grid.Column="8" SelectionChanged="FilterChosen" />
                     <!-- Cards or Table, as the Armory's own icons; the window keeps the one chosen last -->
                     <StackPanel Grid.Column="9" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
@@ -64,13 +64,14 @@
 
                 <!-- the foot: how many units match, Cancel and Add -->
                 <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                    <Button x:Name="AddButton" DockPanel.Dock="Right" Content="{t:Text Units.AddUnits.Add}" ToolTip="{t:Text Units.AddUnits.Add.Tip}" Margin="6,0,0,0" IsEnabled="False" Click="AddClicked" />
+                    <Button x:Name="AddButton" DockPanel.Dock="Right" Content="{t:Text Units.AddUnits.Add}" ToolTip="{t:Text Units.AddUnits.Add.Tip}" Margin="6,0,0,0" IsEnabled="False" Click="AddClicked"
+                            controls:OffReason.Text="{t:Text Units.AddUnits.Add.Off}" />
                     <Button DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" Click="CancelClicked" />
                     <TextBlock x:Name="CountText" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
                 </DockPanel>
 
-                <!-- the units, of which only those in view are made -->
-                <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Height="330">
+                <!-- the units, of which only those in view are made; as high as the window leaves room for (see BackdropResized) -->
+                <controls:Bevel x:Name="ListWell" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" Height="330">
                     <ItemsControl x:Name="UnitList" Focusable="False" SizeChanged="UnitListResized"
                                   VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" ScrollViewer.CanContentScroll="True">
                         <ItemsControl.Template>

@@ -19,13 +19,14 @@ public static class DivisionChanges
     {
         Dictionary<string, Division> byDescriptor = game.GroupBy(division => division.Descriptor).ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
         var divisions = new List<Division>();
+        Dictionary<string, string> fronts = SteelDivisionDivisions.FrontsOf(game);
         foreach (Division division in game.Where(division => division.IsForMultiplayer))
         {
             ModDivision? change = mod.Divisions.FirstOrDefault(each => !each.IsNew && each.Descriptor == division.Descriptor);
-            divisions.Add(change is null ? division : change.Apply(division));
+            divisions.Add(change is null ? division : change.Apply(division, fronts));
         }
         foreach (ModDivision added in mod.Divisions.Where(each => each.IsNew))
-            if (byDescriptor.TryGetValue(added.StartsFrom, out Division? start)) divisions.Add(WithGeneratedBattlegroup(added.Apply(StartOf(added, start, rosters)), added, rosters));
+            if (byDescriptor.TryGetValue(added.StartsFrom, out Division? start)) divisions.Add(WithGeneratedBattlegroup(added.Apply(StartOf(added, start, rosters), fronts), added, rosters));
         return divisions;
     }
 
@@ -94,11 +95,13 @@ public static class DivisionChanges
     /// <returns>How many units were added: those already in the division are not added again.</returns>
     public static int AddUnits(Mod mod, IReadOnlyList<Division> game, string descriptor, IEnumerable<string> units, DivisionRosters? rosters = null)
     {
+        // a unit put in a DLC division stops the game (SteelDivisionDivisions.IsInDlc)
+        if (SteelDivisionDivisions.IsInDlc(descriptor)) return 0;
         ModDivision entry = EntryOf(mod, descriptor) ?? AddChange(mod, descriptor);
         Division start = StartOf(entry, game, rosters);
         int added = 0;
         foreach (string unit in units)
-            if (entry.AddUnit(RuleFor(unit, game), start)) added++;
+            if (entry.AddUnit(RuleFor(unit, game, mod), start)) added++;
         return added;
     }
 
@@ -138,9 +141,9 @@ public static class DivisionChanges
             StartsFrom = startsFrom.Descriptor,
             Name = name.Trim(),
             KeepsUnits = false,
-            // never empty, so the game always finds a summary; the history is the user's to write
+            // never empty, so the game always finds a summary; the history is the user's to write, in a game that has one
             Summary = name.Trim(),
-            History = "",
+            History = DivisionChangeRules.Has(title, DivisionDetail.History) ? "" : null,
         };
         NewDivisionStart.Give(created, game, mod, title);
         if (nation is (string country, string side)) (created.Country, created.Side) = (country, side);
@@ -208,17 +211,34 @@ public static class DivisionChanges
     }
 
     /// <summary>
-    /// How a division is to have a unit added to it: as the first of the game's multiplayer divisions with the unit has
-    /// it (cards, units per card, veterancy, transports); for a unit in none, one card of one unit, at the lowest
-    /// veterancy only, needing no transport.
+    /// How a division is to have a unit added to it: as the game's multiplayer divisions with the unit most often have
+    /// it (cards, units per card, veterancy, transports), the one with the fewest transports among those as common; a
+    /// unit the mod made (a copy) as its model is had. For a unit in none, one card of one unit, at the lowest veterancy
+    /// only, needing no transport: in a game whose divisions give units per card by phase (Steel Division 2), one unit
+    /// in the first phase only, its commonest form there.
     /// </summary>
-    public static DivisionUnit RuleFor(string unit, IReadOnlyList<Division> game)
+    public static DivisionUnit RuleFor(string unit, IReadOnlyList<Division> game, Mod? mod = null)
     {
         DivisionUnit? found = game.Where(division => division.IsForMultiplayer)
             .SelectMany(division => division.Units)
-            .FirstOrDefault(each => each.Unit == unit);
-        return found ?? new DivisionUnit { Unit = unit, Cards = 1, UnitsPerCard = 1, VeterancyMultipliers = [1.0, 0, 0, 0], AvailableWithoutTransport = true };
+            .Where(each => each.Unit == unit)
+            .GroupBy(Shape)
+            .OrderByDescending(same => same.Count()).ThenBy(same => same.First().Transports.Count)
+            .FirstOrDefault()?.First();
+        if (found is not null) return found;
+        if (mod?.Units.FirstOrDefault(each => each.Descriptor == unit) is { MadeFrom: { Length: > 0 } model } && model != unit
+            && game.Any(division => division.Units.Any(each => each.Unit == model)))
+            return RuleFor(model, game) with { Unit = unit };
+        bool byPhase = game.Any(division => division.Units.Any(each => each.UnitsPerCardByPhase.Count > 0));
+        return byPhase
+            ? new DivisionUnit { Unit = unit, Cards = 1, UnitsPerCardByPhase = [1, 0, 0], VeterancyMultipliers = [1.0, 0, 0], AvailableWithoutTransport = true }
+            : new DivisionUnit { Unit = unit, Cards = 1, UnitsPerCard = 1, VeterancyMultipliers = [1.0, 0, 0, 0], AvailableWithoutTransport = true };
     }
+
+    /// <summary>How a division has a unit, as one text, so the divisions that have it alike are counted together.</summary>
+    private static string Shape(DivisionUnit rule) =>
+        string.Join("|", rule.Cards, rule.UnitsPerCard, string.Join(",", rule.UnitsPerCardByPhase), string.Join(",", rule.VeterancyMultipliers),
+            rule.AvailableWithoutTransport, string.Join(",", rule.Transports));
 
     /// <summary>
     /// Renames a division shown: the mod's new division, or a game division (kept as a change; the game's own name
@@ -251,7 +271,7 @@ public static class DivisionChanges
         // a copy of a game division keeps its texts, as its other details
         Division? start = game.FirstOrDefault(division => division.Descriptor == descriptor);
         copy.Summary ??= start?.Summary ?? "";
-        copy.History ??= start?.History ?? "";
+        if (DivisionChangeRules.Has(mod.Game, DivisionDetail.History)) copy.History ??= start?.History ?? "";
         // the same battlegroup, under a name made from its own (the game's name is the other division's)
         copy.BattlegroupCards ??= start?.Battlegroup?.Cards.ToList();
         copy.BattlegroupName = "";

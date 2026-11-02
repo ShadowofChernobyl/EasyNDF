@@ -167,6 +167,40 @@ public partial class EditorPage
         if ((sender as FrameworkElement)?.DataContext is SearchResult result) await OpenResult(result);
     }
 
+    /// <summary>
+    /// The keys on a line found: Up and Down go to the line above or below, Home and End to the first or last, and Enter
+    /// opens it, as a click does.
+    /// </summary>
+    private async void ResultsKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.FocusedElement is not FrameworkElement { DataContext: SearchResult result } || ResultList.ItemsSource is not List<SearchResult> results) return;
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            await OpenResult(result);
+            return;
+        }
+        int at = results.IndexOf(result);
+        int to = e.Key switch
+        {
+            Key.Down => Math.Min(results.Count - 1, at + 1),
+            Key.Up => Math.Max(0, at - 1),
+            Key.Home => 0,
+            Key.End => results.Count - 1,
+            _ => -1,
+        };
+        if (to < 0) return;
+        e.Handled = true;
+        // the row is the template's border, the one child of the item's container
+        if (ResultList.ItemContainerGenerator.ContainerFromIndex(to) is DependencyObject container
+            && System.Windows.Media.VisualTreeHelper.GetChildrenCount(container) > 0
+            && System.Windows.Media.VisualTreeHelper.GetChild(container, 0) is FrameworkElement row)
+        {
+            row.Focus();
+            row.BringIntoView();
+        }
+    }
+
     internal async Task OpenResult(SearchResult result)
     {
         if (Files is null || !Files.Entries.Contains(result.Entry)) return;

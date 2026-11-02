@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
+using EasyNdf.Data.Game;
 using EasyNdf.Data.Units;
 using EasyNdf.Engine.Rules;
 
@@ -10,12 +12,35 @@ namespace EasyNdf.Data.Weapons;
 /// the loadout as the game has it, so the actions go in an order that keeps those places right: the weapons taken off
 /// first (each found by its text), then the swaps and the numbers of weapons (each place less the weapons taken off
 /// before it on its turret), then the ammo boxes' salvos, then the weapons added, each after its turret's own, with an
-/// ammo box of its own.
+/// ammo box of its own. Steel Division 2's loadouts are written with its own names and forms: ammunition named "~/Ammo_X",
+/// the box as SalvoStockIndex, in the first of the places its list of 29 leaves unused (-1), with an entry of
+/// SalvoIsMainSalvo for it; it has no number of a weapon at one place (NbWeapons), which is part of the weapon itself
+/// there ("Ammo_Thompson_x2").
 /// </summary>
 public static class LoadoutRules
 {
     /// <summary>Where the game keeps its loadouts and ammunition, as a unit and a loadout name them.</summary>
     public const string ReferencePrefix = "$/GFX/Weapon/";
+
+    /// <summary>
+    /// How Steel Division 2 names them: a unit its loadout as "$/GFX/Everything/WeaponDescriptor_X", a loadout its
+    /// ammunition as "~/Ammo_X" (see the Steel Division 2 notes, sections 2.1 and 3.1).
+    /// </summary>
+    private const string SteelDivisionLoadoutPrefix = "$/GFX/Everything/", SteelDivisionAmmunitionPrefix = "~/";
+
+    /// <summary>A loadout as a unit names it in a game: "$/GFX/Weapon/X" in WARNO, "$/GFX/Everything/X" in Steel Division 2.</summary>
+    public static string LoadoutReference(string loadout, GameTitle? game) =>
+        (game == GameTitle.SteelDivision2 ? SteelDivisionLoadoutPrefix : ReferencePrefix) + loadout;
+
+    /// <summary>An ammunition as a loadout names it in a game: "$/GFX/Weapon/X" in WARNO, "~/X" in Steel Division 2.</summary>
+    public static string AmmunitionReference(string ammunition, GameTitle? game) =>
+        (game == GameTitle.SteelDivision2 ? SteelDivisionAmmunitionPrefix : ReferencePrefix) + ammunition;
+
+    /// <summary>
+    /// Whether a kind of change (<see cref="LoadoutChange"/>) can be written for a game: all of them for WARNO; for
+    /// Steel Division 2 all but the number of a weapon at one place, which it does not keep in the loadout.
+    /// </summary>
+    public static bool Writes(GameTitle game, string kind) => game != GameTitle.SteelDivision2 || kind != LoadoutChange.Count;
 
     /// <summary>What a weapon added writes for its ammo box and its number, filled in when the rules are made.</summary>
     public const string AmmoBoxBlank = "{AmmoBox}", NumberBlank = "{Number}";
@@ -25,12 +50,14 @@ public static class LoadoutRules
     /// <summary>
     /// The name of a unit's own loadout, made from its descriptor as the game names its own:
     /// "Descriptor_Unit_M1A1_Abrams_US" has "WeaponDescriptor_EZ_M1A1_Abrams_US", and a unit the mod adds,
-    /// "Descriptor_Unit_EZ_Hunter_US", has "WeaponDescriptor_EZ_Hunter_US".
+    /// "Descriptor_Unit_EZ_Hunter_US", has "WeaponDescriptor_EZ_Hunter_US" ("Descriptor_Unit_EZ2_Hunter_US",
+    /// "WeaponDescriptor_EZ2_Hunter_US").
     /// </summary>
     public static string OwnLoadoutName(string unitDescriptor)
     {
         string rest = unitDescriptor.StartsWith("Descriptor_Unit_", StringComparison.Ordinal) ? unitDescriptor["Descriptor_Unit_".Length..] : unitDescriptor;
         if (rest.StartsWith("EZ_", StringComparison.Ordinal)) rest = rest[3..];
+        else if (System.Text.RegularExpressions.Regex.IsMatch(rest, @"^EZ\d+_")) return "WeaponDescriptor_" + rest;
         return "WeaponDescriptor_EZ_" + rest;
     }
 
@@ -45,6 +72,7 @@ public static class LoadoutRules
         foreach (LoadoutChange salvos in changes.Where(change => change.Kind == LoadoutChange.Salvos && change.Mount < boxes.Count))
             boxes[salvos.Mount] = salvos.Number;
         int number = loadout.HighestWeaponNumber;
+        using IEnumerator<int> freeBoxes = FreeBoxes(loadout).GetEnumerator();
         var turrets = new List<LoadoutTurret>();
         foreach (LoadoutTurret turret in loadout.Turrets)
         {
@@ -59,13 +87,31 @@ public static class LoadoutRules
             foreach (LoadoutChange add in changes.Where(change => change.Kind == LoadoutChange.Add && change.Turret == turret.Index))
             {
                 number++;
-                boxes.Add(add.Number);
-                mounts.Add(new LoadoutMount(turret.Index, mounts.Count, add.Ammunition, boxes.Count - 1, AddedCount(add), "", number));
+                freeBoxes.MoveNext();
+                int box = freeBoxes.Current;
+                if (box < boxes.Count) boxes[box] = add.Number;
+                else boxes.Add(add.Number);
+                mounts.Add(new LoadoutMount(turret.Index, mounts.Count, add.Ammunition, box, AddedCount(add), "", number));
             }
             turrets.Add(turret with { Mounts = mounts });
         }
-        return new Loadout(name, boxes, turrets);
+        return loadout with { Descriptor = name, AmmoBoxes = boxes, Turrets = turrets };
     }
+
+    /// <summary>
+    /// The ammo boxes the weapons added get, in the order they are added: the places the loadout's list leaves unused
+    /// (-1, as Steel Division 2 fills its list of 29), then new places after its last.
+    /// </summary>
+    public static IEnumerable<int> FreeBoxes(Loadout loadout)
+    {
+        for (int box = 0; box < loadout.AmmoBoxes.Count; box++)
+            if (loadout.AmmoBoxes[box] == -1) yield return box;
+        for (int box = loadout.AmmoBoxes.Count; ; box++) yield return box;
+    }
+
+    /// <summary>The ammo box a weapon added gets (<see cref="FreeBoxes"/>), by its place among the weapons added.</summary>
+    public static int BoxOf(Loadout loadout, IReadOnlyList<LoadoutChange> changes, LoadoutChange add) =>
+        FreeBoxes(loadout).ElementAt(changes.Where(change => change.Kind == LoadoutChange.Add).TakeWhile(change => change != add).Count());
 
     /// <summary>
     /// Puts a change in the place of another in a unit's list of changes: with no <paramref name="old"/> one, the new
@@ -176,6 +222,92 @@ public static class LoadoutRules
         + ")";
 
     /// <summary>
+    /// A weapon added to a Steel Division 2 loadout, as NDF: the game's own mount of the weapon in another loadout, as
+    /// the engine writes it, so it is shown and fires there as it does elsewhere (when it moves, at a position...); one
+    /// with the game's plain values when no loadout has the weapon. It is given the weapon, the ammo box filled in when
+    /// the rules are made (<see cref="AmmoBoxBlank"/>, in its SalvoStockIndex, and in SalvoStockIndex_ForInterface
+    /// unless the game hides the weapon's box there with -1), and the effect tag of the turret's own weapon, a firing
+    /// point the unit's model has.
+    /// </summary>
+    /// <param name="gameMount">The game's mount of the weapon (<see cref="MountTextOf"/>); null when none has it.</param>
+    /// <param name="ammunition">The weapon, by its ammunition's descriptor.</param>
+    /// <param name="effectTag">The effect tag of the turret's own weapon, such as "weapon_effet_tag1".</param>
+    public static string SteelDivisionMountText(string? gameMount, string ammunition, string effectTag)
+    {
+        string text = gameMount ?? SteelDivisionPlainMount;
+        text = Regex.Replace(text, @"(?m)^([ \t]*Ammunition[ \t]*=[ \t]*)[^ \t\r\n]+", "${1}" + SteelDivisionAmmunitionPrefix + ammunition);
+        text = Regex.Replace(text, @"(?m)^([ \t]*EffectTag[ \t]*=[ \t]*)(['""])[^'""]*['""]", "${1}${2}" + effectTag + "${2}");
+        text = Regex.Replace(text, @"(?m)^([ \t]*SalvoStockIndex[ \t]*=[ \t]*)-?[0-9]+", "${1}" + AmmoBoxBlank);
+        // a colour on one line, as the game writes it: D3DRGBA[0,0,0,0]
+        text = Regex.Replace(text, @"D3DRGBA\[\s*([0-9]+),\s*([0-9]+),\s*([0-9]+),\s*([0-9]+),?\s*\]", "D3DRGBA[$1,$2,$3,$4]");
+        return Regex.Replace(text, @"(?m)^([ \t]*SalvoStockIndex_ForInterface[ \t]*=[ \t]*)[0-9]+", "${1}" + AmmoBoxBlank);
+    }
+
+    /// <summary>A Steel Division 2 mount with the game's plain values, as its loadouts write one that shows nothing extra.</summary>
+    private const string SteelDivisionPlainMount = """
+        TMountedWeaponDescriptor
+        (
+            Ammunition = ~/Ammo
+            AnimateOnlyOneSoldier = False
+            DispersionRadiusOffColor = D3DRGBA[0,0,0,0]
+            DispersionRadiusOffThickness = -0.1
+            DispersionRadiusOnColor = D3DRGBA[0,0,0,0]
+            DispersionRadiusOnThickness = -0.1
+            EffectTag = 'weapon_effet_tag1'
+            IgnoreFriendlyFireOnMoveAndAttack = False
+            IgnoreFriendlyFireOnReflexShoot = False
+            MaxRangeDisplay_Color = D3DRGBA[0,0,0,0]
+            MaxRangeDisplay_Thickness = -0.1
+            MinRangeDisplay_Color = D3DRGBA[0,0,0,0]
+            MinRangeDisplay_Thickness = -0.1
+            OverwritedTrait_ForInterface = 0
+            PowerIcon = ""
+            Power_ForInterface = 0
+            SalvoStockIndex = 0
+            SalvoStockIndex_ForInterface = 0
+            ShowDispersion = False
+            ShowMaximumRange = False
+            ShowMaximumRange_HA = False
+            ShowMaximumRange_Projectile = False
+            ShowMaximumRange_SuperWeapon = False
+            ShowMaximumRange_TBA = False
+            ShowMinimumRange = False
+            ShowMinimumRange_HA = False
+            ShowMinimumRange_Projectile = False
+            ShowMinimumRange_SuperWeapon = False
+            ShowMinimumRange_TBA = False
+            ShowSplashRadius = False
+            SplashRadiusOffColor = D3DRGBA[0,0,0,0]
+            SplashRadiusOffThickness = -0.1
+            SplashRadiusOnColor = D3DRGBA[0,0,0,0]
+            SplashRadiusOnThickness = -0.1
+            TirEnMouvement = True
+            TirSurPosition = False
+            WeaponNumber_ForInterface = 1
+        )
+        """;
+
+    /// <summary>
+    /// The first mount of a weapon in any loadout of WeaponDescriptor.ndf, written as the engine writes it: how the game
+    /// mounts it, for a weapon added to a Steel Division 2 loadout (<see cref="SteelDivisionMountText"/>). Only the
+    /// loadouts whose text names the weapon are read. Null when none has it.
+    /// </summary>
+    /// <param name="file">The file's text, read line by line.</param>
+    /// <param name="ammunition">The weapon, by its ammunition's descriptor.</param>
+    public static string? MountTextOf(TextReader file, string ammunition)
+    {
+        foreach ((string _, string text) in UnitReader.DeclarationTexts(file))
+        {
+            if (!text.Contains(ammunition, StringComparison.Ordinal)) continue;
+            foreach (Engine.Ndf.Declaration declaration in Engine.Ndf.Parser.Parse(text).Declarations)
+                foreach (Engine.Ndf.ObjectValue mount in NdfValues.AllObjects(declaration.Value))
+                    if (NdfValues.Text(NdfValues.Own(mount, "Ammunition")) is string named && named == ammunition)
+                        return Engine.Writing.CanonicalWriter.Write(mount).Trim();
+        }
+        return null;
+    }
+
+    /// <summary>
     /// A mounted weapon as WeaponDescriptor.ndf has it, written as the engine writes it: what a rule taking it out finds
     /// it by. Read from the file on the Files tab, the one the rule runs on, when the user takes the weapon off. Null when
     /// the file has no such loadout or place.
@@ -208,29 +340,43 @@ public static class LoadoutRules
 
     /// <summary>
     /// The actions that make the changes in the unit's own loadout, a copy of <paramref name="loadout"/>, in the order
-    /// that keeps the places right (see the class's summary).
+    /// that keeps the places right (see the class's summary), as the game writes its loadouts.
     /// </summary>
-    public static List<LoadoutAction> ActionsFor(Loadout loadout, IReadOnlyList<LoadoutChange> changes)
+    /// <param name="loadout">The loadout the changes are made on.</param>
+    /// <param name="changes">The unit's changes to it.</param>
+    /// <param name="game">The game the rules are for; WARNO when not given.</param>
+    public static List<LoadoutAction> ActionsFor(Loadout loadout, IReadOnlyList<LoadoutChange> changes, GameTitle? game = null)
     {
         var actions = new List<LoadoutAction>();
         foreach (LoadoutChange remove in changes.Where(change => change.Kind == LoadoutChange.Remove && change.MountText != ""))
             actions.Add(new LoadoutAction(MountListPath(remove.Turret), "Remove [array]", remove.MountText));
         foreach (LoadoutChange swap in LastOfEachPlace(changes, LoadoutChange.Swap))
-            actions.Add(new LoadoutAction(MountPath(changes, swap) + Separator + "Ammunition", SetTo, ReferencePrefix + swap.Ammunition));
-        foreach (LoadoutChange count in LastOfEachPlace(changes, LoadoutChange.Count))
+            actions.Add(new LoadoutAction(MountPath(changes, swap) + Separator + "Ammunition", SetTo, AmmunitionReference(swap.Ammunition, game)));
+        // a game with no number of a weapon at one place gets none written
+        IEnumerable<LoadoutChange> counts = Writes(game ?? GameTitle.Warno, LoadoutChange.Count) ? LastOfEachPlace(changes, LoadoutChange.Count) : [];
+        foreach (LoadoutChange count in counts)
             actions.Add(new LoadoutAction(MountPath(changes, count) + Separator + "NbWeapons", SetTo, count.Number.ToString(CultureInfo.InvariantCulture)));
         foreach (LoadoutChange salvos in changes.Where(change => change.Kind == LoadoutChange.Salvos && change.Mount < loadout.AmmoBoxes.Count)
                      .GroupBy(change => change.Mount).Select(group => group.Last()))
             actions.Add(new LoadoutAction("Salves" + Separator + "Index" + salvos.Mount.ToString(CultureInfo.InvariantCulture), SetTo, salvos.Number.ToString(CultureInfo.InvariantCulture)));
-        int box = loadout.AmmoBoxes.Count, number = loadout.HighestWeaponNumber;
+        int number = loadout.HighestWeaponNumber;
+        int mainSalvos = loadout.MainSalvoCount ?? 0;
+        using IEnumerator<int> freeBoxes = FreeBoxes(loadout).GetEnumerator();
         foreach (LoadoutChange add in changes.Where(change => change.Kind == LoadoutChange.Add))
         {
             number++;
-            actions.Add(new LoadoutAction("Salves", "Insert [array]", "LastIndex: " + add.Number.ToString(CultureInfo.InvariantCulture)));
+            freeBoxes.MoveNext();
+            int box = freeBoxes.Current;
+            string salvos = add.Number.ToString(CultureInfo.InvariantCulture);
+            // a place the list leaves unused (-1) is filled; a list with none gets a place after its last
+            if (box < loadout.AmmoBoxes.Count) actions.Add(new LoadoutAction("Salves" + Separator + "Index" + box.ToString(CultureInfo.InvariantCulture), SetTo, salvos));
+            else actions.Add(new LoadoutAction("Salves", "Insert [array]", "LastIndex: " + salvos));
+            // Steel Division 2 keeps an entry of SalvoIsMainSalvo for each box in use
+            if (loadout.MainSalvoCount is not null)
+                for (; mainSalvos <= box; mainSalvos++) actions.Add(new LoadoutAction("SalvoIsMainSalvo", "Insert [array]", "LastIndex: False"));
             string mount = add.MountText.Replace(AmmoBoxBlank, box.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
                 .Replace(NumberBlank, number.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
             actions.Add(new LoadoutAction(MountListPath(add.Turret), "Insert [array]", "LastIndex: " + mount));
-            box++;
         }
         return actions;
     }

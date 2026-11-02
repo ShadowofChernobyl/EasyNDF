@@ -72,7 +72,7 @@ public static class BattlegroupView
             }
             // the + after the row's last card; dropped on, a card goes to the row's end
             int end = places.Count > 0 ? places[^1] + 1 : cards.Count;
-            tiles.Children.Add(AddTile(type, end, addClicked, editing));
+            tiles.Children.Add(AddTile(type, end, addClicked, editing, units.Values.FirstOrDefault()));
             view.Children.Add(tiles);
         }
         return view;
@@ -116,7 +116,7 @@ public static class BattlegroupView
 
     /// <summary>Several cards of units the source does not have, in one line: how many, the first five, and what to do.</summary>
     public static string UnknownUnitsText(IReadOnlyList<string> units) => Texts.Get("Divisions.Battlegroup.Problem.UnitsUnknown",
-        ("count", units.Count), ("units", string.Join(", ", units.Take(5).Select(ShortName)) + (units.Count > 5 ? "…" : "")));
+        ("count", Texts.Number(units.Count)), ("units", string.Join(", ", units.Take(5).Select(ShortName)) + (units.Count > 5 ? "…" : "")));
 
     /// <summary>A line of the problems box, with the warning sign.</summary>
     private static TextBlock ProblemLine(string text)
@@ -152,7 +152,7 @@ public static class BattlegroupView
             BattlegroupProblemKind.TooManyCardsOfUnit => Texts.Get("Divisions.Battlegroup.Problem.TooManyCardsOfUnit", ("unit", unit), ("count", problem.Count), ("allowed", problem.Allowed)),
             BattlegroupProblemKind.TooManyCardsOfType => Texts.Get("Divisions.Battlegroup.Problem.TooManyCardsOfType",
                 ("type", UnitNames.Factory(problem.Subject)), ("count", problem.Count), ("allowed", problem.Allowed)),
-            _ => Texts.Get("Divisions.Battlegroup.Problem.TooManyPoints", ("count", problem.Count), ("allowed", problem.Allowed)),
+            _ => Texts.Get("Divisions.Battlegroup.Problem.TooManyPoints", ("count", Texts.Number(problem.Count)), ("allowed", Texts.Number(problem.Allowed))),
         };
     }
 
@@ -169,6 +169,7 @@ public static class BattlegroupView
             Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center,
             ToolTip = Texts.Get(isFolded ? "Divisions.Battlegroup.Unfold.Tip" : "Divisions.Heading.Fold.Tip"),
         };
+        System.Windows.Automation.AutomationProperties.SetName(fold, (string)fold.ToolTip);
         fold.Click += (_, _) => foldClicked(type);
         var name = new TextBlock { Text = UnitNames.Factory(type), FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
         var count = new TextBlock
@@ -316,15 +317,19 @@ public static class BattlegroupView
 
     /// <summary>
     /// The + at a row's end, dashed as the division's cost buttons' +: a click opens Add a Card for the row's type, and
-    /// a card dropped on it goes to the row's end.
+    /// a card dropped on it goes to the row's end. It is the size of a card: a card it holds unseen gives it its size,
+    /// so a row with no card has a + as tall as the others' cards.
     /// </summary>
-    private static Border AddTile(string type, int end, Action<FrameworkElement, string> addClicked, IBattlegroupEditing editing)
+    /// <param name="sizedLike">A unit whose card, unseen, sizes the +; null for none, when it is 70 pixels high at least.</param>
+    private static Border AddTile(string type, int end, Action<FrameworkElement, string> addClicked, IBattlegroupEditing editing, Unit? sizedLike)
     {
         var plus = new TextBlock { Text = "+", FontSize = 22, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         plus.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         var dashes = new Rectangle { StrokeThickness = 1, StrokeDashArray = [4, 3] };
         dashes.SetResourceReference(Shape.StrokeProperty, "hi");
         var holder = new Grid { Children = { dashes, plus, DropMark() }, MinHeight = 70, Background = System.Windows.Media.Brushes.Transparent };
+        if (sizedLike is not null)
+            holder.Children.Insert(0, new UnitTile(sizedLike, firstSide: true, new UnitSelection()) { Visibility = Visibility.Hidden, IsHitTestVisible = false, Focusable = false });
         var tile = new Border { Child = holder, Margin = new Thickness(CardRowView.Gap / 2), Cursor = Cursors.Hand, ToolTip = Texts.Get("Divisions.Battlegroup.AddCard.Tip") };
         tile.MouseEnter += (_, _) =>
         {

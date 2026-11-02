@@ -61,6 +61,23 @@ public sealed class ConflictRow : INotifyPropertyChanged
         }
     }
 
+    private bool isCursor;
+
+    /// <summary>Whether the arrow keys are on this line, outlined while the list has the keyboard.</summary>
+    public bool IsCursor
+    {
+        get => isCursor;
+        set
+        {
+            if (isCursor == value) return;
+            isCursor = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCursor)));
+        }
+    }
+
+    /// <summary>What tells the line apart from the others when the list is made again: its fold key, or its value's place.</summary>
+    public string LineKey => Value is { } value ? value.FileKey + "\n" + value.Value.Descriptor + "\n" + value.Value.Property + "\n" + value.Value.IsNameClash : FoldKey;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
@@ -100,7 +117,24 @@ public partial class ModConflictsWindow : UserControl
     public ModConflictsWindow()
     {
         InitializeComponent();
+        // a size from the start: measured with no size, the list would make a line for every value at once
+        Inside.Width = Inside.MinWidth;
+        Inside.Height = Inside.MinHeight;
         ModConflictList.Changed += () => { if (IsOpen) Fill(keepPicked: true); };
+        copiedPause.Tick += (_, _) =>
+        {
+            copiedPause.Stop();
+            CopyButton.Content = Texts.Get("Files.Conflicts.Copy");
+        };
+    }
+
+    /// <summary>Whether Find again follows the Files tab's runs yet; it starts to when the window first opens.</summary>
+    private bool followsRuns;
+
+    /// <summary>Find again is off while a Preview or export runs: a second run cannot start until the first is done.</summary>
+    private void ShowRunState()
+    {
+        if (MainView.Find(this) is MainView view) FindAgainButton.IsEnabled = !view.FilesTab.Model.IsBusy;
     }
 
     /// <summary>Whether the window is open.</summary>
@@ -117,6 +151,16 @@ public partial class ModConflictsWindow : UserControl
         isFilling = false;
         unfolded.Clear();
         picked = null;
+        cursorKey = null;
+        if (!followsRuns && MainView.Find(this) is MainView view)
+        {
+            followsRuns = true;
+            view.FilesTab.Model.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName is null or "" or nameof(FileListModel.IsBusy)) ShowRunState();
+            };
+        }
+        ShowRunState();
         Fill(keepPicked: false, mod);
         Visibility = Visibility.Visible;
         Dispatcher.BeginInvoke(() => FindBox.Focus());
@@ -138,11 +182,34 @@ public partial class ModConflictsWindow : UserControl
         ModChoice.ItemsSource = new List<string> { AnyMod }.Concat(inConflict).ToList();
         ModChoice.SelectedItem = inConflict.Contains(chosen) ? chosen : AnyMod;
         isFilling = false;
-        Summary.Text = Texts.Get("Files.Conflicts.Summary", ("values", Texts.Count("Files.Conflicts.Values", all.Count)), ("mods", string.Join("  ›  ", modOrder)));
+        // a few mods are named; more would run off the line, so they are counted, and the tooltip lists them in order
+        string values = Texts.CountWide("Files.Conflicts.Values", all.Count);
+        Summary.Text = modOrder.Count <= NamedMods
+            ? Texts.Get("Files.Conflicts.Summary", ("values", values), ("mods", string.Join("  ›  ", modOrder)))
+            : Texts.Get("Files.Conflicts.SummaryCounted", ("values", values), ("mods", Texts.CountWide("Files.Conflicts.Mods", modOrder.Count)));
+        Summary.ToolTip = modOrder.Count == 0 ? null : Texts.Get("Files.Conflicts.Order.Tip") + "\n" + NumberedList(modOrder);
         if (!keepPicked || picked is not { } was || !all.Any(found => SameValue(found, was))) picked = null;
         else picked = all.First(found => SameValue(found, was));
         Refill();
     }
+
+    /// <summary>How many mods the summary line and the verdict name before they count the rest.</summary>
+    private const int NamedMods = 3;
+
+    /// <summary>How many lines a tooltip's list of mods has before it says how many more there are.</summary>
+    private const int ListedMods = 30;
+
+    /// <summary>Mods one a line, each with its place in the run order: "3. WTO"; past <see cref="ListedMods"/>, "and 12 more".</summary>
+    private string NumberedList(IEnumerable<string> mods)
+    {
+        List<string> names = [.. mods];
+        IEnumerable<string> lines = names.Take(ListedMods).Select(mod => Texts.Number(RunPlace(mod)) + ". " + mod);
+        if (names.Count > ListedMods) lines = lines.Append(Texts.Get("Files.Conflicts.AndMore", ("count", Texts.Number(names.Count - ListedMods))));
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>A mod's place in the run order, from 1; 0 when it no longer runs.</summary>
+    private int RunPlace(string mod) => modOrder.IndexOf(mod) + 1;
 
     /// <summary>Whether two found values are the same value: the same file, descriptor and property.</summary>
     private static bool SameValue((string FileKey, ConflictedValue Value) a, (string FileKey, ConflictedValue Value) b) =>
@@ -159,11 +226,15 @@ public partial class ModConflictsWindow : UserControl
         OverToggle.Content = "⚠ " + Texts.Number(all.Count(found => !found.Value.IsNameClash && OfMod(found)));
         shown = [.. all.Where(found => (found.Value.IsNameClash ? clashes : overwritten) && OfMod(found) && Matches(found, find))];
         // the value shown stays while it is listed; Find or a filter that leaves it out shows the first one listed
-        if (picked is not { } current || !shown.Any(found => SameValue(found, current))) picked = shown.Count > 0 ? shown[0] : null;
-        if (picked is { } open)
+        // a value picked here is unfolded to; one picked already stays folded away if the user folded it
+        if (picked is not { } current || !shown.Any(found => SameValue(found, current)))
         {
-            unfolded.Add(open.FileKey);
-            unfolded.Add(open.FileKey + "\n" + open.Value.Descriptor);
+            picked = shown.Count > 0 ? shown[0] : null;
+            if (picked is { } open)
+            {
+                unfolded.Add(open.FileKey);
+                unfolded.Add(open.FileKey + "\n" + open.Value.Descriptor);
+            }
         }
 
         // the lines: each file, its descriptors when unfolded, their values when unfolded; all open while finding
@@ -198,8 +269,83 @@ public partial class ModConflictsWindow : UserControl
             }
         }
         List.ItemsSource = rows;
+        ShowCursor();
+        // with no conflicts at all, the filters are not why the list is empty, so it says how to find them
+        NothingFound.Text = all.Count == 0 ? Texts.Get("Files.Conflicts.NoConflicts") : Texts.Get("Files.Conflicts.NothingMatches");
         NothingFound.Visibility = shown.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         ShowPicked();
+    }
+
+    // ---- the list by keyboard ----
+
+    /// <summary>The line the arrow keys are on, by its <see cref="ConflictRow.LineKey"/>; null for the value picked.</summary>
+    private string? cursorKey;
+
+    /// <summary>The lines listed now.</summary>
+    private List<ConflictRow> Lines => List.ItemsSource as List<ConflictRow> ?? [];
+
+    /// <summary>The line the arrow keys are on: the one moved to last, or else the value picked, or else the first.</summary>
+    private int CursorAt()
+    {
+        List<ConflictRow> lines = Lines;
+        int at = cursorKey is null ? -1 : lines.FindIndex(line => line.LineKey == cursorKey);
+        if (at < 0) at = lines.FindIndex(line => line.IsPicked);
+        return lines.Count == 0 ? -1 : Math.Max(0, at);
+    }
+
+    /// <summary>Outlines the line the arrow keys are on, only while the list has the keyboard, and keeps it in sight.</summary>
+    private void ShowCursor()
+    {
+        bool focused = List.IsKeyboardFocusWithin && listKeysInUse;
+        List<ConflictRow> lines = Lines;
+        int at = CursorAt();
+        for (int index = 0; index < lines.Count; index++) lines[index].IsCursor = focused && index == at;
+        if (focused && at >= 0) List.ScrollIntoView(lines[at]);
+    }
+
+    /// <summary>Whether the keyboard is in use on the list: the outline shows only then, not after a click with the mouse.</summary>
+    private bool listKeysInUse;
+
+    /// <summary>The list got or lost the keyboard: reached with Tab, the outline shows where the keys are; clicked, it waits for a key.</summary>
+    private void ListFocusChanged(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (List.IsKeyboardFocusWithin && e.NewFocus == List) listKeysInUse = InputManager.Current.MostRecentInputDevice is KeyboardDevice;
+        ShowCursor();
+    }
+
+    /// <summary>
+    /// A key while the list has the keyboard. Up and Down move along the lines, picking each value moved onto; on a file
+    /// or descriptor, Enter folds or unfolds it, Left folds it and Right unfolds it. Home and End go to the first and
+    /// last line. True when the key was the list's.
+    /// </summary>
+    private bool ListKey(Key key)
+    {
+        List<ConflictRow> lines = Lines;
+        int at = CursorAt();
+        if (at < 0) return false;
+        ConflictRow line = lines[at];
+        listKeysInUse = true;
+        switch (key)
+        {
+            case Key.Up or Key.Down or Key.Home or Key.End:
+                int to = key switch { Key.Up => at - 1, Key.Down => at + 1, Key.Home => 0, _ => lines.Count - 1 };
+                to = Math.Clamp(to, 0, lines.Count - 1);
+                cursorKey = lines[to].LineKey;
+                if (lines[to].Value is { } value) Pick(value);
+                ShowCursor();
+                return true;
+            case Key.Enter or Key.Space or Key.Left or Key.Right when line.Value is null:
+                bool open = unfolded.Contains(line.FoldKey) || FindBox.Text.Trim() != "";
+                bool wanted = key switch { Key.Left => false, Key.Right => true, _ => !open };
+                if (wanted == open) return true;
+                if (wanted) unfolded.Add(line.FoldKey);
+                else unfolded.Remove(line.FoldKey);
+                cursorKey = line.LineKey;
+                Refill();
+                return true;
+            default:
+                return false;
+        }
     }
 
     /// <summary>Whether a value holds the text found, in its file, descriptor, property, a mod, a rule or a value; true when nothing is typed.</summary>
@@ -216,9 +362,14 @@ public partial class ModConflictsWindow : UserControl
     private void ListClicked(object sender, MouseButtonEventArgs e)
     {
         if ((e.OriginalSource as FrameworkElement)?.DataContext is not ConflictRow row) return;
+        // the arrow keys go on from the line clicked
+        cursorKey = row.LineKey;
+        listKeysInUse = false;
+        List.Focus();
         if (row.Value is { } value)
         {
             Pick(value);
+            ShowCursor();
             return;
         }
         if (!unfolded.Remove(row.FoldKey)) unfolded.Add(row.FoldKey);
@@ -241,6 +392,7 @@ public partial class ModConflictsWindow : UserControl
         int at = picked is { } now ? shown.FindIndex(found => SameValue(found, now)) : -1;
         (string FileKey, ConflictedValue Value) next = shown[((at < 0 ? 0 : at + by) % shown.Count + shown.Count) % shown.Count];
         picked = next;
+        cursorKey = null;
         unfolded.Add(next.FileKey);
         unfolded.Add(next.FileKey + "\n" + next.Value.Descriptor);
         Refill();
@@ -312,6 +464,7 @@ public partial class ModConflictsWindow : UserControl
             ValueName.Text = "";
             Place.Text = Texts.Get("Files.Conflicts.Place", ("at", 0), ("count", Texts.Number(shown.Count)));
             Verdict.Text = all.Count == 0 ? Texts.Get("Files.Conflicts.NoneFound") : Texts.Get("Files.Conflicts.PickOne");
+            Verdict.ToolTip = null;
             return;
         }
         ConflictedValue conflict = value.Value;
@@ -338,10 +491,14 @@ public partial class ModConflictsWindow : UserControl
             };
         PanelScroller.ScrollToHorizontalOffset(0);
 
-        List<string> lost = [.. conflict.Changes.Where(change => !ReferenceEquals(change, conflict.Kept)).Select(change => change.Mod)];
+        // the mods that lost: a few named, the rest counted, so the line stays short with fifty mods; all of them in the tooltip
+        List<string> lost = [.. conflict.Changes.Where(change => !ReferenceEquals(change, conflict.Kept)).Select(change => change.Mod).Distinct()];
+        string others = string.Join(", ", lost.Take(NamedMods));
+        if (lost.Count > NamedMods) others = Texts.Get("Files.Conflicts.NamesAndMore", ("names", others), ("count", Texts.Number(lost.Count - NamedMods)));
         Verdict.Text = conflict.IsNameClash
-            ? Texts.Get("Files.Conflicts.Verdict.Clash", ("kept", conflict.Kept.Mod), ("others", string.Join(", ", lost)))
-            : Texts.Get("Files.Conflicts.Verdict.Overwritten", ("kept", conflict.Kept.Mod), ("others", string.Join(", ", lost)));
+            ? Texts.Get("Files.Conflicts.Verdict.Clash", ("kept", conflict.Kept.Mod), ("others", others))
+            : Texts.Get("Files.Conflicts.Verdict.Overwritten", ("kept", conflict.Kept.Mod), ("others", others));
+        Verdict.ToolTip = Verdict.Text + "\n\n" + Texts.Get("Files.Conflicts.Lost.Tip", ("kept", conflict.Kept.Mod)) + "\n" + NumberedList(lost);
     }
 
     /// <summary>How a panel marks the value's line: the game's as it was, the kept one's as in the export, a lost one's struck through.</summary>
@@ -371,26 +528,31 @@ public partial class ModConflictsWindow : UserControl
             DockPanel.SetDock(stateText, Dock.Right);
             first.Children.Add(stateText);
         }
-        if (change is not null) first.Children.Add(Dot(change.Mod));
+        if (change is not null) first.Children.Add(PlaceBadge(change.Mod));
         first.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = title });
         lines.Children.Add(first);
         var second = new TextBlock { FontSize = 11.5, TextTrimming = TextTrimming.CharacterEllipsis };
         if (change is not null)
         {
-            second.Text = Texts.Get("Files.Conflicts.Rule", ("rule", change.Rule));
-            second.ToolTip = Texts.Get("Files.Conflicts.Rule.Tip");
-            second.Cursor = Cursors.Hand;
+            // a button, so Tab reaches it and Enter or Space follows it; its tooltip names the whole rule, which may be cut
+            string rule = Texts.Get("Files.Conflicts.Rule", ("rule", change.Rule));
+            second.Text = rule;
             second.SetResourceReference(TextBlock.ForegroundProperty, "accent");
-            second.MouseEnter += (_, _) => second.TextDecorations = TextDecorations.Underline;
-            second.MouseLeave += (_, _) => second.TextDecorations = null;
-            second.MouseLeftButtonUp += (_, _) => GoToRule(fileKey!, change);
+            var link = new Button { Content = second, Style = (Style)FindResource("RuleLink"), ToolTip = rule + "\n" + Texts.Get("Files.Conflicts.Rule.Tip") };
+            System.Windows.Automation.AutomationProperties.SetName(link, rule);
+            // the tooltip is the link's, which holds the whole name, so the cut text gives none of its own
+            second.ToolTip = link.ToolTip;
+            link.MouseEnter += (_, _) => second.TextDecorations = TextDecorations.Underline;
+            link.MouseLeave += (_, _) => second.TextDecorations = null;
+            link.Click += (_, _) => GoToRule(fileKey!, change);
+            lines.Children.Add(link);
         }
         else
         {
             second.Text = Texts.Get("Files.Conflicts.NoMods");
             second.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+            lines.Children.Add(second);
         }
-        lines.Children.Add(second);
         heading.Child = lines;
         panel.Children.Add(heading);
 
@@ -416,7 +578,7 @@ public partial class ModConflictsWindow : UserControl
         panel.Children.Add(body);
 
         // the right edge: dragged, every panel takes the new width
-        var edge = new Thumb { Width = 6, Cursor = Cursors.SizeWE, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, -6, 0), Opacity = 0, ToolTip = Texts.Get("Files.Conflicts.Resize.Tip") };
+        var edge = new Thumb { Width = 6, Style = (Style)FindResource("PanelEdge"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 0, -6, 0), ToolTip = Texts.Get("Files.Conflicts.Resize.Tip") };
         Grid.SetRowSpan(edge, 2);
         edge.DragDelta += (_, e) =>
         {
@@ -456,22 +618,25 @@ public partial class ModConflictsWindow : UserControl
         return mark;
     }
 
-    /// <summary>Colours for the mods' dots, by their place in the order: told apart in every theme, light or dark.</summary>
-    private static readonly Color[] DotColours =
-    [
-        Color.FromRgb(0x6F, 0x9F, 0xC8), Color.FromRgb(0xC9, 0x93, 0x5F), Color.FromRgb(0xA0, 0x84, 0xC9), Color.FromRgb(0x6F, 0xB5, 0x9E),
-        Color.FromRgb(0xC8, 0x84, 0x9A), Color.FromRgb(0xB5, 0xA9, 0x5A), Color.FromRgb(0x8C, 0x9A, 0xA8), Color.FromRgb(0x9E, 0xB8, 0x6A),
-    ];
-
-    /// <summary>A mod's dot, in its colour.</summary>
-    private FrameworkElement Dot(string mod)
+    /// <summary>
+    /// A mod's place in the run order, in a small badge before its name: numbers tell any number of mods apart, where
+    /// colours ran out and repeated after a few.
+    /// </summary>
+    private FrameworkElement PlaceBadge(string mod)
     {
-        int at = Math.Max(0, modOrder.IndexOf(mod));
-        return new System.Windows.Shapes.Ellipse
+        int place = RunPlace(mod);
+        var number = new TextBlock { Text = place > 0 ? Texts.Number(place) : "–", FontSize = 10.5, FontWeight = FontWeights.Normal, VerticalAlignment = VerticalAlignment.Center };
+        number.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        var badge = new Border
         {
-            Width = 8, Height = 8, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center,
-            Fill = new SolidColorBrush(DotColours[at % DotColours.Length]),
+            Child = number, BorderThickness = new Thickness(1), Padding = new Thickness(4, 0, 4, 0), MinWidth = 18, Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = place > 0 ? Texts.Get("Files.Conflicts.Place.Tip", ("place", Texts.Number(place)), ("count", Texts.Number(modOrder.Count))) : null,
         };
+        number.HorizontalAlignment = HorizontalAlignment.Center;
+        badge.SetResourceReference(Border.BorderBrushProperty, "line");
+        badge.SetResourceReference(Border.BackgroundProperty, "well");
+        return badge;
     }
 
     // ---- going elsewhere ----
@@ -533,9 +698,23 @@ public partial class ModConflictsWindow : UserControl
             string mods = string.Join(", ", value.Changes.Where(change => !ReferenceEquals(change, value.Kept)).Select(change => change.Mod + " (" + change.New + ")"));
             text.AppendLine(Texts.Get("Files.Conflicts.Copy.Line", ("file", value.File), ("value", what), ("kept", value.Kept.Mod + " (" + value.Kept.New + ")"), ("others", mods)));
         }
-        try { Clipboard.SetText(text.ToString()); }
-        catch (System.Runtime.InteropServices.ExternalException) { } // the clipboard is busy: nothing is copied
+        // the button says for a moment what it did, as copying shows nothing else
+        try
+        {
+            Clipboard.SetText(text.ToString());
+            CopyButton.Content = Texts.CountWide("Files.Conflicts.Copied", shown.Count);
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        {
+            // another program holds the clipboard: nothing was copied
+            CopyButton.Content = Texts.Get("Files.Conflicts.ClipboardBusy");
+        }
+        copiedPause.Stop();
+        copiedPause.Start();
     }
+
+    /// <summary>How long Copy as text says what it did before it reads as before.</summary>
+    private readonly System.Windows.Threading.DispatcherTimer copiedPause = new() { Interval = TimeSpan.FromSeconds(2.5) };
 
     // ---- closing ----
 
@@ -548,14 +727,20 @@ public partial class ModConflictsWindow : UserControl
 
     private void CloseClicked(object sender, RoutedEventArgs e) => Close();
 
-    /// <summary>Escape closes; the arrow keys go to the previous or next value, unless typing in Find.</summary>
+    /// <summary>
+    /// Escape closes, unless the mod box's list is open: then it closes only that. In the list, the arrow keys, Enter
+    /// and Home and End move and fold (<see cref="ListKey"/>); elsewhere Left and Right go to the previous or next
+    /// value, unless typing in Find.
+    /// </summary>
     private void KeyPressed(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
+            if (ModChoice.IsDropDownOpen) return;
             e.Handled = true;
             Close();
         }
+        else if (List.IsKeyboardFocusWithin && Keyboard.Modifiers == ModifierKeys.None && ListKey(e.Key)) e.Handled = true;
         else if (e.Key is Key.Left or Key.Right && e.OriginalSource is not TextBox && e.OriginalSource is not ComboBox)
         {
             e.Handled = true;
@@ -569,4 +754,19 @@ public partial class ModConflictsWindow : UserControl
     }
 
     private void BoxPressed(object sender, MouseButtonEventArgs e) => e.Handled = true;
+
+    /// <summary>In a small window the box keeps only a thin margin round it, so its parts have what room there is.</summary>
+    private void BackdropSized(object sender, SizeChangedEventArgs e) =>
+        Box.Margin = Backdrop.ActualWidth < 760 || Backdrop.ActualHeight < 560 ? new Thickness(6) : new Thickness(40, 30, 40, 30);
+
+    /// <summary>
+    /// The window's parts fill the room in the box, but no less than their smallest size: below it, they keep that size
+    /// and the box scrolls, so nothing is cut off.
+    /// </summary>
+    private void RoomChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.ViewportWidthChange == 0 && e.ViewportHeightChange == 0) return;
+        Inside.Width = Math.Max(Inside.MinWidth, Room.ViewportWidth);
+        Inside.Height = Math.Max(Inside.MinHeight, Room.ViewportHeight);
+    }
 }

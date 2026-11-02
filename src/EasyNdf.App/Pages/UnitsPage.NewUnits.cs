@@ -23,13 +23,23 @@ public partial class UnitsPage
     private void OpenNewUnitWindow()
     {
         if (loaded is null) return;
-        if (WhyRulesCannotBeMade() is string reason)
+        if ((WhyUnitsCannotBeAdded() ?? WhyRulesCannotBeMade()) is string reason)
         {
             _ = MainView.Of(this).Messages.Tell(reason);
             return;
         }
-        MainView.Of(this).NewUnit.Open(GameUnits, Game, TakenUnitDescriptors(), ChooseUnitPicture, MakeUnit, gameUnits?.Catalog.ArmorLevels, this);
+        MainView.Of(this).NewUnit.Open(ModelUnits(), Game, TakenUnitDescriptors(), ChooseUnitPicture, MakeUnit, gameUnits?.Catalog.ArmorLevels, this);
     }
+
+    /// <summary>
+    /// The source's units a new unit can be made from: all of them, but Steel Division 2's defences, which are not units
+    /// of UniteDescriptor.ndf and have none of the files a unit is written into.
+    /// </summary>
+    private IReadOnlyList<Unit> ModelUnits() =>
+        Game == Data.Game.GameTitle.SteelDivision2 ? [.. GameUnits.Where(IsModelUnit)] : GameUnits;
+
+    /// <summary>Whether a unit can be the model of a new unit (see <see cref="ModelUnits"/>).</summary>
+    private bool IsModelUnit(Unit unit) => Game != Data.Game.GameTitle.SteelDivision2 || unit.File == UnitChangeRules.UnitsFile;
 
     /// <summary>The unit descriptors in use: the source's, and those the open mod adds.</summary>
     private HashSet<string> TakenUnitDescriptors() =>
@@ -92,7 +102,7 @@ public partial class UnitsPage
     /// </summary>
     private async Task DuplicateUnit(Unit unit)
     {
-        if (WhyRulesCannotBeMade() is string reason)
+        if ((WhyUnitsCannotBeAdded() ?? WhyRulesCannotBeMade()) is string reason)
         {
             await MainView.Of(this).Messages.Tell(reason);
             return;
@@ -111,8 +121,16 @@ public partial class UnitsPage
     /// <summary>Whether a unit is one the open mod adds in the Armory, which Delete Unit can take out again.</summary>
     private bool IsAddedUnit(Unit unit) => OpenMod.Units.Any(each => each.Descriptor == unit.Descriptor);
 
-    /// <summary>Whether a unit can be duplicated: one of the source's own, or one the open mod adds.</summary>
-    private bool CanDuplicateUnit(Unit unit) => IsAddedUnit(unit) || GameUnits.Any(each => each.Descriptor == unit.Descriptor);
+    /// <summary>Whether a unit can be duplicated: one of the source's own, or one the open mod adds, in a game the Armory adds units to.</summary>
+    private bool CanDuplicateUnit(Unit unit) =>
+        WhyUnitsCannotBeAdded() is null && IsModelUnit(unit) && (IsAddedUnit(unit) || GameUnits.Any(each => each.Descriptor == unit.Descriptor));
+
+    /// <summary>
+    /// Why the Armory cannot add units (new ones, duplicates) to a mod of the source's game; null when it can. Steel
+    /// Division 2's new units need files the Armory does not write for it yet.
+    /// </summary>
+    private string? WhyUnitsCannotBeAdded() =>
+        UnitChangeRules.AddsUnits(Game) ? null : Texts.Get("Units.New.Off.NotForThisGame", ("game", Game.Name));
 
     /// <summary>
     /// Delete Unit, for a unit the open mod adds, once the user says so: it is taken out of the mod, and out of the

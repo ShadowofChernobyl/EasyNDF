@@ -259,6 +259,10 @@ public partial class NewUnitWindow : UserControl
     {
         NextButton.IsEnabled = step != Step.Weapons && CanShow(step + 1);
         CreateButton.IsEnabled = step == Step.Weapons && StatsAreValid();
+        // why Next or Create is off, as its tooltip while it is
+        string? wrongStat = StatsAreValid() ? null : Texts.Get("Units.New.Off.Stats");
+        OffReason.SetText(NextButton, modelUnit is null ? Texts.Get("Units.New.Off.Model") : NameBox.Text.Trim() == "" ? Texts.Get("Units.New.Off.Name") : wrongStat);
+        OffReason.SetText(CreateButton, wrongStat);
         HintText.Text = step switch
         {
             Step.Model => modelUnit is null ? Texts.Get("Units.New.Hint.Model") : Texts.Get("Units.New.Hint.ModelChosen", ("unit", modelUnit.Name)),
@@ -387,11 +391,15 @@ public partial class NewUnitWindow : UserControl
         row.SetResourceReference(Bevel.BottomRightProperty, "line");
         row.MouseEnter += (_, _) => row.SetResourceReference(Bevel.BackgroundProperty, "sel");
         row.MouseLeave += (_, _) => row.Background = Brushes.Transparent;
-        row.MouseLeftButtonUp += (_, _) =>
+        void Tick()
         {
             if (!filter.Nations.Remove(nation)) filter.Nations.Add(nation);
             FillModels();
-        };
+        }
+        row.MouseLeftButtonUp += (_, _) => Tick();
+        // Tab, the arrows and Space tick nations as clicks do
+        KeyPick.Make(row, Tick, "nation:" + side + nation);
+        System.Windows.Automation.AutomationProperties.SetName(row, UnitNames.Nation(nation));
         return row;
     }
 
@@ -954,10 +962,34 @@ public partial class NewUnitWindow : UserControl
         if (Backdrop.ActualWidth <= 0) return;
         double widest = step is Step.Model or Step.Weapons ? WidestWindow : WidestForBoxes;
         Box.Width = Math.Min(widest, (Backdrop.ActualWidth + 20) * 0.96);
-        double stepHeight = Math.Max(300, Math.Min(TallestStep, Backdrop.ActualHeight * 0.96 - TitleAndFoot));
+        // never higher than the main window: the step gives up height, so the buttons at the foot always show
+        Box.MaxHeight = Backdrop.ActualHeight * 0.96;
+        double stepHeight = Math.Max(LeastStepHeight, Math.Min(TallestStep, Backdrop.ActualHeight * 0.96 - TitleAndFoot));
         ModelStep.Height = stepHeight;
         StatsStep.MaxHeight = stepHeight;
         WeaponsStep.Height = stepHeight;
+        FitSideColumns(Box.Width - Box.Padding.Left - Box.Padding.Right);
+    }
+
+    /// <summary>The least height a step is given, in a very small main window.</summary>
+    private const double LeastStepHeight = 160;
+
+    /// <summary>The room the Model step's list of units keeps before its side columns give up any.</summary>
+    private const double ListRoom = 360;
+
+    /// <summary>
+    /// The Model step's side columns (the filters, 220 wide, and the unit chosen, 320) as wide as they are while the list
+    /// between them has <see cref="ListRoom"/>; in a smaller window they narrow first, each in its share, down to a
+    /// third of their width. The new unit's tile on the later steps narrows the same way.
+    /// </summary>
+    private void FitSideColumns(double inside)
+    {
+        const double filters = 220, details = 320, gaps = 24;
+        double spare = Math.Max(0, inside - gaps - ListRoom);
+        double share = Math.Clamp(spare / (filters + details), 1.0 / 3, 1);
+        ModelFiltersColumn.Width = new GridLength(Math.Floor(filters * share));
+        ModelDetailsColumn.Width = new GridLength(Math.Floor(details * share));
+        PreviewColumn.Width = new GridLength(Math.Floor(Math.Clamp(inside * 0.4, 230.0 / 2, 230)));
     }
 }
 
@@ -1008,7 +1040,8 @@ public sealed class ModelRow : Bevel
         Place(name, 2, 8);
         Place(role, 3, 8);
         Place(cost, 4, 8);
-        ToolTip = unit.Descriptor;
+        // the whole name first, as it is cut short in a narrow window, then the descriptor
+        ToolTip = unit.Name + "\n" + unit.Descriptor;
         ShowState();
     }
 

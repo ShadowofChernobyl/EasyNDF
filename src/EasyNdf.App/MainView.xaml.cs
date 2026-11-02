@@ -21,9 +21,12 @@ public partial class MainView : UserControl
         VersionTag.Content = "v" + AppVersion;
         // the rule set list says how many listed files each rule set applies to
         RulesTab.FilesUsing = ruleSet => FilesTab.Model.Entries.Count(entry => Files.FileRunner.AppliesTo(ruleSet, entry));
+        // a mod that is on whose game has no file on the Files tab is dimmed on the Mods tab
+        RulesTab.FileGames = () => FilesTab.Model.Entries.Select(entry => entry.Game).ToHashSet();
+        FilesTab.Model.FilesChanged += RulesTab.FilesChanged;
         History = new UndoHistory(AppData.Current, FilesTab.Model);
         FilesTab.Model.PropertyChanged += (_, _) => History.MarkSoon();
-        AppData.Current.ModsChanged += _ => History.ModsChanged();
+        AppData.Current.ModsChanged += History.ModsChanged;
         AppData.Current.ModFoldersChanged += History.MarkSoon;
         RulesTab.History = History;
         RuleWindow.Closed += RulesTab.RuleWindowClosed;
@@ -39,8 +42,18 @@ public partial class MainView : UserControl
         // one source for the Files and Units tabs: choosing it on either chooses it on both
         UnitsTab.UseSources(Sources);
         FilesTab.UseSources(Sources);
+        // "Show mods' changes" lists only the mods of the source's game
+        Units.ModChangesSwitch.SourceGame = () => Sources.Chosen?.Game;
+        Sources.Changed += Units.ModChangesSwitch.ShowSourceChanged;
         // the Editor tab's list of files follows the Files tab
-        Tabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.OriginalSource, Tabs) && Tabs.SelectedItem == EditorTabItem) EditorTab.Refresh(); };
+        Tabs.SelectionChanged += (_, e) =>
+        {
+            if (!ReferenceEquals(e.OriginalSource, Tabs)) return;
+            if (Tabs.SelectedItem == EditorTabItem) EditorTab.Refresh();
+            // a large file in the editor is let go of a while after its tab is left (EditorPage.LetGo.cs)
+            else if (e.RemovedItems.Contains(EditorTabItem)) EditorTab.TabLeft();
+        };
+        Memory.BeforeGivingBack = PackUnusedRuleSets;
         Watermark.AppVersion = AppVersion;
         RowWindow.OpenChanged += RuleWindow.ShowBeside;
         RuleWindow.ListedFiles = () => FilesTab.Model.Entries;
@@ -118,6 +131,21 @@ public partial class MainView : UserControl
 
     /// <summary>The change log: what changed in each version, newest first (Help/changelog.html), in the language in use.</summary>
     private static string ChangeLogText() => Help.WikiPages.ChangeLogHtml;
+
+    /// <summary>
+    /// Before the idle clean-up: the large rule sets of every mod put away (<see cref="Data.ModPreset.PackRules"/>), but
+    /// those shown or selected on the Rules tab, and none while a rule window is open, as a rule held there would lose
+    /// a change made to it.
+    /// </summary>
+    private void PackUnusedRuleSets()
+    {
+        if (RowWindow.IsOpen || RuleWindow.IsOpen) return;
+        HashSet<Data.ModPreset> inUse = [.. RulesTab.Model.SelectedPresets];
+        if (RulesTab.Model.OpenPreset is Data.ModPreset open) inUse.Add(open);
+        foreach (Data.Mod mod in AppData.Current.Mods)
+            foreach (Data.ModPreset preset in mod.Presets)
+                if (!inUse.Contains(preset)) preset.PackRules();
+    }
 
     /// <summary>
     /// The version button: what changed in the newest version only, read from the change log (from its first version

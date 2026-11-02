@@ -32,14 +32,29 @@ public static class DivisionPane
     {
         var pane = new StackPanel();
         pane.Children.Add(Title(division, game, editing));
-        pane.Children.Add(new FoldSection("details", Texts.Get("Divisions.Pane.Division"), DetailsSummary(division), DivisionDetailsEditor.Details(division, editing)));
-        pane.Children.Add(new FoldSection("texts", Texts.Get("Divisions.Pane.Texts"), TextsSummary(division), DivisionDetailsEditor.DivisionTexts(division, editing)));
-        pane.Children.Add(new FoldSection("standout", Texts.Get("Divisions.Pane.Standout"), Texts.Count("Divisions.Pane.Standout.Count", division.StandoutUnits.Count),
+        // two side by side from 560 pixels (PaneLayout)
+        var sections = new SectionColumns();
+        pane.Children.Add(sections);
+        sections.Children.Add(new FoldSection("details", Texts.Get("Divisions.Pane.Division"), DetailsSummary(division), DivisionDetailsEditor.Details(division, editing)));
+        // Steel Division 2's phases and income choices, for a division that has them
+        if (division.Phases.Count > 0)
+        {
+            var phases = new FoldSection("phases", Texts.Get("Divisions.Pane.Phases"),
+                Texts.Get("Divisions.Pane.Phases.Summary", ("count", division.Phases.Count), ("economy", DivisionDetailsEditor.EconomyName(division.Economy))),
+                DivisionDetailsEditor.Phases(division, editing));
+            // three boxes a row need the room
+            SectionColumns.SetFullWidth(phases, true);
+            sections.Children.Add(phases);
+        }
+        sections.Children.Add(new FoldSection("texts", Texts.Get("Divisions.Pane.Texts"), TextsSummary(division), DivisionDetailsEditor.DivisionTexts(division, editing)));
+        sections.Children.Add(new FoldSection("standout", Texts.Get("Divisions.Pane.Standout"), Texts.Count("Divisions.Pane.Standout.Count", division.StandoutUnits.Count),
             DivisionDetailsEditor.StandoutUnits(division, units, editing)));
-        pane.Children.Add(new FoldSection("battlegroup", Texts.Get("Divisions.Pane.Battlegroup"),
-            Texts.Count("Divisions.Battlegroup.CardCount", division.Battlegroup?.Cards.Count ?? 0), BattlegroupLink(division, units, editing)));
+        // a game with no battlegroups in its files (Steel Division 2) has no Official Battlegroup, as its sub-tab is off
+        if (game.HasBattlegroups)
+            sections.Children.Add(new FoldSection("battlegroup", Texts.Get("Divisions.Pane.Battlegroup"),
+                Texts.Count("Divisions.Battlegroup.CardCount", division.Battlegroup?.Cards.Count ?? 0), BattlegroupLink(division, units, editing)));
         int missing = division.Units.Count(unit => !units.ContainsKey(unit.Unit));
-        pane.Children.Add(new FoldSection("files", Texts.Get("Divisions.Pane.Files"), missing > 0 ? Texts.Count("Divisions.Pane.Missing", missing) : "",
+        sections.Children.Add(new FoldSection("files", Texts.Get("Divisions.Pane.Files"), missing > 0 ? Texts.Count("Divisions.Pane.Missing", missing) : "",
             DivisionDetailsEditor.Files(division, units, editing)));
         return pane;
     }
@@ -85,9 +100,10 @@ public static class DivisionPane
 
     /// <summary>
     /// The emblem at the left, with ✎ on its corner to change it; at its right the name, 14 pixels and bold, under it the
-    /// nation, side and type, dim, and under that the activation points and number of units, the numbers in bold.
+    /// nation, side and type, dim, and under that the activation points and number of units, the numbers in bold. In a
+    /// pane under 300 pixels wide, the emblem over the rest (<see cref="PictureBeside"/>).
     /// </summary>
-    private static DockPanel Title(Division division, GameTitle game, IDivisionEditing editing)
+    private static PictureBeside Title(Division division, GameTitle game, IDivisionEditing editing)
     {
         var name = new TextBlock { Text = division.Name, FontSize = 14, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap };
         DivisionMarks.MarkText(name, ["Name"], each => each.Name);
@@ -97,10 +113,10 @@ public static class DivisionPane
         if (division.Country != "")
             what.Children.Add(new NationMark(division.Country, division.Side == UnitNames.SidesOf(game)[0]) { Margin = new Thickness(0, 0, 5, 0) });
         what.Children.Add(UnitPane.Muted(string.Join(" · ", parts), new Thickness(0)));
-        var words = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Children = { name, what, Totals(division) } };
-        var title = new DockPanel { Margin = new Thickness(10, 12, 10, 12) };
+        var words = new StackPanel { Children = { name, what, Totals(division) } };
+        var title = new PictureBeside { Margin = new Thickness(10, 12, 10, 12), Threshold = PaneLayout.EmblemOverNameBelow, Gap = 0, CentresRest = true };
         FrameworkElement emblem = EmblemWithPencil(division, editing);
-        DockPanel.SetDock(emblem, Dock.Left);
+        emblem.HorizontalAlignment = HorizontalAlignment.Left;
         title.Children.Add(emblem);
         title.Children.Add(words);
         return title;
@@ -147,10 +163,15 @@ public static class DivisionPane
             FontSize = 11, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, -6, -4),
             ToolTip = Texts.Get("Divisions.Pane.Emblem.Tip"),
         };
+        // a choice the Armory cannot write for the game is dim, its tip saying why
+        string? gameEmblemOff = editing.WhyDetailCannotChange(DivisionDetail.Emblem);
+        string? pictureOff = editing.WhyDetailCannotChange(DivisionDetail.EmblemPicture);
         pencil.Click += (_, _) => Menus.ShowBelow(pencil,
         [
-            new MenuChoice(Texts.Get("Divisions.Pane.Emblem.Game"), () => editing.ChooseGameEmblem(pencil), Tip: Texts.Get("Divisions.Pane.Emblem.Game.Tip")),
-            new MenuChoice(Texts.Get("Divisions.Pane.Emblem.Picture"), editing.ChooseEmblemPicture, Tip: Texts.Get("Divisions.Pane.Emblem.Picture.Tip")),
+            new MenuChoice(Texts.Get("Divisions.Pane.Emblem.Game"), () => editing.ChooseGameEmblem(pencil), IsEnabled: gameEmblemOff is null,
+                Tip: gameEmblemOff ?? Texts.Get("Divisions.Pane.Emblem.Game.Tip")),
+            new MenuChoice(Texts.Get("Divisions.Pane.Emblem.Picture"), editing.ChooseEmblemPicture, IsEnabled: pictureOff is null,
+                Tip: pictureOff ?? Texts.Get("Divisions.Pane.Emblem.Picture.Tip")),
         ]);
         var holder = new Grid { Margin = new Thickness(0, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center, Children = { emblem, pencil } };
         // an emblem the open mod changed: "*" at its top right, as a changed value has after it

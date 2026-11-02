@@ -66,10 +66,16 @@ public sealed record WeaponChoice(string Field, bool IsSwitch)
     /// <summary>
     /// A weapon with the value chosen in place of its own. The kind of damage, whether it must be deployed and the missile
     /// it fires are also the weapon's own properties, which other parts of the Armory read, so they change with it.
+    /// Steel Division 2's kind of damage has its level in it ("EArmeType/AP_26"), so the level changes with it too.
     /// </summary>
     public Weapon Set(Weapon weapon, string written)
     {
         Weapon changed = weapon.WithFileValue(Field, written);
+        if (Field == WeaponFileValues.DamageFamily && written.StartsWith(SteelDivisionAmmunition.DamageTypePrefix, StringComparison.Ordinal))
+        {
+            (string family, int level) = SteelDivisionAmmunition.DamageOf(written);
+            return changed with { DamageFamily = family, DamageLevel = level };
+        }
         if (Field == WeaponFileValues.DamageFamily) return changed with { DamageFamily = FamilyName(written) };
         if (Field == WeaponFileValues.HasDeploymentTime) return changed with { MustDeploy = written == On };
         if (Field == "MissileDescriptor") return changed with { Missile = written == "nil" ? null : written };
@@ -78,7 +84,8 @@ public sealed record WeaponChoice(string Field, bool IsSwitch)
 
     /// <summary>
     /// The values a weapon can be given: for a switch, on and off; for a choice, each value the game's weapons have,
-    /// in order. A kind of damage is offered only when it has the weapon's level, as the game takes no other.
+    /// in order, numbers by their value (AP_4 before AP_38). A kind of damage is offered only when it has the weapon's
+    /// level, as the game takes no other.
     /// </summary>
     /// <param name="weapon">The weapon.</param>
     /// <param name="weapons">The game's weapons, whose values are offered.</param>
@@ -86,7 +93,7 @@ public sealed record WeaponChoice(string Field, bool IsSwitch)
     public IReadOnlyList<string> Offered(Weapon weapon, IEnumerable<Weapon> weapons, IReadOnlyDictionary<string, int>? levels)
     {
         if (IsSwitch) return [On, Off];
-        var values = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var values = new SortedSet<string>(NumbersInOrder.Instance);
         foreach (Weapon each in weapons)
             if (Read(each) is string written) values.Add(written);
         if (Read(weapon) is string own) values.Add(own);
@@ -94,10 +101,50 @@ public sealed record WeaponChoice(string Field, bool IsSwitch)
         return [.. values.Where(family => family == Read(weapon) || ArmorLevels.Allows(levels, family, weapon.DamageLevel))];
     }
 
-    /// <summary>A kind of damage as the Armory names it: "DamageFamily_ap" is "ap".</summary>
+    /// <summary>
+    /// A kind of damage as the Armory names it: WARNO's "DamageFamily_ap" is "ap"; Steel Division 2's
+    /// "EArmeType/AP_26", with its level, is "AP_26".
+    /// </summary>
     public static string FamilyName(string written)
     {
-        const string Prefix = "DamageFamily_";
-        return written.StartsWith(Prefix, StringComparison.Ordinal) ? written[Prefix.Length..] : written;
+        foreach (string prefix in new[] { "DamageFamily_", SteelDivisionAmmunition.DamageTypePrefix })
+            if (written.StartsWith(prefix, StringComparison.Ordinal)) return written[prefix.Length..];
+        return written;
+    }
+}
+
+/// <summary>
+/// Orders texts as a person would, in any case and with the numbers in them by their value: Steel Division 2's kinds of
+/// damage "AP_4", "AP_38", "AP_40", where text order puts AP_38 before AP_4.
+/// </summary>
+internal sealed class NumbersInOrder : IComparer<string>
+{
+    /// <summary>The one comparer.</summary>
+    public static NumbersInOrder Instance { get; } = new();
+
+    public int Compare(string? x, string? y)
+    {
+        if (x is null || y is null) return string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
+        int i = 0, j = 0;
+        while (i < x.Length && j < y.Length)
+        {
+            if (char.IsAsciiDigit(x[i]) && char.IsAsciiDigit(y[j]))
+            {
+                int startX = i, startY = j;
+                while (i < x.Length && char.IsAsciiDigit(x[i])) i++;
+                while (j < y.Length && char.IsAsciiDigit(y[j])) j++;
+                // leading zeros left out, a longer run of digits is the larger number
+                string a = x[startX..i].TrimStart('0'), b = y[startY..j].TrimStart('0');
+                int byValue = a.Length != b.Length ? a.Length.CompareTo(b.Length) : string.CompareOrdinal(a, b);
+                if (byValue != 0) return byValue;
+                continue;
+            }
+            int byLetter = char.ToUpperInvariant(x[i]).CompareTo(char.ToUpperInvariant(y[j]));
+            if (byLetter != 0) return byLetter;
+            i++;
+            j++;
+        }
+        // texts the same but for case are one, as before
+        return (x.Length - i).CompareTo(y.Length - j);
     }
 }

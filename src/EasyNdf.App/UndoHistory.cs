@@ -31,6 +31,12 @@ public sealed class UndoHistory
     /// <summary>The mods' part of <see cref="now"/>'s comparison text, worked out again only after the mods change.</summary>
     private string? modsText;
 
+    /// <summary>
+    /// The mods as they were when <see cref="modsText"/> was worked out (see <see cref="ShapeOf"/>), to tell whether
+    /// opening another mod came with a mod added or taken away; null when not known.
+    /// </summary>
+    private List<object?>? modsTextShape;
+
     /// <summary>While a filed state is put back, the changes that makes are not filed.</summary>
     private bool isPuttingBack;
 
@@ -61,10 +67,19 @@ public sealed class UndoHistory
     /// </summary>
     public bool IsPaused { get; set; }
 
-    /// <summary>The mods have changed: the next <see cref="Mark"/> compares them again.</summary>
-    public void ModsChanged()
+    /// <summary>
+    /// The mods have changed: the next <see cref="Mark"/> compares them again. Tuned for speed: opening another mod
+    /// keeps the mods' text rather than writing it out again (see <see cref="ShapeOf"/>). Keep it that way when tidying.
+    /// </summary>
+    /// <param name="change">What changed. Opening another mod changes nothing in the mods themselves, so their text is
+    /// kept: writing out every mod's rules again (some megabytes for a large mod) after each click on a mod took about
+    /// a third of the click, with the memory it took to clean up. It is kept only while the mods are the same ones,
+    /// holding as many rule sets, rules and changes as before (see <see cref="ShapeOf"/>), as a mod is opened just
+    /// after it is added (New, Make Copy) without telling of the mod added.</param>
+    public void ModsChanged(ModsChange change)
     {
-        modsText = null;
+        bool onlyOpened = change.OpenModChanged && !change.PresetsAdded && modsTextShape is not null && ShapeOf(data.Mods).SequenceEqual(modsTextShape);
+        if (!onlyOpened) modsText = null;
         Mark();
     }
 
@@ -83,13 +98,13 @@ public sealed class UndoHistory
     public void Mark()
     {
         if (isPuttingBack || IsPaused) return;
-        modsText ??= ModsText(data.Mods);
+        string modsNow = ModsTextNow();
         string foldersText = FoldersText(data);
         // most changes to the list are not the user's (a file read, a status shown): this check needs no copying
-        if (modsText == now.ModsText && foldersText == now.FoldersText && RowsAreAsFiled()) return;
+        if (modsNow == now.ModsText && foldersText == now.FoldersText && RowsAreAsFiled()) return;
         List<UndoRow> rows = [.. files.Entries.Select(UndoRow.Of)];
         string rowsText = RowsText(rows);
-        if (modsText == now.ModsText && foldersText == now.FoldersText && rowsText == now.RowsText) return;
+        if (modsNow == now.ModsText && foldersText == now.FoldersText && rowsText == now.RowsText) return;
 
         // one action is one step, even when it saves in several parts
         if (!isInOneAction)
@@ -104,7 +119,7 @@ public sealed class UndoHistory
         }
         redoSteps.Clear();
         // the mods are copied only now that they are filed: a click that changes nothing copies nothing
-        now = new UndoState(modsText, [.. data.Mods.Select(m => m.DeepCopy())], rows, rowsText, foldersText);
+        now = new UndoState(modsNow, [.. data.Mods.Select(m => m.DeepCopy())], rows, rowsText, foldersText);
         Changed?.Invoke();
     }
 
@@ -225,6 +240,7 @@ public sealed class UndoHistory
         // the next change is a step of its own, even within the moment of the last one
         isInOneAction = false;
         modsText = null;
+        modsTextShape = null;
         now = Here();
         Changed?.Invoke();
     }
@@ -232,9 +248,9 @@ public sealed class UndoHistory
     /// <summary>The state as it is now.</summary>
     private UndoState Here()
     {
-        modsText ??= ModsText(data.Mods);
+        string modsNow = ModsTextNow();
         List<UndoRow> rows = [.. files.Entries.Select(UndoRow.Of)];
-        return new UndoState(modsText, [.. data.Mods.Select(m => m.DeepCopy())], rows, RowsText(rows), FoldersText(data));
+        return new UndoState(modsNow, [.. data.Mods.Select(m => m.DeepCopy())], rows, RowsText(rows), FoldersText(data));
     }
 
     /// <summary>
@@ -261,6 +277,7 @@ public sealed class UndoHistory
 
             files.PutBack([.. state.Rows.Select(row => row.ToSaved())]);
             modsText = state.ModsText;
+            modsTextShape = null;
             // not as another mod opened: the rows keep the presets they had
             data.TellModsChanged();
         }
@@ -293,13 +310,44 @@ public sealed class UndoHistory
         if (folders["stack"] is JsonObject stack) Mods.ModStack.PutBack(stack);
     }
 
-    /// <summary>The mods' names, presets, rules, division, unit and weapon changes as one text, to tell whether they changed.</summary>
+    /// <summary>The mods' text (see <see cref="ModsText"/>), worked out again when the mods have changed since.</summary>
+    private string ModsTextNow()
+    {
+        if (modsText is null)
+        {
+            modsText = ModsText(data.Mods);
+            modsTextShape = ShapeOf(data.Mods);
+        }
+        return modsText;
+    }
+
+    /// <summary>
+    /// What the mods are made of, without their contents: each mod, its name and game, and each of its lists (rule
+    /// sets, each with its rules and files; division, unit and weapon changes) with how many it holds. The same shape
+    /// means no mod was added, taken away or put back from Undo.
+    /// </summary>
+    private static List<object?> ShapeOf(IEnumerable<Mod> mods)
+    {
+        var shape = new List<object?>();
+        foreach (Mod mod in mods)
+        {
+            shape.AddRange([mod, mod.Name, mod.Game, mod.Presets, mod.Presets.Count]);
+            foreach (ModPreset preset in mod.Presets)
+                shape.AddRange([preset, preset.Name, preset.Rules, preset.Rules.Count, preset.AppliesTo, preset.AppliesTo?.Count]);
+            shape.AddRange([mod.Divisions, mod.Divisions.Count, mod.Units, mod.Units.Count, mod.UnitEdits, mod.UnitEdits.Count,
+                mod.WeaponEdits, mod.WeaponEdits.Count, mod.Weapons, mod.Weapons.Count]);
+        }
+        return shape;
+    }
+
+    /// <summary>The mods' names, games, presets, rules, division, unit and weapon changes as one text, to tell whether they changed.</summary>
     private static string ModsText(IEnumerable<Mod> mods)
     {
         var text = new StringBuilder();
         foreach (Mod mod in mods)
         {
             text.Append("mod ").Append(mod.Name).Append('\n');
+            text.Append("game ").Append(mod.Game.Id).Append('\n');
             foreach (ModPreset preset in mod.Presets)
                 text.Append("preset ").Append(preset.Name).Append('\n').Append(preset.Rules.ToJsonString()).Append('\n')
                     .Append("applies to ").Append(preset.AppliesTo is null ? "-" : string.Join("|", preset.AppliesTo)).Append('\n');

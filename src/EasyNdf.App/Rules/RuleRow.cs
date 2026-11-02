@@ -69,6 +69,9 @@ public sealed class RuleRow : System.ComponentModel.INotifyPropertyChanged
     /// <summary>For a folded Group: how many rules it hides.</summary>
     public required int HiddenCount { get; init; }
 
+    /// <summary>A folded Group's count, shown beside its name: "12 rules hidden".</summary>
+    public string HiddenText => Texts.CountWide("Rules.Group.Hidden", HiddenCount);
+
     /// <summary>
     /// Whether the rule is locked: made from the Armory in an Armory preset, and changed there. It shows a lock
     /// in place of its move, copy and delete buttons.

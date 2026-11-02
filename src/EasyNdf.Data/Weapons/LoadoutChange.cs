@@ -9,8 +9,8 @@ namespace EasyNdf.Data.Weapons;
 /// <item><see cref="Swap"/>: the weapon mounted there is another, the mount keeping its turret, ammo box, flash and sound;</item>
 /// <item><see cref="Count"/>: the mount has another number of the weapon (NbWeapons);</item>
 /// <item><see cref="Salvos"/>: an ammo box holds another number of salvos (the loadout's Salves);</item>
-/// <item><see cref="Remove"/>: the weapon mounted there is taken off (not yet tried in the game);</item>
-/// <item><see cref="Add"/>: a weapon is mounted on a turret, after its own, with an ammo box of its own (not yet tried in the game).</item>
+/// <item><see cref="Remove"/>: the weapon mounted there is taken off;</item>
+/// <item><see cref="Add"/>: a weapon is mounted on a turret, after its own, with an ammo box of its own.</item>
 /// </list>
 /// The unit's rules give it a loadout of its own, a copy of the one it had, and make the changes there only
 /// (<see cref="LoadoutRules"/>).
@@ -56,6 +56,14 @@ public sealed record LoadoutChange(string Kind, int Turret, int Mount, string Am
             JsonValues.AsText(json["Ammunition"]), JsonValues.AsText(json["MountText"]), WholeNumber(json["Number"] ?? json["Rounds"]));
     }
 
-    private static int WholeNumber(JsonNode? node) =>
-        node is JsonValue value && value.TryGetValue(out double number) ? (int)Math.Round(number) : 0;
+    /// <summary>
+    /// A whole number of an entry: one read from a mod file, or one just written (a copy made in memory keeps its numbers
+    /// as whole numbers, which do not read as decimals).
+    /// </summary>
+    private static int WholeNumber(JsonNode? node)
+    {
+        if (node is not JsonValue value) return 0;
+        if (value.TryGetValue(out int whole)) return whole;
+        return value.TryGetValue(out double number) ? (int)Math.Round(number) : 0;
+    }
 }

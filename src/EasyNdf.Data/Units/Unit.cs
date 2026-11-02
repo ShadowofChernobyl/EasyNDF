@@ -36,8 +36,10 @@ public sealed class Unit
     /// </summary>
     public string File { get; init; } = "UniteDescriptor.ndf";
 
+    private string name = "";
+
     /// <summary>Its in-game name; when the game has none, a name made from its descriptor.</summary>
-    public required string Name { get; init; }
+    public required string Name { get => name; init => name = value; }
 
     /// <summary>Its side: "NATO" or "PACT" (WARNO), "Allied" or "Axis" (Steel Division 2).</summary>
     public string Side { get; init; } = "";
@@ -84,8 +86,25 @@ public sealed class Unit
     /// <summary>Its armour family on each side, which sets the levels its armour can have (<see cref="ArmorLevels"/>).</summary>
     public UnitArmorFamilies ArmorFamilies { get; init; } = new(null, null, null, null);
 
-    /// <summary>Its speed off road, in km/h.</summary>
+    /// <summary>
+    /// Its speed off road, in km/h as the game shows it; for a plane, its speed in flight. Steel Division 2's files
+    /// write it in their own unit, <see cref="SpeedScale"/> times larger; when that is not known, it is the files' number.
+    /// </summary>
     public double? Speed { get; init; }
+
+    /// <summary>
+    /// How many of the files' speed units make one km/h as the game shows it: 1 for WARNO, whose files give km/h;
+    /// in Steel Division 2, the speed's "fake factor" (UnitDescriptorResource.ndf's SpeedFakeFactorVehicle,
+    /// SpeedFakeFactorInfantry, SpeedFakeFactorAir), by which the game divides Maxspeed's number to show km/h. Null
+    /// when it is not known: <see cref="Speed"/> is then the files' own number.
+    /// </summary>
+    public double? SpeedScale { get; init; } = 1;
+
+    /// <summary>
+    /// Whether its speed is a plane's in flight (Steel Division 2's TAirplaneMovementModuleDescriptor's Speed) rather
+    /// than a land unit's (Maxspeed), so a change is written where it was read.
+    /// </summary>
+    public bool SpeedIsInFlight { get; init; }
 
     /// <summary>Its speed on roads, in km/h.</summary>
     public double? RoadSpeed { get; init; }
@@ -93,8 +112,19 @@ public sealed class Unit
     /// <summary>Its optics: how well it spots.</summary>
     public double? Optics { get; init; }
 
-    /// <summary>How far it sees, in the game's range unit.</summary>
+    /// <summary>
+    /// How far it sees: in WARNO's GRU; in Steel Division 2, in metres as the game shows them (see
+    /// <see cref="MetresScale"/>).
+    /// </summary>
     public double? Vision { get; init; }
+
+    /// <summary>
+    /// How many of the files' distance units make one metre as the game shows it: in Steel Division 2, whose files
+    /// write ((N) * Metre), 1 / GDConstantes.ndf's MultiplicateurMetreRTSVersDistanceFeedbackTactique (5: the game
+    /// shows 12500 as 2,500 m). Null when the game's distances are not in metres (WARNO's GRU), or the scale is not
+    /// known: <see cref="Vision"/> is then the files' own number.
+    /// </summary>
+    public double? MetresScale { get; init; }
 
     /// <summary>Its stealth: how hard it is to spot.</summary>
     public double? Stealth { get; init; }
@@ -171,8 +201,25 @@ public sealed class Unit
     /// <summary>The names of the multiplayer divisions it is in.</summary>
     public IReadOnlyList<string> Divisions { get; init; } = [];
 
+    private string? pictureSource;
+
     /// <summary>Its picture's path in the game, such as "GameData:/Assets/2D/Interface/Common/UnitsIcons/NATO/M1A1_Abrams_US.png".</summary>
-    public string? PictureSource { get; init; }
+    public string? PictureSource { get => pictureSource; init => pictureSource = value; }
+
+    /// <summary>
+    /// The same unit with the name and picture a mod gives it, where its own files cannot say them: a unit another mod
+    /// that is on adds, whose name is in that mod's own texts and whose picture is the user's own file; this one stays
+    /// as it is.
+    /// </summary>
+    /// <param name="shownName">Its name.</param>
+    /// <param name="picture">Its picture's file; null to keep its own.</param>
+    public Unit WithNameAndPicture(string shownName, string? picture)
+    {
+        var copy = (Unit)MemberwiseClone();
+        copy.name = shownName;
+        if (picture is not null) copy.pictureSource = picture;
+        return copy;
+    }
 
     /// <summary>Its longest weapon range; null when it has no weapon with a range.</summary>
     public double? LongestRange => Weapons.Select(w => w.Range).Where(range => range > 0).DefaultIfEmpty().Max();
@@ -200,6 +247,8 @@ public sealed record UnitCatalog(
 /// <summary>
 /// The armour levels the game allows: an armour family's levels run from 1 to the number DamageResistance.ndf gives it
 /// (ResistanceFamilyCounts). GenerateMod stops with "Index must be between 1 and 4 for this family" on any other.
+/// Steel Division 2's armour plates run from 1 to its last ArmorDescriptor_Blindage_N; its other kinds of armour
+/// (infantry, roofs, planes) have no levels at all.
 /// </summary>
 public static class ArmorLevels
 {
@@ -210,7 +259,18 @@ public static class ArmorLevels
         return (1, count);
     }
 
-    /// <summary>Whether a level is one the family allows; any level when its range is not known.</summary>
+    /// <summary>
+    /// Whether a family is known to have no levels to choose from: the game's levels are known, and this family is not
+    /// among them, as Steel Division 2's ArmorDescriptor_Toit_Lourd is not.
+    /// </summary>
+    public static bool HasNone(IReadOnlyDictionary<string, int>? levels, string? family) =>
+        levels is { Count: > 0 } && family is not null && !levels.ContainsKey(family);
+
+    /// <summary>
+    /// Whether a level is one the family allows; any level when its range is not known (a kind of weapon damage the
+    /// game gives no count for is still offered). A unit's armour side also needs its family to have levels at all
+    /// (<see cref="HasNone"/>).
+    /// </summary>
     public static bool Allows(IReadOnlyDictionary<string, int>? levels, string? family, int level) =>
         RangeOf(levels, family) is not (int lowest, int highest) || (level >= lowest && level <= highest);
 }

@@ -153,8 +153,12 @@ public sealed class DivisionTransportPopup
             division => DivisionMarks.UnitIn(division, unitName) is DivisionUnit each ? (each.AvailableWithoutTransport ? "✓" : "–") : "");
         var done = new Button { Content = Texts.Get("Divisions.Veterancy.Popup.Done"), Margin = new Thickness(8, 0, 0, 0) };
         done.Click += (_, _) => Keep();
+        // Cancel at the right of Done: the pop-up closes, its changes left
+        var cancel = new Button { Content = Texts.Get("Common.Cancel"), ToolTip = Texts.Get("Common.Cancel.Tip"), Margin = new Thickness(6, 0, 0, 0) };
+        cancel.Click += (_, _) => floating.Close();
+        DockPanel.SetDock(cancel, Dock.Right);
         DockPanel.SetDock(done, Dock.Right);
-        return new DockPanel { Margin = new Thickness(0, 8, 0, 0), LastChildFill = false, Children = { done, markedTick } };
+        return new DockPanel { Margin = new Thickness(0, 8, 0, 0), LastChildFill = false, Children = { cancel, done, markedTick } };
     }
 
     /// <summary>The transports the search and the nation filter let through, in the order chosen.</summary>
@@ -200,6 +204,7 @@ public sealed class DivisionTransportPopup
             Content = isFolded ? "▸" : "▾", Style = (Style)Application.Current.FindResource("HeadingButton"), Padding = new Thickness(0), Width = 18,
             ToolTip = Texts.Get(isFolded ? "Divisions.Heading.Unfold.Tip" : "Divisions.Heading.Fold.Tip"),
         };
+        System.Windows.Automation.AutomationProperties.SetName(fold, (string)fold.ToolTip);
         fold.Click += (_, _) =>
         {
             if (!folded.Remove(kind)) folded.Add(kind);
@@ -216,7 +221,11 @@ public sealed class DivisionTransportPopup
         count.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         var words = new StackPanel { Orientation = Orientation.Horizontal, Background = Brushes.Transparent, Cursor = Cursors.Hand, Children = { name, count } };
         words.ToolTip = Texts.Get("Divisions.Transports.Group.Tip", ("kind", heading.ToLower(Texts.Catalog.Culture)));
-        words.MouseLeftButtonUp += (_, _) => TickShown(shownOfKind, !shownOfKind.All(transport => ticked.Contains(transport.Descriptor)));
+        void TickAll() => TickShown(shownOfKind, !shownOfKind.All(transport => ticked.Contains(transport.Descriptor)));
+        words.MouseLeftButtonUp += (_, _) => TickAll();
+        // Tab and the arrows reach the heading, Space ticks the kind's transports as a click does
+        KeyPick.Make(words, TickAll, "kind:" + kind);
+        System.Windows.Automation.AutomationProperties.SetName(words, heading);
         var bar = new Bevel { Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { fold, words } }, Padding = new Thickness(2, 2, 6, 2), Edges = new Thickness(0, 1, 0, 1) };
         bar.SetResourceReference(Bevel.TopLeftProperty, "hi");
         bar.SetResourceReference(Bevel.BottomRightProperty, "lo");
@@ -239,7 +248,8 @@ public sealed class DivisionTransportPopup
         // marked as the mod saved it, not as it is being ticked here
         if (DivisionMarks.TransportTipIfChanged(rule.Unit, transport.Descriptor, rule.Transports.Contains(transport.Descriptor)) is string tip)
         {
-            name.ToolTip = tip;
+            // the whole name first, as it is cut short in the narrow pop-up
+            name.ToolTip = transport.Name + "\n" + tip;
             if (ModMarks.AreShown) name.Inlines.Add(ModMarks.Star());
         }
         // the cost as the Add Units window shows it
@@ -267,6 +277,9 @@ public sealed class DivisionTransportPopup
         row.MouseEnter += (_, _) => ShowState();
         row.MouseLeave += (_, _) => ShowState();
         row.MouseLeftButtonUp += (_, _) => TickShown([transport], !isTicked);
+        // Tab and the arrows reach the transports, Space ticks one as a click does; Enter keeps the pop-up's changes (see KeyPressed)
+        KeyPick.Make(row, () => TickShown([transport], !isTicked), "transport:" + transport.Descriptor);
+        System.Windows.Automation.AutomationProperties.SetName(row, transport.Name);
         ShowState();
         return row;
     }

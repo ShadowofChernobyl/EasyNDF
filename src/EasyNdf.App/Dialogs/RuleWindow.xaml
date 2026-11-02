@@ -14,15 +14,17 @@
         <!-- .box.raised: 30rem wide (64rem for Add Descriptor), as tall as 92% of the app or 52rem; 10 pixels in at the top, 12 elsewhere -->
         <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                         Padding="12,10,12,12" Width="480" HorizontalAlignment="Center" VerticalAlignment="Center"
-                        MouseLeftButtonDown="BoxPressed">
+                        MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.ControlTabNavigation="Cycle">
             <DockPanel>
                 <!-- .bar: the title, then ? and × at the right -->
                 <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                     <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
-                        <Button Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.RuleWindow.AboutRules.Tip}" controls:QuickHelp.Page="rules" />
-                        <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.RuleWindow.CloseEscape.Tip}" Click="CancelClicked" />
+                        <Button Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.RuleWindow.AboutRules.Tip}" controls:QuickHelp.Page="rules"
+                                AutomationProperties.Name="{t:Text Rules.RuleWindow.AboutRules.Tip}" />
+                        <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.RuleWindow.CloseEscape.Tip}" AutomationProperties.Name="{t:Text Rules.RuleWindow.CloseEscape.Tip}" Click="CancelClicked" />
                     </controls:SnappedRow>
-                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="{t:Text Rules.RuleWindow.Rule}" />
+                    <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="{t:Text Rules.RuleWindow.Rule}"
+                               TextTrimming="CharacterEllipsis" />
                 </DockPanel>
 
                 <!-- #ruleFoot: the property scan, Done, and the notes under them -->
@@ -32,6 +34,7 @@
                     <ComboBox x:Name="ScanChoice" controls:FlexRow.Grow="1" MaxWidth="352" ToolTip="{t:Text Rules.RuleWindow.ScanChoice.Tip}" />
                     <Button Content="..." ToolTip="{t:Text Rules.RuleWindow.ScanAFileWithout.Tip}" Click="ScanFileClicked" />
                     <Button Style="{StaticResource GoButton}" Content="{t:Text Rules.RuleWindow.Done}" ToolTip="{t:Text Rules.RuleWindow.Done.Tip}" Click="DoneClicked" />
+                    <Button Content="{t:Text Common.Cancel}" ToolTip="{t:Text Common.Cancel.Tip}" Click="CancelClicked" />
                     <TextBlock x:Name="ScanNote" Style="{StaticResource Note}" Margin="0" controls:FlexRow.Basis="Infinity" />
                     <TextBlock x:Name="RuleMessage" Style="{StaticResource Note}" Margin="0" controls:FlexRow.Basis="Infinity" />
                 </controls:FlexRow>

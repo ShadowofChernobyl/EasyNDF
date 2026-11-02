@@ -11,22 +11,28 @@
              Visibility="Collapsed">
     <!-- .box.raised: 30rem wide, at most 92% of the app tall; 10 pixels in at the top, 12 elsewhere -->
     <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
-                    Padding="12,10,12,12" Width="480" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    Padding="12,10,12,12" Width="480" HorizontalAlignment="Right" VerticalAlignment="Center"
+                    KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.ControlTabNavigation="Cycle">
         <DockPanel>
             <!-- .bar: the title; at the right, which row of how many, ‹ ›, ? and × -->
             <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                 <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
                     <TextBlock x:Name="Position" Style="{StaticResource Note}" TextWrapping="NoWrap" Margin="0,0,4,0" VerticalAlignment="Center" />
-                    <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2039;" ToolTip="{t:Text Rules.Row.Previous.Tip}" Click="PreviousClicked" />
-                    <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x203A;" ToolTip="{t:Text Rules.Row.Next.Tip}" Click="NextClicked" />
-                    <Button x:Name="HelpButton" Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.Row.Help.Tip}" controls:QuickHelp.Page="conditions" />
-                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.Row.CloseEscape.Tip}" Click="CancelClicked" />
+                    <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2039;" ToolTip="{t:Text Rules.Row.Previous.Tip}" Click="PreviousClicked"
+                            AutomationProperties.Name="{t:Text Rules.Row.Previous.Tip}" controls:OffReason.Text="{t:Text Rules.Row.Previous.Off}" />
+                    <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x203A;" ToolTip="{t:Text Rules.Row.Next.Tip}" Click="NextClicked"
+                            AutomationProperties.Name="{t:Text Rules.Row.Next.Tip}" controls:OffReason.Text="{t:Text Rules.Row.Next.Off}" />
+                    <Button x:Name="HelpButton" Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.Row.Help.Tip}" controls:QuickHelp.Page="conditions"
+                            AutomationProperties.Name="{t:Text Rules.Row.Help.Tip}" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.Row.CloseEscape.Tip}" AutomationProperties.Name="{t:Text Rules.Row.CloseEscape.Tip}" Click="CancelClicked" />
                 </controls:SnappedRow>
-                <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="{t:Text Rules.Row.Condition}" />
+                <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Text="{t:Text Rules.Row.Condition}"
+                           TextTrimming="CharacterEllipsis" />
             </DockPanel>
 
-            <!-- .bar: Done at the right -->
+            <!-- .bar: Done and Cancel at the right -->
             <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                <Button DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" ToolTip="{t:Text Common.Cancel.Tip}" Margin="6,0,0,0" Click="CancelClicked" />
                 <Button DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="{t:Text Rules.Row.Done}" ToolTip="{t:Text Rules.Row.Done.Tip}" Click="DoneClicked" />
             </DockPanel>
 

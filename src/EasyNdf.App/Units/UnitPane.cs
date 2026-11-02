@@ -5,7 +5,6 @@ using System.Windows.Media;
 using EasyNdf.App.Controls;
 using EasyNdf.App.Divisions;
 using EasyNdf.App.Text;
-using EasyNdf.Data.Game;
 using EasyNdf.Data.Units;
 
 namespace EasyNdf.App.Units;
@@ -34,17 +33,23 @@ public static class UnitPane
     /// <summary>
     /// The pane beside the list, or below it when it is narrow: the picture as wide as the pane (up to
     /// <see cref="PictureWidth"/>), the name and buttons, then every section one under the other, the whole pane wide.
+    /// From 560 pixels (<see cref="PaneLayout"/>) the picture sits beside the name and buttons, and the sections two
+    /// side by side, the weapons across the whole width.
     /// </summary>
     private static StackPanel Stacked(Unit unit, IUnitActions actions)
     {
         var pane = new StackPanel();
         pane.Children.Add(Head(unit, actions, PictureWidth));
-        pane.Children.Add(IdentitySection(unit, actions));
-        pane.Children.Add(StatsSection(unit, actions));
-        pane.Children.Add(ArmorSection(unit, actions));
-        pane.Children.Add(WeaponsSection(unit, actions, narrow: true));
-        AddSpecialtiesAndDivisions(pane, unit, actions);
-        pane.Children.Add(FilesSection(unit));
+        var sections = new SectionColumns();
+        sections.Children.Add(IdentitySection(unit, actions));
+        sections.Children.Add(StatsSection(unit, actions));
+        sections.Children.Add(ArmorSection(unit, actions));
+        FoldSection weapons = WeaponsSection(unit, actions, narrow: true);
+        SectionColumns.SetFullWidth(weapons, true);
+        sections.Children.Add(weapons);
+        AddSpecialtiesAndDivisions(sections, unit, actions);
+        sections.Children.Add(FilesSection(unit, actions));
+        pane.Children.Add(sections);
         return pane;
     }
 
@@ -55,7 +60,7 @@ public static class UnitPane
     /// </summary>
     private static Grid Wide(Unit unit, IUnitActions actions)
     {
-        var identity = new StackPanel { Children = { Head(unit, actions, double.PositiveInfinity), IdentitySection(unit, actions), FilesSection(unit) } };
+        var identity = new StackPanel { Children = { Head(unit, actions, double.PositiveInfinity), IdentitySection(unit, actions), FilesSection(unit, actions) } };
         var stats = new StackPanel { Children = { StatsSection(unit, actions), ArmorSection(unit, actions) } };
         var rest = new StackPanel { Children = { WeaponsSection(unit, actions, narrow: false) } };
         AddSpecialtiesAndDivisions(rest, unit, actions);
@@ -75,14 +80,17 @@ public static class UnitPane
         return grid;
     }
 
-    /// <summary>The picture (with its ✎ where it can be changed), the name and what the unit is, and the buttons, 10 pixels in from the pane's sides.</summary>
-    private static StackPanel Head(Unit unit, IUnitActions actions, double widest)
+    /// <summary>
+    /// The picture (with its ✎ where it can be changed), the name and what the unit is, and the buttons, 10 pixels in
+    /// from the pane's sides; from 560 pixels wide, the picture beside the rest (<see cref="PictureBeside"/>).
+    /// </summary>
+    private static PictureBeside Head(Unit unit, IUnitActions actions, double widest)
     {
         // larger than the game's picture, so it is enlarged sharply
         var picture = new UnitPicture { Source = unit.PictureSource, Factory = unit.Factory, EnlargesSharply = true };
-        var head = new StackPanel
+        var head = new PictureBeside
         {
-            Margin = new Thickness(10, 10, 10, 12),
+            Margin = new Thickness(10, 10, 10, 12), SideWidth = 300,
             Children = { WithPencil(picture, unit, actions, widest), Title(unit), Buttons(unit, actions) },
         };
         if (LinkedTo(unit, actions) is Border links) head.Children.Add(links);
@@ -211,32 +219,20 @@ public static class UnitPane
     }
 
     /// <summary>
-    /// Where the unit is in the game's files: its descriptor, its file and its weapon set, in the code font. Folded at
-    /// first.
+    /// Where the unit is in the game's files: its descriptor, its file and its weapon set (<see cref="FileValueRows"/>):
+    /// a click shows each in the File Editor. Folded at first.
     /// </summary>
-    private static FoldSection FilesSection(Unit unit)
+    private static FoldSection FilesSection(Unit unit, IUnitActions actions)
     {
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        void Add(string nameKey, string value)
-        {
-            int row = grid.RowDefinitions.Count;
-            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            TextBlock name = Muted(Texts.Get(nameKey), new Thickness(0, 1, 10, 1));
-            var text = new TextBlock { Text = value, FontSize = 11, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
-            text.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
-            text.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-            Grid.SetRow(name, row);
-            Grid.SetRow(text, row);
-            Grid.SetColumn(text, 1);
-            grid.Children.Add(name);
-            grid.Children.Add(text);
-        }
-        Add("Units.Pane.Descriptor", unit.Descriptor);
-        Add("Units.Pane.File", unit.File);
-        if (unit.WeaponSet is string weaponSet) Add("Units.Pane.WeaponSet", weaponSet);
-        return new FoldSection("files", Texts.Get("Units.Pane.Files"), "", grid, FoldsKey, foldedAtFirst: true);
+        List<FileValue> values =
+        [
+            new(Texts.Get("Units.Pane.Descriptor"), unit.Descriptor, () => actions.ShowInEditor(unit), actions.CanShowInEditor(unit), unit.File),
+            new(Texts.Get("Units.Pane.File"), unit.File, () => actions.ShowInEditor(unit), actions.CanShowInEditor(unit), unit.File),
+        ];
+        if (unit.WeaponSet is string weaponSet)
+            values.Add(new(Texts.Get("Units.Pane.WeaponSet"), weaponSet, () => actions.ShowInEditor(weaponSet, UnitFiles.WeaponSets),
+                actions.CanShowInEditor(UnitFiles.WeaponSets), UnitFiles.WeaponSets));
+        return new FoldSection("files", Texts.Get("Units.Pane.Files"), "", FileValueRows.Build(values), FoldsKey, foldedAtFirst: true);
     }
 
     /// <summary>
@@ -276,7 +272,8 @@ public static class UnitPane
             ("Units.Pane.Nation", UnitField.Nation, NationOf),
             ("Units.Pane.Role", UnitField.Role, UnitNames.RoleOf),
         };
-        var grid = new Grid();
+        // in a narrow pane each name sits over its value
+        var grid = new NameValueGrid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         for (int row = 0; row < rows.Length; row++)
@@ -288,7 +285,12 @@ public static class UnitPane
             var text = (TextBlock)value.Child;
             text.TextWrapping = TextWrapping.Wrap;
             ModMarks.Show(text, unit, rows[row].Field, rows[row].Write(unit), rows[row].Write);
-            if (actions.CanChangeUnit(unit)) MakeChangeable(value, unit, rows[row].Field, actions);
+            if (actions.CanChangeUnit(unit))
+            {
+                // a value the Armory cannot write for the unit's game says why, rather than take a change it would lose
+                if (actions.WhyValueCannotChange(unit, rows[row].Field) is string why) text.ToolTip ??= why;
+                else MakeChangeable(value, unit, rows[row].Field, actions);
+            }
             grid.Children.Add(value);
         }
         return new FoldSection("unit", Texts.Get("Units.Pane.Title"), unit.Name + " · " + UnitNames.Nation(unit.Nation), Boxed(grid), FoldsKey);
@@ -366,12 +368,14 @@ public static class UnitPane
     }
 
     /// <summary>
-    /// The Stats section: two pairs of name and value a row, the names dim on the panel colour. Speed is in km/h in
-    /// WARNO; Steel Division 2 gives it in its own unit. Where the tab lets it, a click on a value changes it.
+    /// The Stats section: two pairs of name and value a row, the names dim on the panel colour. Speed is in km/h, as
+    /// the game shows it (Steel Division 2's own unit when its scale is not known); Steel Division 2's vision is in
+    /// metres as the game shows them. Where the tab lets it, a click on a value changes it.
     /// </summary>
     private static FoldSection StatsSection(Unit unit, IUnitActions actions)
     {
         string KilometresPerHour(double? speed) => Texts.Get("Units.KilometresPerHour", ("speed", UnitNumbers.Of(speed)));
+        string Metres(double? distance) => Texts.Get("Units.Metres", ("distance", UnitNumbers.Of(distance)));
         // each value with its field, and how to write it, so the game's value is written the same way
         var pairs = new List<(string Name, string Field, Func<Unit, string> Write)>();
         void Add(string key, string field, Func<Unit, double?> read, Func<double?, string>? write = null)
@@ -381,16 +385,17 @@ public static class UnitPane
         }
         Add("Units.Stat.Cost", UnitField.Cost, each => each.Cost);
         Add("Units.Stat.Strength", UnitField.Strength, each => each.Strength);
-        Add("Units.Stat.Speed", UnitField.Speed, each => each.Speed, actions.Game == GameTitle.Warno ? KilometresPerHour : null);
+        Add("Units.Stat.Speed", UnitField.Speed, each => each.Speed, unit.SpeedScale is not null ? KilometresPerHour : null);
         Add("Units.Stat.RoadSpeed", UnitField.RoadSpeed, each => each.RoadSpeed, KilometresPerHour);
         Add("Units.Stat.Optics", UnitField.Optics, each => each.Optics);
         Add("Units.Stat.Stealth", UnitField.Stealth, each => each.Stealth);
         Add("Units.Pane.Fuel", UnitField.Fuel, each => each.Fuel);
-        Add("Units.Pane.Vision", UnitField.Vision, each => each.Vision);
+        Add("Units.Pane.Vision", UnitField.Vision, each => each.Vision, unit.MetresScale is not null ? Metres : null);
         if (pairs.Count % 2 == 1) pairs.Add(("", "", _ => ""));
 
         bool canChange = actions.CanChangeUnit(unit);
-        var grid = new Grid();
+        // one pair a row in a narrow pane
+        var grid = new PairGrid();
         // the values at their own width, the names the rest: a narrow pane, or the names in the files under them, cuts
         // a name short (its file name whole in its tooltip), never a value
         foreach (GridLength width in new[] { new GridLength(1, GridUnitType.Star), GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto })
@@ -404,8 +409,8 @@ public static class UnitPane
             Bevel name = Cell(pairs[at].Name, row, column, isName: true, lastRow);
             var nameText = (TextBlock)name.Child;
             nameText.TextTrimming = TextTrimming.CharacterEllipsis;
-            AddFileName(nameText, UnitChanges.FileNameOf(pairs[at].Field));
-            if (ModMarks.ShowFileNames && UnitChanges.FileNameOf(pairs[at].Field) is string property) nameText.ToolTip = property;
+            AddFileName(nameText, UnitChanges.FileNameOf(pairs[at].Field, actions.Game));
+            if (ModMarks.ShowFileNames && UnitChanges.FileNameOf(pairs[at].Field, actions.Game) is string property) nameText.ToolTip = property;
             grid.Children.Add(name);
             Bevel value = Cell("", row, column + 1, isName: false, lastRow);
             ModMarks.Show((TextBlock)value.Child, unit, pairs[at].Field, pairs[at].Write(unit), pairs[at].Write);
@@ -425,7 +430,7 @@ public static class UnitPane
     {
         if (stat.Read(unit) is not double value) return;
         string typedNow = value.ToString("0.##########", Texts.Catalog.Culture);
-        ClickToChange.WithBox(cell, typedNow, typed => stat.ValueOf(typed, unit, actions.ArmorLevels, Texts.Catalog.Culture) is not null,
+        ClickToChange.WithBox(cell, typedNow, typed => stat.ValueOf(typed, unit, actions.ArmorLevels, Texts.Catalog.Culture, actions.Game) is not null,
             typed => actions.ChangeUnit(unit, stat.Field, typed), StatTip(unit, stat, actions));
     }
 
@@ -434,7 +439,7 @@ public static class UnitPane
     {
         if (stat.FamilyOf(unit) is string family && ArmorLevels.RangeOf(actions.ArmorLevels, family) is (int lowest, int highest))
             return Texts.Get("Units.Pane.Stat.Armor.Tip", ("family", UnitNames.ArmorFamily(family)), ("lowest", lowest), ("highest", highest));
-        return Texts.Get(stat.IsWhole ? "Units.Pane.Stat.Whole.Tip" : "Units.Pane.Stat.Decimal.Tip");
+        return Texts.Get(stat.IsWholeIn(actions.Game) ? "Units.Pane.Stat.Whole.Tip" : "Units.Pane.Stat.Decimal.Tip");
     }
 
     /// <summary>
@@ -481,15 +486,19 @@ public static class UnitPane
             grid.ColumnDefinitions.Add(new ColumnDefinition());
             var name = new TextBlock { Text = names[side], TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
             name.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-            AddFileName(name, UnitChanges.FileNameOf(fields[side]));
-            if (ModMarks.ShowFileNames && UnitChanges.FileNameOf(fields[side]) is string property) name.ToolTip = property;
+            AddFileName(name, UnitChanges.FileNameOf(fields[side], actions.Game));
+            if (ModMarks.ShowFileNames && UnitChanges.FileNameOf(fields[side], actions.Game) is string property) name.ToolTip = property;
             var value = new TextBlock { TextAlignment = TextAlignment.Center, FontWeight = FontWeights.Bold, FontSize = 13.5 };
             Func<UnitArmor, int?> read = sides[side];
             string Write(Unit each) => read(each.Armor)?.ToString(Texts.Catalog.Culture) ?? UnitNumbers.None;
             ModMarks.Show(value, unit, fields[side], Write(unit), Write);
             grid.Children.Add(TableCell(name, 0, side, onPanel: true));
             Bevel valueCell = TableCell(value, 1, side, onPanel: false);
-            if (canChange) MakeChangeable(valueCell, unit, EditableStat.Of(fields[side])!, actions);
+            EditableStat stat = EditableStat.Of(fields[side])!;
+            // a side whose kind of armour has no levels (Steel Division 2's infantry, roofs, planes) cannot be given one
+            if (canChange && ArmorLevels.HasNone(actions.ArmorLevels, stat.FamilyOf(unit)))
+                value.ToolTip ??= Texts.Get("Units.Pane.Off.ArmorKind", ("kind", UnitNames.ArmorFamily(stat.FamilyOf(unit)!)));
+            else if (canChange) MakeChangeable(valueCell, unit, stat, actions);
             grid.Children.Add(valueCell);
         }
         string summary = string.Join(" · ", sides.Select(read => read(unit.Armor)?.ToString(Texts.Catalog.Culture) ?? UnitNumbers.None));
@@ -519,11 +528,12 @@ public static class UnitPane
         var row = new WrapRow();
         foreach (string word in words)
         {
-            var text = new TextBlock { Text = word };
+            // a word wider than the pane (a long division name) is cut short, its tooltip naming it whole
+            var text = new TextBlock { Text = word, TextTrimming = TextTrimming.CharacterEllipsis };
             text.SetResourceReference(TextBlock.ForegroundProperty, "muted");
             if (added?.GetValueOrDefault(word) is string tip)
             {
-                text.ToolTip = tip;
+                text.ToolTip = word + "\n" + tip;
                 if (ModMarks.AreShown) text.Inlines.Add(ModMarks.Star());
             }
             var tag = new Bevel { Child = text, Padding = new Thickness(6, 0, 6, 0) };
@@ -559,6 +569,9 @@ public static class UnitPane
             e.Handled = true;
             clicked(word);
         };
+        // Tab reaches the link, Enter or Space follows it as a click does
+        KeyPick.Make(tag, () => clicked(word));
+        System.Windows.Automation.AutomationProperties.SetName(tag, word);
     }
 
     /// <summary>A specialty as the game names it, made readable: "_ifv" is "ifv", "reco_inf" is "reco inf".</summary>

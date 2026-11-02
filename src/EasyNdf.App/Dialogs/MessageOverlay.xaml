@@ -14,22 +14,33 @@
         <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                         Padding="12" Width="576" HorizontalAlignment="Center" VerticalAlignment="Center"
                         KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle">
-            <StackPanel>
-                <TextBlock x:Name="Message" TextWrapping="Wrap" Margin="0,0,0,8" />
-                <ContentPresenter x:Name="Extra" />
-                <!-- #dlg input[type=text]: 10 pixels above the checkbox or the buttons -->
-                <TextBox x:Name="Input" ToolTip="{t:Text Common.Message.Input.Tip}" Margin="0,0,0,10" TextChanged="InputChanged" />
-                <!-- what explains the question, dim and smaller under the text box, so the question stays short -->
-                <TextBlock x:Name="NoteText" Style="{StaticResource Note}" FontSize="11" Margin="0,0,0,10" Visibility="Collapsed" />
-                <!-- a web page sets this checkbox and its text on a line of text, which puts it about a pixel lower -->
-                <CheckBox x:Name="Check" ToolTip="{t:Text Common.Message.Check.Tip}" Style="{StaticResource Tick}" Margin="0,0.94,0,10" HorizontalAlignment="Left" />
+            <!--
+              no taller than the app: a long message (a list of files) scrolls, and the text box, the checkbox and the
+              buttons under it always show
+            -->
+            <!-- the keys go through the box top to bottom, as it reads, though the buttons are laid out first -->
+            <DockPanel>
                 <!-- .bar: the buttons, at the right -->
-                <controls:SnappedRow x:Name="Buttons" Gap="6" HorizontalAlignment="Right">
-                    <Button x:Name="OkButton" ToolTip="{t:Text Common.Message.Ok.Tip}" Style="{StaticResource GoButton}" Click="OkClicked" />
-                    <Button x:Name="AlternativeButton" ToolTip="{t:Text Common.Message.Alternative.Tip}" Click="AlternativeClicked" />
-                    <Button x:Name="CancelButton" ToolTip="{t:Text Common.Message.Cancel.Tip}" Click="CancelClicked" />
+                <controls:SnappedRow x:Name="Buttons" DockPanel.Dock="Bottom" Gap="6" HorizontalAlignment="Right">
+                    <Button x:Name="OkButton" TabIndex="3" ToolTip="{t:Text Common.Message.Ok.Tip}" Style="{StaticResource GoButton}" Click="OkClicked" />
+                    <Button x:Name="AlternativeButton" TabIndex="4" ToolTip="{t:Text Common.Message.Alternative.Tip}" Click="AlternativeClicked" />
+                    <Button x:Name="CancelButton" TabIndex="5" ToolTip="{t:Text Common.Message.Cancel.Tip}" Click="CancelClicked" />
                 </controls:SnappedRow>
-            </StackPanel>
+                <!-- a web page sets this checkbox and its text on a line of text, which puts it about a pixel lower -->
+                <CheckBox x:Name="Check" TabIndex="2" DockPanel.Dock="Bottom" ToolTip="{t:Text Common.Message.Check.Tip}" Style="{StaticResource Tick}" Margin="0,0.94,0,10" HorizontalAlignment="Left" />
+                <!-- what explains the question, dim and smaller under the text box, so the question stays short -->
+                <TextBlock x:Name="NoteText" DockPanel.Dock="Bottom" Style="{StaticResource Note}" FontSize="11" Margin="0,0,0,10" Visibility="Collapsed" />
+                <!-- what is answered with the text box, under it: the game of a new mod, say -->
+                <ContentPresenter x:Name="UnderInput" DockPanel.Dock="Bottom" Margin="0,0,0,10" Visibility="Collapsed" />
+                <!-- #dlg input[type=text]: 10 pixels above the checkbox or the buttons -->
+                <TextBox x:Name="Input" TabIndex="1" DockPanel.Dock="Bottom" ToolTip="{t:Text Common.Message.Input.Tip}" Margin="0,0,0,10" TextChanged="InputChanged" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <StackPanel>
+                        <TextBlock x:Name="Message" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <ContentPresenter x:Name="Extra" />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
         </controls:Bevel>
     </Grid>
 </UserControl>

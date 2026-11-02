@@ -124,15 +124,18 @@ public partial class AddUnitsWindow : UserControl
         FillList();
         ShowAddButton();
         Visibility = Visibility.Visible;
+        // the list's height once the box's other parts have theirs
+        Dispatcher.BeginInvoke(() => FitHeight(Backdrop.ActualHeight), System.Windows.Threading.DispatcherPriority.Loaded);
         Dispatcher.BeginInvoke(() => SearchBox.Focus(), System.Windows.Threading.DispatcherPriority.Input);
     }
 
     /// <summary>
-    /// All units, Vanilla units (the game's own) or Modded units (those vanilla WARNO lacks); only when the game's own
-    /// units are known, its column given up otherwise.
+    /// All units, Vanilla units (the game's own) or Modded units (those the vanilla game lacks, the game named in its
+    /// tooltip); only when the game's own units are known, its column given up otherwise.
     /// </summary>
     private void FillModdedChoice()
     {
+        ModdedChoice.ToolTip = Texts.Get("Units.AddUnits.Modded.Tip", ("game", game.Name));
         FillChoice(ModdedChoice, Texts.Get("Units.AddUnits.AllUnits"), [("vanilla", Texts.Get("Units.AddUnits.VanillaUnits")), ("modded", Texts.Get("Units.AddUnits.ModdedUnits"))]);
         bool offered = vanillaUnits.Count > 0;
         ModdedChoice.Visibility = offered ? Visibility.Visible : Visibility.Collapsed;
@@ -279,8 +282,8 @@ public partial class AddUnitsWindow : UserControl
     private void ShowAddButton()
     {
         AddButton.IsEnabled = ticked.Count > 0;
-        AddButton.Content = ticked.Count > 1 ? Texts.Get("Units.AddUnits.AddSeveral", ("count", ticked.Count)) : Texts.Get("Units.AddUnits.Add");
-        AddButton.ToolTip = Texts.Get("Units.AddUnits.Add.Tip");
+        // the tooltip is the XAML's, or why Add is off while it is (OffReason): set here, it would hide the reason
+        AddButton.Content = ticked.Count > 1 ? Texts.Get("Units.AddUnits.AddSeveral", ("count", Texts.Number(ticked.Count))) : Texts.Get("Units.AddUnits.Add");
     }
 
     private void AddClicked(object sender, RoutedEventArgs e) => AddTicked();
@@ -318,8 +321,35 @@ public partial class AddUnitsWindow : UserControl
 
     private void BoxPressed(object sender, MouseButtonEventArgs e) => e.Handled = true;
 
-    /// <summary>760 pixels wide, or 96% of the window when it is narrower.</summary>
-    private void BackdropResized(object sender, SizeChangedEventArgs e) => Box.Width = Math.Min(760, (e.NewSize.Width + 20) * 0.96);
+    /// <summary>The list's height when the window has room for it.</summary>
+    private const double ListHeight = 330;
+
+    /// <summary>The least the list is made, so a few units still show in a very small window.</summary>
+    private const double LeastListHeight = 90;
+
+    /// <summary>
+    /// 760 pixels wide, or 96% of the window when it is narrower; and no higher than 96% of the window, the list giving
+    /// up height so the filters and the buttons always show.
+    /// </summary>
+    private void BackdropResized(object sender, SizeChangedEventArgs e)
+    {
+        Box.Width = Math.Min(760, (e.NewSize.Width + 20) * 0.96);
+        FitHeight(e.NewSize.Height);
+    }
+
+    /// <summary>The list as high as the window leaves room for beside the window's other parts, up to <see cref="ListHeight"/>.</summary>
+    private void FitHeight(double backdropHeight)
+    {
+        double most = backdropHeight * 0.96;
+        Box.MaxHeight = most;
+        // the room the title, filters and buttons take: as measured once the box is laid out, else about what they take at 100%
+        double parts = 0;
+        if (Box.Child is Panel holder)
+            foreach (UIElement part in holder.Children)
+                if (!ReferenceEquals(part, ListWell)) parts += part.DesiredSize.Height;
+        double others = (parts > 0 ? parts : 140) + Box.Padding.Top + Box.Padding.Bottom + 4;
+        ListWell.Height = Math.Clamp(most - others, LeastListHeight, ListHeight);
+    }
 }
 
 /// <summary>
@@ -375,7 +405,8 @@ public sealed class AddUnitsRow : Bevel
         bool taken = line.Window.IsAlreadyChosen(unit);
         Opacity = taken ? 0.5 : 1;
         Cursor = taken ? Cursors.Arrow : Cursors.Hand;
-        ToolTip = taken ? Texts.Get("Units.AddUnits.AlreadyChosen") : unit.Descriptor;
+        // the whole name first, as it is cut short in a narrow window, then the descriptor
+        ToolTip = taken ? Texts.Get("Units.AddUnits.AlreadyChosen") : unit.Name + "\n" + unit.Descriptor;
         ShowState();
     }
 

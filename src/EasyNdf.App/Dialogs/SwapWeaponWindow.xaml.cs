@@ -63,6 +63,9 @@ public partial class SwapWeaponWindow : UserControl
     /// <summary>Whether the window shows.</summary>
     public bool IsOpen => Visibility == Visibility.Visible;
 
+    /// <summary>Why "Use a Copy to Change…" is switched off; null when it is on.</summary>
+    private string? noCopy;
+
     /// <summary>Opens the window.</summary>
     /// <param name="title">Its title: "Swap: M2HB 12.7 mm", or "Add to Turret 1".</param>
     /// <param name="subtitle">The unit and the place, dim beside the title.</param>
@@ -73,9 +76,11 @@ public partial class SwapWeaponWindow : UserControl
     /// <param name="use">What is done with the weapon picked: given the weapon, and whether a copy of it is wanted.</param>
     /// <param name="openedFor">What the window is opened for, which its groups' headings say.</param>
     /// <param name="placeBox">For a swap, the place's ammo box; null otherwise.</param>
+    /// <param name="noCopyReason">Why "Use a Copy to Change…" is switched off (copies the Armory can't make for the game yet); null when it is on.</param>
     public void Open(string title, string subtitle, Weapon? weaponNow, IReadOnlyList<SwapChoice> offered, Func<Weapon, bool> isModsOwn, bool offerCopy,
-        Action<Weapon, bool> use, SwapKind openedFor = SwapKind.Swap, SwapBox? placeBox = null)
+        Action<Weapon, bool> use, SwapKind openedFor = SwapKind.Swap, SwapBox? placeBox = null, string? noCopyReason = null)
     {
+        noCopy = noCopyReason;
         TitleText.Text = title;
         SubtitleText.Text = subtitle;
         now = weaponNow;
@@ -161,7 +166,8 @@ public partial class SwapWeaponWindow : UserControl
         // a weapon that may not work here can be used too: the user is warned first (see Use)
         bool usable = picked is not null;
         UseButton.IsEnabled = usable;
-        UseCopyButton.IsEnabled = usable;
+        UseCopyButton.IsEnabled = usable && noCopy is null;
+        OffReason.SetText(UseCopyButton, noCopy);
         UseCopyButton.Visibility = offersCopy ? Visibility.Visible : Visibility.Collapsed;
         PickedTitle.Text = picked is null ? Texts.Get("Weapons.Swap.PickOne")
             : now is null ? picked.Weapon.Name : Texts.Get("Weapons.Swap.InPlaceOf", ("weapon", picked.Weapon.Name), ("now", now.Name));
@@ -297,11 +303,15 @@ public partial class SwapWeaponWindow : UserControl
 
     private void BoxPressed(object sender, MouseButtonEventArgs e) => e.Handled = true;
 
-    /// <summary>900 by 560 pixels, as the mock's, or 96% of the window when it is smaller.</summary>
+    /// <summary>
+    /// 900 by 560 pixels, as the mock's, or 96% of the window when it is smaller; the weapon picked at the right is 300
+    /// wide, narrower in a small window so the list keeps room (its buttons scroll with it).
+    /// </summary>
     private void BackdropResized(object sender, SizeChangedEventArgs e)
     {
         Box.Width = Math.Min(900, (e.NewSize.Width + 20) * 0.96);
         Box.Height = Math.Min(560, (e.NewSize.Height + 20) * 0.96);
+        PickedColumn.Width = new GridLength(Math.Floor(Math.Clamp(Box.Width * 0.4, 150, 300)));
     }
 
     // ---- for the workbench's checks ----

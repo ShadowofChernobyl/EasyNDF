@@ -49,6 +49,12 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
     /// <summary>Whether pictures are still waiting to be read.</summary>
     internal bool IsBusy => readers > 0 || waiting.Count > 0;
 
+    /// <summary>Whether the game's weapon pictures are shown in their own colours (<see cref="Data.Game.GameTitle.WeaponPicturesInColour"/>).</summary>
+    public bool WeaponPicturesInColour { get; init; }
+
+    /// <summary>Whether the game's unit cards show their numbers in boxes (<see cref="Data.Game.GameTitle.CardMarksInBoxes"/>).</summary>
+    public bool CardMarksInBoxes { get; init; }
+
     /// <summary>A nation's flag's source in the game, such as "GameData:/.../Flags/US.png"; null when the game has none.</summary>
     public string? FlagSourceOf(string nation) => flagSources.GetValueOrDefault(nation);
 
@@ -103,8 +109,13 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
         }
         readers--;
         // taking pictures out of the game's textures leaves large blocks of memory behind; once the last reader is
-        // done, they are given back, rather than left for .NET, which can let them pile up to gigabytes
-        if (readers == 0 && store.PicturesTakenOut != takenOutBefore) Memory.GiveBack();
+        // done, the textures are let go of and the memory given back, rather than left for .NET, which can let them
+        // pile up to gigabytes
+        if (readers == 0 && store.PicturesTakenOut != takenOutBefore)
+        {
+            store.LetGoOfGameTextures();
+            Memory.GiveBack();
+        }
     }
 
     /// <summary>
@@ -129,8 +140,14 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
             picture.StreamSource = new MemoryStream(bytes);
             if (width < ownWidth) picture.DecodePixelWidth = width;
             picture.EndInit();
-            picture.Freeze();
-            return picture;
+            // a picture read from a stream keeps the whole file as well as its pixels; a copy of the pixels alone is kept
+            var pixels = new FormatConvertedBitmap(picture, PixelFormats.Pbgra32, null, 0);
+            int stride = pixels.PixelWidth * 4;
+            byte[] copied = new byte[stride * pixels.PixelHeight];
+            pixels.CopyPixels(copied, stride, 0);
+            BitmapSource kept = BitmapSource.Create(pixels.PixelWidth, pixels.PixelHeight, picture.DpiX, picture.DpiY, PixelFormats.Pbgra32, null, copied, stride);
+            kept.Freeze();
+            return kept;
         }
         catch (Exception problem) when (problem is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException or ArgumentException)
         {

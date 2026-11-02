@@ -87,7 +87,7 @@ public partial class UnitsPage
         var entries = main.FilesTab.Model.Entries.ToList();
         var settings = RunSettings.From(AppData.Current.Settings);
         // with "Show mods' changes" off, the units are shown as the source has them
-        string inputs = ArmoryShowsModChanges ? OpenModUnits.InputsOf(entries, AppData.Current.OpenMod, settings) : "as the source has them";
+        string inputs = ArmoryShowsModChanges ? OpenModUnits.InputsOf(entries, AppData.Current.OpenMod, game.Source.Game, settings) : "as the source has them";
         bool readNow = inputs != modValuesFrom;
         if (readNow && !ArmoryShowsModChanges)
         {
@@ -136,7 +136,7 @@ public partial class UnitsPage
     }
 
     /// <summary>The units and weapons the open mod adds and changes in the Armory, as the mod file keeps them, to tell when they change.</summary>
-    private static string AddedUnitsText() =>
+    private string AddedUnitsText() =>
         string.Join("\n", new[] { "shown " + ShowsOpenMod }.Concat(OpenMod.Units.Select(unit => unit.ToJson().ToJsonString())
             .Concat(OpenMod.UnitEdits.Select(edit => "edit " + edit.ToJson().ToJsonString()))
             .Concat(OpenMod.WeaponEdits.Select(edit => "weapon edit " + edit.ToJson().ToJsonString()))
@@ -150,7 +150,7 @@ public partial class UnitsPage
     {
         if (gameUnits is not LoadedUnits game) return;
         ShowFilesNotShown(byRules.FilesNotShown, game.Source);
-        ModUnits shown = WithWeaponChanges(WithAddedUnits(WithEditedUnits(byRules, game.Catalog)), game.Catalog);
+        ModUnits shown = WithWeaponChanges(WithAddedUnits(WithOtherModsUnits(WithEditedUnits(byRules, game.Catalog))), game.Catalog);
         bool nothingBefore = ModMarks.Changes.Count == 0 && WeaponMarks.Changes.Count == 0 && ReferenceEquals(loaded?.Catalog, game.Catalog);
         bool nothingNow = shown.Changes.Count == 0 && shown.WeaponChanges.Count == 0 && ReferenceEquals(shown.Catalog, game.Catalog);
         if (nothingBefore && nothingNow) return;
@@ -166,7 +166,7 @@ public partial class UnitsPage
     /// </summary>
     /// <param name="byRules">The units as the mod's rules make them.</param>
     /// <param name="game">The units as the source has them, before any rule, for the marks.</param>
-    private static ModUnits WithEditedUnits(ModUnits byRules, UnitCatalog game)
+    private ModUnits WithEditedUnits(ModUnits byRules, UnitCatalog game)
     {
         if (!ShowsOpenMod || OpenMod.UnitEdits.Count == 0) return byRules;
         var gameByDescriptor = new Dictionary<string, Unit>(StringComparer.Ordinal);
@@ -202,7 +202,7 @@ public partial class UnitsPage
     /// changes made since. The others are put in after the source's. A unit made from one the source does not have is
     /// left out. The same units are given back when the mod adds none.
     /// </summary>
-    private static ModUnits WithAddedUnits(ModUnits byRules)
+    private ModUnits WithAddedUnits(ModUnits byRules)
     {
         if (!ShowsOpenMod || OpenMod.Units.Count == 0) return byRules;
         var byDescriptor = new Dictionary<string, Unit>(StringComparer.Ordinal);
@@ -219,6 +219,42 @@ public partial class UnitsPage
         units.AddRange(made.Values.Where(unit => !byDescriptor.ContainsKey(unit.Descriptor)));
         UnitCatalog catalog = byRules.Catalog with { Units = units };
         return byRules with { Catalog = catalog, Changes = byRules.Changes.WithAdded(OpenMod.Name, made.Keys) };
+    }
+
+    /// <summary>
+    /// The units the other mods that are on add in the Armory, with the names and pictures those mods give them. Their
+    /// rules make the units, but a new unit's name is in its mod's own texts and its picture is the user's file, which
+    /// the game's files read do not have: without this, such a unit was named after its descriptor and drawn with its
+    /// model's picture. The same units are given back when no other mod adds any.
+    /// </summary>
+    private ModUnits WithOtherModsUnits(ModUnits byRules)
+    {
+        if (!ArmoryShowsModChanges) return byRules;
+        var given = new Dictionary<string, ModUnit>(StringComparer.Ordinal);
+        foreach (Data.Mod mod in Mods.ModStack.RunningFor(Game).Where(mod => !ReferenceEquals(mod, OpenMod)))
+            foreach (ModUnit unit in mod.Units) given[unit.Descriptor] = unit;
+        if (given.Count == 0) return byRules;
+        bool changed = false;
+        List<Unit> units = [.. byRules.Catalog.Units.Select(unit =>
+        {
+            if (!given.TryGetValue(unit.Descriptor, out ModUnit? added)) return unit;
+            changed = true;
+            return unit.WithNameAndPicture(added.Name, PictureFileOf(added.PictureFile));
+        })];
+        return changed ? byRules with { Catalog = byRules.Catalog with { Units = units } } : byRules;
+    }
+
+    /// <summary>
+    /// A picture a mod keeps, where it is on this computer: as the mod file names it, or, for a mod made on another
+    /// computer, the file of that name among the app's kept pictures; null when it is in neither place.
+    /// </summary>
+    private static string? PictureFileOf(string? kept)
+    {
+        if (string.IsNullOrEmpty(kept)) return null;
+        if (System.IO.File.Exists(kept)) return kept;
+        string folder = AppData.Current.Folders?.Pictures ?? Data.AppFolders.TemporaryPictures;
+        string here = System.IO.Path.Combine(folder, System.IO.Path.GetFileName(kept));
+        return System.IO.File.Exists(here) ? here : null;
     }
 
     /// <summary>Whether a unit's field is one of its weapons' (<see cref="UnitField.OfWeapon"/>), their count or longest range.</summary>
@@ -240,7 +276,7 @@ public partial class UnitsPage
     /// </summary>
     /// <param name="shown">The units as the mod's rules and its other Armory changes make them.</param>
     /// <param name="game">The units as the source has them, before any rule, for the marks.</param>
-    private static ModUnits WithWeaponChanges(ModUnits shown, UnitCatalog game)
+    private ModUnits WithWeaponChanges(ModUnits shown, UnitCatalog game)
     {
         if (!ShowsOpenMod) return shown;
         ModWeaponView.Result result = ModWeaponView.Apply(OpenMod, shown.Catalog, game, Texts.Catalog);

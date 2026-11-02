@@ -64,7 +64,8 @@ public sealed class WeaponTable : UserControl
         rows.ItemsPanel = new ItemsPanelTemplate(new FrameworkElementFactory(typeof(VirtualizingStackPanel)));
         var scroller = new FrameworkElementFactory(typeof(ScrollViewer));
         scroller.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
-        scroller.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Disabled);
+        // the rows scroll both ways in the one box, so the scrollbar down stays at the right edge however wide the table is
+        scroller.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
         scroller.SetValue(ScrollViewer.CanContentScrollProperty, true);
         scroller.SetValue(FocusableProperty, false);
         scroller.AppendChild(new FrameworkElementFactory(typeof(ItemsPresenter)));
@@ -76,17 +77,24 @@ public sealed class WeaponTable : UserControl
         SizeChanged += (_, _) => FitNameColumn();
         rows.MouseRightButtonUp += RowRightClicked;
         FillHeadings();
-        var heading = new Bevel { Child = headings, Edges = new Thickness(0, 0, 0, 1) };
+        // the headings in a box of their own with no scrollbar, moved sideways as far as the rows are
+        var headingsScroller = new ScrollViewer
+        {
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false, Content = headings,
+        };
+        rows.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, e) =>
+        {
+            if (e.OriginalSource is ScrollViewer rowsScroller && !ReferenceEquals(rowsScroller, headingsScroller)) headingsScroller.ScrollToHorizontalOffset(e.HorizontalOffset);
+        }));
+        var heading = new Bevel { Child = headingsScroller, Edges = new Thickness(0, 0, 0, 1) };
         heading.SetResourceReference(Bevel.BottomRightProperty, "lo");
         heading.SetResourceReference(Bevel.BackgroundProperty, "panel");
         DockPanel.SetDock(heading, Dock.Top);
-        // wider than the room: the headings and rows move sideways together
-        Content = new ScrollViewer
-        {
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false,
-            Content = new DockPanel { Children = { heading, rows } },
-        };
+        Content = new DockPanel { Children = { heading, rows } };
     }
+
+    /// <summary>The weapons in the order of their rows, for the arrow keys.</summary>
+    public IReadOnlyList<Weapon> WeaponsInOrder => rows.ItemsSource is List<object> lines ? [.. lines.OfType<Weapon>()] : [];
 
     /// <summary>Raised when a row is clicked, with its weapon.</summary>
     public event Action<Weapon>? WeaponClicked;
@@ -198,6 +206,9 @@ public sealed class WeaponTable : UserControl
             };
             if (Columns[at].AlignRight) text.TextAlignment = TextAlignment.Right;
             cell.MouseLeftButtonUp += (_, _) => SortBy(index);
+            // Tab reaches the headings, Enter sorts as a click does; a cut-short heading shows whole on hover (TrimmedTip)
+            Units.KeyPick.Make(cell, () => SortBy(index), "weaponHeading:" + index);
+            System.Windows.Automation.AutomationProperties.SetName(cell, Texts.Get(Columns[at].HeadingKey));
             headings.Children.Add(cell);
         }
     }
@@ -212,7 +223,10 @@ public sealed class WeaponTable : UserControl
 
     private void RowClicked(object sender, MouseButtonEventArgs e)
     {
-        if (RowAt(e.OriginalSource) is { DataContext: Weapon weapon }) WeaponClicked?.Invoke(weapon);
+        if (RowAt(e.OriginalSource) is not { DataContext: Weapon weapon }) return;
+        // the table takes the keys, so the arrow keys go on from the row clicked
+        Focus();
+        WeaponClicked?.Invoke(weapon);
     }
 
     private void RowRightClicked(object sender, MouseButtonEventArgs e)

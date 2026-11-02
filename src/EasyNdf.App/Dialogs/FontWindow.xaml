@@ -71,15 +71,38 @@
 
     <!-- the dimmed backdrop; a click on it closes the window without changing anything -->
     <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed">
-        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+        <!--
+          660 wide, or narrower in a small app window, and never taller than it: the two lists give up their height
+          first, and the buttons always show
+        -->
+        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                         Padding="12,10,12,12" Width="660" HorizontalAlignment="Center" VerticalAlignment="Center"
                         MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
-            <StackPanel>
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Settings.Fonts.CancelEscape.Tip}" Click="CancelClicked" />
-                    <TextBlock Text="{t:Text Settings.Fonts.Fonts}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Settings.Fonts.CancelEscape.Tip}" Click="CancelClicked"
+                            AutomationProperties.Name="{t:Text Settings.Fonts.CancelEscape.Tip}" />
+                    <TextBlock Text="{t:Text Settings.Fonts.Fonts}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
                 </DockPanel>
-                <TextBlock Style="{StaticResource Note}" Margin="0,6,0,0" Text="{t:Text Settings.Fonts.ForEveryThemeThe}" />
+                <TextBlock DockPanel.Dock="Top" Style="{StaticResource Note}" Margin="0,6,0,0" Text="{t:Text Settings.Fonts.ForEveryThemeThe}" />
+
+                <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                    <controls:SnappedRow DockPanel.Dock="Right" Gap="6" Margin="6,0,0,0">
+                        <Button Style="{StaticResource GoButton}" Content="{t:Text Common.Ok}" MinWidth="72" ToolTip="{t:Text Settings.Fonts.UseTheseFontsEnter.Tip}" Click="OkClicked" />
+                        <Button Content="{t:Text Settings.Fonts.Cancel}" MinWidth="72" ToolTip="{t:Text Settings.Fonts.Cancel.Tip}" Click="CancelClicked" />
+                    </controls:SnappedRow>
+                    <Button Content="{t:Text Settings.Fonts.UseTheThemesFonts}" ToolTip="{t:Text Settings.Fonts.UseTheThemesFonts.Tip}" Click="ThemeFontsClicked" HorizontalAlignment="Left" />
+                </DockPanel>
+                <!-- the sample: a line in each font, as the app would show them -->
+                <Border DockPanel.Dock="Bottom" Padding="8,6" BorderThickness="1" BorderBrush="{DynamicResource line}" Background="{DynamicResource well}">
+                    <StackPanel>
+                        <TextBlock x:Name="UiSample" FontSize="13" Text="{t:Text Settings.Fonts.RulesRunTopTo}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="CodeSample" FontSize="12" Margin="0,4,0,0" Foreground="{DynamicResource s-field}"
+                                   Text="MaximumRangeGRU = 2450   // 0O 1lI {} [] ()" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+                <TextBlock DockPanel.Dock="Bottom" Text="{t:Text Settings.Fonts.Sample}" Foreground="{DynamicResource muted}" Margin="0,10,0,3" />
 
                 <Grid Margin="0,10,0,0">
                     <Grid.ColumnDefinitions>
@@ -90,11 +113,11 @@
 
                     <!-- the interface font -->
                     <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="{t:Text Settings.Fonts.InterfaceFont}" FontWeight="Bold" Margin="0,0,0,4" />
+                        <TextBlock DockPanel.Dock="Top" Text="{t:Text Settings.Fonts.InterfaceFont}" FontWeight="Bold" Margin="0,0,0,4" TextTrimming="CharacterEllipsis" />
                         <TextBox x:Name="UiSearch" DockPanel.Dock="Top" Tag="{t:Text Settings.Fonts.UiSearch.Hint}" ToolTip="{t:Text Settings.Fonts.UiSearch.Tip}"
                                  TextChanged="SearchChanged" />
                         <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}"
-                                        Margin="0,4,0,0" Height="240">
+                                        Margin="0,4,0,0" MinHeight="60" MaxHeight="240">
                             <ListBox x:Name="UiList" Style="{StaticResource FontList}" SelectionChanged="FontPicked" ToolTip="{t:Text Settings.Fonts.UiList.Tip}" />
                         </controls:Bevel>
                     </DockPanel>
@@ -104,35 +127,17 @@
                         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
                             <CheckBox x:Name="FixedOnly" DockPanel.Dock="Right" Style="{StaticResource Tick}" Content="{t:Text Settings.Fonts.FixedWidthOnly}" IsChecked="True"
                                       ToolTip="{t:Text Settings.Fonts.FixedOnly.Tip}" Click="FixedOnlyClicked" />
-                            <TextBlock Text="{t:Text Settings.Fonts.CodeFont}" FontWeight="Bold" />
+                            <TextBlock Text="{t:Text Settings.Fonts.CodeFont}" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
                         </DockPanel>
                         <TextBox x:Name="CodeSearch" DockPanel.Dock="Top" Tag="{t:Text Settings.Fonts.UiSearch.Hint}" ToolTip="{t:Text Settings.Fonts.UiSearch.Tip}"
                                  TextChanged="SearchChanged" />
                         <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}"
-                                        Margin="0,4,0,0" Height="240">
+                                        Margin="0,4,0,0" MinHeight="60" MaxHeight="240">
                             <ListBox x:Name="CodeList" Style="{StaticResource FontList}" SelectionChanged="FontPicked" ToolTip="{t:Text Settings.Fonts.CodeList.Tip}" />
                         </controls:Bevel>
                     </DockPanel>
                 </Grid>
-
-                <!-- the sample: a line in each font, as the app would show them -->
-                <TextBlock Text="{t:Text Settings.Fonts.Sample}" Foreground="{DynamicResource muted}" Margin="0,10,0,3" />
-                <Border Padding="8,6" BorderThickness="1" BorderBrush="{DynamicResource line}" Background="{DynamicResource well}">
-                    <StackPanel>
-                        <TextBlock x:Name="UiSample" FontSize="13" Text="{t:Text Settings.Fonts.RulesRunTopTo}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock x:Name="CodeSample" FontSize="12" Margin="0,4,0,0" Foreground="{DynamicResource s-field}"
-                                   Text="MaximumRangeGRU = 2450   // 0O 1lI {} [] ()" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
-                </Border>
-
-                <DockPanel Margin="0,10,0,0">
-                    <Button Content="{t:Text Settings.Fonts.UseTheThemesFonts}" ToolTip="{t:Text Settings.Fonts.UseTheThemesFonts.Tip}" Click="ThemeFontsClicked" />
-                    <controls:SnappedRow Gap="6" HorizontalAlignment="Right">
-                        <Button Style="{StaticResource GoButton}" Content="OK" MinWidth="72" ToolTip="{t:Text Settings.Fonts.UseTheseFontsEnter.Tip}" Click="OkClicked" />
-                        <Button Content="{t:Text Settings.Fonts.Cancel}" MinWidth="72" ToolTip="{t:Text Settings.Fonts.Cancel.Tip}" Click="CancelClicked" />
-                    </controls:SnappedRow>
-                </DockPanel>
-            </StackPanel>
+            </DockPanel>
         </controls:Bevel>
     </Grid>
 </UserControl>

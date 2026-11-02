@@ -25,6 +25,8 @@ public partial class WatermarkWindow : UserControl
     {
         InitializeComponent();
         PreviewKeyDown += KeyPressed;
+        // narrower and no taller than a small app window, its buttons always showing
+        Backdrop.SizeChanged += (_, _) => DialogFit.Keep(Box, Backdrop, 416);
     }
 
     /// <summary>Whether the window is open.</summary>
@@ -50,10 +52,16 @@ public partial class WatermarkWindow : UserControl
         ModWatermark mark = WatermarkOf(openMod);
 
         Title.Text = asking ? Texts.Get("Rules.Watermark.UpdateTitle") : Texts.Get("Rules.Watermark.Title", ("mod", openMod.Name));
+        AuthorLabel.Text = Texts.WithColon(Texts.Get("Rules.Watermark.Author"));
+        VersionLabel.Text = Texts.WithColon(Texts.Get("Rules.Watermark.ModVersion"));
+        GameLabel.Text = Texts.WithColon(Texts.Get("Rules.Watermark.GameVersion"));
         Lead.Text = asking ? Texts.Get("Rules.Watermark.Lead", ("mod", openMod.Name)) : "";
         Lead.Visibility = Shown(asking);
         OnSwitch.Visibility = SavedNote.Visibility = AskTick.Visibility = DoneButton.Visibility = Shown(!asking);
-        NeverTick.Visibility = ExportButton.Visibility = CancelButton.Visibility = Shown(asking);
+        NeverTick.Visibility = ExportButton.Visibility = Shown(asking);
+        // Cancel in both: before an export it stops it; from the Mod box, where each change is saved at once, it puts
+        // the watermark back as it was when the window opened
+        before = openMod.Watermark;
 
         showing = true;
         OnSwitch.IsChecked = mark.On;
@@ -66,6 +74,7 @@ public partial class WatermarkWindow : UserControl
 
         Draw();
         Visibility = Visibility.Visible;
+        DialogFit.Keep(Box, Backdrop, 416);
         // before an export, the mod's version is the likeliest to be out of date
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () => (asking ? (Control)VersionBox : OnSwitch).Focus());
         return answer.Task;
@@ -122,6 +131,20 @@ public partial class WatermarkWindow : UserControl
 
     /// <summary>Closes the window as × does: before an export, nothing is saved and the export stops.</summary>
     public void Cancel() => Close(go: false);
+
+    /// <summary>The mod's watermark when the window opened, for Cancel.</summary>
+    private ModWatermark? before;
+
+    /// <summary>Cancel: before an export, it stops it; from the Mod box, the watermark goes back to what it was, and the window closes.</summary>
+    private void CancelClicked(object sender, RoutedEventArgs e)
+    {
+        if (!isAsking && mod is not null)
+        {
+            mod.Watermark = before;
+            AppData.Current.Save(mod);
+        }
+        Close(go: false);
+    }
 
     /// <summary>×, Cancel, Escape or a click outside: closes; before an export, nothing is saved and the export stops.</summary>
     private void CloseClicked(object sender, RoutedEventArgs e) => Close(go: false);

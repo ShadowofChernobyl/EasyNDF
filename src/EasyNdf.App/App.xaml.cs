@@ -26,6 +26,8 @@ public partial class App : Application
         Controls.CssTextPosition.Register();
         Controls.SmoothScrolling.Register();
         Controls.LongText.Register();
+        Controls.TrimmedTip.Register();
+        Controls.OffReason.Register();
         // the lists' one-line texts, until the saved setting is read
         Controls.ListText.Apply(wrap: false);
 
@@ -41,6 +43,8 @@ public partial class App : Application
         int frameAt = Array.IndexOf(e.Args, "--frame");
         MainWindow = new MainWindow(frameAt >= 0 && frameAt + 1 < e.Args.Length ? e.Args[frameAt + 1] : "");
         MainWindow.Show();
+        // memory large work leaves behind is given back while the app sits idle
+        Memory.TrimWhenIdle(Dispatcher);
     }
 
     /// <summary>

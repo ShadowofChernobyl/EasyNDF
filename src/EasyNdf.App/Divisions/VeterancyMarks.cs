@@ -73,7 +73,9 @@ public static class VeterancyMarks
     /// A tile's strip: the marks one under the other, the highest level at the top as on the game's cards, sunken on
     /// the list's dark colour, each mark dimmed when its level has no units and saying its level and count as a tooltip.
     /// </summary>
-    public static Bevel Strip(IReadOnlyList<int> counts)
+    /// <param name="counts">The units per card at each level, lowest first.</param>
+    /// <param name="tips">Each level's tooltip, lowest first, in place of the one its count makes (Steel Division 2's, by phase); null for those.</param>
+    public static Bevel Strip(IReadOnlyList<int> counts, IReadOnlyList<string>? tips = null)
     {
         var marks = new System.Windows.Controls.Primitives.UniformGrid { Columns = 1 };
         for (int level = counts.Count - 1; level >= 0; level--)
@@ -83,8 +85,9 @@ public static class VeterancyMarks
             {
                 Background = Brushes.Transparent,
                 Child = mark,
+                Padding = PlacePadding,
                 Opacity = counts[level] == 0 ? NotOfferedOpacity : 1,
-                ToolTip = CountTip(level, counts[level]),
+                ToolTip = tips is not null && level < tips.Count ? tips[level] : CountTip(level, counts[level]),
             };
             marks.Children.Add(place);
         }
@@ -106,7 +109,7 @@ public static class VeterancyMarks
         for (int level = counts.Count - 1; level >= 0; level--)
         {
             Path mark = StripMark(level);
-            var place = new Border { Background = Brushes.Transparent, Child = mark, ToolTip = CountTip(level, counts[level]) };
+            var place = new Border { Background = Brushes.Transparent, Child = mark, Padding = PlacePadding, ToolTip = CountTip(level, counts[level]) };
             bool offered = counts[level] > 0;
             bool isChosen = level == chosen;
             if (isChosen)
@@ -142,6 +145,41 @@ public static class VeterancyMarks
         return StripAround(marks);
     }
 
+    /// <summary>
+    /// The Division Generator's sample card's strip: the same marks, highest level at the top, each with the units a
+    /// card holds at its level written beside it; a level with none ("0") is dim, as on a division's tile. The strip
+    /// keeps one width whatever is written, so the card does not change size as numbers are typed.
+    /// </summary>
+    /// <param name="counts">What to write beside each level's mark, lowest first: a number, "?" or nothing.</param>
+    public static Bevel CountStrip(IReadOnlyList<string> counts)
+    {
+        var marks = new System.Windows.Controls.Primitives.UniformGrid { Columns = 1, Width = CountStripWidth };
+        for (int level = counts.Count - 1; level >= 0; level--)
+        {
+            var count = new TextBlock { Text = counts[level], FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 0, 0) };
+            count.SetResourceReference(TextBlock.ForegroundProperty, "ink");
+            Path mark = Mark(level, StripMarkHeight);
+            var row = new StackPanel { Orientation = Orientation.Horizontal, Children = { mark, count } };
+            var place = new Border
+            {
+                Background = Brushes.Transparent,
+                Child = row,
+                Padding = new Thickness(3, 0, 0, 0),
+                Opacity = counts[level] == "0" ? NotOfferedOpacity : 1,
+                ToolTip = int.TryParse(counts[level], out int units) ? CountTip(level, units) : null,
+            };
+            marks.Children.Add(place);
+        }
+        var strip = new Bevel { Child = marks, Padding = new Thickness(0, 2, 0, 2) };
+        strip.SetResourceReference(Bevel.TopLeftProperty, "lo");
+        strip.SetResourceReference(Bevel.BottomRightProperty, "hi");
+        strip.SetResourceReference(Bevel.BackgroundProperty, "well");
+        return strip;
+    }
+
+    /// <summary>How wide the sample card's strip is: a mark and a three-figure count.</summary>
+    private const double CountStripWidth = 40;
+
     /// <summary>A mark for a tile's strip, centred across; how far down its place it sits is set by <see cref="SpreadMarks"/>.</summary>
     private static Path StripMark(int level)
     {
@@ -151,11 +189,17 @@ public static class VeterancyMarks
         return mark;
     }
 
+    /// <summary>
+    /// The room inside each level's place, above and below its mark. The places themselves fill the strip from end to
+    /// end, so the chosen level's outline and the hover colour reach the strip's ends rather than stopping short.
+    /// </summary>
+    private static readonly Thickness PlacePadding = new(0, 2, 0, 2);
+
     /// <summary>The strip's sunken box on the list's dark colour, around the levels' places, one under the other.</summary>
     private static Bevel StripAround(System.Windows.Controls.Primitives.UniformGrid marks)
     {
         marks.SizeChanged += (_, _) => SpreadMarks(marks);
-        var strip = new Bevel { Child = marks, Width = StripWidth, Padding = new Thickness(0, 2, 0, 2) };
+        var strip = new Bevel { Child = marks, Width = StripWidth };
         strip.SetResourceReference(Bevel.TopLeftProperty, "lo");
         strip.SetResourceReference(Bevel.BottomRightProperty, "hi");
         strip.SetResourceReference(Bevel.BackgroundProperty, "well");
@@ -175,8 +219,8 @@ public static class VeterancyMarks
         for (int place = 0; place < count; place++)
         {
             if (marks.Children[place] is not Border { Child: Path mark } border) continue;
-            // inside the chosen level's outline, its place is a pixel smaller at each edge
-            double room = Math.Max(0, placeHeight - border.BorderThickness.Top - border.BorderThickness.Bottom - StripMarkHeight);
+            // inside the chosen level's outline and the place's own padding
+            double room = Math.Max(0, placeHeight - border.BorderThickness.Top - border.BorderThickness.Bottom - border.Padding.Top - border.Padding.Bottom - StripMarkHeight);
             mark.Margin = new Thickness(0, room * place / (count - 1), 0, 0);
         }
     }

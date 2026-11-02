@@ -155,16 +155,30 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>Whether a mod has this name already.</summary>
     public static bool ModExists(string name) => Data.Mods.Any(m => m.Name == name);
 
-    /// <summary>"New": a new empty mod, opened.</summary>
-    public void NewMod(string name)
+    /// <summary>"New": a new empty mod for a game, opened.</summary>
+    public void NewMod(string name, EasyNdf.Data.Game.GameTitle game)
     {
-        var mod = new Mod { Name = name };
+        var mod = new Mod { Name = name, Game = game };
         Data.ModStore.Add(mod);
         Data.Open(mod);
         // a mod made to work in starts on; a copy or an import keeps its original's switch
         EasyNdf.App.Mods.ModStack.SetOn(mod, on: true);
         OpenPreset = null;
         Refresh();
+    }
+
+    /// <summary>
+    /// A mod's right-click menu, Game: the mod is for another game from now on, so it runs only on that game's files.
+    /// What was found of the conflicts was for the mods as they ran, so it is forgotten. Undo takes it back.
+    /// </summary>
+    public void SetModGame(Mod mod, EasyNdf.Data.Game.GameTitle game)
+    {
+        if (mod.Game == game) return;
+        mod.Game = game;
+        EasyNdf.App.Mods.ModConflictList.Forget();
+        Data.Save(mod);
+        Refresh();
+        Say(Texts.Get("Rules.Mod.GameChanged", ("mod", mod.Name), ("game", game.Name)));
     }
 
     /// <summary>"Rename": the open mod gets a new name; its file follows, and so do its place and switch on the Mods tab.</summary>
@@ -335,10 +349,10 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     }
 
     /// <summary>"3 presets", "1 preset".</summary>
-    public static string Count(int presets) => Texts.Count("Rules.PresetCount", presets);
+    public static string Count(int presets) => Texts.CountWide("Rules.PresetCount", presets);
 
     /// <summary>"1 rule", "3 rules".</summary>
-    public static string CountRules(int rules) => Texts.Count("Rules.RuleCount", rules);
+    public static string CountRules(int rules) => Texts.CountWide("Rules.RuleCount", rules);
 
     // ---- pasting ----
 

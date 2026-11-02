@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using EasyNdf.Data.Game;
 using EasyNdf.Data.Languages;
 using EasyNdf.Engine.Rules;
 
@@ -16,7 +17,7 @@ namespace EasyNdf.Data.Divisions;
 /// that file only. Names are not rules of the game's files: a name rule sets the division's name text (its token), and
 /// the export writes the name itself into a new UNITS.csv, made from the mod's on the Files tab (<see cref="NameTextKey"/>).
 /// </remarks>
-public sealed class DivisionChangeRules
+public sealed partial class DivisionChangeRules
 {
     /// <summary>The key, in a rule, of what the Armory knows about it: which division and change it is for.</summary>
     public const string ArmoryKey = "Armory";
@@ -82,8 +83,73 @@ public sealed class DivisionChangeRules
     /// <summary>Where a picture of the user's own goes in the mod, under GameData, as the game keeps its emblems.</summary>
     public const string EmblemFolder = "Assets/2D/Interface/UseOutGame/Division/Emblem/";
 
+    /// <summary>
+    /// The games whose every Armory change to divisions is written as rules: new divisions, and a game division's
+    /// name, texts, units, battlegroup and details. The other games get only the details <see cref="Writes"/> allows.
+    /// </summary>
+    private static readonly IReadOnlyList<GameTitle> GamesWrittenInFull = [GameTitle.Warno];
+
+    /// <summary>
+    /// Whether the Armory can write a change to one of a game division's details (<see cref="DivisionDetail"/>) for a
+    /// game: any for WARNO; for Steel Division 2, those of <see cref="SteelDivisionDivisions.Written"/>.
+    /// </summary>
+    public static bool Writes(GameTitle game, string detail) =>
+        GamesWrittenInFull.Contains(game) || (game == GameTitle.SteelDivision2 && SteelDivisionDivisions.Written.Contains(detail));
+
+    /// <summary>
+    /// Whether a game's divisions have a detail at all: Steel Division 2's have no type key, place in the list, history
+    /// or standout units (<see cref="SteelDivisionDivisions.Lacks"/>).
+    /// </summary>
+    public static bool Has(GameTitle game, string detail) =>
+        game == GameTitle.SteelDivision2 ? !SteelDivisionDivisions.Lacks.Contains(detail) : !SteelDivisionDivisions.Only.Contains(detail);
+
+    /// <summary>
+    /// Whether the Armory can write a change to a division's costs for a game: always for WARNO; for a game written in
+    /// part, only costs in a matrix of the division's own, as a change to costs other divisions share would change
+    /// theirs too.
+    /// </summary>
+    public static bool WritesCosts(GameTitle game, Division division) =>
+        GamesWrittenInFull.Contains(game)
+        || (Writes(game, DivisionDetail.Costs) && division.CostMatrixName != "" && division.CostsSharedWith == 0);
+
+    /// <summary>
+    /// Whether the Armory can write every change of a mod's division entry as rules for a game: for WARNO, always; for
+    /// a game written in part, only an entry that changes a game division's details it writes (<see cref="Writes"/>).
+    /// </summary>
+    public static bool WritesEverythingOf(ModDivision entry, GameTitle game) =>
+        GamesWrittenInFull.Contains(game) || DetailsOf(entry).All(detail => Writes(game, detail));
+
+    /// <summary>The details a mod's division entry changes (<see cref="DivisionDetail"/>).</summary>
+    public static IEnumerable<string> DetailsOf(ModDivision entry)
+    {
+        if (entry.IsNew || entry.Generation is not null) yield return DivisionDetail.New;
+        if (entry.Generation is not null) yield return DivisionDetail.Generated;
+        if (entry.Name != "") yield return DivisionDetail.Name;
+        if (entry.IsRemoved) yield return DivisionDetail.TakenOut;
+        if (entry.Country is not null || entry.Side is not null) yield return DivisionDetail.Nation;
+        if (entry.TypeToken is not null) yield return DivisionDetail.Type;
+        if (entry.Tags is not null) yield return DivisionDetail.Tags;
+        if (entry.ActivationPoints is not null) yield return DivisionDetail.Points;
+        if (entry.ListOrder is not null) yield return DivisionDetail.ListOrder;
+        if (entry.Summary is not null) yield return DivisionDetail.Summary;
+        if (entry.History is not null) yield return DivisionDetail.History;
+        if (entry.StandoutUnits is not null) yield return DivisionDetail.Standout;
+        if (entry.EmblemFile is not null) yield return DivisionDetail.EmblemPicture;
+        else if (entry.EmblemTexture is not null || entry.EmblemSource is not null) yield return DivisionDetail.Emblem;
+        if (entry.Costs is not null) yield return DivisionDetail.Costs;
+        if (entry.Phases is not null) yield return DivisionDetail.Phases;
+        if (entry.Economy is not null) yield return DivisionDetail.Economy;
+        if (entry.Added.Count > 0 || entry.Removed.Count > 0) yield return DivisionDetail.Units;
+        if (entry.BattlegroupCards is not null || entry.BattlegroupName != "" || entry.BattlegroupGeneration is not null) yield return DivisionDetail.Battlegroup;
+    }
+
     private readonly TextCatalog texts;
     private readonly Func<string, string> unitName;
+    private readonly GameTitle game;
+
+    /// <summary>The game's divisions, before the mod's changes: a new nation's flag is found among them.</summary>
+    private readonly IReadOnlyList<Division> gameDivisions;
+
     private readonly JsonArray rules = [];
 
     /// <summary>The battlegroup cards DeckPacks.ndf has, by descriptor, and those a rule made now adds: each is added once.</summary>
@@ -92,12 +158,26 @@ public sealed class DivisionChangeRules
     /// <summary>The change the rules made now are for (<see cref="ChangeKey"/>).</summary>
     private string changeBeingWritten = "";
 
-    private DivisionChangeRules(TextCatalog texts, Func<string, string> unitName, HashSet<string> cardsInFile)
+    private DivisionChangeRules(TextCatalog texts, Func<string, string> unitName, HashSet<string> cardsInFile, GameTitle game, IReadOnlyList<Division> gameDivisions)
     {
         this.texts = texts;
         this.unitName = unitName;
         this.cardsInFile = cardsInFile;
+        this.game = game;
+        this.gameDivisions = gameDivisions;
     }
+
+    /// <summary>Whether the rules are for a game whose every division change is written (<see cref="GamesWrittenInFull"/>).</summary>
+    private bool WritesInFull => GamesWrittenInFull.Contains(game);
+
+    /// <summary>
+    /// Whether a new division is written for the game: always for a game written in full; for Steel Division 2, one that
+    /// is not generated (<see cref="SteelDivisionNewDivision"/>).
+    /// </summary>
+    private bool WritesNew(ModDivision change) => WritesInFull || (game == GameTitle.SteelDivision2 && change.Generation is null);
+
+    /// <summary>The property of a division's summary, a text token: WARNO's SummaryTextToken, Steel Division 2's DivisionDescription.</summary>
+    private string SummaryProperty => game == GameTitle.SteelDivision2 ? SteelDivisionDivisions.SummaryProperty : "SummaryTextToken";
 
     /// <summary>
     /// The rules for a mod's division changes, in the order the Armory lists the divisions. A new division without a
@@ -116,16 +196,19 @@ public sealed class DivisionChangeRules
         HashSet<string> cards = gameCards is not null
             ? new HashSet<string>(gameCards, StringComparer.Ordinal)
             : new HashSet<string>(game.SelectMany(division => division.Battlegroup?.Cards ?? []).Select(card => card.PackName), StringComparer.Ordinal);
-        var writer = new DivisionChangeRules(texts, unitName, cards);
+        var writer = new DivisionChangeRules(texts, unitName, cards, mod.Game, game);
         // New divisions first: each copies its starting division's unit list as the game has it, before the changes
         // to that division (a unit put in is written as text, and could not be taken out of the copy again).
         foreach (ModDivision change in mod.Divisions.OrderBy(change => change.IsNew ? 0 : 1))
         {
             Division? start = game.FirstOrDefault(division => division.Descriptor == change.StartsFrom);
             if (start is null) continue;
+            // a new division is written for the games written in full, and Steel Division 2 in its own way (but for a
+            // generated one), never another game's way
+            if (change.IsNew && !writer.WritesNew(change)) continue;
             if (change.IsNew && change.DeckNumber is null) change.DeckNumber = NewDivisionStart.NextDeckNumber(game, mod);
             // a generated division's units are made by the export: none are shown here, so none are written one by one
-            Division shown = change.Apply(change.IsGenerated ? start with { Units = [] } : start);
+            Division shown = change.Apply(change.IsGenerated ? start with { Units = [] } : start, writer.Fronts);
             int before = writer.rules.Count;
             writer.Group(shown.Name);
             if (change.IsNew) writer.NewDivision(change, start, shown);
@@ -163,6 +246,23 @@ public sealed class DivisionChangeRules
         return found;
     }
 
+    /// <summary>The rules of the Armory presets for a file of the list (<see cref="ForFile(IEnumerable{JsonNode?}, string)"/>); none for one it never writes to (<see cref="WritesTo"/>).</summary>
+    public static JsonArray ForFile(IEnumerable<JsonNode?> rules, FileList.FileEntry entry) => WritesTo(entry) ? ForFile(rules, entry.Name) : [];
+
+    /// <summary>
+    /// Whether the Armory writes to a file of the list. Its rules name their file by name alone, and the Armory writes
+    /// only the game's Generated files; Steel Division 2 has files of the same names outside them (a short
+    /// Gameplay/Decks/DivisionCostMatrix.ndf beside Generated/Gameplay/Decks/DivisionCostMatrix.ndf), where a new
+    /// division's costs, added to both, were declared twice. So a file in a GameData folder but not under its Generated
+    /// folder is left alone; a file whose place shows neither (added on its own from elsewhere) is written to.
+    /// </summary>
+    public static bool WritesTo(FileList.FileEntry entry)
+    {
+        string[] folders = (entry.Source ?? entry.Folder).Split(['/', '\\', '>'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        int gameData = Array.FindLastIndex(folders, folder => folder.Equals("GameData", StringComparison.OrdinalIgnoreCase));
+        return gameData < 0 || folders.Skip(gameData + 1).Any(folder => folder.Equals("Generated", StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>
     /// The names of the files Armory rules are for (each rule names its own; group headings name none), as a set that
     /// ignores case. Looking each file up in it is quick, where <see cref="ForFile"/> copies the rules it finds.
@@ -196,6 +296,21 @@ public sealed class DivisionChangeRules
 
     private void ChangedDivision(ModDivision change, Division game, Division shown)
     {
+        // a game written in part gets the details it has properties for, and nothing else
+        if (!WritesInFull)
+        {
+            changeBeingWritten = "Name";
+            if (change.Name != "" && Writes(this.game, DivisionDetail.Name))
+                NameRule(game.Descriptor, shown.Name, Line(shown, "Divisions.Rule.Rename", ("from", game.Name), ("to", shown.Name)));
+            DetailRules(change, game, shown);
+            SteelDivisionUnitRules(game, shown);
+            // Steel Division 2 offers the divisions its DivisionList.ndf lists: one taken out is taken out of the list
+            changeBeingWritten = "TakenOut";
+            if (change.IsRemoved && Writes(this.game, DivisionDetail.TakenOut))
+                Edit(SteelDivisionDivisions.ListFile, SteelDivisionDivisions.ListDescriptor, Line(shown, "Divisions.Rule.TakenOutOfList"),
+                    [Action(SteelDivisionDivisions.ListDescriptor, "Remove [array]", "~/" + game.Descriptor)], game.Descriptor);
+            return;
+        }
         string division = game.Descriptor;
         changeBeingWritten = "Name";
         if (change.Name != "") NameRule(division, shown.Name, Line(shown, "Divisions.Rule.Rename", ("from", game.Name), ("to", shown.Name)));
@@ -214,51 +329,81 @@ public sealed class DivisionChangeRules
     {
         string division = shown.Descriptor;
         changeBeingWritten = "Points";
-        if (change.ActivationPoints is int points && points != before.ActivationPoints)
+        if (change.ActivationPoints is int points && points != before.ActivationPoints && Writes(game, DivisionDetail.Points))
             Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.Points", ("from", before.ActivationPoints), ("to", points)),
                 Action("MaxActivationPoints", "Set To [int, float, string, boolean]", Whole(points)));
         changeBeingWritten = "ListOrder";
-        if (change.ListOrder is double order && order != before.ListOrder)
+        if (change.ListOrder is double order && order != before.ListOrder && Writes(game, DivisionDetail.ListOrder))
             Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.ListOrder", ("from", Decimal(before.ListOrder)), ("to", Decimal(order))),
                 Action("InterfaceOrder", "Set To [int, float, string, boolean]", Decimal(order)));
         changeBeingWritten = "Type";
         // the type is one of the division's tags too, which the game may filter by: they change with it
-        if (change.TypeToken is string type && type != before.TypeToken)
+        if (change.TypeToken is string type && type != before.TypeToken && Writes(game, DivisionDetail.Type))
             Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.Type", ("from", before.TypeToken), ("to", type)),
                 Action("TypeToken", "Set To [int, float, string, boolean]", Quoted(type)),
                 Action("DivisionTags", "Set To [list, object]", TagsWithNation(before, shown)));
         changeBeingWritten = "Nation";
-        if ((change.Country is not null && change.Country != before.Country) || (change.Side is not null && change.Side != before.Side))
-            Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.Nation", ("from", before.Country), ("to", shown.Country)),
-                Action("CountryId", "Set To [int, float, string, boolean]", Quoted(shown.Country)),
-                Action("DivisionCoalition", "Set To [int, float, string, boolean]", "TWargameCoalition/" + shown.Side),
-                Action("DivisionTags", "Set To [list, object]", TagsWithNation(before, shown)));
+        bool nationChanged = (change.Country is not null && change.Country != before.Country) || (change.Side is not null && change.Side != before.Side);
+        if (nationChanged && Writes(game, DivisionDetail.Nation))
+            Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.Nation", ("from", before.Country), ("to", shown.Country)), NationActions(before, shown));
         changeBeingWritten = "Tags";
         // after the nation and type: tags set by hand take the place of those they give
-        if (change.Tags is not null && !change.Tags.SequenceEqual(before.Tags))
+        if (change.Tags is not null && !change.Tags.SequenceEqual(before.Tags) && Writes(game, DivisionDetail.Tags))
             Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.Tags", ("from", string.Join(", ", before.Tags)), ("to", string.Join(", ", shown.Tags))),
                 Action("DivisionTags", "Set To [list, object]", TagsText(shown.Tags)));
-        TextRule(change.Summary, before.Summary, division, shown, "summary", "SummaryTextToken", "Summary", "Divisions.Rule.Summary");
-        TextRule(change.History, before.History, division, shown, "history", "HistoryTextToken", "History", "Divisions.Rule.History");
+        if (Writes(game, DivisionDetail.Summary)) TextRule(change.Summary, before.Summary, division, shown, "summary", SummaryProperty, "Summary", "Divisions.Rule.Summary");
+        if (Writes(game, DivisionDetail.History)) TextRule(change.History, before.History, division, shown, "history", "HistoryTextToken", "History", "Divisions.Rule.History");
         changeBeingWritten = "Standout";
-        if (change.StandoutUnits is not null && !change.StandoutUnits.SequenceEqual(before.StandoutUnits))
+        if (change.StandoutUnits is not null && !change.StandoutUnits.SequenceEqual(before.StandoutUnits) && Writes(game, DivisionDetail.Standout))
             Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.Standout", ("units", string.Join(", ", shown.StandoutUnits.Select(unitName)))),
                 Action("StandoutUnits", "Set To [list, object]", UnitList(shown.StandoutUnits)));
         EmblemRules(change, before, shown);
-        if (change.Costs is not null)
+        PhaseAndEconomyRules(change, before, shown);
+        // costs other divisions share are not written for a game written in part: theirs would change too
+        if (change.Costs is not null && WritesCosts(game, before))
             foreach ((string category, List<int> costs) in change.Costs)
             {
                 IReadOnlyList<int> was = before.Costs.GetValueOrDefault(category) ?? [];
-                if (was.SequenceEqual(costs)) continue;
+                if (was.SequenceEqual(costs) || CostKey(before, category) is not string key) continue;
                 changeBeingWritten = "Costs:" + category;
                 Rule(new JsonObject
                 {
                     ["Name"] = Line(shown, "Divisions.Rule.Costs", ("category", category), ("from", Numbers(was)), ("to", Numbers(costs))),
                     ["Kind"] = "Edit",
                     ["Params"] = new JsonObject { ["Scope"] = "constants" },
-                    ["Actions"] = new JsonArray(Action(before.CostMatrixName + ActionApplier.PathSeparator + "Factory/" + category, "Set To [list, object]", "[" + Numbers(costs) + "]")),
+                    ["Actions"] = new JsonArray(Action(before.CostMatrixName + ActionApplier.PathSeparator + key, "Set To [list, object]", "[" + Numbers(costs) + "]")),
                 }, CostsFile, division, "Edit");
             }
+    }
+
+    /// <summary>
+    /// A cost category's key in a division's costs, as a rule's target names it: WARNO's "Factory/Tanks"; Steel
+    /// Division 2's the one its matrix has ("EDefaultFactories / tank"), null when it has none.
+    /// </summary>
+    private string? CostKey(Division division, string category) =>
+        game == GameTitle.SteelDivision2 ? SteelDivisionDivisions.CostKey(division, category) : "Factory/" + category;
+
+    /// <summary>
+    /// A new nation, as the game writes it: its code, its side and the tags they give; the side in WARNO's
+    /// DivisionCoalition, or in Steel Division 2's DivisionNationalite with the new nation's waving flag.
+    /// </summary>
+    private JsonObject[] NationActions(Division before, Division shown)
+    {
+        JsonObject country = Action("CountryId", "Set To [int, float, string, boolean]", Quoted(shown.Country));
+        JsonObject tags = Action("DivisionTags", "Set To [list, object]", TagsWithNation(before, shown));
+        if (game != GameTitle.SteelDivision2)
+            return [country, Action("DivisionCoalition", "Set To [int, float, string, boolean]", "TWargameCoalition/" + shown.Side), tags];
+        var actions = new List<JsonObject>
+        {
+            country,
+            Action(SteelDivisionDivisions.SideProperty, "Set To [int, float, string, boolean]", SteelDivisionDivisions.SidePrefix + shown.Side),
+            tags,
+        };
+        // the flag only when the nation changes: a side changed alone keeps the nation's flag
+        if (shown.Country != before.Country && before.FlagTextures.Count > 0)
+            actions.Add(Action(SteelDivisionDivisions.FlagProperty, "Set To [list, object]",
+                SteelDivisionDivisions.FlagText(SteelDivisionDivisions.FlagOf(shown.Country, before, gameDivisions))));
+        return [.. actions];
     }
 
     /// <summary>
@@ -269,7 +414,7 @@ public sealed class DivisionChangeRules
     {
         string division = shown.Descriptor;
         if (!change.IsNew) changeBeingWritten = "Emblem";
-        if (change.EmblemFile is string file)
+        if (change.EmblemFile is string file && Writes(game, DivisionDetail.EmblemPicture))
         {
             string texture = "Texture_Division_Emblem_" + CoreName(division);
             string path = EmblemFolder + CoreName(division) + ".png";
@@ -297,7 +442,7 @@ public sealed class DivisionChangeRules
             ((JsonObject)picture[ArmoryKey]!)[PicturePathKey] = path;
             return;
         }
-        if (change.EmblemTexture is string other && other != before.EmblemTexture)
+        if (change.EmblemFile is null && change.EmblemTexture is string other && other != before.EmblemTexture && Writes(game, DivisionDetail.Emblem))
         {
             JsonObject picture = Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.GameEmblem", ("texture", other == "" ? "–" : other)),
                 Action("EmblemTexture", "Set To [int, float, string, boolean]", Quoted(other)));
@@ -386,6 +531,11 @@ public sealed class DivisionChangeRules
     /// </summary>
     private void NewDivision(ModDivision change, Division start, Division shown)
     {
+        if (game == GameTitle.SteelDivision2)
+        {
+            SteelDivisionNewDivision(change, start, shown);
+            return;
+        }
         string division = shown.Descriptor;
         // a new division's rules go together: one alone would leave the division half made
         changeBeingWritten = "New";
@@ -718,10 +868,16 @@ public sealed class DivisionChangeRules
 
     /// <summary>
     /// The division's tags with its nation, side and type in place of those it started from, the rest kept:
-    /// ['DEFAULT', 'US', 'NATO', 'ARMORED']. A type of none leaves no type tag.
+    /// ['DEFAULT', 'US', 'NATO', 'ARMORED']; Steel Division 2's front with the new nation. A type of none leaves no
+    /// type tag.
     /// </summary>
-    private static string TagsWithNation(Division before, Division shown) =>
-        TagsText(ModDivision.TagsWith(before, shown.Country, shown.Side, shown.TypeToken));
+    private string TagsWithNation(Division before, Division shown) =>
+        TagsText(ModDivision.TagsWith(before, shown.Country, shown.Side, shown.TypeToken, Fronts));
+
+    /// <summary>Each nation's one front in the game's divisions (<see cref="SteelDivisionDivisions.FrontsOf"/>).</summary>
+    private IReadOnlyDictionary<string, string> Fronts => fronts ??= SteelDivisionDivisions.FrontsOf(gameDivisions);
+
+    private Dictionary<string, string>? fronts;
 
     /// <summary>Tags as the game writes them: ['DEFAULT', 'US', 'NATO'].</summary>
     private static string TagsText(IEnumerable<string> tags) => "[" + string.Join(", ", tags.Select(tag => "'" + tag + "'")) + "]";

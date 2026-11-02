@@ -215,6 +215,8 @@ public sealed class RowListView : Grid
     {
         var button = new Button { Content = symbol, ToolTip = tip, Margin = new Thickness(0, 0, gapAfter, 0), VerticalAlignment = VerticalAlignment.Center };
         button.SetResourceReference(StyleProperty, "IconButton");
+        // a symbol alone says nothing to a screen reader: the button is named by its tooltip
+        System.Windows.Automation.AutomationProperties.SetName(button, tip);
         button.Click += (_, _) => { model.ActiveRowList = List; run(); };
         return button;
     }

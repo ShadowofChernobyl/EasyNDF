@@ -5,7 +5,8 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="clr-namespace:EasyNdf.App.Controls"
-                    xmlns:units="clr-namespace:EasyNdf.App.Units">
+                    xmlns:units="clr-namespace:EasyNdf.App.Units"
+                    xmlns:t="clr-namespace:EasyNdf.App.Text">
 
     <!--
       Emoji in colour: WPF can only draw emoji as plain symbols from Windows' fonts, so the two the app shows are
@@ -199,7 +200,8 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsShaded" Value="True">
-                            <Setter TargetName="RowBack" Property="Background" Value="#14000000" />
+                            <!-- the theme's well colour, a shade off the panel's, so shading shows in light and dark themes alike -->
+                            <Setter TargetName="RowBack" Property="Background" Value="{DynamicResource well}" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="RowBack" Property="Background" Value="{DynamicResource sel}" />
@@ -399,14 +401,12 @@
       dimmed by opacity, as the HTML app's .pdim, so it suits the theme and the entry's state alike. Entries are ChoiceOption.
     -->
     <DataTemplate x:Key="DimmedChoice">
-        <StackPanel Orientation="Horizontal">
-            <TextBlock Text="{Binding Label}" />
-            <TextBlock Text="{Binding DimText}" Opacity="0.6" />
-        </StackPanel>
+        <!-- one text, so a long entry is cut with an ellipsis (and shown whole on hover) rather than clipped -->
+        <TextBlock TextTrimming="CharacterEllipsis">
+            <Run Text="{Binding Label, Mode=OneWay}" /><Run Text="{Binding DimText, Mode=OneWay}" Foreground="{DynamicResource muted}" />
+        </TextBlock>
     </DataTemplate>
 
-    <!-- ::placeholder: the browser's own grey, the same in every theme -->
-    <SolidColorBrush x:Key="PlaceholderGrey" Color="#757575" />
 
     <Style TargetType="TextBox">
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
@@ -422,7 +422,7 @@
                     <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
                         <Grid>
                             <!-- the placeholder, shown while the box is empty -->
-                            <TextBlock x:Name="Placeholder" Text="{TemplateBinding Tag}" Foreground="{StaticResource PlaceholderGrey}" Visibility="Collapsed"
+                            <TextBlock x:Name="Placeholder" Text="{TemplateBinding Tag}" Foreground="{DynamicResource muted}" Opacity="0.75" Visibility="Collapsed"
                                        Margin="{TemplateBinding Padding}" />
                             <!--
                               The text: WPF puts the box's padding around it itself, inside this part, and the text 2 pixels
@@ -439,6 +439,13 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <!-- switched off: dimmed, so it is plain it cannot be changed now (its tooltip says why, see Controls/OffReason.cs) -->
+        <Style.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5" />
+                <Setter Property="Foreground" Value="{DynamicResource muted}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!--
@@ -556,7 +563,7 @@
                 <ControlTemplate TargetType="TextBox">
                     <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
                         <Grid>
-                            <TextBlock x:Name="Placeholder" Text="{TemplateBinding Tag}" Foreground="{StaticResource PlaceholderGrey}" Visibility="Collapsed"
+                            <TextBlock x:Name="Placeholder" Text="{TemplateBinding Tag}" Foreground="{DynamicResource muted}" Opacity="0.75" Visibility="Collapsed"
                                        Margin="6,4" />
                             <ScrollViewer x:Name="PART_ContentHost" />
                             <!-- resize:vertical: the corner that makes the box taller or shorter -->
@@ -638,7 +645,7 @@
                                           Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
                         <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" VerticalOffset="1" AllowsTransparency="True" Focusable="False">
                             <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource well}" Padding="2"
-                                            MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                            MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxWidth="560">
                                 <!--
                                   scrolled by pixels (ScrollUnit above), as every other box is: by whole items, the
                                   wheel's 100 pixels a notch jumped 100 items, to the end of a long list
@@ -652,6 +659,13 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <!-- switched off: dimmed, so it is plain it cannot be changed now (its tooltip says why, see Controls/OffReason.cs) -->
+        <Style.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5" />
+                <Setter Property="Foreground" Value="{DynamicResource muted}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style TargetType="ComboBoxItem">
@@ -716,6 +730,13 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <!-- switched off: dimmed, so it is plain it cannot be changed now (its tooltip says why, see Controls/OffReason.cs) -->
+        <Style.Triggers>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5" />
+                <Setter Property="Foreground" Value="{DynamicResource muted}" />
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- button.icon: a small square button, such as "?" -->
@@ -736,10 +757,21 @@
     </Style>
 
     <!-- button.qhelp: the "?" that opens the help for a tab -->
+    <!--
+      One size and one place on every tab: 24 square (the height of the app's buttons), centred on its bar, 6 pixels after
+      what is before it. A page sets only where in its bar it goes, never its size or margin.
+    -->
     <Style x:Key="HelpButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
         <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Content" Value="?" />
-        <Setter Property="ToolTip" Value="Help for this tab" />
+        <Setter Property="ToolTip" Value="{t:Text Common.HelpButton.Tip}" />
+        <Setter Property="AutomationProperties.Name" Value="{t:Text Common.HelpButton.Name}" />
     </Style>
 
     <!--
@@ -748,6 +780,7 @@
     -->
     <Style x:Key="WikiNavItem" TargetType="ToggleButton">
         <Setter Property="Foreground" Value="{DynamicResource ink}" />
+        <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusOutline}" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Template">
@@ -805,6 +838,11 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource ink}" />
                             <Setter TargetName="Header" Property="TextElement.FontWeight" Value="Bold" />
+                        </Trigger>
+                        <!-- off (Battlegroups for a game with none): its name dimmed, as other switched-off controls' -->
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Header" Property="Opacity" Value="0.4" />
+                            <Setter Property="Cursor" Value="Arrow" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -1135,8 +1173,8 @@
     </Style>
 
     <!--
-      One of a group of choices in a popup, such as the Editor tab's file filter: a round mark, filled in the accent
-      colour when chosen, its text, and its Tag (how many it lists) dimmed at the right; on the hover colour under the
+      One of a group of choices in a popup, such as the Editor tab's file filter: a sunken square mark, as a tick box's,
+      with a square in the accent colour when chosen, its text, and its Tag (how many it lists) dimmed at the right; on the hover colour under the
       mouse, across the popup's whole width.
     -->
     <Style x:Key="PopupRadio" TargetType="RadioButton">
@@ -1151,8 +1189,8 @@
                     <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
                         <DockPanel>
                             <Grid Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,7,0">
-                                <Ellipse Fill="{DynamicResource well}" Stroke="{DynamicResource hi}" StrokeThickness="1" />
-                                <Ellipse x:Name="Dot" Margin="2.5" Fill="{DynamicResource accent}" Visibility="Collapsed" />
+                                <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}" />
+                                <Rectangle x:Name="Dot" Margin="3" Fill="{DynamicResource accent}" Visibility="Collapsed" />
                             </Grid>
                             <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding Tag}" Foreground="{DynamicResource muted}" FontSize="12" Margin="16,0,0,0"
                                        VerticalAlignment="Center" />

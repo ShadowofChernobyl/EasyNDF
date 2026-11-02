@@ -1,5 +1,6 @@
 using System.IO;
 using EasyNdf.Data.FileList;
+using EasyNdf.Data.Game;
 
 namespace EasyNdf.App.Files;
 
@@ -17,6 +18,12 @@ public sealed record FileToAdd(string Name, string Folder, string Source, Packed
     /// <param name="path">Its path.</param>
     /// <param name="folder">The folders it sat in under the folder it was added from; "" for a file added on its own.</param>
     public static FileToAdd OnDisk(string path, string folder = "") => new(Path.GetFileName(path), folder, Path.GetFullPath(path));
+
+    /// <summary>
+    /// The game it is for, once known: from the Source it came from, from where it is, or as the user said; null while
+    /// not known yet. A file added with none is WARNO's.
+    /// </summary>
+    public GameTitle? Game { get; init; }
 
     /// <summary>Its size in bytes.</summary>
     public long Size => ArchivedContent?.Length ?? new FileInfo(Source).Length;

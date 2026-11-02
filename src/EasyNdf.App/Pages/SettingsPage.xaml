@@ -36,7 +36,8 @@
         </controls:Bevel>
         <DockPanel Grid.Column="2">
             <!-- .bar.qtop: the ? at the right, in a row above the page, as Help's Back and Forward are -->
-            <Button DockPanel.Dock="Top" Style="{StaticResource HelpButton}" HorizontalAlignment="Right" Margin="0,0,0,6" controls:QuickHelp.Page="tab-settings" />
+            <Button DockPanel.Dock="Top" Style="{StaticResource HelpButton}" HorizontalAlignment="Right" Margin="0,0,0,6" controls:QuickHelp.Page="tab-settings"
+                    AutomationProperties.Name="{t:Text Settings.HelpButton.Name}" />
             <!-- the cards scroll in a sunken box, like the list on the left, so its edge shows where they are cut off -->
             <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
             <ScrollViewer x:Name="CardScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
@@ -271,7 +272,8 @@
                             <controls:WrapRow Gap="6">
                                 <Button Content="{t:Text Settings.ImportLanguage}" ToolTip="{t:Text Settings.ImportLanguage.Tip}" Click="ImportLanguageClicked" />
                                 <Button Content="{t:Text Settings.ExportLanguage}" ToolTip="{t:Text Settings.ExportLanguage.Tip}" Click="ExportLanguageClicked" />
-                                <Button x:Name="RemoveLanguageButton" Content="{t:Text Settings.RemoveLanguage}" ToolTip="{t:Text Settings.RemoveLanguage.Tip}" Click="RemoveLanguageClicked" />
+                                <Button x:Name="RemoveLanguageButton" Content="{t:Text Settings.RemoveLanguage}" ToolTip="{t:Text Settings.RemoveLanguage.Tip}" Click="RemoveLanguageClicked"
+                                        controls:OffReason.Text="{t:Text Settings.RemoveLanguage.Off}" />
                             </controls:WrapRow>
                         </controls:SettingRow>
                     </controls:SettingGrid>

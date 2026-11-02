@@ -84,6 +84,10 @@ public partial class ColourWindow : UserControl
     /// <summary>Puts the window with its right edge at a point, or in the middle; always whole inside the app's window.</summary>
     private void PlaceBox(Point? besideAt)
     {
+        // never larger than the app's window, less 8 pixels each side: in a small one the window scrolls inside
+        Size most = Room;
+        if (most.Width > 0) Box.MaxWidth = Math.Max(160, most.Width - 16);
+        if (most.Height > 0) Box.MaxHeight = Math.Max(120, most.Height - 16);
         Box.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         Size size = Box.DesiredSize;
         Size room = Room;

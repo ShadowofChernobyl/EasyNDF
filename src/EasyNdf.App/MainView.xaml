@@ -50,16 +50,18 @@
                             <Button x:Name="CloseButton" Style="{StaticResource CaptionButton}" Content="&#xE8BB;"
                                     ToolTip="{t:Text Main.Close.Tip}" Click="Close_Click" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}">
+                        <!-- the name keeps its room; the description after it is cut short with "…" in a narrow window -->
+                        <DockPanel VerticalAlignment="Center">
+                            <controls:Bevel DockPanel.Dock="Left" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}">
                                 <StackPanel Orientation="Horizontal">
                                     <controls:SpacedText Text="EasyNDF" Spacing="0.04" TextElement.FontWeight="Bold" TextElement.FontSize="13" Margin="6,0" VerticalAlignment="Center" />
                                     <Button x:Name="VersionTag" Style="{StaticResource VersionTag}"
                                             ToolTip="{t:Text Main.VersionTag.Tip}" />
                                 </StackPanel>
                             </controls:Bevel>
-                            <TextBlock Text="{t:Text Main.RuleBasedNdfEditing}" Foreground="{DynamicResource muted}" Margin="9.6,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
+                            <TextBlock Text="{t:Text Main.RuleBasedNdfEditing}" Foreground="{DynamicResource muted}" Margin="9.6,0,0,0" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
                     </DockPanel>
                 </controls:Bevel>
 
@@ -117,7 +119,7 @@
         <dialogs:FontWindow x:Name="FontWindow" />
         <!-- the Units tab's Add Units window -->
         <dialogs:AddUnitsWindow x:Name="AddUnits" />
-        <!-- the Armory's Generate Divisions window -->
+        <!-- the Armory's Division Generator -->
         <dialogs:GenerateDivisionsWindow x:Name="GenerateDivisions" />
         <dialogs:GenerationSettingsWindow x:Name="GenerationSettings" />
         <!-- the Armory's New Unit window -->

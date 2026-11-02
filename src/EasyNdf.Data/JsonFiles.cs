@@ -22,6 +22,18 @@ public static class JsonFiles
     public static string ToText(JsonNode? value) => value is null ? "null" : value.ToJsonString(Options);
 
     /// <summary>
+    /// JSON text made by <see cref="ToText"/> as it is when read back and made again: the same text, unless it holds half
+    /// of a pair of UTF-16 characters (a broken emoji, say), which is made as the escape of the replacement character
+    /// (<see cref="ReplacementEscape"/>), read back as that character itself, and then made as the character. Only such
+    /// text is read back and made again.
+    /// </summary>
+    public static string AsMadeAgain(string text) =>
+        text.Contains(ReplacementEscape, StringComparison.OrdinalIgnoreCase) ? ToText(Parse(text)) : text;
+
+    /// <summary>How <see cref="ToText"/> writes half of a pair of UTF-16 characters: the escape of the replacement character.</summary>
+    private const string ReplacementEscape = "\\uFFFD";
+
+    /// <summary>
     /// Parses JSON text. A byte order mark at the start is ignored, as the HTML app ignores it.
     /// Throws <see cref="JsonException"/> when the text is not JSON.
     /// </summary>
@@ -41,13 +53,18 @@ public static class JsonFiles
     /// If the app or the PC stops halfway, the old file is still whole. The new text is on the disk before it replaces
     /// the old file: otherwise a power cut just after could leave the new name on an empty file.
     /// </summary>
-    public static void Write(string path, JsonNode? value)
+    public static void Write(string path, JsonNode? value) => WriteText(path, ToText(value));
+
+    /// <summary>
+    /// Writes JSON text the app has already made with <see cref="ToText"/>, safely, as <see cref="Write"/> does.
+    /// </summary>
+    public static void WriteText(string path, string text)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         string temporary = path + ".saving";
         using (FileStream file = File.Create(temporary))
         {
-            file.Write(System.Text.Encoding.UTF8.GetBytes(ToText(value)));
+            file.Write(System.Text.Encoding.UTF8.GetBytes(text));
             file.Flush(flushToDisk: true);
         }
         File.Move(temporary, path, overwrite: true);

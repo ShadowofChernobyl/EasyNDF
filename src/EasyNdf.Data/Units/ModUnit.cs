@@ -39,7 +39,7 @@ public sealed class ModUnit : UnitValues
     /// <summary>
     /// A descriptor for a unit named <paramref name="name"/>: its letters and digits, with "_" between words, then its
     /// nation, as the game names its own: "Abrams Hunter" of the US is "Descriptor_Unit_EZ_Abrams_Hunter_US".
-    /// "_2", "_3"... are added before the nation when <paramref name="taken"/> has it already.
+    /// When <paramref name="taken"/> has it already, the number goes on the EZ: "Descriptor_Unit_EZ2_Abrams_Hunter_US".
     /// </summary>
     public static string NewDescriptor(string name, string nation, IReadOnlyCollection<string> taken)
     {
@@ -48,12 +48,21 @@ public sealed class ModUnit : UnitValues
             letters.Append(char.IsAsciiLetterOrDigit(letter) ? letter : '_');
         string words = string.Join("_", letters.ToString().Split('_', StringSplitOptions.RemoveEmptyEntries));
         if (words == "") words = "Unit";
-        string ending = nation == "" ? "" : "_" + nation;
-        string descriptor = DescriptorPrefix + words + ending;
+        string rest = words + (nation == "" ? "" : "_" + nation);
+        string descriptor = DescriptorPrefix + rest;
         for (int number = 2; taken.Contains(descriptor); number++)
-            descriptor = DescriptorPrefix + words + "_" + number + ending;
+            descriptor = "Descriptor_Unit_EZ" + number + "_" + rest;
         return descriptor;
     }
+
+    /// <summary>
+    /// A new unit's descriptor without "Descriptor_Unit_EZ_": "Abrams_Hunter_US"; a numbered one keeps its number,
+    /// "EZ2_Abrams_Hunter_US", so two units' names never meet.
+    /// </summary>
+    public static string ShortName(string descriptor) =>
+        descriptor.StartsWith(DescriptorPrefix, StringComparison.Ordinal) ? descriptor[DescriptorPrefix.Length..]
+        : descriptor.StartsWith("Descriptor_Unit_", StringComparison.Ordinal) ? descriptor["Descriptor_Unit_".Length..]
+        : descriptor;
 
     /// <summary>
     /// The next deck number free for a unit: one more than the highest the game's units and the mod's new ones have.

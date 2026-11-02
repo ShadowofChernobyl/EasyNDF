@@ -7,6 +7,7 @@ using EasyNdf.App.Dialogs;
 using EasyNdf.App.Mods;
 using EasyNdf.App.Rules;
 using EasyNdf.Data;
+using EasyNdf.Data.Game;
 using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Pages;
@@ -37,9 +38,156 @@ public partial class RulesPage
         KeyList list = IsInside(clicked, RuleBox) ? KeyList.Rules
             : IsInside(clicked, PresetBox, NewPresetButton, RenamePresetButton, DuplicatePresetButton, DeletePresetButton) ? KeyList.Presets
             : IsInside(clicked, ArmoryBox) ? KeyList.Armory
-            : IsInside(clicked, ModBox) ? KeyList.Mods
+            : IsInside(clicked, ModBox, RenameModButton, ExportModButton, WatermarkButton, DeleteModButton) ? KeyList.Mods
             : KeyList.None;
         SetActiveList(list);
+        // a click on a line gives its list the keyboard, so the arrow keys go on from there; a switch or button keeps it
+        if (BoxOf(list) is Bevel box && IsInside(clicked, box) && !IsInControl(clicked)) box.Focus();
+    }
+
+    /// <summary>The sunken box of a list that takes the keyboard; null for the Armory Changes list and for none.</summary>
+    private Bevel? BoxOf(KeyList list) => list switch
+    {
+        KeyList.Mods => ModBox,
+        KeyList.Presets => PresetBox,
+        KeyList.Rules => RuleBox,
+        _ => null,
+    };
+
+    /// <summary>Whether an element is a button, switch, text box or scroll bar, or inside one, which takes the keyboard itself.</summary>
+    private static bool IsInControl(DependencyObject? element)
+    {
+        for (DependencyObject? at = element; at is not null; at = at is Visual ? VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
+        {
+            if (at is System.Windows.Controls.Primitives.ButtonBase or System.Windows.Controls.Primitives.TextBoxBase or System.Windows.Controls.Primitives.ScrollBar) return true;
+            if (at is Bevel) return false;
+        }
+        return false;
+    }
+
+    /// <summary>A list got the keyboard, by a click or by Tab: the keys act on it, and its edge shows in the accent colour.</summary>
+    private void ListGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        KeyList list = sender == ModBox ? KeyList.Mods : sender == PresetBox ? KeyList.Presets : KeyList.Rules;
+        if (activeList != list) SetActiveList(list);
+    }
+
+    /// <summary>
+    /// The keys of the list that has the keyboard: Up and Down move to the line above or below (Shift with them selects
+    /// on, in the rule set and rule lists), Home and End go to the first or last line, Enter opens the line (a rule opens
+    /// its window; a rule set hands the keyboard to its rules) and Space switches a mod or the selected rules on or off.
+    /// The other keys go on to the tab's shortcuts.
+    /// </summary>
+    private void ListKeyDown(object sender, KeyEventArgs e)
+    {
+        // a switch or button in a line takes Space and Enter itself (Space presses it); the arrows still move the list
+        bool fromLine = !ReferenceEquals(e.OriginalSource, sender);
+        if (fromLine && e.Key is Key.Space or Key.Enter) return;
+        ModifierKeys keys = Keyboard.Modifiers;
+        if (keys.HasFlag(ModifierKeys.Control) || keys.HasFlag(ModifierKeys.Alt)) return;
+        bool shift = keys.HasFlag(ModifierKeys.Shift);
+        bool handled = sender == ModBox ? ModListKey(e.Key)
+            : sender == PresetBox ? PresetListKey(e.Key, shift)
+            : RuleListKey(e.Key, shift);
+        if (!handled) return;
+        e.Handled = true;
+        // the lines are made again as the selection moves, the switch that had the keyboard with them: the list takes it
+        if (fromLine) ((UIElement)sender).Focus();
+    }
+
+    /// <summary>Where a key moves to in a list of a number of lines from a line (-1 for none): the line above, below, first or last; null for any other key.</summary>
+    private static int? StepTo(Key key, int at, int count) => key switch
+    {
+        Key.Up => Math.Max(0, at - 1),
+        Key.Down => Math.Min(count - 1, at + 1),
+        Key.Home => 0,
+        Key.End => count - 1,
+        _ => null,
+    };
+
+    /// <summary>A key in the mod list: the arrows open the mod above or below; Space switches the open mod on or off.</summary>
+    private bool ModListKey(Key key)
+    {
+        IReadOnlyList<Mod> mods = ModStack.Ordered;
+        if (mods.Count == 0) return false;
+        int at = mods.ToList().IndexOf(Model.OpenMod);
+        if (key == Key.Space)
+        {
+            ModStack.SetOn(Model.OpenMod, !ModStack.IsOn(Model.OpenMod));
+            ShowMods();
+            return true;
+        }
+        // a mod opens as soon as it is chosen: Enter hands the keyboard on to its rule sets
+        if (key == Key.Enter)
+        {
+            PresetBox.Focus();
+            return true;
+        }
+        if (StepTo(key, at, mods.Count) is not int to) return false;
+        if (to != at) Model.OpenModNamed(mods[to].Name);
+        BringLineIntoView(ModLines, to);
+        return true;
+    }
+
+    /// <summary>A key in the rule set list: the arrows open the rule set above or below; Enter hands the keyboard to its rules.</summary>
+    private bool PresetListKey(Key key, bool shift)
+    {
+        IReadOnlyList<ModPreset> presets = Model.Presets;
+        if (presets.Count == 0) return false;
+        int at = Model.OpenPreset is ModPreset open ? presets.ToList().IndexOf(open) : -1;
+        if (key == Key.Enter)
+        {
+            RuleBox.Focus();
+            return true;
+        }
+        if (StepTo(key, at, presets.Count) is not int to) return false;
+        Model.ClickPreset(presets[to], control: false, shift: shift);
+        BringLineIntoView(PresetLines, to);
+        return true;
+    }
+
+    /// <summary>A key in the rule list: the arrows select the rule above or below; Enter opens it; Space switches the selected rules on or off.</summary>
+    private bool RuleListKey(Key key, bool shift)
+    {
+        IReadOnlyList<RuleRow> rows = Model.RuleRows;
+        if (rows.Count == 0) return false;
+        int at = rows.ToList().FindIndex(row => row.Index == Model.CurrentRule);
+        switch (key)
+        {
+            case Key.Enter:
+                if (Model.SelectedRules.Count == 1) { Model.SelectOnly(Model.SelectedRules[0]); OpenRuleWindow(); }
+                return true;
+            case Key.Space:
+                if (at >= 0) Model.SetSelectedRulesOn(!rows[at].IsOn);
+                return true;
+        }
+        if (StepTo(key, at, rows.Count) is not int to) return false;
+        Model.ClickRule(rows[to].Index, control: false, shift: shift);
+        BringLineIntoView(RuleLines, to);
+        return true;
+    }
+
+    /// <summary>
+    /// Scrolls a list so a line shows. The rule list makes only the lines in view, so a line not made yet is brought in
+    /// by its panel, which makes it.
+    /// </summary>
+    private static void BringLineIntoView(System.Windows.Controls.ItemsControl list, int index)
+    {
+        list.UpdateLayout();
+        if (list.ItemContainerGenerator.ContainerFromIndex(index) is FrameworkElement line) { line.BringIntoView(); return; }
+        if (PanelOf(list) is System.Windows.Controls.VirtualizingStackPanel panel) panel.BringIndexIntoViewPublic(index);
+    }
+
+    /// <summary>The panel that holds a list's lines.</summary>
+    private static System.Windows.Controls.VirtualizingStackPanel? PanelOf(DependencyObject element)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(element, i);
+            if (child is System.Windows.Controls.VirtualizingStackPanel panel) return panel;
+            if (PanelOf(child) is { } found) return found;
+        }
+        return null;
     }
 
     /// <summary>Whether an element is one of the areas given, or inside one.</summary>
@@ -158,7 +306,7 @@ public partial class RulesPage
         else if (AppData.Current.Settings["confirmDelete"]?.GetValue<bool>() != false)
         {
             string question = picked.Count == 1 ? Texts.Get("Rules.Rule.DeleteAsk", ("rule", Model.RuleName(picked[0]))) : Texts.Get("Rules.Rule.DeleteAskSeveral", ("count", picked.Count));
-            if (!await Messages.Confirm(question, "OK")) return false;
+            if (!await Messages.Confirm(question, Texts.Get("Rules.Delete"))) return false;
         }
         List<int> places = [.. rules.Select(rule => Model.Rules.IndexOf(rule)).Where(place => place >= 0).Order()];
         if (places.Count == 0) return false;
@@ -350,6 +498,9 @@ public partial class RulesPage
                 new MenuChoice(Texts.Get(isOn ? "Rules.Menu.ModOff" : "Rules.Menu.ModOn"), () => { ModStack.SetOn(mod, !isOn); ShowMods(); }),
                 new MenuChoice(Texts.Get("Rules.Menu.MoveModUp"), () => MoveOpenMod(-1), IsEnabled: !ReferenceEquals(ordered[0], mod), Key: "Ctrl+↑"),
                 new MenuChoice(Texts.Get("Rules.Menu.MoveModDown"), () => MoveOpenMod(+1), IsEnabled: !ReferenceEquals(ordered[^1], mod), Key: "Ctrl+↓"),
+                // the games listed under it, the mod's own ticked: a list, not a switch, as more games may come
+                MenuChoice.Submenu(Texts.Get("Rules.Menu.Game"), [.. GameTitle.All.Select(game => (MenuChoice?)new MenuChoice(game.Name,
+                    () => { Model.SetModGame(mod, game); ShowMods(); }, Tip: Texts.Get("Rules.Menu.Game.Tip", ("game", game.Name)), Symbol: mod.Game == game ? "✓" : ""))]),
                 Menus.Line,
                 new MenuChoice(Texts.Get("Common.Menu.Rename"), () => RenameModClicked(this, e), Key: "F2"),
                 new MenuChoice(Texts.Get("Rules.Menu.MakeCopy"), () => CopyModClicked(this, e)),

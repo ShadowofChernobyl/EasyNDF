@@ -53,6 +53,7 @@ public partial class FilterWindow : UserControl
     public async Task Open(IDescriptorFilterOwner viewer)
     {
         owner = viewer;
+        before = viewer.Filter.Copy();
         saved = DescriptorFilterState.LoadSaved();
         chosen = Filter.Rules.Count > 0 ? 0 : -1;
         CentreBesidePageScrollbar();
@@ -123,14 +124,18 @@ public partial class FilterWindow : UserControl
         RuleList.Children.Clear();
         if (rules.Count == 0)
         {
-            RuleList.Children.Add(new TextBlock { Text = Texts.Get("Editor.Filter.NoConditionsAdd"), Margin = new Thickness(6), Foreground = (System.Windows.Media.Brush)FindResource("muted") });
+            var none = new TextBlock { Text = Texts.Get("Editor.Filter.NoConditionsAdd"), Margin = new Thickness(6), TextWrapping = TextWrapping.Wrap };
+            // colours by reference, so a theme chosen while the window is open reaches them
+            none.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+            RuleList.Children.Add(none);
             return;
         }
         for (int i = 0; i < rules.Count; i++)
         {
             FilterRule rule = rules[i];
             int index = i;
-            var row = new DockPanel { Margin = new Thickness(0), Background = i == chosen ? (System.Windows.Media.Brush)FindResource("sel") : System.Windows.Media.Brushes.Transparent, Tag = index };
+            var row = new DockPanel { Margin = new Thickness(0), Background = System.Windows.Media.Brushes.Transparent, Tag = index };
+            if (i == chosen) row.SetResourceReference(Panel.BackgroundProperty, "sel");
             var on = new CheckBox { Style = (Style)FindResource("Tick"), IsChecked = rule.On, ToolTip = Texts.Get("Editor.Filter.UseCondition.Tip"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 2, 4, 2) };
             on.Click += (_, _) =>
             {
@@ -139,6 +144,7 @@ public partial class FilterWindow : UserControl
                 Changed();
             };
             var delete = new Button { Style = (Style)FindResource("IconButton"), Content = "×", ToolTip = Texts.Get("Common.Menu.Delete"), Margin = new Thickness(4, 2, 4, 2) };
+            System.Windows.Automation.AutomationProperties.SetName(delete, Texts.Get("Common.Menu.Delete"));
             delete.Click += (_, _) =>
             {
                 chosen = index;
@@ -160,13 +166,13 @@ public partial class FilterWindow : UserControl
     private TextBlock Sentence(FilterRule rule)
     {
         var text = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 4, 2, 4) };
-        var muted = (System.Windows.Media.Brush)FindResource("muted");
         bool allDim = !rule.On;
+        // the font and colour by reference, so a theme chosen while the window is open reaches them
         Run Part(string words, bool mono, bool dim)
         {
             var run = new Run(words);
-            if (mono) run.FontFamily = (System.Windows.Media.FontFamily)FindResource("mono");
-            if (dim || allDim) run.Foreground = muted;
+            if (mono) run.SetResourceReference(TextElement.FontFamilyProperty, "mono");
+            if (dim || allDim) run.SetResourceReference(TextElement.ForegroundProperty, "muted");
             return run;
         }
         bool named = rule.Name != "";
@@ -178,9 +184,13 @@ public partial class FilterWindow : UserControl
         // the spaces between the parts are in the plain font, as on the page, where they sit between the parts
         text.Inlines.Add(Part(rule.Property != "" ? rule.Property : Texts.Get("Editor.Filter.NoProperty"), mono: true, dim: named));
         text.Inlines.Add(Part(" " + rule.Test, mono: false, dim: true));
-        if (rule.NeedsNoValue) return text;
-        text.Inlines.Add(new Run(" "));
-        text.Inlines.Add(Part(rule.Value == "" ? "\"\"" : rule.Value, mono: true, dim: named));
+        if (!rule.NeedsNoValue)
+        {
+            text.Inlines.Add(new Run(" "));
+            text.Inlines.Add(Part(rule.Value == "" ? "\"\"" : rule.Value, mono: true, dim: named));
+        }
+        // the sentence is made of parts, which the tooltip for cut-short text does not read, so it is given whole here
+        text.ToolTip = string.Concat(text.Inlines.OfType<Run>().Select(run => run.Text));
         return text;
     }
 
@@ -545,6 +555,21 @@ public partial class FilterWindow : UserControl
     // ---- closing ----
 
     private void CloseClicked(object sender, RoutedEventArgs e) => Close();
+
+    /// <summary>The filter as it was when the window opened, for Cancel.</summary>
+    private DescriptorFilterState? before;
+
+    /// <summary>Cancel: the filter goes back to what it was when the window opened, and the window closes.</summary>
+    private void CancelClicked(object sender, RoutedEventArgs e)
+    {
+        if (owner is not null && before is not null)
+        {
+            Filter.Gate = before.Gate;
+            Filter.Rules = [.. before.Rules.Select(rule => rule.Copy())];
+            owner.FilterChanged();
+        }
+        Close();
+    }
 
     private void KeyPressed(object sender, KeyEventArgs e)
     {
