@@ -49,6 +49,7 @@ public sealed class SourceBar : Bevel
         label.Text = Texts.Get("Files.Source");
         addButton.Content = Texts.Get("Files.Source.AddItsFiles");
         addButton.ToolTip = Texts.Get("Files.Source.AddItsFiles.Tip");
+        ShowChosen();
     }
 
     /// <summary>Raised by Add Its Files.</summary>
@@ -86,6 +87,8 @@ public sealed class SourceBar : Bevel
         path.Text = folder ?? "";
         path.ToolTip = folder;
         addButton.IsEnabled = folder is not null && !runGoing;
+        // why it is off, as its tooltip while it is
+        OffReason.SetText(addButton, runGoing ? Texts.Get("Files.Off.Busy") : Texts.Get("Files.Source.Off.NoSource"));
     }
 
     /// <summary>"✓ 17 of its files listed": how many files of the source the list holds; nothing for none.</summary>

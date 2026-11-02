@@ -16,8 +16,12 @@ public partial class MessageOverlay : UserControl
     public MessageOverlay()
     {
         InitializeComponent();
-        // 36rem wide, or 92% of the app's width when the app is narrower than that.
-        SizeChanged += (_, _) => Box.Width = Math.Min(576, ActualWidth * 0.92);
+        // 36rem wide, or 92% of the app's width when the app is narrower than that; never taller than 92% of the app
+        SizeChanged += (_, _) =>
+        {
+            Box.Width = Math.Min(576, ActualWidth * 0.92);
+            Box.MaxHeight = Math.Max(120, ActualHeight * 0.92);
+        };
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape) { e.Handled = true; Close(DialogChoice.Cancel); }
@@ -42,6 +46,8 @@ public partial class MessageOverlay : UserControl
         Message.Text = message;
         Extra.Content = options.Extra;
         Extra.Visibility = options.Extra is null ? Visibility.Collapsed : Visibility.Visible;
+        UnderInput.Content = options.UnderInput;
+        UnderInput.Visibility = options.UnderInput is null ? Visibility.Collapsed : Visibility.Visible;
         Input.Visibility = options.Input is null ? Visibility.Collapsed : Visibility.Visible;
         Input.Tag = options.Placeholder;
         needsInput = options.NeedsInput;
@@ -111,6 +117,7 @@ public partial class MessageOverlay : UserControl
         if (!IsOpen) return;
         Visibility = Visibility.Collapsed;
         Extra.Content = null;
+        UnderInput.Content = null;
         TaskCompletionSource<DialogAnswer>? waiting = answer;
         answer = null;
         waiting?.SetResult(new DialogAnswer(choice, Check.IsChecked == true, Input.Text));

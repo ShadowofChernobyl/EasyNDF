@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
 using EasyNdf.App.Text;
 using EasyNdf.Data.Units;
 
@@ -28,7 +30,48 @@ public sealed class SourceChoice : ComboBox
         // the games are looked for the first time any Source list is shown
         IsVisibleChanged += (_, _) => { if (IsVisible) _ = selection?.LookOnceAsync(); };
         ToolTip = Texts.Get("Units.SourceChoice.Tip");
-        Texts.LanguageChanged += () => { ToolTip = Texts.Get("Units.SourceChoice.Tip"); Fill(); };
+        Texts.LanguageChanged += Fill;
+        SizeChanged += (_, _) => FitNames();
+        PreviewMouseWheel += WheelPassesBy;
+    }
+
+    /// <summary>
+    /// The mouse wheel over the closed list scrolls the page, as over anything else, and never changes the source. A
+    /// ComboBox that has keyboard focus takes the wheel as "the next or previous item", and the list keeps focus after
+    /// a source is chosen in it: scrolling up over it went back from Steel Division 2 to WARNO, the item above, and read
+    /// that game again, with no sign of why.
+    /// </summary>
+    private void WheelPassesBy(object sender, MouseWheelEventArgs e)
+    {
+        if (IsDropDownOpen) return;
+        e.Handled = true;
+        if (VisualTreeHelper.GetParent(this) is UIElement parent)
+            parent.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta) { RoutedEvent = MouseWheelEvent, Source = this });
+    }
+
+    /// <summary>The room the dropdown's arrow and edges take beside the name shown in the box.</summary>
+    private const double ArrowRoom = 30;
+
+    /// <summary>The mods' names in the list, cut short to the box's width (see <see cref="FitNames"/>).</summary>
+    private readonly List<TextBlock> modNames = [];
+
+    /// <summary>
+    /// A mod's name, with its game, no wider than the box: the box shows a picture of the item chosen, so a longer one
+    /// ran past the arrow and was cut off with no way to read it. Cut short with "…", it shows whole on hover, and the
+    /// box's tooltip names it whole.
+    /// </summary>
+    private void FitNames()
+    {
+        double room = Math.Max(40, ActualWidth - ArrowRoom);
+        foreach (TextBlock name in modNames) name.MaxWidth = room;
+    }
+
+    /// <summary>The box's tooltip: the source chosen, whole, then what the list is for.</summary>
+    private void ShowTip()
+    {
+        UnitSource? chosen = selection?.Chosen;
+        string what = Texts.Get("Units.SourceChoice.Tip");
+        ToolTip = chosen is null ? what : (chosen.Mod is null ? chosen.Name : chosen.Name + "  " + chosen.Game.Name) + "\n" + what;
     }
 
     /// <summary>The sources the list shows and chooses from.</summary>
@@ -52,6 +95,8 @@ public sealed class SourceChoice : ComboBox
     {
         filling = true;
         Items.Clear();
+        modNames.Clear();
+        ShowTip();
         UnitSource? chosen = selection?.Chosen;
         IReadOnlyList<UnitSource> sources = selection?.Sources ?? [];
         if (chosen is null) Items.Add(new ComboBoxItem { Content = Texts.Get("Units.ChooseSource"), Tag = "none", IsEnabled = false });
@@ -66,12 +111,14 @@ public sealed class SourceChoice : ComboBox
                 var game = new Run("  " + mod.Game.Name);
                 game.SetResourceReference(TextElement.ForegroundProperty, "muted");
                 // never bold: the box shows a picture of the chosen item, which the list draws bold while it is chosen
-                var name = new TextBlock { Inlines = { new Run(mod.Name), game }, FontWeight = FontWeights.Normal };
+                var name = new TextBlock { Inlines = { new Run(mod.Name), game }, FontWeight = FontWeights.Normal, TextTrimming = TextTrimming.CharacterEllipsis };
+                modNames.Add(name);
                 Items.Add(new ComboBoxItem { Content = name, Tag = mod, ToolTip = mod.Folder });
             }
         }
         Items.Add(new ComboBoxItem { Content = Texts.Get("Units.ChooseGameFolder"), Tag = "choose", ToolTip = Texts.Get("Units.ChooseGameFolder.Tip") });
         SelectedItem = chosen is null ? Items[0] : ItemOf(chosen);
+        FitNames();
         filling = false;
     }
 

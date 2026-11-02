@@ -4,19 +4,31 @@ using System.Windows.Documents;
 using EasyNdf.App.Files;
 using EasyNdf.App.Mods;
 using EasyNdf.App.Text;
+using EasyNdf.Data;
+using EasyNdf.Data.Game;
 
 namespace EasyNdf.App.Units;
 
 /// <summary>
 /// "Show mods' changes", under the Armory's Source: on, the Armory shows the values as the mods that are on make them,
-/// run in the Mods tab's order; off, as the source has them, with no mod's changes. Under the switch, the mods that are
-/// on, whole names only, then "2 more" (as the Files tab's Mods column); a click lists them all. The Units and Weapons
-/// sub-tabs each have one; both show the same setting.
+/// run in the Mods tab's order; off, as the source has them, with no mod's changes. Only the mods of the source's game
+/// run on its files, so only those are shown. Under the switch, those mods, whole names only, then "2 more" (as the
+/// Files tab's Mods column); a click lists them all. The Units and Weapons sub-tabs each have one; both show the same
+/// setting.
 /// </summary>
 public sealed class ModChangesSwitch : StackPanel
 {
     /// <summary>Raised when the switch is turned on or off, in any of the Armory's sub-tabs.</summary>
     public static event Action? Changed;
+
+    /// <summary>The game of the Armory's source, set by the main view; null while none is chosen.</summary>
+    public static Func<GameTitle?> SourceGame { get; set; } = () => null;
+
+    /// <summary>Raised when another source is chosen: the mods listed are those of its game.</summary>
+    private static event Action? SourceChanged;
+
+    /// <summary>Another source was chosen: every switch lists the mods of its game.</summary>
+    public static void ShowSourceChanged() => SourceChanged?.Invoke();
 
     private readonly CheckBox toggle = new();
     private readonly ModsCell names = new() { Padding = new Thickness(0, 3, 0, 0) };
@@ -42,6 +54,7 @@ public sealed class ModChangesSwitch : StackPanel
         // the tabs live as long as the app, so the switch listens for as long
         AppData.Current.ModsChanged += _ => Show();
         Changed += Show;
+        SourceChanged += Show;
         Show();
     }
 
@@ -53,12 +66,13 @@ public sealed class ModChangesSwitch : StackPanel
         Changed?.Invoke();
     }
 
-    /// <summary>The switch as the setting is, and the mods that are on under it, or "As the source has them".</summary>
+    /// <summary>The switch as the setting is, and the mods of the source's game that are on under it, or "As the source has them".</summary>
     private void Show()
     {
         bool on = Pages.UnitsPage.ArmoryShowsModChanges;
         toggle.IsChecked = on;
-        List<string> running = [.. ModStack.Running.Select(mod => mod.Name)];
+        IReadOnlyList<Mod> mods = SourceGame() is GameTitle game ? ModStack.RunningFor(game) : ModStack.Running;
+        List<string> running = [.. mods.Select(mod => mod.Name)];
         names.Show(running, Texts.Get("Units.ModChanges.Mods.Tip"));
         names.Visibility = on && running.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         asSource.Visibility = names.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;

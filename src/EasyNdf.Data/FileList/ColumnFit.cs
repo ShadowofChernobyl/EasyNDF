@@ -44,19 +44,19 @@ public static class ColumnFit
     /// <param name="groupedByFolder">Whether "Group by folder" is on: then rows have no second line for their folder.</param>
     /// <param name="available">The room there is for the columns, in pixels.</param>
     /// <param name="width">Measures text.</param>
-    /// <param name="noExportFolderText">What a row without an export folder says (the tests give the HTML app's words).</param>
     public static Dictionary<FileColumn, int> Widths(IReadOnlyList<FileColumn> shown, IReadOnlyList<FileEntry> rows,
-        bool groupedByFolder, int available, TextWidth width, string? noExportFolderText = null)
+        bool groupedByFolder, int available, TextWidth width)
     {
         // The longest texts of each kind, by number of characters, as the HTML app picks them.
-        string name = "", folder = "", status = "", exportFolder = noExportFolderText ?? NoExportFolderText, lines = "", mods = "";
-        bool anyFolder = false, anyExportFolder = false;
+        string name = "", folder = "", status = "", exportFolder = "", lines = "", mods = "";
+        bool anyFolder = false, anyWithoutExportFolder = false;
         foreach (FileEntry row in rows)
         {
             name = Longest(name, row.Source is not null ? row.Name : DataTexts.Get("Files.Row.NotLoaded", ("file", row.Name)));
             if (row.Folder != "") { anyFolder = true; folder = Longest(folder, row.Folder); }
             status = Longest(status, FileStatus.Of(row).Text);
-            if (row.ExportFolder is not null) { anyExportFolder = true; exportFolder = Longest(exportFolder, FileListView.FolderName(row.ExportFolder)); }
+            if (FileListView.FileFolderOf(row) is string fileFolder) exportFolder = Longest(exportFolder, FileListView.FolderName(fileFolder));
+            else anyWithoutExportFolder = true;
             if (row.Lines is int count) lines = Longest(lines, FileStatus.Count(count));
             mods = Longest(mods, FileListView.ModsText(row));
         }
@@ -75,7 +75,8 @@ public static class ColumnFit
             [FileColumn.Modified] = width("2026-00-00 00:00", ListFont.Interface) + 16,
             // as wide as the longest list of mods, up to a set width: past it, the cell ends in "2 more" (see the app's ModsCell)
             [FileColumn.Mods] = Math.Clamp(width(mods, ListFont.Interface) + 18, 130, MostModsWidth),
-            [FileColumn.ExportFolder] = 76 + width(exportFolder, ListFont.Interface) + (anyExportFolder ? 30 : 0) + 18,
+            // "Browse..." on a row without an export folder, the folder's name on one with it
+            [FileColumn.ExportFolder] = Math.Max(anyWithoutExportFolder ? BrowseWidth : 0, exportFolder != "" ? width(exportFolder, ListFont.Interface) : 0) + 18,
             [FileColumn.Status] = Math.Max(width(status, ListFont.Interface) + 18, 180),
         };
 
@@ -93,7 +94,7 @@ public static class ColumnFit
         }
         int StatusSmallest() => Math.Max(180, (int)Math.Ceiling(widths.GetValueOrDefault(FileColumn.Status) * 0.55));
         if (twoLines) GiveWay(FileColumn.Status, StatusSmallest());
-        GiveWay(FileColumn.ExportFolder, 76 + 64);
+        GiveWay(FileColumn.ExportFolder, BrowseWidth + 18);
         GiveWay(FileColumn.Mods, 130);
         GiveWay(FileColumn.File, Math.Max(170, width(name, ListFont.Code) + 18));
         if (!twoLines) GiveWay(FileColumn.Status, StatusSmallest());
@@ -105,6 +106,9 @@ public static class ColumnFit
     /// download; the desktop app's Run export asks for a folder instead (chosen on purpose).
     /// </summary>
     public static string NoExportFolderText => DataTexts.Get("Files.Row.NotSet");
+
+    /// <summary>The width of the "Browse..." button a row without an export folder shows.</summary>
+    private const int BrowseWidth = 70;
 
     /// <summary>The longer of two texts by number of characters; the first when they are as long.</summary>
     private static string Longest(string a, string b) => b.Length > a.Length ? b : a;

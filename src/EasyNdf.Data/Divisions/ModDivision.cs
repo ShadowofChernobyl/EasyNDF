@@ -52,6 +52,12 @@ public sealed class ModDivision
     /// <summary>The activation points a deck of it has.</summary>
     public int? ActivationPoints { get; set; }
 
+    /// <summary>Its phases (Steel Division 2: when each starts, its income and bonus); null to keep its starting division's.</summary>
+    public List<DivisionPhase>? Phases { get; set; }
+
+    /// <summary>Its income choices (Steel Division 2: a DivisionEconomy list's name); null to keep its starting division's.</summary>
+    public string? Economy { get; set; }
+
     /// <summary>Its place in the game's list of divisions.</summary>
     public double? ListOrder { get; set; }
 
@@ -141,7 +147,12 @@ public sealed class ModDivision
     /// new division, the units removed taken out, the units it changes changed in their place, and the units added put
     /// in (after those kept, in the order added).
     /// </summary>
-    public Division Apply(Division start)
+    /// <param name="start">The division it starts from.</param>
+    /// <param name="fronts">
+    /// Each nation's front, where the game's divisions of it are all on one (<see cref="SteelDivisionDivisions.FrontsOf"/>):
+    /// a new nation takes its front tag with it. None in WARNO.
+    /// </param>
+    public Division Apply(Division start, IReadOnlyDictionary<string, string>? fronts = null)
     {
         IEnumerable<DivisionUnit> kept = KeepsUnits ? start.Units.Where(unit => !Removed.Contains(unit.Unit)) : [];
         List<DivisionUnit> units = [.. kept.Select(unit => Added.FirstOrDefault(added => added.Unit == unit.Unit) ?? unit)];
@@ -158,7 +169,7 @@ public sealed class ModDivision
                 RuleName = Descriptor + "_Rule",
                 Units = units,
             };
-        return WithDetails(applied) with { Battlegroup = BattlegroupOf(start) };
+        return WithDetails(applied, fronts) with { Battlegroup = BattlegroupOf(start) };
     }
 
     /// <summary>
@@ -189,13 +200,19 @@ public sealed class ModDivision
     /// <summary>
     /// The tags a division has with another nation, side or type: those it had in place of the old ones, the rest
     /// kept, as ['DEFAULT', 'US', 'NATO', 'ARMORED']. A type of none leaves no type tag; DEFAULT (multiplayer) is kept.
+    /// A division without DEFAULT is given none: Steel Division 2 lists the divisions it offers in DivisionList.ndf,
+    /// and many of them have no DEFAULT tag. Steel Division 2's front tag (East or West) becomes the new nation's,
+    /// when the game's divisions of that nation are all on one front, so the game lists the division with them.
     /// </summary>
-    public static List<string> TagsWith(Division before, string country, string side, string type)
+    /// <param name="fronts">Each nation's one front (<see cref="SteelDivisionDivisions.FrontsOf"/>); none in WARNO.</param>
+    public static List<string> TagsWith(Division before, string country, string side, string type, IReadOnlyDictionary<string, string>? fronts = null)
     {
+        string? front = country != before.Country ? fronts?.GetValueOrDefault(country) : null;
         List<string> tags = [.. before.Tags
             .Select(tag => tag == before.Country ? country : tag == before.Side ? side : tag == before.TypeToken && before.TypeToken != "" ? type : tag)
+            .Select(tag => front is not null && SteelDivisionDivisions.Fronts.Contains(tag) ? front : tag)
             .Where(tag => tag != "")];
-        if (!tags.Contains("DEFAULT")) tags.Insert(0, "DEFAULT");
+        if (!tags.Contains("DEFAULT") && before.Tags.Contains("DEFAULT")) tags.Insert(0, "DEFAULT");
         return tags;
     }
 
@@ -206,12 +223,22 @@ public sealed class ModDivision
     public static List<string> TagsOfNew(string country, string side, string type) =>
         [.. new[] { "DEFAULT", country, side, type }.Where(tag => tag != "")];
 
+    /// <summary>
+    /// A new division's tags: in WARNO its own only (<see cref="TagsOfNew"/>); in Steel Division 2, whose divisions have
+    /// front tags (<paramref name="fronts"/> has some), those of the division it starts from with its own nation and
+    /// side, as it keeps that division's power class and type picture, and the game lists its divisions by front.
+    /// </summary>
+    private List<string> NewTags(Division start, IReadOnlyDictionary<string, string>? fronts) =>
+        fronts is { Count: > 0 }
+            ? TagsWith(start, Country ?? start.Country, Side ?? start.Side, TypeToken ?? start.TypeToken, fronts)
+            : TagsOfNew(Country ?? start.Country, Side ?? start.Side, TypeToken ?? start.TypeToken);
+
     /// <summary>A division with the details this one changes, and the rest as it has them.</summary>
-    private Division WithDetails(Division division) => division with
+    private Division WithDetails(Division division, IReadOnlyDictionary<string, string>? fronts) => division with
     {
         Tags = Tags is not null ? [.. Tags]
-            : IsNew ? TagsOfNew(Country ?? division.Country, Side ?? division.Side, TypeToken ?? division.TypeToken)
-            : TagsWith(division, Country ?? division.Country, Side ?? division.Side, TypeToken ?? division.TypeToken),
+            : IsNew ? NewTags(division, fronts)
+            : TagsWith(division, Country ?? division.Country, Side ?? division.Side, TypeToken ?? division.TypeToken, fronts),
         Country = Country ?? division.Country,
         Side = Side ?? division.Side,
         TypeToken = TypeToken ?? division.TypeToken,
@@ -219,6 +246,8 @@ public sealed class ModDivision
         Summary = Summary ?? (IsNew ? "" : division.Summary),
         History = History ?? (IsNew ? "" : division.History),
         ActivationPoints = ActivationPoints ?? division.ActivationPoints,
+        Phases = Phases is not null ? [.. Phases] : division.Phases,
+        Economy = Economy ?? division.Economy,
         ListOrder = ListOrder ?? division.ListOrder,
         EmblemTexture = EmblemFile is not null ? "" : EmblemTexture ?? division.EmblemTexture,
         EmblemSource = EmblemFile is not null ? null : EmblemSource ?? division.EmblemSource,
@@ -252,6 +281,8 @@ public sealed class ModDivision
         if (Summary == start.Summary) Summary = null;
         if (History == start.History) History = null;
         if (ActivationPoints == start.ActivationPoints) ActivationPoints = null;
+        if (Phases is not null && Phases.SequenceEqual(start.Phases)) Phases = null;
+        if (Economy == start.Economy) Economy = null;
         if (ListOrder == start.ListOrder) ListOrder = null;
         if (EmblemTexture == start.EmblemTexture) (EmblemTexture, EmblemSource) = (null, null);
         if (StandoutUnits is not null && StandoutUnits.SequenceEqual(start.StandoutUnits)) StandoutUnits = null;
@@ -269,6 +300,7 @@ public sealed class ModDivision
     /// <summary>Whether it changes any of the division's details.</summary>
     private bool ChangesDetails =>
         Country is not null || Side is not null || TypeToken is not null || Summary is not null || History is not null || ActivationPoints is not null || ListOrder is not null
+        || Phases is not null || Economy is not null
         || EmblemTexture is not null || EmblemSource is not null || EmblemFile is not null || StandoutUnits is not null || Tags is not null || Costs is not null;
 
     /// <summary>Puts a unit in the division: back in when it was removed, else added; nothing when it is already in.</summary>
@@ -316,6 +348,8 @@ public sealed class ModDivision
             case "Name": Name = ""; break;
             case "TakenOut": IsRemoved = false; break;
             case "Points": ActivationPoints = null; break;
+            case "Phases": Phases = null; break;
+            case "Economy": Economy = null; break;
             case "ListOrder": ListOrder = null; break;
             case "Type": TypeToken = null; break;
             case "Nation": (Country, Side) = (null, null); break;
@@ -460,6 +494,9 @@ public sealed class ModDivision
         if (Summary is not null) json["Summary"] = Summary;
         if (History is not null) json["History"] = History;
         if (ActivationPoints is int points) json["ActivationPoints"] = points;
+        if (Phases is not null)
+            json["Phases"] = new JsonArray([.. Phases.Select(phase => (JsonNode)new JsonObject { ["Start"] = phase.Start, ["Income"] = phase.Income, ["Bonus"] = phase.Bonus })]);
+        if (Economy is not null) json["Economy"] = Economy;
         if (ListOrder is double order) json["ListOrder"] = order;
         if (EmblemTexture is not null) json["EmblemTexture"] = EmblemTexture;
         if (EmblemSource is not null) json["EmblemSource"] = EmblemSource;
@@ -485,6 +522,9 @@ public sealed class ModDivision
         division.Summary = Text(json["Summary"]);
         division.History = Text(json["History"]);
         division.ActivationPoints = WholeNumber(json["ActivationPoints"]);
+        if (json["Phases"] is JsonArray phases)
+            division.Phases = [.. phases.OfType<JsonObject>().Select(phase => new DivisionPhase(WholeNumber(phase["Start"]) ?? 0, WholeNumber(phase["Income"]) ?? 0, WholeNumber(phase["Bonus"]) ?? 0))];
+        division.Economy = Text(json["Economy"]);
         division.ListOrder = Number(json["ListOrder"]);
         division.EmblemTexture = Text(json["EmblemTexture"]);
         division.EmblemSource = Text(json["EmblemSource"]);

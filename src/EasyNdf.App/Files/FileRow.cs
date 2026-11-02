@@ -26,6 +26,10 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
     public bool IsSelected { get => isSelected; set => Set(ref isSelected, value); }
     private bool isSelected;
 
+    /// <summary>Whether the arrow keys are on this row: it is outlined while the list has the keyboard.</summary>
+    public bool IsKeyRow { get => isKeyRow; set => Set(ref isKeyRow, value); }
+    private bool isKeyRow;
+
     /// <summary>Raised when the On checkbox is ticked or cleared, so the folder's line can follow.</summary>
     public event EventHandler? SwitchedOnOrOff;
 
@@ -106,14 +110,17 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
     /// <summary>The Date modified column.</summary>
     public string ModifiedText => Entry.Source is not null && Entry.Modified is DateTime modified ? FileStatus.Date(modified) : "";
 
-    /// <summary>The Export folder column: the folder's name, or "Not set".</summary>
-    public string ExportFolderText => Entry.ExportFolder is string folder ? FileListView.FolderName(folder) : ColumnFit.NoExportFolderText;
+    /// <summary>The Export folder column: the mod and the folder the file goes into ("Test Mod › Gfx"), or "Not set".</summary>
+    public string ExportFolderText => FileListView.FileFolderOf(Entry) is string folder ? FileListView.FolderName(folder) : ColumnFit.NoExportFolderText;
 
-    /// <summary>The Export folder column's tooltip: the whole path, or what happens without one.</summary>
-    public string ExportFolderTip => Entry.ExportFolder ?? Texts.Get("Files.Row.NoExportFolder.Tip");
+    /// <summary>The Export folder column's tooltip: the whole path of the folder the file goes into, or what happens without one.</summary>
+    public string ExportFolderTip => FileListView.FileFolderOf(Entry) ?? Texts.Get("Files.Row.NoExportFolder.Tip");
 
     /// <summary>Whether the file has an export folder (then it can be cleared).</summary>
     public bool HasExportFolder => Entry.ExportFolder is not null;
+
+    /// <summary>Whether the file has no export folder: the column shows "Browse..." instead of a folder.</summary>
+    public bool HasNoExportFolder => Entry.ExportFolder is null;
 
     /// <summary>The Size column.</summary>
     public string SizeText => Entry.Source is not null && Entry.Size is long size ? FileStatus.Size(size) : "";

@@ -279,23 +279,43 @@ public sealed class PanePair : Grid
     /// </summary>
     private double Room => (Beside ? ActualWidth : ActualHeight) - 9;
 
+    /// <summary>Whether the second pane grew with the window when it was last laid out (see <see cref="GrowsWithWindow"/>).</summary>
+    private bool grewWithWindow = GrowsWithWindow;
+
+    /// <summary>Whether a size in pixels is kept for the second pane, beside or below as it is now.</summary>
+    private bool HasSize => AppData.Current.State["sizes"]?[Key + (Beside ? "Beside" : "Below")] is not null;
+
     /// <summary>
-    /// Turns the size in pixels (the default, or one kept by an older version) into a share of the room, once the panes
-    /// have room and the second one is open, so from then on they keep their proportions as the window is resized.
+    /// Once the panes have room and the second one is open: while the second pane grows with the window, turns its size
+    /// in pixels (the default, or one kept by an older version) into a share of the room, so from then on they keep
+    /// their proportions as the window is resized. While it keeps its width, keeps the width it shows now in pixels:
+    /// the first one, or the share it had until "Panes grow with the window" was turned off, so it does not jump.
     /// </summary>
     private void TakeShare()
     {
-        if (!GrowsWithWindow || isFolded || ShareNow is not null || main is null || Room <= 0) return;
+        if (isFolded || main is null || Room <= 0) return;
+        if (!GrowsWithWindow)
+        {
+            double? share = grewWithWindow ? ShareNow : null;
+            grewWithWindow = false;
+            if (HasSize && share is null) return;
+            SizeNow = share is double wasShare ? Math.Min(wasShare, 0.95) * Room : DefaultSize;
+            ShowShare();
+            return;
+        }
+        grewWithWindow = true;
+        if (ShareNow is not null) return;
         double second = Math.Max(Beside ? SmallestBeside : SmallestBelow, SizeNow);
         ShareNow = Math.Clamp(second / Room, 0.05, 0.95);
         ShowShare();
     }
 
     /// <summary>
-    /// The "Panes grow with the window" setting ("panesScale", on by default): on, the second pane keeps its share of the
-    /// room as the window is resized; off, it keeps the size it was dragged to, and only the main pane grows or shrinks.
+    /// The "Panes grow with the window" setting ("panesScale", off by default): on, the second pane keeps its share of the
+    /// room as the window is resized; off, it keeps the size it was dragged to, and only the main pane grows or shrinks,
+    /// so a pane set to a width stays at it. The Mods tab's columns follow it too.
     /// </summary>
-    private static bool GrowsWithWindow => AppData.Current.Settings["panesScale"]?.GetValue<bool>() != false;
+    internal static bool GrowsWithWindow => AppData.Current.Settings["panesScale"]?.GetValue<bool>() == true;
 
     /// <summary>Sizes the two panes by their shares, or the second one by its size in pixels; each keeps its least size.</summary>
     private void ShowShare()
@@ -345,10 +365,13 @@ public sealed class PanePair : Grid
     private void Arrange()
     {
         isFolded = AppData.Current.State["folds"]?[Key]?.GetValue<bool>() ?? FoldedAtFirst;
-        Children.Clear();
         RowDefinitions.Clear();
         ColumnDefinitions.Clear();
-        if (main is null) return;
+        if (main is null)
+        {
+            Children.Clear();
+            return;
+        }
         bool beside = Beside;
         // the main pane, the bar, the second pane: across, or down
         GridLength secondSize = isFolded ? GridLength.Auto : new GridLength(Math.Max(beside ? SmallestBeside : SmallestBelow, SizeNow * PartNow));
@@ -366,21 +389,23 @@ public sealed class PanePair : Grid
             TakeShare();
             ShowShare();
         }
-        Put(main, 0, beside);
         // folded beside, the main pane has the whole width; the button that opens the pane, and ▥ and ▤, are in its heading
         bool inMainHeading = isFolded && beside && FoldedPlace is not null;
         PutTools(inMainHeading);
         MatchHeadings(beside && !inMainHeading);
         ShowTitle();
         ShowPlaceButtons(beside);
-        if (inMainHeading) return;
+        if (inMainHeading)
+        {
+            ShowPanes(beside, main);
+            return;
+        }
         bar.LiesFlat = !beside;
         bar.ToolTip = Texts.Get("Common.ResizeGrip.Tip");
         // folded, the bar cannot be dragged but keeps its room, so the heading keeps the same gap from the main pane
         // as when the pane is open, rather than touching it
         bar.Visibility = isFolded ? Visibility.Hidden : Visibility.Visible;
-        Put(bar, 1, beside);
-        Put(second, 2, beside);
+        ShowPanes(beside, main, bar, second);
         body.Visibility = isFolded ? Visibility.Collapsed : Visibility.Visible;
         arrow.Text = isFolded ? "▸" : "▾";
     }
@@ -444,11 +469,31 @@ public sealed class PanePair : Grid
         belowButton.IsChecked = byHand && !beside;
     }
 
-    private void Put(UIElement element, int place, bool beside)
+    /// <summary>
+    /// Shows these panes in the grid, in this order: across beside, or down below. Panes already there in that order
+    /// stay where they are and only change place. Taking a pane out and putting it back walks through every element in
+    /// it, which with the Armory's thousands of cards took most of a second each time a sub-tab or a division changed
+    /// the panes' widths (<see cref="SecondPart"/>). Tuned for speed: panes already in place are only moved. Keep it that way when tidying.
+    /// </summary>
+    private void ShowPanes(bool beside, params UIElement[] panes)
     {
-        SetRow(element, beside ? 0 : place);
-        SetColumn(element, beside ? place : 0);
-        Children.Add(element);
+        for (int place = 0; place < panes.Length; place++)
+        {
+            SetRow(panes[place], beside ? 0 : place);
+            SetColumn(panes[place], beside ? place : 0);
+        }
+        if (IsShowing(panes)) return;
+        Children.Clear();
+        foreach (UIElement pane in panes) Children.Add(pane);
+    }
+
+    /// <summary>Whether the grid holds just these panes, in this order.</summary>
+    private bool IsShowing(UIElement[] panes)
+    {
+        if (Children.Count != panes.Length) return false;
+        for (int place = 0; place < panes.Length; place++)
+            if (!ReferenceEquals(Children[place], panes[place])) return false;
+        return true;
     }
 
     /// <summary>The bar is dragged: the second pane takes the room past the mouse, within its limits.</summary>

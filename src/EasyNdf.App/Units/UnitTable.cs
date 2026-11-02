@@ -313,6 +313,9 @@ public sealed class UnitTableHeadings : Bevel
             cell.SetResourceReference(BottomRightProperty, "line");
             string key = heading.Key;
             cell.MouseLeftButtonUp += (_, _) => SortClicked?.Invoke(key);
+            // Tab reaches the headings, Enter sorts as a click does; a cut-short heading shows whole on hover (TrimmedTip)
+            KeyPick.Make(cell, () => SortClicked?.Invoke(key), "unitHeading:" + key);
+            System.Windows.Automation.AutomationProperties.SetName(cell, text.Text);
             var place = new Grid { Children = { cell, ResizeLine(key, widths[column]) } };
             Grid.SetColumn(place, column);
             cells.Children.Add(place);

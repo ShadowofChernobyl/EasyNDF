@@ -88,6 +88,9 @@ public static partial class NdfChecker
         return starts;
     }
 
+    /// <summary>Whether a line starts a declaration, as <see cref="DeclarationLine"/> finds them: "export X is …" at the line's very start.</summary>
+    public static bool StartsDeclaration(string line) => DeclarationLine().IsMatch(line);
+
     /// <summary>A line that starts a declaration, as the game's files write them: at the very start of the line.</summary>
     [GeneratedRegex(@"^(?:(?:export|private|public)[ \t]+)?(?:unnamed\b|template\b|[A-Za-z_][A-Za-z0-9_]*[ \t]+is\b)", RegexOptions.Multiline)]
     private static partial Regex DeclarationLine();

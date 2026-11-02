@@ -76,6 +76,42 @@ public sealed record Division
     /// <summary>The name of its costs in DivisionCostMatrix.ndf (CostMatrix).</summary>
     public string CostMatrixName { get; init; } = "";
 
+    /// <summary>
+    /// How many other divisions of Divisions.ndf name the same costs (<see cref="CostMatrixName"/>): a change to them
+    /// is a change to theirs too. 0 for costs of its own, or written in place.
+    /// </summary>
+    public int CostsSharedWith { get; init; }
+
+    /// <summary>
+    /// Each cost category's key as the costs' file has it, written as a rule's target names it, by the category's
+    /// name in <see cref="Costs"/>: Steel Division 2's "Tanks" is "EDefaultFactories / tank".
+    /// </summary>
+    public IReadOnlyDictionary<string, string> CostKeys { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>
+    /// The textures of its waving flag, in order (FlagAnimationTextures), in Steel Division 2: "Texture_Division_Flag_US_0"
+    /// and on, those of its nation (<see cref="Country"/>). None in WARNO.
+    /// </summary>
+    public IReadOnlyList<string> FlagTextures { get; init; } = [];
+
+    /// <summary>
+    /// Its phases, in order (PhaseList), in Steel Division 2: when each starts, its income and its bonus. None in
+    /// WARNO, which has no phases.
+    /// </summary>
+    public IReadOnlyList<DivisionPhase> Phases { get; init; } = [];
+
+    /// <summary>
+    /// Its income choices in Steel Division 2 (DivisionEconomyList): the name of one of DivisionEconomy.ndf's lists,
+    /// such as "DivisionEconomy_German", each choice an income for each phase. "" in WARNO.
+    /// </summary>
+    public string Economy { get; init; } = "";
+
+    /// <summary>
+    /// Steel Division 2's caps on its transports (its rule's TransportRuleList: how many of each transport a deck may
+    /// take), by the transport's descriptor; none in WARNO, which has no such list.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> TransportCaps { get; init; } = new Dictionary<string, int>();
+
     /// <summary>Its number in deck codes (DeckSerializer.ndf's DivisionIds); null when it has none.</summary>
     public int? DeckNumber { get; init; }
 
@@ -124,3 +160,9 @@ public sealed record DivisionUnit
     /// <summary>The transports it may ride in (AvailableTransportList), by descriptor.</summary>
     public IReadOnlyList<string> Transports { get; init; } = [];
 }
+
+/// <summary>One of a Steel Division 2 division's phases (a TPhaseDescriptor of its PhaseList).</summary>
+/// <param name="Start">When it starts, in seconds from the start of the battle (PhaseStartTimeInSeconds).</param>
+/// <param name="Income">The points it gives (PhaseIncome).</param>
+/// <param name="Bonus">The points given once when it starts (PhaseBonus).</param>
+public sealed record DivisionPhase(int Start, int Income, int Bonus);

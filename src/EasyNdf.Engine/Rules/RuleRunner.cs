@@ -1131,7 +1131,7 @@ public sealed partial class RuleRunner
             (int start, int end) = parts[k];
             try
             {
-                Parser.Parse(string.Concat(written.Pieces.Skip(start).Take(end - start)));
+                Parser.Parse(string.Concat(ExportWriter.PiecesBetween(written.Pieces, start, end)));
             }
             catch (Exception e)
             {

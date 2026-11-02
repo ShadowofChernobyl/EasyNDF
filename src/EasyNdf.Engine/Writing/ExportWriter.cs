@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using EasyNdf.Engine.Ndf;
@@ -163,22 +164,54 @@ public sealed partial class ExportWriter
     /// indentation they all share and take that of the line the value starts on, so "[" and "]" line up with the
     /// property's name whatever indentation was typed. A value on one line is left as it is.
     /// </summary>
+    /// <remarks>
+    /// The lines are gone through where they lie in the text rather than split apart and joined again: a generated
+    /// division's list of units is one value of thousands of lines, and the copies took a good part of writing a large file.
+    /// Tuned for speed: Keep it that way when tidying.
+    /// </remarks>
     private string Reindented(string written)
     {
         if (!written.Contains('\n')) return written;
-        string[] lines = written.Replace("\r\n", "\n").Split('\n');
+        string text = written.Replace("\r\n", "\n");
+        int firstLineEnd = text.IndexOf('\n');
+
+        // the indentation the lines after the first share; blank lines do not count
         int shared = int.MaxValue;
-        for (int k = 1; k < lines.Length; k++)
+        for (int start = firstLineEnd + 1; start >= 0; start = NextLineStart(text, start))
         {
-            if (lines[k].Trim().Length == 0) continue;
-            int indent = lines[k].Length - lines[k].TrimStart(' ', '\t').Length;
+            ReadOnlySpan<char> line = LineAt(text, start);
+            if (line.IsWhiteSpace()) continue;
+            int indent = line.Length - line.TrimStart(" \t").Length;
             shared = Math.Min(shared, indent);
         }
         if (shared == int.MaxValue) return written;
+
+        // the first line as it is; each line after it with the line's own indentation in place of the shared one, and
+        // a blank line left empty
         string baseIndent = IndentOfCurrentLine();
-        for (int k = 1; k < lines.Length; k++)
-            lines[k] = lines[k].Trim().Length == 0 ? "" : baseIndent + lines[k][shared..];
-        return string.Join("\n", lines);
+        var result = new StringBuilder(text.Length);
+        result.Append(text, 0, firstLineEnd);
+        for (int start = firstLineEnd + 1; start >= 0; start = NextLineStart(text, start))
+        {
+            ReadOnlySpan<char> line = LineAt(text, start);
+            result.Append('\n');
+            if (!line.IsWhiteSpace()) result.Append(baseIndent).Append(line[shared..]);
+        }
+        return result.ToString();
+    }
+
+    /// <summary>The line of a text that starts at a position, without its "\n".</summary>
+    private static ReadOnlySpan<char> LineAt(string text, int start)
+    {
+        int end = text.IndexOf('\n', start);
+        return end < 0 ? text.AsSpan(start) : text.AsSpan(start, end - start);
+    }
+
+    /// <summary>Where the line after the one that starts at a position starts; -1 when that line is the last.</summary>
+    private static int NextLineStart(string text, int start)
+    {
+        int end = text.IndexOf('\n', start);
+        return end < 0 ? -1 : end + 1;
     }
 
     /// <summary>The spaces and tabs at the start of the line being written.</summary>
@@ -513,6 +546,9 @@ public sealed partial class ExportWriter
     /// </summary>
     private static string WithoutToolMarkers(string text)
     {
+        // every marker holds "YMB-" or "YSM-": a copy without either, as most are, keeps every line as it is, and going
+        // through it line by line took a good part of writing a file of many copies. Tuned for speed: Keep it that way when tidying.
+        if (!text.Contains("YMB-", StringComparison.Ordinal) && !text.Contains("YSM-", StringComparison.Ordinal)) return text;
         var lines = new List<string>();
         bool inOriginal = false;
         foreach (string line in text.Split('\n'))
@@ -592,7 +628,7 @@ public sealed partial class ExportWriter
                     WriteDeclaration(copy);
                     if (item.IsClone)
                     {
-                        string written = string.Concat(pieces.Skip(segmentStart));
+                        string written = string.Concat(PiecesBetween(pieces, segmentStart, pieces.Count));
                         pieces.RemoveRange(segmentStart, pieces.Count - segmentStart);
                         Put(WithoutToolMarkers(written));
                     }
@@ -641,8 +677,16 @@ public sealed partial class ExportWriter
             pieces.Add(" ");
             pieces.Add(string.Join(" ", waitingLineComments));
         }
-        return new Result(string.Concat(pieces), pieces, segments);
+        return new Result(string.Concat(PiecesBetween(pieces, 0, pieces.Count)), pieces, segments);
     }
+
+    /// <summary>
+    /// Pieces of the text from one up to (not including) another, to be put together. Put together from where they
+    /// lie, the text is made once at its full length; put together one by one, a large file's text (some 100 MB) was
+    /// copied again each time it outgrew the room it had. Tuned for speed: Keep it that way when tidying.
+    /// </summary>
+    internal static ReadOnlySpan<string> PiecesBetween(List<string> pieces, int start, int end) =>
+        CollectionsMarshal.AsSpan(pieces)[start..end];
 
     [GeneratedRegex(@"\r?\n")]
     private static partial Regex AnyLineBreak();

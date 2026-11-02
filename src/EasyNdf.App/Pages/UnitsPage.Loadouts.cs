@@ -156,7 +156,7 @@ public partial class UnitsPage
         string where = Texts.Get("Weapons.Loadout.Where", ("unit", unitName), ("turret", mount.Turret + 1));
         // the place's ammo box, and the weapons firing from it with this one, which must fire the same a salvo
         List<Weapon> sharing = [.. changed.Mounts.Where(other => other != now && other.AmmoBox == now.AmmoBox).Select(other => weapons.GetValueOrDefault(other.Ammunition)).OfType<Weapon>()];
-        MainView.Of(this).SwapWeapon.Open(title, where, current, choices, IsCopy, offerCopy: true, use, SwapKind.Swap, new SwapBox(now.AmmoBox + 1, sharing));
+        MainView.Of(this).SwapWeapon.Open(title, where, current, choices, IsCopy, offerCopy: true, use, SwapKind.Swap, new SwapBox(now.AmmoBox + 1, sharing), WhyWeaponsCannotBeAdded);
     }
 
     /// <summary>A weapon picked for a place: the swap kept (the game's own weapon there again lets go of it), a copy made first when wanted.</summary>
@@ -187,7 +187,7 @@ public partial class UnitsPage
     }
 
     /// <summary>
-    /// ✕: the weapon taken off, once asked, as it has not been tried in the game. The rule finds it by its text, read
+    /// ✕: the weapon taken off, once asked, as its place on the model is left unused. The rule finds it by its text, read
     /// from WeaponDescriptor.ndf on the Files tab, which it is written into: without the file, the change is refused.
     /// </summary>
     private async Task RemoveWeapon(Unit unit, LoadoutMount mount)
@@ -221,7 +221,7 @@ public partial class UnitsPage
     private void AddWeapon(Unit unit, LoadoutTurret turret)
     {
         if (OriginalLoadoutOf(unit) is not Loadout original) return;
-        OpenAddWindow(original, LoadoutChangesOf(unit), ShownWeapons(), unit.Name, turret, (weapon, asCopy) => Added(unit, turret, weapon, asCopy));
+        OpenAddWindow(original, LoadoutChangesOf(unit), ShownWeapons(), unit.Name, turret, (weapon, asCopy) => _ = Added(unit, turret, weapon, asCopy));
     }
 
     /// <summary>
@@ -242,16 +242,39 @@ public partial class UnitsPage
         })];
         string title = Texts.Get("Weapons.Loadout.AddTitle", ("number", turret.Index + 1));
         string where = Texts.Get("Weapons.Loadout.Where", ("unit", unitName), ("turret", turret.Index + 1));
-        MainView.Of(this).SwapWeapon.Open(title, where, null, choices, IsCopy, offerCopy: true, use, SwapKind.Add);
+        MainView.Of(this).SwapWeapon.Open(title, where, null, choices, IsCopy, offerCopy: true, use, SwapKind.Add, noCopyReason: WhyWeaponsCannotBeAdded);
     }
 
     /// <summary>
     /// A weapon picked to add: mounted after the turret's own, with an ammo box of the salvos another unit carrying it
-    /// has, and the flash and sound the game gives it there; a copy made first when wanted.
+    /// has, and the flash and sound the game gives it there; a copy made first when wanted. Steel Division 2's is
+    /// mounted as the game mounts it in another loadout, read from WeaponDescriptor.ndf on the Files tab.
     /// </summary>
-    private void Added(Unit unit, LoadoutTurret turret, Weapon weapon, bool asCopy)
+    private async Task Added(Unit unit, LoadoutTurret turret, Weapon weapon, bool asCopy)
     {
-        ChangeLoadout(unit, (changes, mod) => changes.Add(AddChange(turret, changes, weapon, asCopy ? NewCopyFor(weapon, unit, mod) : weapon.Descriptor)));
+        string? gameMount = null;
+        if (Game == Data.Game.GameTitle.SteelDivision2)
+        {
+            string original = OpenMod.Weapons.FirstOrDefault(copy => copy.Descriptor == weapon.Descriptor)?.MadeFrom ?? weapon.Descriptor;
+            if (!await GameMountOf(original, mount => gameMount = mount)) return;
+        }
+        ChangeLoadout(unit, (changes, mod) => changes.Add(AddChange(turret, changes, weapon, asCopy ? NewCopyFor(weapon, unit, mod) : weapon.Descriptor, gameMount: gameMount)));
+    }
+
+    /// <summary>
+    /// How the game mounts a weapon in a loadout, read from WeaponDescriptor.ndf on the Files tab, which a weapon added
+    /// is written into (<see cref="LoadoutRules.MountTextOf"/>): given to <paramref name="found"/>, null when no loadout
+    /// has it. False, with a message saying why, when the file is not on the Files tab.
+    /// </summary>
+    private async Task<bool> GameMountOf(string ammunition, Action<string?> found)
+    {
+        if (LoadedFile(UnitChangeRules.LoadoutsFile) is not FileEntry file)
+        {
+            await MainView.Of(this).Messages.Tell(Texts.Count("Divisions.FilesMissing", 1, ("files", UnitChangeRules.LoadoutsFile)));
+            return false;
+        }
+        found(await Task.Run(() => LoadoutRules.MountTextOf(new StringReader(FileContent.Text(file)), ammunition)));
+        return true;
     }
 
     /// <summary>
@@ -263,12 +286,20 @@ public partial class UnitsPage
     /// <param name="weapon">The weapon picked.</param>
     /// <param name="ammunition">What is mounted: the weapon, or a copy of it just made.</param>
     /// <param name="pending">The New Unit window's copies not made yet, which may be the weapon picked.</param>
-    private LoadoutChange AddChange(LoadoutTurret turret, IReadOnlyList<LoadoutChange> changes, Weapon weapon, string ammunition, PendingLoadout? pending = null)
+    /// <param name="gameMount">
+    /// For Steel Division 2, how the game mounts the weapon in another loadout (<see cref="GameMountOf"/>); null when
+    /// none has it. Its weapon fires from the turret's own weapon's point of the model.
+    /// </param>
+    private LoadoutChange AddChange(LoadoutTurret turret, IReadOnlyList<LoadoutChange> changes, Weapon weapon, string ammunition, PendingLoadout? pending = null,
+        string? gameMount = null)
     {
         string original = OpenMod.Weapons.Concat(pending?.Copies ?? []).FirstOrDefault(copy => copy.Descriptor == weapon.Descriptor)?.MadeFrom ?? weapon.Descriptor;
         (int salvos, string effect) = HowGameCarries(original);
         int place = turret.Mounts.Count + changes.Count(change => change.Kind == LoadoutChange.Add && change.Turret == turret.Index);
-        return new LoadoutChange(LoadoutChange.Add, turret.Index, place, ammunition, LoadoutRules.NewMountText(ammunition, effect), salvos);
+        string mountText = Game == Data.Game.GameTitle.SteelDivision2
+            ? LoadoutRules.SteelDivisionMountText(gameMount, ammunition, turret.Mounts.FirstOrDefault()?.EffectTag ?? effect)
+            : LoadoutRules.NewMountText(ammunition, effect);
+        return new LoadoutChange(LoadoutChange.Add, turret.Index, place, ammunition, mountText, salvos);
     }
 
     /// <summary>
@@ -306,6 +337,11 @@ public partial class UnitsPage
             page.ChangeLoadout(unit, (changes, _) => LoadoutRules.Replace(changes, old, updated));
 
         public void ShowWeapon(string ammunition) => page.ShowWeaponInArmory(ammunition);
+
+        public string? WhyCopiesCannotBeMade => page.WhyWeaponsCannotBeAdded;
+
+        public string? WhyCountCannotChange =>
+            LoadoutRules.Writes(page.Game, LoadoutChange.Count) ? null : Texts.Get("Units.Pane.Off.NotForThisGame", ("game", page.Game.Name));
 
         public void OpenWeaponMenu(string ammunition, FrameworkElement at)
         {

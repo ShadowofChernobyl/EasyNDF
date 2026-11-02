@@ -5,6 +5,7 @@ using EasyNdf.App.Mods;
 using EasyNdf.Data;
 using EasyNdf.Data.Divisions;
 using EasyNdf.Data.FileList;
+using EasyNdf.Data.Game;
 using EasyNdf.Data.Units;
 using EasyNdf.Data.Weapons;
 using EasyNdf.Engine;
@@ -50,23 +51,36 @@ public static class OpenModUnits
     /// The files to run, read on the screen's thread (the rules may change while the run goes on): those on the
     /// Files tab that are on, loaded, have one of the open mod's presets, and are files the units are read from.
     /// </summary>
+    /// <remarks>
+    /// Tuned for speed, as this holds the window each time the mods' values are read: each file's rules are found once
+    /// (<see cref="WithRules"/>), and the other files its Lookup rules read are found from those rules
+    /// (<see cref="OtherFilesFor"/>) rather than from a fresh copy of every rule. Keep it that way when tidying.
+    /// </remarks>
     /// <param name="game">The units as the source has them: another mod's generated divisions are made from them.</param>
     private static List<FileToRun> FilesToRun(IReadOnlyList<FileEntry> entries, Mod openMod, UnitSource source, List<string> notShown, UnitCatalog game)
     {
         var files = new List<FileToRun>();
         DivisionRosters? rosters = null;
-        foreach (FileEntry entry in WithRules(entries, openMod))
+        foreach ((FileEntry entry, List<(Mod Mod, List<JsonNode> Rules)> parts) in WithRules(entries, openMod, source.Game))
         {
             if (!IsTheSourcesCopy(entry, source))
             {
                 notShown.Add(entry.Name);
                 continue;
             }
-            List<ModRun> mods = [.. PartsFor(entry, openMod).Select(part => new ModRun(part.Mod.Name, RuleLoading.LoadForEngine(WithGeneratedLists(part.Rules, game, ref rosters))))];
-            files.Add(new FileToRun(entry, mods, FileRunner.OtherFilesFor(entry, entries)));
+            List<ModRun> mods = [.. parts.Select(part => new ModRun(part.Mod.Name, RuleLoading.LoadForEngine(WithGeneratedLists(part.Rules, game, ref rosters))))];
+            files.Add(new FileToRun(entry, mods, OtherFilesFor(entry, parts, entries)));
         }
         return files;
     }
+
+    /// <summary>
+    /// The other listed files the Lookup rules run on a file read (<see cref="FileRunner.OtherFilesFor(FileEntry, IEnumerable{FileEntry})"/>),
+    /// found from the rules the Armory runs on it. Those are an export's rules for the file without the open mod's
+    /// locked ones, which are not run, so every file a rule run here looks up is found as an export finds it.
+    /// </summary>
+    private static Dictionary<string, string> OtherFilesFor(FileEntry entry, List<(Mod Mod, List<JsonNode> Rules)> parts, IReadOnlyList<FileEntry> entries) =>
+        FileRunner.OtherFilesFor(parts.SelectMany(part => part.Rules), entries.Where(each => each.Game == entry.Game));
 
     /// <summary>
     /// A copy of a mod's rules for a file, with its generated divisions' unit lists made (another mod's: the open mod's
@@ -82,10 +96,20 @@ public static class OpenModUnits
         return copies;
     }
 
-    /// <summary>The Files tab's files that are on, loaded, units are read from, and have rules of the open mod.</summary>
-    private static IEnumerable<FileEntry> WithRules(IReadOnlyList<FileEntry> entries, Mod openMod) =>
-        entries.Where(entry => entry.On && entry.Source is not null && UnitReader.FilesWithValues.Contains(entry.Name, StringComparer.OrdinalIgnoreCase)
-            && PartsFor(entry, openMod).Count > 0);
+    /// <summary>
+    /// The Files tab's files of the source's game that are on, loaded, units are read from, and have rules of a mod
+    /// that is on, each with those rules (<see cref="PartsFor"/>). Another game's files are left out: their mods are
+    /// not for the source's units.
+    /// </summary>
+    private static IEnumerable<(FileEntry Entry, List<(Mod Mod, List<JsonNode> Rules)> Parts)> WithRules(IReadOnlyList<FileEntry> entries, Mod openMod, GameTitle game)
+    {
+        foreach (FileEntry entry in entries)
+        {
+            if (!entry.On || entry.Source is null || entry.Game != game || !UnitReader.FilesWithValues.Contains(entry.Name, StringComparer.OrdinalIgnoreCase)) continue;
+            List<(Mod Mod, List<JsonNode> Rules)> parts = PartsFor(entry, openMod);
+            if (parts.Count > 0) yield return (entry, parts);
+        }
+    }
 
     /// <summary>
     /// Whether a file on the Files tab stands for the file the source reads: always for the game itself; for a game
@@ -121,15 +145,15 @@ public static class OpenModUnits
     /// The rules run on a file for the Armory, mod by mod in the Mods tab's order: the open mod's (its preset's, then its
     /// Armory presets' rules kept by hand; its locked rules are not run, as the Armory shows those changes itself, as it
     /// makes them, <see cref="DivisionChanges.Apply"/>), and those of the other mods that are on; a mod that is off,
-    /// the open one too, does not run, as on export. Each mod runs on its
+    /// the open one too, or one for another game than the file's, does not run, as on export. Each mod runs on its
     /// own, on what the one before gave, as export runs them (<see cref="FileRunner"/>), so a mod's variables and
     /// groups do not reach into the next. Mods with no rules for the file are left out.
     /// </summary>
     private static List<(Mod Mod, List<JsonNode> Rules)> PartsFor(FileEntry entry, Mod openMod)
     {
         var parts = new List<(Mod, List<JsonNode>)>();
-        // only the mods that are on, as export runs them: the open mod too, only when it is on
-        foreach (Mod mod in ModStack.Running)
+        // only the mods of the file's game that are on, as export runs them: the open mod too, only when it is on
+        foreach (Mod mod in ModStack.RunningFor(entry.Game))
         {
             List<JsonNode> rules = ReferenceEquals(mod, openMod) ? OpenModRulesFor(entry, openMod) : OtherModRulesFor(entry, mod);
             if (rules.Count > 0) parts.Add((mod, rules));
@@ -141,13 +165,37 @@ public static class OpenModUnits
     /// The open mod's rules for a file: those of its rule sets that apply to the file, then its Armory presets' rules
     /// kept by hand. Its locked rules are not run: the Armory shows those changes itself.
     /// </summary>
+    /// <remarks>
+    /// Tuned for speed: the Armory presets' rules are copied for the file only when one of them for it is kept by hand
+    /// (<see cref="HasRuleKeptByHand"/>). A mod's Armory rules are mostly locked, and a mod with thousands of them
+    /// spent most of the window's time copying them only to leave them out. Keep it that way when tidying.
+    /// </remarks>
     private static List<JsonNode> OpenModRulesFor(FileEntry entry, Mod openMod)
     {
         List<JsonNode> rules = [.. FileRunner.RuleSetsFor(entry, openMod).SelectMany(ruleSet => ruleSet.Rules).OfType<JsonNode>()];
-        List<JsonNode> byHand = [.. DivisionChangeRules.ForFile(ArmoryPresets.RulesOf(openMod), entry.Name)
+        IReadOnlyList<JsonNode?> armoryRules = ArmoryPresets.RulesOf(openMod);
+        if (!HasRuleKeptByHand(armoryRules, entry)) return rules;
+        List<JsonNode> byHand = [.. DivisionChangeRules.ForFile(armoryRules, entry)
             .Where(rule => (string?)rule?["Kind"] == "Group" || !ArmoryPresets.IsLocked(rule)).OfType<JsonNode>()];
         if (byHand.Any(rule => (string?)rule["Kind"] != "Group")) rules.AddRange(byHand);
         return rules;
+    }
+
+    /// <summary>
+    /// Whether an Armory preset's rule for a file is kept by hand (not locked), so that
+    /// <see cref="DivisionChangeRules.ForFile(IEnumerable{JsonNode?}, FileEntry)"/> would give one to run; found without
+    /// copying any rule. Each rule's file and kind are read as that method reads them.
+    /// </summary>
+    private static bool HasRuleKeptByHand(IReadOnlyList<JsonNode?> armoryRules, FileEntry entry)
+    {
+        if (!DivisionChangeRules.WritesTo(entry)) return false;
+        foreach (JsonNode? rule in armoryRules)
+        {
+            string? file = (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.FileKey];
+            bool isGroup = (string?)rule?["Kind"] == "Group";
+            if (!isGroup && string.Equals(file, entry.Name, StringComparison.OrdinalIgnoreCase) && !ArmoryPresets.IsLocked(rule)) return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -157,7 +205,7 @@ public static class OpenModUnits
     private static List<JsonNode> OtherModRulesFor(FileEntry entry, Mod mod)
     {
         List<JsonNode> rules = [.. FileRunner.RuleSetsFor(entry, mod).SelectMany(ruleSet => ruleSet.Rules).OfType<JsonNode>()];
-        rules.AddRange(DivisionChangeRules.ForFile(ArmoryPresets.RulesOf(mod), entry.Name).OfType<JsonNode>());
+        rules.AddRange(DivisionChangeRules.ForFile(ArmoryPresets.RulesOf(mod), entry).OfType<JsonNode>());
         return rules;
     }
 
@@ -166,15 +214,29 @@ public static class OpenModUnits
     /// with its rules, and the settings. While it stays the same, the units need not be read again; a division changed
     /// by hand, for one, changes the mod but not this.
     /// </summary>
-    public static string InputsOf(IReadOnlyList<FileEntry> entries, Mod openMod, RunSettings settings)
+    /// <param name="entries">The Files tab's files.</param>
+    /// <param name="openMod">The mod open on the Rules tab.</param>
+    /// <param name="game">The source's game: only its files and mods count.</param>
+    /// <param name="settings">The settings Preview follows.</param>
+    /// <remarks>
+    /// Tuned for speed, as this holds the window at every change: each file's rules are found once, and written as
+    /// they are, one after the other, rather than copied into a list first. Keep it that way when tidying.
+    /// </remarks>
+    public static string InputsOf(IReadOnlyList<FileEntry> entries, Mod openMod, GameTitle game, RunSettings settings)
     {
         var inputs = new System.Text.StringBuilder();
-        inputs.Append(openMod.Name).Append('\n').Append(settings).Append('\n');
-        foreach (FileEntry entry in WithRules(entries, openMod))
+        inputs.Append(openMod.Name).Append('\n').Append(game.Id).Append('\n').Append(settings).Append('\n');
+        foreach ((FileEntry entry, List<(Mod Mod, List<JsonNode> Rules)> parts) in WithRules(entries, openMod, game))
         {
             inputs.Append(entry.Source).Append('|').Append(entry.Modified?.Ticks);
-            foreach ((Mod mod, List<JsonNode> rules) in PartsFor(entry, openMod))
-                inputs.Append('|').Append(mod.Name).Append('|').Append(new JsonArray([.. rules.Select(rule => rule.DeepClone())]).ToJsonString());
+            foreach ((Mod mod, List<JsonNode> rules) in parts)
+            {
+                // the same text as the rules in a JSON list: [rule,rule]
+                inputs.Append('|').Append(mod.Name).Append("|[");
+                for (int index = 0; index < rules.Count; index++)
+                    inputs.Append(index == 0 ? "" : ",").Append(rules[index].ToJsonString());
+                inputs.Append(']');
+            }
             inputs.Append('\n');
         }
         return inputs.ToString();

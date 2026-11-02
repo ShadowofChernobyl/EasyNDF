@@ -20,28 +20,33 @@
                     <DockPanel>
                         <controls:SnappedRow DockPanel.Dock="Right" Gap="4">
                             <Button Style="{StaticResource HelpButton}" ToolTip="{t:Text Editor.Filter.AboutTheDescriptorFilter.Tip}" controls:QuickHelp.Page="editor-desc" />
-                            <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Editor.Filter.CloseEscape.Tip}" Click="CloseClicked" />
+                            <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Editor.Filter.CloseEscape.Tip}" Click="CloseClicked"
+                                    AutomationProperties.Name="{t:Text Editor.Filter.CloseEscape.Tip}" />
                         </controls:SnappedRow>
-                        <TextBlock Text="{t:Text Editor.Filter.FilterDescriptors}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
+                        <TextBlock Text="{t:Text Editor.Filter.FilterDescriptors}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" TextWrapping="Wrap" />
                     </DockPanel>
 
-                    <!-- .dfpre: the saved filters -->
-                    <DockPanel Margin="0,6,0,0">
-                        <controls:SnappedRow DockPanel.Dock="Right" Gap="4">
+                    <!--
+                      .dfpre: the saved filters, with Import and Export at the right; where there is not room, the buttons
+                      go on to a second line
+                    -->
+                    <controls:FlexRow Gap="4" LineGap="4" Margin="0,6,0,0">
+                        <TextBlock Text="{t:Text Editor.Filter.SavedFilter}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
+                        <ComboBox x:Name="SavedChoice" MinWidth="144" ToolTip="{t:Text Editor.Filter.SavedChoice.Tip}" SelectionChanged="SavedChosen" />
+                        <Button x:Name="SaveButton" Content="{t:Text Editor.Filter.Save}" ToolTip="{t:Text Editor.Filter.Save.Tip}" Click="SaveClicked"
+                                controls:OffReason.Text="{t:Text Editor.Filter.Save.Off}" />
+                        <Button Content="{t:Text Editor.Filter.SaveAs}" ToolTip="{t:Text Editor.Filter.SaveAs.Tip}" Click="SaveAsClicked" />
+                        <Button x:Name="DeleteButton" Content="{t:Text Editor.Filter.Delete}" ToolTip="{t:Text Editor.Filter.Delete.Tip}" Click="DeleteClicked"
+                                controls:OffReason.Text="{t:Text Editor.Filter.Save.Off}" />
+                        <controls:SnappedRow controls:FlexRow.Grow="1" Gap="4" HorizontalAlignment="Right">
                             <Button Content="{t:Text Editor.Filter.Import}" ToolTip="{t:Text Editor.Filter.Import.Tip}" Click="ImportClicked" />
-                            <Button x:Name="ExportButton" Content="{t:Text Editor.Filter.Export}" ToolTip="{t:Text Editor.Filter.Export.Tip}" Click="ExportClicked" />
+                            <Button x:Name="ExportButton" Content="{t:Text Editor.Filter.Export}" ToolTip="{t:Text Editor.Filter.Export.Tip}" Click="ExportClicked"
+                                    controls:OffReason.Text="{t:Text Editor.Filter.Export.Off}" />
                         </controls:SnappedRow>
-                        <controls:SnappedRow Gap="4">
-                            <TextBlock Text="{t:Text Editor.Filter.SavedFilter}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
-                            <ComboBox x:Name="SavedChoice" MinWidth="144" ToolTip="{t:Text Editor.Filter.SavedChoice.Tip}" SelectionChanged="SavedChosen" />
-                            <Button x:Name="SaveButton" Content="{t:Text Editor.Filter.Save}" ToolTip="{t:Text Editor.Filter.Save.Tip}" Click="SaveClicked" />
-                            <Button Content="{t:Text Editor.Filter.SaveAs}" ToolTip="{t:Text Editor.Filter.SaveAs.Tip}" Click="SaveAsClicked" />
-                            <Button x:Name="DeleteButton" Content="{t:Text Editor.Filter.Delete}" ToolTip="{t:Text Editor.Filter.Delete.Tip}" Click="DeleteClicked" />
-                        </controls:SnappedRow>
-                    </DockPanel>
+                    </controls:FlexRow>
 
-                    <!-- .dfgate: all or any -->
-                    <controls:SnappedRow Gap="4" Margin="0,6,0,0">
+                    <!-- .dfgate: all or any; on narrow windows it goes on to more lines -->
+                    <controls:FlexRow Gap="4" LineGap="4" Margin="0,6,0,0">
                         <TextBlock Text="{t:Text Editor.Filter.ShowDescriptorsWhere}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
                         <!-- .bar select: 11rem at least -->
                         <ComboBox x:Name="GateChoice" MinWidth="176" ToolTip="{t:Text Editor.Filter.GateChoice.Tip}" SelectionChanged="GateChosen">
@@ -49,7 +54,7 @@
                             <ComboBoxItem Content="{t:Text Editor.Filter.Any}" Tag="Any" />
                         </ComboBox>
                         <TextBlock Text="{t:Text Editor.Filter.OfTheseMatch}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
-                    </controls:SnappedRow>
+                    </controls:FlexRow>
 
                     <!-- #dfList: the conditions, from 3.2rem to 14rem tall -->
                     <controls:Bevel Margin="0,6,0,0" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
@@ -90,8 +95,9 @@
                         <TextBlock x:Name="CountNote" Style="{StaticResource Note}" Margin="8,0,0,0" TextAlignment="Right" VerticalAlignment="Center" />
                     </DockPanel>
 
-                    <!-- .bar: Clear filter, and Done -->
+                    <!-- .bar: Clear filter, and Done and Cancel -->
                     <DockPanel Margin="0,6,0,0">
+                        <Button DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" ToolTip="{t:Text Editor.Filter.Cancel.Tip}" Margin="6,0,0,0" Click="CancelClicked" />
                         <Button DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="{t:Text Editor.Filter.Done}" ToolTip="{t:Text Editor.Filter.Done.Tip}" Click="CloseClicked" />
                         <Button Content="{t:Text Editor.Filter.ClearFilter}" HorizontalAlignment="Left" ToolTip="{t:Text Editor.Filter.ClearFilter.Tip}" Click="ClearClicked" />
                     </DockPanel>

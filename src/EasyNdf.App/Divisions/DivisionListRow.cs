@@ -15,9 +15,6 @@ namespace EasyNdf.App.Divisions;
 /// </summary>
 public sealed class DivisionListRow : Bevel
 {
-    /// <summary>The mark of a generated division, before its name and on the line above its units.</summary>
-    public const string GeneratedMark = "⚙";
-
     /// <summary>How large the emblem before the name is drawn: as high as the line.</summary>
     private const double EmblemSize = 16;
 
@@ -65,8 +62,9 @@ public sealed class DivisionListRow : Bevel
         panel.Children.Add(emblem);
         if (isGenerated)
         {
-            var gear = new TextBlock { Text = GeneratedMark, Margin = new Thickness(0, 0, 4, 0), ToolTip = Texts.Get("Divisions.Generated.Tip"), VerticalAlignment = VerticalAlignment.Center };
-            gear.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+            Viewbox gear = Controls.GeneratorIcon.Make(12, "accent");
+            gear.Margin = new Thickness(0, 0, 5, 0);
+            gear.ToolTip = Texts.Get("Divisions.Generated.Tip");
             DockPanel.SetDock(gear, Dock.Left);
             panel.Children.Add(gear);
         }
@@ -78,15 +76,31 @@ public sealed class DivisionListRow : Bevel
             name.ToolTip = Texts.Get("Divisions.Removed.Tip", ("division", division.Name));
             panel.Opacity = 0.6;
         }
+        ShowChosen(isChosen);
+        MouseEnter += (_, _) => ShowState();
+        MouseLeave += (_, _) => ShowState();
+        MouseLeftButtonUp += (_, _) => Chosen?.Invoke(division);
+        // Tab and the arrows reach the divisions, Enter or Space chooses one, as a click does
+        Units.KeyPick.Make(this, () => Chosen?.Invoke(division), "division:" + division.Descriptor);
+        System.Windows.Automation.AutomationProperties.SetName(this, division.Name);
+    }
+
+    /// <summary>Whether it is the division shown on the right.</summary>
+    public bool IsChosen { get; private set; }
+
+    /// <summary>
+    /// Shows the row chosen or not, in place: choosing another division changes two rows, so the list is not made
+    /// again, which was slow with every division of a game listed.
+    /// </summary>
+    public void ShowChosen(bool isChosen)
+    {
+        IsChosen = isChosen;
         if (isChosen) SetResourceReference(BackgroundProperty, "sel");
         else Background = System.Windows.Media.Brushes.Transparent;
-        ShowState(isChosen);
-        MouseEnter += (_, _) => ShowState(isChosen);
-        MouseLeave += (_, _) => ShowState(isChosen);
-        MouseLeftButtonUp += (_, _) => Chosen?.Invoke(division);
+        ShowState();
     }
 
     /// <summary>The name in the accent colour when chosen or under the mouse.</summary>
-    private void ShowState(bool isChosen) =>
-        name.SetResourceReference(TextBlock.ForegroundProperty, isChosen || IsMouseOver ? "accent" : "ink");
+    private void ShowState() =>
+        name.SetResourceReference(TextBlock.ForegroundProperty, IsChosen || IsMouseOver ? "accent" : "ink");
 }

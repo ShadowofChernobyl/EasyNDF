@@ -60,12 +60,21 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 string? folder = await chooseExportFolder();
                 if (folder is null) return;
                 model.SetExportFolder(withoutFolder, folder);
+                // files added from other folders of the same GameData (its Generated folder, and GameData itself for
+                // MODDING.csv) each go into their own folder beside the others, as in the game's mod, not all into one
+                if (withoutFolder.Select(ExportGameDataOf).FirstOrDefault(found => found is not null) is string gameData)
+                    foreach (FileEntry entry in withoutFolder)
+                        if (AddedFromInGameData(entry) is string added && Path.Combine(gameData, added) is string own
+                            && !string.Equals(Path.TrimEndingDirectorySeparator(own), Path.TrimEndingDirectorySeparator(entry.ExportFolder!), StringComparison.OrdinalIgnoreCase))
+                            model.SetExportFolder([entry], own);
             }
             // (Asking about the mod's watermark first, when it says to ask, comes with the watermark window.)
-            FileEntry? namesFile = list.FirstOrDefault(entry => WritesDictionary(entry) && GoesIntoLocalisation(entry));
-            dictionariesToMake = DictionariesToMake();
-            // a dictionary on the Files tab, or one the export makes, goes into the WARNO mod's Localisation folder
-            string? dictionaryExportFolder = namesFile?.ExportFolder ?? (dictionariesToMake.Count > 0 ? list.Select(entry => entry.ExportFolder).FirstOrDefault(folder => folder is not null) : null);
+            FileEntry? namesFile = list.FirstOrDefault(entry => WritesDictionary(entry) && GoesIntoGameModFolder(entry));
+            dictionariesToMake = DictionariesToMake(list);
+            // a dictionary on the Files tab, or one the export makes, goes into the WARNO mod's Localisation folder;
+            // Steel Division 2's goes into GameData\Localisation itself, so no mod folder is asked for it
+            bool makesWarnoDictionary = dictionariesToMake.Any(dictionary => dictionary.Game == Data.Game.GameTitle.Warno);
+            string? dictionaryExportFolder = namesFile?.ExportFolder ?? (makesWarnoDictionary ? list.Select(entry => entry.ExportFolder).FirstOrDefault(folder => folder is not null) : null);
             if (dictionaryExportFolder is not null)
             {
                 namesFileMod = await GameModFor(dictionaryExportFolder);
@@ -82,7 +91,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             if (write)
             {
-                await GiveDeckNumbers();
+                await GiveDeckNumbers(list);
                 // DeckSerializer.ndf may run now only for the rules just added: it goes where the other files go
                 foreach (FileEntry entry in FilesThatRun(model.Entries, everyFile).Where(e => skipped?.Contains(e) != true).Except(list).ToList())
                 {
@@ -96,7 +105,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             // file changed meanwhile (on the Mods tab, in the Armory or the File Editor) then reaches the next export
             // whole, not just the files this one has not reached yet.
             var works = new Dictionary<FileEntry, FileWork>();
-            foreach (FileEntry entry in list) works[entry] = WorkFor(entry, model.Entries);
+            // the files generated divisions are made from are worked out once for each game, for every file that makes them
+            var generatedInputs = new Dictionary<Data.Game.GameTitle, List<GeneratedListsMaker.Input>>();
+            foreach (FileEntry entry in list) works[entry] = WorkFor(entry, model.Entries, generatedInputs);
             foreach (FileEntry entry in list) entry.ClearMessage();
             // A row with no rules that is not part of this run drops the message left by an earlier "every file" export.
             foreach (FileEntry entry in model.Entries.Except(list))
@@ -153,17 +164,29 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// preset. The game refuses a deck with a unit missing from DeckSerializer.ndf; units the Armory makes have a
     /// number from the start, but units a mod's rules add (Clone rules) have none. The units are read from the files
     /// on the Files tab as the mods' rules make them, as the generated divisions' lists are, so no source needs to be
-    /// read in the Armory; nothing is given when UniteDescriptor.ndf is not on the Files tab.
+    /// read in the Armory; nothing is given when UniteDescriptor.ndf is not on the Files tab. Only the mods of the
+    /// games of the files exported take part, and the units are read from those games' files.
     /// </summary>
-    private async Task GiveDeckNumbers()
+    /// <param name="run">The files the export runs.</param>
+    private async Task GiveDeckNumbers(List<FileEntry> run)
     {
         model.ShowStep(Texts.Get("Files.Run.Card.DeckNumbers"));
         deckNumbersGiven = [];
-        List<Mod> mods = [.. ModStack.Running.Where(mod => mod.Divisions.Count > 0 || mod.UnitDeckNumbers.Count > 0)];
+        List<Mod> mods = [.. ModStack.RunningOn(run).Where(mod => mod.Divisions.Count > 0 || mod.UnitDeckNumbers.Count > 0)];
         if (mods.Count == 0) return;
         // numbers a mod file carries without their rules get them first, so the units are read with those numbers
         foreach (Mod mod in mods.Where(mod => mod.UnitDeckNumbers.Count > 0)) AddDeckNumberRules(mod, Divisions.BattlegroupView.ShortName);
-        List<GeneratedListsMaker.Input>? inputs = GeneratedListsMaker.InputsFrom([.. model.Entries]);
+        // each game's units are read from its own files, and numbered among its own mods' units
+        foreach (IGrouping<Data.Game.GameTitle, Mod> ofGame in mods.GroupBy(mod => mod.Game))
+            await GiveDeckNumbers([.. ofGame], ofGame.Key);
+    }
+
+    /// <summary>The numbers for deck codes the units of one game's mods need (see <see cref="GiveDeckNumbers(List{FileEntry})"/>).</summary>
+    /// <param name="mods">The game's mods that are on, with divisions or numbers of their own.</param>
+    /// <param name="game">The game.</param>
+    private async Task GiveDeckNumbers(List<Mod> mods, Data.Game.GameTitle game)
+    {
+        List<GeneratedListsMaker.Input>? inputs = GeneratedListsMaker.InputsFrom(model.Entries, game);
         if (inputs is null) return;
         var rules = new JsonArray([.. mods.SelectMany(mod => ArmoryPresets.RulesOf(mod)).Select(rule => rule?.DeepClone())]);
         string? cache = AppData.Current.Folders?.Cache;
@@ -172,9 +195,10 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         GeneratedListsMaker.Results made = await Task.Run(() => GeneratedListsMaker.ResultsFor(rules, inputs, TextAfterRules, cache));
 
         Dictionary<string, GeneratedListsMaker.KnownUnit> units = made.Units;
-        bool Numbered(string unit) => AppData.Current.Mods.Any(mod => mod.UnitDeckNumbers.ContainsKey(unit) || mod.Units.Any(own => own.Descriptor == unit));
+        List<Mod> gameMods = [.. AppData.Current.Mods.Where(mod => mod.Game == game)];
+        bool Numbered(string unit) => gameMods.Any(mod => mod.UnitDeckNumbers.ContainsKey(unit) || mod.Units.Any(own => own.Descriptor == unit));
         int next = units.Values.Select(unit => unit.DeckNumber ?? 0)
-            .Concat(AppData.Current.Mods.SelectMany(mod => mod.Units.Select(unit => unit.DeckNumber ?? 0).Concat(mod.UnitDeckNumbers.Values)))
+            .Concat(gameMods.SelectMany(mod => mod.Units.Select(unit => unit.DeckNumber ?? 0).Concat(mod.UnitDeckNumbers.Values)))
             .DefaultIfEmpty(0).Max() + 1;
         string NameOf(string unit) => units.TryGetValue(unit, out GeneratedListsMaker.KnownUnit? known) && known.Name != "" ? known.Name : Divisions.BattlegroupView.ShortName(unit);
         foreach (Mod mod in mods)
@@ -226,11 +250,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     internal static List<FileEntry> FilesThatRun(IEnumerable<FileEntry> entries, bool everyFile)
     {
         // worked out once for the whole list, which can hold thousands of files
-        IReadOnlySet<string> armoryFiles = FilesWithArmoryRules();
-        IReadOnlyList<Mod> running = ModStack.Running;
-        bool byName = RuleSetsApplyByName;
-        return [.. entries.Where(entry => entry.On && entry.Source is not null
-            && (everyFile || armoryFiles.Contains(entry.Name) || running.Any(mod => RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, byName).Count > 0)))];
+        List<(Mod Mod, IReadOnlySet<string> Files)> armoryFiles = ArmoryFilesByMod();
+        return [.. entries.Where(entry => entry.On && entry.Source is not null && (everyFile || ModsOn(entry, armoryFiles).Count > 0))];
     }
 
     /// <summary>
@@ -254,10 +275,17 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         List<GeneratedListsMaker.Input>? GeneratedInputs = null);
 
     /// <summary>What a file's run needs (<see cref="FileWork"/>), with its own copies of the rules.</summary>
-    private static FileWork WorkFor(FileEntry entry, IEnumerable<FileEntry> entries)
+    /// <param name="generatedInputs">
+    /// The files generated divisions are made from, by game, worked out for an earlier file of the same run: they are
+    /// only read, and working them out again for each file that makes generated divisions held the window up. Tuned for
+    /// speed: Keep it that way when tidying.
+    /// </param>
+    private static FileWork WorkFor(FileEntry entry, IEnumerable<FileEntry> entries, Dictionary<Data.Game.GameTitle, List<GeneratedListsMaker.Input>> generatedInputs)
     {
         string openModName = AppData.Current.OpenMod.Name;
         List<ModRules> stack = StackFor(entry);
+        // the other files a file's rules read, and its generated lists, come from files of its own game
+        List<FileEntry> sameGame = [.. entries.Where(each => each.Game == entry.Game)];
         // each rule set's File rules judged on their own: a group switched off in one does not reach into the next
         List<FileAndTextRules.CarriedFile> modFiles = FileAndTextRules.FilesOf(
             FileAndTextRules.EachInItsOwnRuleSet(stack.SelectMany(part => part.RuleSets.Select(ruleSet => ruleSet.Rules))));
@@ -265,10 +293,10 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         if (WritesDictionary(entry))
             return new FileWork(content, [], IsNamesFile: true, DictionaryTextsFor(entry), "", null, openModName, [], modFiles);
         if (stack.Count == 0) return new FileWork(content, stack, IsNamesFile: false, [], "", null, openModName, [], []);
-        Dictionary<string, string> otherFiles = OtherFilesFor(stack.SelectMany(part => part.Rules), entries);
-        List<GeneratedListsMaker.Input>? generated = HasGeneratedRules(stack)
-            ? GeneratedListsMaker.InputsFrom([.. entries]) ?? []
-            : null;
+        Dictionary<string, string> otherFiles = OtherFilesFor(stack.SelectMany(part => part.Rules), sameGame);
+        List<GeneratedListsMaker.Input>? generated = null;
+        if (HasGeneratedRules(stack) && !generatedInputs.TryGetValue(entry.Game, out generated))
+            generatedInputs[entry.Game] = generated = GeneratedListsMaker.InputsFrom(sameGame, entry.Game) ?? [];
         return new FileWork(content, stack, IsNamesFile: false, [], RuleSetNames(stack), HeaderModOf(stack), openModName, otherFiles, modFiles, generated);
     }
 
@@ -325,7 +353,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// the NDF engine.
     /// </summary>
     internal static bool WritesDictionary(FileEntry entry) =>
-        FileAndTextRules.IsDictionaryFile(entry.Name) && (HasDivisionRules(entry) || HasRuleSetsFor(entry.Name, entry.Folder));
+        FileAndTextRules.IsDictionaryFile(entry.Name) && (HasDivisionRules(entry) || HasRuleSetsFor(entry.Name, entry.Folder, entry.Game));
 
     /// <summary>
     /// Whether a dictionary file goes into the mod's Localisation folder (GameData\Localisation\&lt;mod&gt;), the only
@@ -333,54 +361,66 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// exported in the folders it was added with.
     /// </summary>
     internal static bool GoesIntoLocalisation(FileEntry entry) =>
-        DivisionExtras.IsNamesFile(entry.Name) || entry.Folder.Split('/').Contains("Localisation", StringComparer.OrdinalIgnoreCase);
+        DivisionExtras.IsNamesFile(entry.Name, entry.Game) || entry.Folder.Split('/').Contains("Localisation", StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether a dictionary file is exported into the WARNO mod's own folder under Localisation (<see cref="GoesIntoLocalisation"/>):
+    /// a WARNO file only. Steel Division 2 reads its mod's MODDING.csv from GameData\Localisation itself, so its
+    /// dictionaries keep the folders they were added with.
+    /// </summary>
+    internal static bool GoesIntoGameModFolder(FileEntry entry) => entry.Game == Data.Game.GameTitle.Warno && GoesIntoLocalisation(entry);
 
     /// <summary>
     /// The texts a dictionary file is given, mod by mod in the order they run: each mod's Text rules for it, then, for
-    /// UNITS.csv, its Armory presets' texts (division names and the like). A token given twice takes the later text.
+    /// the game's dictionary (UNITS.csv, MODDING.csv), its Armory presets' texts (division and unit names and the
+    /// like). A token given twice takes the later text.
     /// </summary>
-    private static List<DictionaryText> DictionaryTextsFor(FileEntry entry) => DictionaryTextsFor(entry.Name, entry.Folder);
+    private static List<DictionaryText> DictionaryTextsFor(FileEntry entry) => DictionaryTextsFor(entry.Name, entry.Folder, ModStack.RunningFor(entry.Game));
 
-    /// <summary>The texts a dictionary file of this name and folder is given (see <see cref="DictionaryTextsFor(FileEntry)"/>).</summary>
-    private static List<DictionaryText> DictionaryTextsFor(string fileName, string folder)
+    /// <summary>The texts these mods give a dictionary file of this name and folder (see <see cref="DictionaryTextsFor(FileEntry)"/>).</summary>
+    private static List<DictionaryText> DictionaryTextsFor(string fileName, string folder, IReadOnlyList<Mod> mods)
     {
         var texts = new List<DictionaryText>();
         bool byName = RuleSetsApplyByName;
-        foreach (Mod mod in ModStack.Running)
+        foreach (Mod mod in mods)
         {
             texts.AddRange(FileAndTextRules.TextsOf(RuleSetFiles.For(fileName, folder, mod.Presets, byName).SelectMany(ruleSet => ruleSet.Rules)));
-            if (DivisionExtras.IsNamesFile(fileName)) texts.AddRange(DivisionExtras.ArmoryTextsOf(ArmoryPresets.RulesOf(mod)));
+            if (DivisionExtras.IsNamesFile(fileName, mod.Game)) texts.AddRange(DivisionExtras.ArmoryTextsOf(ArmoryPresets.RulesOf(mod)));
         }
         return texts;
     }
 
     // ---- dictionaries the export makes ----
 
-    /// <summary>A dictionary file the export makes, as the Files tab has none: its name, and the texts the mods give it.</summary>
-    private sealed record DictionaryToMake(string Name, IReadOnlyList<DictionaryText> Texts);
+    /// <summary>A dictionary file the export makes, as the Files tab has none: its name, the texts the mods give it, and the game it is for.</summary>
+    private sealed record DictionaryToMake(string Name, IReadOnlyList<DictionaryText> Texts, Data.Game.GameTitle Game);
 
     /// <summary>
     /// The dictionaries (.csv) the mods that are on give texts to that are not on the Files tab: those their Text rules
     /// are for, and UNITS.csv for their divisions' names. A dictionary is the mod's own, not a game file (the game has
     /// none of the mod's), so the export makes it rather than leave the texts out, which the game refuses to start with.
+    /// Only the mods of the games of the files exported give texts.
     /// </summary>
-    private List<DictionaryToMake> DictionariesToMake()
+    /// <param name="run">The files the export runs.</param>
+    private List<DictionaryToMake> DictionariesToMake(List<FileEntry> run)
     {
-        var names = new List<(string Name, string Folder)>();
-        void Note(string name, string folder)
+        IReadOnlyList<Mod> mods = ModStack.RunningOn(run);
+        var names = new List<(string Name, string Folder, Data.Game.GameTitle Game)>();
+        void Note(string name, string folder, Data.Game.GameTitle game)
         {
-            if (!names.Any(each => string.Equals(each.Name, name, StringComparison.OrdinalIgnoreCase))) names.Add((name, folder));
+            if (!names.Any(each => each.Game == game && string.Equals(each.Name, name, StringComparison.OrdinalIgnoreCase))) names.Add((name, folder, game));
         }
-        foreach (Mod mod in ModStack.Running)
+        foreach (Mod mod in mods)
         {
             foreach (ModPreset ruleSet in mod.Presets.Where(ruleSet => !ruleSet.IsArmoryPreset && FileAndTextRules.TextsOf(ruleSet.Rules).Count > 0))
                 foreach (string file in RuleSetFiles.Named(ruleSet).Where(FileAndTextRules.IsDictionaryFile))
-                    Note(Path.GetFileName(file), Path.GetDirectoryName(file)?.Replace('\\', '/') ?? "");
-            if (ArmoryPresets.RulesOf(mod).Any(DivisionExtras.NeedsNamesFile)) Note(DivisionExtras.NamesFile, "");
+                    Note(Path.GetFileName(file), Path.GetDirectoryName(file)?.Replace('\\', '/') ?? "", mod.Game);
+            if (ArmoryPresets.RulesOf(mod).Any(DivisionExtras.NeedsNamesFile)) Note(DivisionExtras.NamesFileOf(mod.Game), "", mod.Game);
         }
+        // each game's dictionaries get the texts of its own mods, and are made when no file of that game has the name
         return [.. names
-            .Where(file => !model.Entries.Any(entry => string.Equals(entry.Name, file.Name, StringComparison.OrdinalIgnoreCase)))
-            .Select(file => new DictionaryToMake(file.Name, DictionaryTextsFor(file.Name, file.Folder)))
+            .Where(file => !model.Entries.Any(entry => entry.Game == file.Game && string.Equals(entry.Name, file.Name, StringComparison.OrdinalIgnoreCase)))
+            .Select(file => new DictionaryToMake(file.Name, DictionaryTextsFor(file.Name, file.Folder, [.. mods.Where(mod => mod.Game == file.Game)]), file.Game))
             .Where(file => file.Texts.Count > 0)];
     }
 
@@ -388,19 +428,30 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// Writes the dictionaries the export makes into the mod's Localisation folder (GameData\Localisation\&lt;mod&gt;),
     /// beside the GameData folder of the files just exported. A file already there, from an earlier export or put there
     /// by hand, keeps its lines and is given the texts, as one on the Files tab would be. The Files tab says which were
-    /// made, so none is made unseen.
+    /// made, so none is made unseen. Each game's go beside its own files.
     /// </summary>
     private void MakeDictionaries(List<DictionaryToMake> toMake, List<FileEntry> run)
     {
-        if (toMake.Count == 0 || namesFileMod is null) return;
-        string? gameData = run.Where(entry => entry.ExportFolder is not null)
-            .Select(entry => DivisionExtras.GameDataFolderOf(ExportPathOf(entry))).FirstOrDefault(folder => folder is not null);
+        foreach (IGrouping<Data.Game.GameTitle, DictionaryToMake> ofGame in toMake.GroupBy(dictionary => dictionary.Game))
+            MakeDictionaries([.. ofGame], [.. run.Where(entry => entry.Game == ofGame.Key)], ofGame.Key);
+    }
+
+    /// <summary>
+    /// Writes one game's dictionaries the export makes: WARNO's into its mod's own folder under Localisation, Steel
+    /// Division 2's (its MODDING.csv) into GameData\Localisation itself, where each game reads them.
+    /// </summary>
+    private void MakeDictionaries(List<DictionaryToMake> toMake, List<FileEntry> run, Data.Game.GameTitle game)
+    {
+        bool intoGameModFolder = game == Data.Game.GameTitle.Warno;
+        if (toMake.Count == 0 || (intoGameModFolder && namesFileMod is null)) return;
+        string? gameData = run.Select(ExportGameDataOf).FirstOrDefault(folder => folder is not null);
         string? exportFolder = run.Select(entry => entry.ExportFolder).FirstOrDefault(folder => folder is not null);
         gameData ??= exportFolder is null ? null
             : string.Equals(Path.GetFileName(Path.TrimEndingDirectorySeparator(exportFolder)), "GameData", StringComparison.OrdinalIgnoreCase) ? exportFolder
             : Path.Combine(exportFolder, "GameData");
         if (gameData is null) return;
-        string folder = Path.Combine(gameData, "Localisation", namesFileMod);
+        string shownFolder = intoGameModFolder ? "Localisation\\" + namesFileMod : "Localisation";
+        string folder = intoGameModFolder ? Path.Combine(gameData, "Localisation", namesFileMod!) : Path.Combine(gameData, "Localisation");
         try
         {
             Directory.CreateDirectory(folder);
@@ -412,13 +463,13 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 // and kept beside it first with "Back up overwritten files"
                 bool hasMark = old.AsSpan().StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]);
                 string oldText = System.Text.Encoding.UTF8.GetString(old, hasMark ? 3 : 0, old.Length - (hasMark ? 3 : 0));
-                (string text, _) = DivisionExtras.WithTexts(oldText, dictionary.Texts);
+                (string text, _) = DivisionExtras.WithTexts(oldText, dictionary.Texts, game);
                 if (old.Length > 0 && AppData.Current.Settings["backupOverwritten"]?.GetValue<bool>() == true) File.Copy(path, path + ".bak", overwrite: true);
                 byte[] mark = hasMark ? [0xEF, 0xBB, 0xBF] : [];
                 WriteWhole(path, [.. mark, .. System.Text.Encoding.UTF8.GetBytes(text)]);
             }
             model.SayAlso(Texts.Get("Files.Run.DictionariesMade", ("files", string.Join(", ", toMake.Select(each => each.Name))),
-                ("folder", "Localisation\\" + namesFileMod), ("texts", toMake.Sum(each => each.Texts.Count))));
+                ("folder", shownFolder), ("texts", toMake.Sum(each => each.Texts.Count))));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -482,7 +533,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// </summary>
     private void RemoveModFilesNoLongerUsed(List<FileEntry> run)
     {
-        List<JsonNode?> rules = RuleSetRulesOfEveryMod();
+        List<JsonNode?> rules = RuleSetRulesOfEveryMod(run);
         if (!rules.Any(rule => FileAndTextRules.CarriedFileOf(rule) is not null)) return;
         string? modFolder = run.Where(entry => entry.ExportFolder is not null)
             .Select(entry => FileAndTextRules.ModFolderOf(ExportPathOf(entry))).FirstOrDefault(folder => folder is not null);
@@ -500,40 +551,40 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
 
     /// <summary>
     /// The rules of every mod's rule sets, each rule set judged on its own (<see cref="FileAndTextRules.EachInItsOwnRuleSet"/>),
-    /// with those of the mods that are off copied as switched off.
+    /// with those of the mods that do not run on these files (off, or for another game) copied as switched off.
     /// </summary>
-    private static List<JsonNode?> RuleSetRulesOfEveryMod() =>
-        [.. ModStack.Ordered.SelectMany(mod => FileAndTextRules.EachInItsOwnRuleSet(
-            mod.Presets.Where(preset => preset.ArmoryPart is null).Select(preset => preset.Rules), allOff: !ModStack.IsOn(mod)))];
+    private static List<JsonNode?> RuleSetRulesOfEveryMod(List<FileEntry> run)
+    {
+        IReadOnlyList<Mod> running = ModStack.RunningOn(run);
+        return [.. ModStack.Ordered.SelectMany(mod => FileAndTextRules.EachInItsOwnRuleSet(
+            mod.Presets.Where(preset => preset.ArmoryPart is null).Select(preset => preset.Rules), allOff: !running.Contains(mod)))];
+    }
 
     // ---- the Armory presets ----
 
-    /// <summary>
-    /// The rules of the Armory presets of the mods that are on (<see cref="ModStack"/>), in the order they run; none
-    /// when they have none.
-    /// </summary>
-    private static IReadOnlyList<JsonNode?> ArmoryRulesOfOpenMod => [.. ModStack.Running.SelectMany(ArmoryPresets.RulesOf)];
+    /// <summary>The rules of the Armory presets of these mods, in the order they run; none when they have none.</summary>
+    private static IReadOnlyList<JsonNode?> ArmoryRulesOf(IEnumerable<Mod> mods) => [.. mods.SelectMany(ArmoryPresets.RulesOf)];
 
-    /// <summary>Whether the Armory presets have rules for a file: it is then run, with or without a preset of its own.</summary>
-    internal static bool HasDivisionRules(FileEntry entry) => HasDivisionRules(entry.Name);
+    /// <summary>Whether the Armory presets of the mods of its game have rules for a file: it is then run, with or without a preset of its own.</summary>
+    internal static bool HasDivisionRules(FileEntry entry) => HasDivisionRules(entry.Name, entry.Game);
 
-    /// <summary>Whether the Armory presets have rules for a file of this name, such as "Divisions.ndf" or "UNITS.csv".</summary>
-    internal static bool HasDivisionRules(string fileName)
+    /// <summary>Whether the Armory presets of a game's mods have rules for a file of this name, such as "Divisions.ndf" or "UNITS.csv".</summary>
+    internal static bool HasDivisionRules(string fileName, Data.Game.GameTitle game)
     {
-        IReadOnlyList<JsonNode?> rules = ArmoryRulesOfOpenMod;
-        return rules.Count > 0 && HasRulesFor(rules, fileName);
+        IReadOnlyList<JsonNode?> rules = ArmoryRulesOf(ModStack.RunningFor(game));
+        return rules.Count > 0 && HasRulesFor(rules, fileName, game);
     }
 
     /// <summary>
-    /// The names of the files the open mod's Armory presets have rules for, UNITS.csv among them when they give texts:
-    /// worked out once for a whole file list, as <see cref="HasDivisionRules(string)"/> for each of thousands of files
-    /// was slow.
+    /// The names of the files the Armory presets of a game's mods that are on have rules for, UNITS.csv among them when
+    /// they give texts: worked out once for a whole file list, as <see cref="HasDivisionRules(string, Data.Game.GameTitle)"/>
+    /// for each of thousands of files was slow.
     /// </summary>
-    internal static IReadOnlySet<string> FilesWithArmoryRules()
+    internal static IReadOnlySet<string> FilesWithArmoryRules(Data.Game.GameTitle game)
     {
-        IReadOnlyList<JsonNode?> rules = ArmoryRulesOfOpenMod;
+        IReadOnlyList<JsonNode?> rules = ArmoryRulesOf(ModStack.RunningFor(game));
         HashSet<string> files = DivisionChangeRules.FilesOf(rules);
-        if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFile);
+        if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFileOf(game));
         return files;
     }
 
@@ -558,8 +609,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     }
 
     /// <summary>
-    /// What runs on a file, mod by mod, for each mod that is on, in the Mods tab's order (<see cref="ModStack"/>): the
-    /// rules of its rule sets that apply to the file (<see cref="RuleSetFiles"/>), in its list order, then its Armory
+    /// What runs on a file, mod by mod, for each mod of the file's game that is on, in the Mods tab's order
+    /// (<see cref="ModStack"/>): a mod for another game never runs on it. The rules of its rule sets that apply to the file (<see cref="RuleSetFiles"/>), in its list order, then its Armory
     /// presets' rules for the file, so its Armory changes come after its other changes to the same file. Mods with no
     /// rules for the file are left out. Every rule shows in Details.
     /// </summary>
@@ -567,13 +618,13 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     {
         var stack = new List<ModRules>();
         bool byName = RuleSetsApplyByName;
-        foreach (Mod mod in ModStack.Running)
+        foreach (Mod mod in ModStack.RunningFor(entry.Game))
         {
             List<ModPreset> ruleSets = RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, byName);
             var rules = new JsonArray();
             foreach (ModPreset ruleSet in ruleSets)
                 foreach (JsonNode? rule in ruleSet.Rules) rules.Add(rule?.DeepClone());
-            foreach (JsonNode? rule in DivisionChangeRules.ForFile(ArmoryPresets.RulesOf(mod), entry.Name)) rules.Add(rule!.DeepClone());
+            foreach (JsonNode? rule in DivisionChangeRules.ForFile(ArmoryPresets.RulesOf(mod), entry)) rules.Add(rule!.DeepClone());
             if (rules.Count > 0) stack.Add(new ModRules(mod, ruleSets, rules));
         }
         return stack;
@@ -581,7 +632,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
 
     /// <summary>
     /// The mods that run on a file, in the order they run, each with its rule sets for it: what the Files tab's Mods
-    /// column shows. Cheaper than <see cref="StackFor"/>, which copies the rules, for a list of thousands.
+    /// column shows. Mods for another game than the file's are left out. Cheaper than <see cref="StackFor"/>, which
+    /// copies the rules, for a list of thousands.
     /// </summary>
     /// <param name="armoryFiles">The files the Armory presets of each mod that is on have rules for, by mod (see <see cref="ArmoryFilesByMod"/>).</param>
     internal static List<ModOnFile> ModsOn(FileEntry entry, IReadOnlyList<(Mod Mod, IReadOnlySet<string> Files)> armoryFiles)
@@ -590,8 +642,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         bool byName = RuleSetsApplyByName;
         foreach ((Mod mod, IReadOnlySet<string> files) in armoryFiles)
         {
+            if (mod.Game != entry.Game) continue;
             List<string> ruleSets = [.. RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, byName).Select(ruleSet => ruleSet.Name)];
-            bool hasArmoryChanges = files.Contains(entry.Name);
+            bool hasArmoryChanges = files.Contains(entry.Name) && (DivisionExtras.IsNamesFile(entry.Name, entry.Game) || DivisionChangeRules.WritesTo(entry));
             if (ruleSets.Count > 0 || hasArmoryChanges) mods.Add(new ModOnFile(mod.Name, ruleSets, hasArmoryChanges));
         }
         return mods;
@@ -605,7 +658,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             IReadOnlyList<JsonNode?> rules = ArmoryPresets.RulesOf(mod);
             HashSet<string> files = DivisionChangeRules.FilesOf(rules);
-            if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFile);
+            if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFileOf(mod.Game));
             byMod.Add((mod, files));
         }
         return byMod;
@@ -614,15 +667,15 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// <summary>A mod's rule sets that apply to a file, in the mod's list order (<see cref="RuleSetFiles"/>).</summary>
     internal static List<ModPreset> RuleSetsFor(FileEntry entry, Mod mod) => RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, RuleSetsApplyByName);
 
-    /// <summary>Whether a rule set applies to a file.</summary>
+    /// <summary>Whether a rule set applies to a file: never to a file of another game than its mod's.</summary>
     internal static bool AppliesTo(ModPreset ruleSet, FileEntry entry) =>
-        AppData.Current.ModOf(ruleSet) is Mod mod && RuleSetsFor(entry, mod).Contains(ruleSet);
+        AppData.Current.ModOf(ruleSet) is Mod mod && mod.Game == entry.Game && RuleSetsFor(entry, mod).Contains(ruleSet);
 
-    /// <summary>Whether a mod that is on has rule sets that apply to a file of this name and folder.</summary>
-    internal static bool HasRuleSetsFor(string fileName, string folder)
+    /// <summary>Whether a mod of a game that is on has rule sets that apply to a file of this name and folder.</summary>
+    internal static bool HasRuleSetsFor(string fileName, string folder, Data.Game.GameTitle game)
     {
         bool byName = RuleSetsApplyByName;
-        return ModStack.Running.Any(mod => RuleSetFiles.For(fileName, folder, mod.Presets, byName).Count > 0);
+        return ModStack.RunningFor(game).Any(mod => RuleSetFiles.For(fileName, folder, mod.Presets, byName).Count > 0);
     }
 
     /// <summary>Every rule run on a file, the mods' one after the other (<see cref="StackFor"/>).</summary>
@@ -635,15 +688,15 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     }
 
     /// <summary>
-    /// How many rules each part of the Armory runs on a file of this name, its headings left out; the parts with none
-    /// are left out.
+    /// How many rules each part of the Armory runs on a file of this name and game, its headings left out; the parts
+    /// with none are left out.
     /// </summary>
-    internal static IReadOnlyDictionary<ArmoryPart, int> ArmoryRuleCountsFor(string fileName)
+    internal static IReadOnlyDictionary<ArmoryPart, int> ArmoryRuleCountsFor(string fileName, Data.Game.GameTitle game)
     {
         var counts = new Dictionary<ArmoryPart, int>();
-        foreach (ModPreset preset in ModStack.Running.SelectMany(ArmoryPresets.AllOf))
+        foreach (ModPreset preset in ModStack.RunningFor(game).SelectMany(ArmoryPresets.AllOf))
         {
-            int count = DivisionExtras.IsNamesFile(fileName)
+            int count = DivisionExtras.IsNamesFile(fileName, game)
                 ? preset.Rules.Count(DivisionExtras.NeedsNamesFile)
                 : DivisionChangeRules.ForFile(preset.Rules, fileName).Count(rule => (string?)rule?["Kind"] != "Group");
             if (count > 0 && preset.ArmoryPart is ArmoryPart part) counts[part] = counts.GetValueOrDefault(part) + count;
@@ -651,17 +704,22 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         return counts;
     }
 
+    /// <summary>How many rules each part of the Armory runs on a file of the list: none on one it never writes to (<see cref="DivisionChangeRules.WritesTo"/>).</summary>
+    internal static IReadOnlyDictionary<ArmoryPart, int> ArmoryRuleCountsFor(FileEntry entry) =>
+        DivisionExtras.IsNamesFile(entry.Name, entry.Game) || DivisionChangeRules.WritesTo(entry)
+            ? ArmoryRuleCountsFor(entry.Name, entry.Game) : new Dictionary<ArmoryPart, int>();
+
     /// <summary>What a file is sorted by in the Armory column: the letters of the parts with rules for it, such as "DU".</summary>
-    internal static string ArmorySortKey(string fileName) =>
-        string.Concat(ArmoryRuleCountsFor(fileName).Keys.OrderBy(part => part).Select(Rules.ArmoryLetterTexts.Letter));
+    internal static string ArmorySortKey(FileEntry entry) =>
+        string.Concat(ArmoryRuleCountsFor(entry).Keys.OrderBy(part => part).Select(Rules.ArmoryLetterTexts.Letter));
 
-    /// <summary>The parts of the Armory whose presets have rules for a file of this name, in the order they run.</summary>
-    internal static IReadOnlyList<ArmoryPart> ArmoryPartsFor(string fileName) =>
-        [.. ModStack.Running.SelectMany(ArmoryPresets.AllOf).Where(preset => HasRulesFor(preset.Rules, fileName)).Select(preset => preset.ArmoryPart!.Value).Distinct()];
+    /// <summary>The parts of the Armory whose presets, of a game's mods, have rules for a file of this name, in the order they run.</summary>
+    internal static IReadOnlyList<ArmoryPart> ArmoryPartsFor(string fileName, Data.Game.GameTitle game) =>
+        [.. ModStack.RunningFor(game).SelectMany(ArmoryPresets.AllOf).Where(preset => HasRulesFor(preset.Rules, fileName, game)).Select(preset => preset.ArmoryPart!.Value).Distinct()];
 
-    /// <summary>Whether rules of the Armory are for a file of this name; for UNITS.csv, whether they give it texts.</summary>
-    private static bool HasRulesFor(IEnumerable<JsonNode?> rules, string fileName) =>
-        DivisionExtras.IsNamesFile(fileName) ? rules.Any(DivisionExtras.NeedsNamesFile) : DivisionChangeRules.FilesOf(rules).Contains(fileName);
+    /// <summary>Whether rules of the Armory are for a file of this name; for the game's dictionary (UNITS.csv, MODDING.csv), whether they give it texts.</summary>
+    private static bool HasRulesFor(IEnumerable<JsonNode?> rules, string fileName, Data.Game.GameTitle game) =>
+        DivisionExtras.IsNamesFile(fileName, game) ? rules.Any(DivisionExtras.NeedsNamesFile) : DivisionChangeRules.FilesOf(rules).Contains(fileName);
 
     /// <summary>
     /// After an export: the Armory's pictures of the user's own (division emblems, unit card pictures) copied into the
@@ -671,7 +729,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     private void WriteDivisionExtras(List<FileEntry> run)
     {
         RemovePicturesNoLongerUsed(run);
-        IReadOnlyList<JsonNode?> armoryRules = ArmoryRulesOfOpenMod;
+        IReadOnlyList<JsonNode?> armoryRules = ArmoryRulesOf(ModStack.RunningOn(run));
         if (armoryRules.Count == 0) return;
         HashSet<string> filesWithPictures = DivisionExtras.FilesWithPictures(armoryRules);
         FileEntry? exported = run.FirstOrDefault(entry => entry.Done && entry.ExportedPath is not null && filesWithPictures.Contains(entry.Name));
@@ -684,7 +742,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             DivisionExtras.Outcome outcome = DivisionExtras.CopyPictures(armoryRules, exported.ExportedPath!, PictureFolders,
                 Texts.Get("Files.Run.Divisions.NoGameData"), Texts.Get("Files.Run.Divisions.PictureMissing"));
             if (outcome.Problem != "") model.Warn(outcome.Problem);
-            else if (outcome.Pictures > 0) model.Say(Texts.Get("Files.Run.Divisions.Written", ("pictures", outcome.Pictures)));
+            else if (outcome.Pictures > 0) model.Say(PicturesCopied(outcome.Emblems, outcome.Pictures - outcome.Emblems));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -692,16 +750,28 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         }
     }
 
+    /// <summary>What the Files tab says of the pictures an export copied: "2 emblems and 1 unit picture copied."</summary>
+    private static string PicturesCopied(int emblems, int unitPictures)
+    {
+        var kinds = new List<string>();
+        if (emblems > 0) kinds.Add(Texts.Count("Files.Run.Pictures.Emblems", emblems, ("count", FileStatus.Count(emblems))));
+        if (unitPictures > 0) kinds.Add(Texts.Count("Files.Run.Pictures.UnitPictures", unitPictures, ("count", FileStatus.Count(unitPictures))));
+        string what = kinds.Count == 2 ? Texts.Get("Files.Run.Pictures.Both", ("first", kinds[0]), ("second", kinds[1])) : kinds[0];
+        return Texts.Get("Files.Run.Pictures.Copied", ("what", what));
+    }
+
     /// <summary>
-    /// The Armory presets' rules of every mod, with those of the mods that are off copied as switched off. Their group
-    /// headings are left out, so they do not switch off the rules of the mods that are on after them.
+    /// The Armory presets' rules of every mod, with those of the mods that do not run on these files (off, or for
+    /// another game) copied as switched off. Their group headings are left out, so they do not switch off the rules of
+    /// the mods that are on after them.
     /// </summary>
-    private static List<JsonNode?> ArmoryRulesOfEveryMod()
+    private static List<JsonNode?> ArmoryRulesOfEveryMod(List<FileEntry> run)
     {
         var rules = new List<JsonNode?>();
+        IReadOnlyList<Mod> running = ModStack.RunningOn(run);
         foreach (Mod mod in ModStack.Ordered)
         {
-            bool isOn = ModStack.IsOn(mod);
+            bool isOn = running.Contains(mod);
             foreach (JsonNode? rule in ArmoryPresets.RulesOf(mod))
             {
                 if (isOn) rules.Add(rule);
@@ -730,7 +800,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// </summary>
     private void RemovePicturesNoLongerUsed(List<FileEntry> run)
     {
-        List<JsonNode?> armoryRules = ArmoryRulesOfEveryMod();
+        List<JsonNode?> armoryRules = ArmoryRulesOfEveryMod(run);
         if (armoryRules.Count == 0) return;
         string? gameData = run.Where(entry => entry.Done && entry.ExportedPath is not null)
             .Select(entry => DivisionExtras.GameDataFolderOf(entry.ExportedPath!)).FirstOrDefault(folder => folder is not null);
@@ -785,7 +855,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             if (work.IsNamesFile)
             {
-                string? gameMod = GoesIntoLocalisation(entry) ? namesFileMod : null;
+                string? gameMod = GoesIntoGameModFolder(entry) ? namesFileMod : null;
                 RunNamesFile(entry, work.Content, write, gameMod, work.Texts);
                 if (write) WriteModFiles(entry, work.ModFiles, gameMod);
                 return;
@@ -809,9 +879,10 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             // logged so no conflict is missed; Details keeps its usual number of them (ForDetails)
             List<string>? stages = stack.Count > 1 ? [] : null;
             int logLimit = stack.Count > 1 ? int.MaxValue : settings.LogLimit;
-            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write, logLimit, work.OtherFiles, stages);
+            var ruleCounts = new List<int>();
+            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write, logLimit, work.OtherFiles, stages, ruleCounts);
             clock.Stop();
-            lock (conflictsFound) conflictsFound[entry.Key] = ConflictsIn(entry.Name, stack, result, stages ?? []);
+            lock (conflictsFound) conflictsFound[entry.Key] = ConflictsIn(entry.Name, stack, result, stages ?? [], ruleCounts);
 
             string? text = result.Text;
             if (write && text is not null)
@@ -894,8 +965,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// When given, filled with the text before the first mod and after each mod that ran, for the Mod Conflicts window;
     /// the last mod then makes its text even for a Preview.
     /// </param>
+    /// <param name="ruleCounts">When given, filled with how many rules the engine ran for each mod that ran, in order.</param>
     private (RunResult Result, LoadSummary Info) RunStack(List<ModRules> stack, string text, bool wantText, int logLimit, Dictionary<string, string> otherFiles,
-        List<string>? stages = null)
+        List<string>? stages = null, List<int>? ruleCounts = null)
     {
         LoadSummary? info = null;
         var results = new List<RunResult>();
@@ -906,7 +978,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             var engine = new NdfEngine();
             LoadSummary loaded = engine.LoadForRun(text);
             info ??= loaded;
-            RunResult result = engine.Run(RuleLoading.LoadForEngine(part.Rules), new RunOptions
+            List<Rule?> rules = RuleLoading.LoadForEngine(part.Rules);
+            ruleCounts?.Add(rules.Count);
+            RunResult result = engine.Run(rules, new RunOptions
             {
                 // a mod before the last needs its text, for the next mod to run on
                 WantText = wantText || at < stack.Count - 1 || stages is not null,
@@ -951,7 +1025,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// logged), each with the lines around it before the first mod and after each mod (<paramref name="stages"/>). The
     /// rules' logs follow the mods' order, as they ran.
     /// </summary>
-    private static List<ConflictedValue> ConflictsIn(string fileName, List<ModRules> stack, RunResult result, List<string> stages)
+    /// <param name="ruleCounts">
+    /// How many rules the engine ran for each mod that ran (<see cref="RunStack"/>), which splits the logs between the
+    /// mods: kept from the run, as loading the rules again only to count them took most of this for a large file. Tuned
+    /// for speed: Keep it that way when tidying.
+    /// </param>
+    private static List<ConflictedValue> ConflictsIn(string fileName, List<ModRules> stack, RunResult result, List<string> stages, List<int> ruleCounts)
     {
         if (stack.Count < 2) return [];
         var runs = new List<(string Mod, IEnumerable<(string Rule, int RuleIndex, EditLogEntry Entry)> Logged)>();
@@ -960,7 +1039,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         for (int at = 0; at < stack.Count; at++)
         {
             ModRules part = stack[at];
-            int first = rule, count = Math.Min(RuleLoading.LoadForEngine(part.Rules).Count, result.Logs.Count - rule);
+            // a mod after one whose rules gave a file that does not read back did not run, and has no logs
+            int ran = at < ruleCounts.Count ? ruleCounts[at] : 0;
+            int first = rule, count = Math.Min(ran, result.Logs.Count - rule);
             var logged = new List<(string, int, EditLogEntry)>();
             for (int i = 0; i < count; i++)
                 foreach (EditLogEntry entry in result.Logs[first + i]) logged.Add((result.Stats[first + i].Name, i, entry));
@@ -996,7 +1077,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     private static void RunNamesFile(FileEntry entry, FileContent.Snapshot content, bool write, string? gameMod, IReadOnlyList<DictionaryText> dictionaryTexts)
     {
         byte[] source = content.Bytes();
-        (string text, int count) = DivisionExtras.WithTexts(content.Text(), dictionaryTexts);
+        (string text, int count) = DivisionExtras.WithTexts(content.Text(), dictionaryTexts, entry.Game);
         string texts = Texts.Count("Files.Run.DivisionTexts", count, ("count", FileStatus.Count(count)));
         if (!write)
         {
@@ -1021,7 +1102,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         List<ModRules> stack = StackFor(entry);
         if (stack.Count == 0) return (new RunResult { Text = text, Stats = [], Logs = [], Warnings = [] }, text);
         List<GeneratedListsMaker.Input>? generated = HasGeneratedRules(stack)
-            ? GeneratedListsMaker.InputsFrom(model.Entries) ?? []
+            ? GeneratedListsMaker.InputsFrom(model.Entries, entry.Game) ?? []
             : null;
         if (FillGeneratedLists(stack, generated) is string cannot)
             return (new RunResult { Text = text, ParseError = cannot, Stats = [], Logs = [], Warnings = [] }, text);
@@ -1076,7 +1157,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         if (entry.LastRun is not null) entry.LastRun.Wrote = true;
         entry.Done = true;
         entry.ExportedPath = path;
-        entry.Message = Texts.Get("Files.Run.Exported", ("folder", shownName), ("what", what));
+        // the Export folder column says where: the status says only what happened
+        entry.Message = Texts.Get("Files.Run.Exported", ("what", what));
     }
 
     /// <summary>
@@ -1106,6 +1188,35 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         string fullFolder = Path.GetFullPath(folder);
         if (!Path.EndsInDirectorySeparator(fullFolder)) fullFolder += Path.DirectorySeparatorChar;
         return Path.GetFullPath(path).StartsWith(fullFolder, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// The folder of the export that stands for the source's GameData folder: the GameData folder the file is exported
+    /// into; else, when the export folder stands for a folder under GameData (its Generated folder, say, exported to
+    /// "…\Generated"), the folder the same steps up from the exported file reach. Null when neither shows it.
+    /// </summary>
+    public static string? ExportGameDataOf(FileEntry entry)
+    {
+        if (entry.ExportFolder is null) return null;
+        string path = Path.GetFullPath(ExportPathOf(entry));
+        if (DivisionExtras.GameDataFolderOf(path) is string found) return found;
+        if (InGameData(entry) is not string inside) return null;
+        string end = Path.DirectorySeparatorChar + inside;
+        return path.EndsWith(end, StringComparison.OrdinalIgnoreCase) ? path[..^end.Length] : null;
+    }
+
+    /// <summary>A file's place in its source's GameData folder, such as Generated\Gameplay\Decks\Divisions.ndf; null for one outside a GameData folder, or in an archive.</summary>
+    private static string? InGameData(FileEntry entry) =>
+        entry.Source is string source && entry.ArchivedContent is null && DivisionExtras.GameDataFolderOf(source) is string gameData
+            ? Path.GetRelativePath(gameData, source) : null;
+
+    /// <summary>The folder a file was added from, in its source's GameData folder: "Generated" for one added with the Generated folder, "" for GameData itself; null when unknown.</summary>
+    public static string? AddedFromInGameData(FileEntry entry)
+    {
+        if (InGameData(entry) is not string inside) return null;
+        string[] steps = inside.Split(Path.DirectorySeparatorChar);
+        int own = (entry.Folder == "" ? 0 : entry.Folder.Split('/').Length) + 1;
+        return steps.Length < own ? null : string.Join(Path.DirectorySeparatorChar, steps[..^own]);
     }
 
     /// <summary>Where a file is exported: its export folder, in the folders it sat in when it was added from a folder.</summary>
@@ -1144,9 +1255,10 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
 
     /// <summary>
     /// The other listed files the Lookup rules run on a file read, by the name the rule gives (the HTML app's <c>jobByRef</c>):
-    /// a file whose folder and name are that name, or end with it.
+    /// a file of the same game whose folder and name are that name, or end with it.
     /// </summary>
-    internal static Dictionary<string, string> OtherFilesFor(FileEntry entry, IEnumerable<FileEntry> entries) => OtherFilesFor(RulesToRun(entry), entries);
+    internal static Dictionary<string, string> OtherFilesFor(FileEntry entry, IEnumerable<FileEntry> entries) =>
+        OtherFilesFor(RulesToRun(entry), entries.Where(each => each.Game == entry.Game));
 
     /// <summary>The other listed files these rules' Lookup rules read, by the name each rule gives.</summary>
     internal static Dictionary<string, string> OtherFilesFor(IEnumerable<JsonNode?> rules, IEnumerable<FileEntry> entries)

@@ -114,9 +114,14 @@ public static partial class UnitNames
     /// <summary>A compared stat's name: "Cost", "Front armor"...</summary>
     public static string Stat(string key) => Texts.Get(StatNames[key]);
 
-    /// <summary>WARNO's armour families by name, each with its text's name.</summary>
+    /// <summary>
+    /// WARNO's armour families by name, and Steel Division 2's kinds of armour (its ArmorDescriptor_X names without
+    /// "ArmorDescriptor_"; a heavier kind, such as "Toit_Lourd", is shown made readable), each with its text's name.
+    /// </summary>
     private static readonly Dictionary<string, string> ArmorFamilies = new(StringComparer.Ordinal)
     {
+        ["Avion"] = "Units.ArmorFamily.Plane", ["Blindage"] = "Units.ArmorFamily.Armored", ["Canon"] = "Units.ArmorFamily.Gun",
+        ["Infanterie"] = "Units.ArmorFamily.Infantry", ["Toit"] = "Units.ArmorFamily.Roof", ["Vehicule"] = "Units.ArmorFamily.Vehicle",
         ["ResistanceFamily_avion"] = "Units.ArmorFamily.Plane", ["ResistanceFamily_batiment"] = "Units.ArmorFamily.Building",
         ["ResistanceFamily_blindage"] = "Units.ArmorFamily.Armored", ["ResistanceFamily_canon"] = "Units.ArmorFamily.Gun",
         ["ResistanceFamily_helico"] = "Units.ArmorFamily.Helicopter", ["ResistanceFamily_infanterie"] = "Units.ArmorFamily.Infantry",

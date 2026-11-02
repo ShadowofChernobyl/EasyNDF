@@ -51,7 +51,8 @@ public partial class RuleWindow : UserControl
     {
         InitializeComponent();
         SizeChanged += (_, _) => FitHeight();
-        ScanChoice.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
+        // a long file name is cut with "…" in the box and its list, which stays inside the window; the tooltip names it whole
+        NarrowChoices.OfOptions(ScanChoice, tipShowsChoice: true, ownTip: Texts.Get("Rules.RuleWindow.ScanChoice.Tip"));
         ScanChoice.SelectionChanged += ScanChosen;
         AppData.Current.ScansChanged += ScansChanged;
         Scroller.ScrollChanged += (_, _) => Editor.MinHeight = Math.Max(0, Scroller.ViewportHeight - 20);
@@ -130,7 +131,7 @@ public partial class RuleWindow : UserControl
         string kind = RuleEditor.KindOf(rule);
         Title.Text = RuleEditor.TitleOf(kind);
         // the Add Descriptor window is wider, for the descriptor's text: 64rem, or 96% of the app
-        Box.Width = kind == "Add" ? Math.Min(1024, (ActualWidth > 0 ? ActualWidth + 2 * PageBorder : 1280) * 0.96) : 480;
+        Box.Width = kind == "Add" ? Math.Min(1024, (ActualWidth > 0 ? ActualWidth + 2 * PageBorder : 1280) * 0.96) : UsualWidth();
         ShowScan();
         editor = new RuleEditor(model, ScanListsFor(rule), Changed, () => Dispatcher.BeginInvoke(Build));
         Editor.Children.Clear();
@@ -478,8 +479,12 @@ public partial class RuleWindow : UserControl
     {
         if (ActualHeight > 0) Box.Height = Math.Min(832, (ActualHeight + 2 * PageBorder) * 0.92);
         if (shownRule is not null && RuleEditor.KindOf(shownRule) == "Add") Box.Width = Math.Min(1024, (ActualWidth + 2 * PageBorder) * 0.96);
+        else Box.Width = UsualWidth();
         if (Box.HorizontalAlignment == HorizontalAlignment.Left) ShowBeside(true);
     }
+
+    /// <summary>The window's width for every rule but Add Descriptor: 30rem, or less in a window too narrow for that, 10 pixels in from each side.</summary>
+    private double UsualWidth() => ActualWidth > 0 ? Math.Max(200, Math.Min(480, ActualWidth - 20)) : 480;
 
     private void DoneClicked(object sender, RoutedEventArgs e) => Close();
 

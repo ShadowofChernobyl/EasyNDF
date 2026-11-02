@@ -20,6 +20,12 @@ public sealed class FileEntry
     /// </summary>
     public string Folder { get; set; } = "";
 
+    /// <summary>
+    /// The game the file is from: only the mods of that game run on it. Given when the file is added (by the Source it
+    /// came from, by where it is, or by the user); WARNO for a row kept by a version before files had a game.
+    /// </summary>
+    public Game.GameTitle Game { get; set; } = Data.Game.GameTitle.Warno;
+
     /// <summary>Where the file is on disk (or inside an archive), or null when the row's file is not loaded.</summary>
     public string? Source { get; set; }
 

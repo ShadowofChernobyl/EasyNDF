@@ -232,6 +232,9 @@ public partial class EditorPage
         if (foldAllButton is null || unfoldAllButton is null) return;
         foldAllButton.ToolTip = Texts.Get("Editor.FoldAll.Tip");
         unfoldAllButton.ToolTip = Texts.Get("Editor.UnfoldAll.Tip");
+        // the buttons show only an icon, so a screen reader is given their names
+        System.Windows.Automation.AutomationProperties.SetName(foldAllButton, Texts.Get("Editor.Menu.FoldAll"));
+        System.Windows.Automation.AutomationProperties.SetName(unfoldAllButton, Texts.Get("Editor.Menu.UnfoldAll"));
     }
 
     /// <summary>Fold all and Unfold all as menu items, with their keys (the same ones that fold the Rules tab's groups).</summary>

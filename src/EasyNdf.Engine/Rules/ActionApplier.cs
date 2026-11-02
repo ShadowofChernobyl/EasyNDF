@@ -212,6 +212,7 @@ public sealed partial class ActionApplier
                 break;
 
             case ListValue list:
+                if (op == RemovePropertyOperator && IsAtTarget && EntryKeyOf(target) is string key && RemoveEntries(list, key)) break;
                 for (int i = 0; i < list.Items.Count; i++) list.Items[i] = Visit("Index" + i, list.Items[i]);
                 break;
 
@@ -293,6 +294,15 @@ public sealed partial class ActionApplier
     private void VisitOnPath(string? name, NdfValue node)
     {
         if (node.IsPrimitive) return;
+        // "[Key]": one entry of a list, the MAP entry with that key or the object holding that value, is looked inside
+        if (EntryKeyOf(pathAbove[0]) is string key && IsEntryOf(node, key))
+        {
+            string[] before = pathAbove;
+            pathAbove = pathAbove[1..];
+            Walk(node is PairValue entry ? entry.Second : node);
+            pathAbove = before;
+            return;
+        }
         if (name == pathAbove[0])
         {
             string[] before = pathAbove;
@@ -321,6 +331,52 @@ public sealed partial class ActionApplier
         removedAny = true;
         Note(CanonicalWriter.Write(removed.Value), "(removed)");
         return true;
+    }
+
+    // ---- one entry of a list, by its key ----
+
+    /// <summary>
+    /// The key a path part names in square brackets, "[~/Descriptor_Deck_Division_X]": one entry of a list, such as one
+    /// division's rule in Steel Division 2's DivisionRules MAP, where every division's sits. Null for any other part.
+    /// </summary>
+    private static string? EntryKeyOf(string part) =>
+        part.Length > 2 && part[0] == '[' && part[^1] == ']' ? JsText.Trim(part[1..^1]) : null;
+
+    /// <summary>
+    /// Whether a list's item is the entry a key names: a MAP entry (Key, Value) whose key is it, or an object with a
+    /// property whose value is it (a division's unit rule, by its UnitDescriptor). A reference matches by its last part
+    /// too, so "~/X" finds "$/GFX/Unit/X".
+    /// </summary>
+    private static bool IsEntryOf(NdfValue node, string key)
+    {
+        if (node is PairValue { Kind: PairKind.Pair } entry) return entry.First.IsPrimitive && IsKey(CanonicalWriter.PrimitiveText(entry.First), key);
+        return node is ObjectValue holder && holder.Properties.Any(property => property.Value.IsPrimitive && IsKey(CanonicalWriter.PrimitiveText(property.Value), key));
+    }
+
+    /// <summary>Whether a value's text is a key: the same text, or for references, the same last part.</summary>
+    private static bool IsKey(string text, string key)
+    {
+        if (text == key) return true;
+        int textSlash = text.LastIndexOf('/'), keySlash = key.LastIndexOf('/');
+        return (textSlash >= 0 || keySlash >= 0) && text[(textSlash + 1)..] == key[(keySlash + 1)..];
+    }
+
+    /// <summary>
+    /// "Remove Property" on a key ("… &gt; UnitRuleList &gt; [~/Descriptor_Unit_X]"): takes the entries of the list that
+    /// it names out, lines and all. True when the list had one.
+    /// </summary>
+    private bool RemoveEntries(ListValue list, string key)
+    {
+        bool removed = false;
+        for (int index = list.Items.Count - 1; index >= 0; index--)
+        {
+            if (!IsEntryOf(list.Items[index], key)) continue;
+            string old = CanonicalWriter.Write(list.Items[index]);
+            list.RemoveItemAt(index);
+            removed = removedAny = true;
+            Note(old, "(removed)");
+        }
+        return removed;
     }
 
     // ---- a list an action wrote in full ----
@@ -404,17 +460,25 @@ public sealed partial class ActionApplier
     /// <summary>
     /// The object Add Property adds to: the descriptor itself, or, for a path such as "ComponentFrame &gt; Width", the
     /// object each part leads to in turn, one level at a time from the descriptor's own properties. Null when a part
-    /// is missing or does not hold an object.
+    /// is missing or does not hold an object. A part in square brackets steps into the entry of a list it names
+    /// (<see cref="EntryKeyOf"/>), a MAP entry's value or the object holding the key.
     /// </summary>
     private ObjectValue? ObjectAtPath()
     {
-        if (descriptor.Value is not ObjectValue holder) return null;
+        NdfValue current = descriptor.Value;
         foreach (string part in pathAbove)
         {
-            if (holder.Properties.LastOrDefault(property => property.Name == part)?.Value is not ObjectValue inner) return null;
-            holder = inner;
+            NdfValue? next;
+            if (EntryKeyOf(part) is string key)
+            {
+                NdfValue? entry = (current as ListValue)?.Items.FirstOrDefault(item => IsEntryOf(item, key));
+                next = entry is PairValue pair ? pair.Second : entry;
+            }
+            else next = (current as ObjectValue)?.Properties.LastOrDefault(property => property.Name == part)?.Value;
+            if (next is null) return null;
+            current = next;
         }
-        return holder;
+        return current as ObjectValue;
     }
 
     // ---- single values ----

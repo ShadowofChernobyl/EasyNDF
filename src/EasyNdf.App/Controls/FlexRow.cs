@@ -109,18 +109,46 @@ public sealed class FlexRow : Panel
     {
         double used = line.Sum(x => x.Width) + Gap * (line.Count - 1);
         double spare = double.IsInfinity(width) ? 0 : Math.Max(0, width - used);
-        double growth = line.Sum(x => GetGrow(x.Child));
+        double[] widths = Grown(line, spare);
         double height = line.Max(x => x.Child.DesiredSize.Height);
         double left = 0;
-        foreach ((UIElement child, double childWidth) in line)
+        for (int at = 0; at < line.Count; at++)
         {
-            double extra = growth > 0 ? spare * GetGrow(child) / growth : 0;
-            // a child grows no wider than its MaxWidth (CSS max-width); the rest of the line stays empty
-            double finalWidth = Math.Min(childWidth + extra, child is FrameworkElement { MaxWidth: var most } ? most : double.PositiveInfinity);
-            double childHeight = child.DesiredSize.Height;
-            places.Add(new Rect(left, top + (height - childHeight) / 2, finalWidth, childHeight));
-            left += finalWidth + Gap;
+            double childHeight = line[at].Child.DesiredSize.Height;
+            places.Add(new Rect(left, top + (height - childHeight) / 2, widths[at], childHeight));
+            left += widths[at] + Gap;
         }
         return top + height;
+    }
+
+    /// <summary>
+    /// Each child's width once the spare width is shared among those that grow, as CSS does: a child that reaches its
+    /// MaxWidth stops there, and what it would have taken goes to the others that still grow. Without that, the File
+    /// Editor's buttons ended short of the right edge in a wide window, as the file dropdown stops at its MaxWidth.
+    /// </summary>
+    private static double[] Grown(List<(UIElement Child, double Width)> line, double spare)
+    {
+        double[] widths = [.. line.Select(x => x.Width)];
+        var growing = new HashSet<int>(Enumerable.Range(0, line.Count).Where(at => GetGrow(line[at].Child) > 0));
+        while (spare > 0.01 && growing.Count > 0)
+        {
+            double growth = growing.Sum(at => GetGrow(line[at].Child));
+            double handedOut = 0;
+            var full = new List<int>();
+            foreach (int at in growing)
+            {
+                double most = line[at].Child is FrameworkElement { MaxWidth: var max } ? max : double.PositiveInfinity;
+                double share = spare * GetGrow(line[at].Child) / growth;
+                double taken = Math.Min(share, Math.Max(0, most - widths[at]));
+                widths[at] += taken;
+                handedOut += taken;
+                if (taken < share) full.Add(at);
+            }
+            spare -= handedOut;
+            // nobody stopped at a MaxWidth: everything was handed out
+            if (full.Count == 0) break;
+            growing.ExceptWith(full);
+        }
+        return widths;
     }
 }

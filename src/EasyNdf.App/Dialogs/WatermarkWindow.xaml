@@ -12,31 +12,46 @@
     <!-- the dimmed backdrop; a click on it closes the window -->
     <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed">
         <!-- .box.raised: 26rem wide, 10 pixels in at the top and 12 elsewhere, its parts 6 pixels apart -->
-        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                         Padding="12,10,12,12" Width="416" HorizontalAlignment="Center" VerticalAlignment="Center"
                         MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
-            <StackPanel>
+            <!-- the title and the buttons always show; in a small app window what is between them scrolls -->
+            <DockPanel>
                 <!-- .bar: the title, then ? and × at the right -->
-                <DockPanel>
+                <DockPanel DockPanel.Dock="Top">
                     <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
-                        <Button Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.Watermark.AboutTheWatermark.Tip}" controls:QuickHelp.Page="watermark" />
-                        <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.Watermark.CloseEscape.Tip}" Click="CloseClicked" />
+                        <Button Style="{StaticResource HelpButton}" ToolTip="{t:Text Rules.Watermark.AboutTheWatermark.Tip}" controls:QuickHelp.Page="watermark"
+                                AutomationProperties.Name="{t:Text Rules.Watermark.AboutTheWatermark.Tip}" />
+                        <Button Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.Watermark.CloseEscape.Tip}" Click="CloseClicked"
+                                AutomationProperties.Name="{t:Text Rules.Watermark.CloseEscape.Tip}" />
                     </controls:SnappedRow>
                     <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
                 </DockPanel>
+                <!-- .bar: Done; before an export, Export; Cancel in both -->
+                <controls:SnappedRow DockPanel.Dock="Bottom" Gap="6" HorizontalAlignment="Right" Margin="0,6,0,0">
+                    <Button x:Name="DoneButton" Style="{StaticResource GoButton}" Content="{t:Text Rules.Watermark.Done}" ToolTip="{t:Text Rules.Watermark.Done.Tip}" Click="DoneClicked" />
+                    <Button x:Name="ExportButton" Style="{StaticResource GoButton}" Content="{t:Text Rules.Watermark.Export}" ToolTip="{t:Text Rules.Watermark.Export.Tip}" Click="DoneClicked" />
+                    <Button x:Name="CancelButton" Content="{t:Text Rules.Watermark.Cancel}" ToolTip="{t:Text Rules.Watermark.Cancel.Tip}" Click="CancelClicked" />
+                </controls:SnappedRow>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <StackPanel>
                 <!-- #wmLead: what the question before an export is about -->
                 <TextBlock x:Name="Lead" Style="{StaticResource Note}" Margin="0,6,0,0" />
                 <CheckBox x:Name="OnSwitch" Style="{StaticResource Toggle}" Content="{t:Text Rules.Watermark.Enable}" Margin="0,6,0,0" HorizontalAlignment="Left"
                           ToolTip="{t:Text Rules.Watermark.OnSwitch.Tip}" Click="ValuesChanged" />
                 <!-- .wmf: each label 4 pixels below the box above it, its box 3 pixels under it -->
                 <StackPanel Margin="0,6,0,0">
-                    <TextBlock Text="{t:Text Rules.Watermark.Author}" Foreground="{DynamicResource muted}" Margin="0,4,0,3" />
-                    <TextBox x:Name="AuthorBox" ToolTip="{t:Text Rules.Watermark.AuthorBox.Tip}" TextChanged="ValuesChanged" />
-                    <TextBlock Text="{t:Text Rules.Watermark.ModVersion}" Foreground="{DynamicResource muted}" Margin="0,7,0,3" />
-                    <TextBox x:Name="VersionBox" ToolTip="{t:Text Rules.Watermark.AuthorBox.Tip}" TextChanged="ValuesChanged" />
-                    <TextBlock Text="{t:Text Rules.Watermark.GameVersion}" Foreground="{DynamicResource muted}" Margin="0,7,0,3" />
-                    <TextBox x:Name="GameBox" ToolTip="{t:Text Rules.Watermark.AuthorBox.Tip}" TextChanged="ValuesChanged" />
+                    <!-- the labels end in a colon, as the rule window's do (set in code: the colon is the language's) -->
+                    <TextBlock x:Name="AuthorLabel" Foreground="{DynamicResource muted}" Margin="0,4,0,3" />
+                    <TextBox x:Name="AuthorBox" ToolTip="{t:Text Rules.Watermark.AuthorBox.Tip}" TextChanged="ValuesChanged"
+                             AutomationProperties.LabeledBy="{Binding ElementName=AuthorLabel}" controls:OffReason.Text="{t:Text Rules.Watermark.Off}" />
+                    <TextBlock x:Name="VersionLabel" Foreground="{DynamicResource muted}" Margin="0,7,0,3" />
+                    <TextBox x:Name="VersionBox" ToolTip="{t:Text Rules.Watermark.VersionBox.Tip}" TextChanged="ValuesChanged"
+                             AutomationProperties.LabeledBy="{Binding ElementName=VersionLabel}" controls:OffReason.Text="{t:Text Rules.Watermark.Off}" />
+                    <TextBlock x:Name="GameLabel" Foreground="{DynamicResource muted}" Margin="0,7,0,3" />
+                    <TextBox x:Name="GameBox" ToolTip="{t:Text Rules.Watermark.GameBox.Tip}" TextChanged="ValuesChanged"
+                             AutomationProperties.LabeledBy="{Binding ElementName=GameLabel}" controls:OffReason.Text="{t:Text Rules.Watermark.Off}" />
                 </StackPanel>
                 <!-- .wmprev: the lines an export would write, in the code font, in a box with a plain edge -->
                 <Border x:Name="PreviewBox" Margin="0,10,0,0" Padding="6,4" BorderThickness="1" BorderBrush="{DynamicResource line}" Background="{DynamicResource well}">
@@ -45,18 +60,14 @@
                 <!-- .wmfoot: the note or "Don't show me this again", and "Ask on export" at the right -->
                 <DockPanel Margin="0,6,0,0">
                     <CheckBox x:Name="AskTick" DockPanel.Dock="Right" Style="{StaticResource Tick}" Content="{t:Text Rules.Watermark.AskOnExport}"
-                              ToolTip="{t:Text Rules.Watermark.AskTick.Tip}" Click="ValuesChanged" />
+                              ToolTip="{t:Text Rules.Watermark.AskTick.Tip}" Click="ValuesChanged" controls:OffReason.Text="{t:Text Rules.Watermark.Off}" />
                     <CheckBox x:Name="NeverTick" Style="{StaticResource Tick}" Content="{t:Text Rules.Watermark.DontShowMeThis}" HorizontalAlignment="Left"
                               ToolTip="{t:Text Rules.Watermark.NeverTick.Tip}" />
                     <TextBlock x:Name="SavedNote" Style="{StaticResource Note}" Margin="0" Text="{t:Text Rules.Watermark.SavedWithThisMod}" />
                 </DockPanel>
-                <!-- .bar: Done; before an export, Export and Cancel -->
-                <controls:SnappedRow Gap="6" HorizontalAlignment="Right" Margin="0,6,0,0">
-                    <Button x:Name="DoneButton" Style="{StaticResource GoButton}" Content="{t:Text Rules.Watermark.Done}" ToolTip="{t:Text Rules.Watermark.Done.Tip}" Click="DoneClicked" />
-                    <Button x:Name="ExportButton" Style="{StaticResource GoButton}" Content="{t:Text Rules.Watermark.Export}" ToolTip="{t:Text Rules.Watermark.Export.Tip}" Click="DoneClicked" />
-                    <Button x:Name="CancelButton" Content="{t:Text Rules.Watermark.Cancel}" ToolTip="{t:Text Rules.Watermark.Cancel.Tip}" Click="CloseClicked" />
-                </controls:SnappedRow>
-            </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
         </controls:Bevel>
     </Grid>
 </UserControl>

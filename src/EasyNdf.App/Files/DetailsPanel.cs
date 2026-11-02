@@ -33,6 +33,9 @@ public sealed class DetailsPanel : StackPanel
         SetGaps();
     }
 
+    /// <summary>How many of a run's warnings are listed before the rest are counted.</summary>
+    private const int ShownWarnings = 20;
+
     private void ShowRun(FileEntry? row)
     {
         if (row?.LastRun is not RunRecord run)
@@ -57,27 +60,33 @@ public sealed class DetailsPanel : StackPanel
         // "1 edits" in English, as the HTML app writes it (both forms are plural); other languages give their singular
         string edits = Texts.Count("Files.Details.EditCount", result.Edits, ("count", FileStatus.Count(result.Edits)));
         AddParagraph(Texts.Get("Files.Details.Summary", ("edits", edits),
-            ("holds", FileStatus.Holds(run.Info.Descriptors, run.Info.Constants, run.Info.Unnamed)), ("milliseconds", run.Milliseconds), ("what", what)), "muted", 0, 8);
+            ("holds", FileStatus.Holds(run.Info.Descriptors, run.Info.Constants, run.Info.Unnamed)), ("milliseconds", Texts.Number(run.Milliseconds)), ("what", what)), "muted", 0, 8);
 
         if (result.ParseError != "")
             AddParagraph((run.Held ? Texts.Get("Files.Details.InvalidHeld") : Texts.Get("Files.Details.InvalidWouldBeHeld"))
                 + "\n" + Texts.Get("Files.Details.InvalidProblem", ("problem", result.ParseError)) + "\n" + Texts.Get("Files.Details.InvalidCause"),
                 "warn", 12.5, 12.5);
         if (result.Warnings.Count > 0)
-            AddParagraph(string.Join("\n", result.Warnings.Select(w => (w.Type == "number" ? Texts.Get("Files.Details.RuleWarning", ("rule", w.Rule)) : Texts.Get("Files.Details.CheckFailed", ("rule", w.Rule))) + " " + w.Message)),
-                "caution", 12.5, 12.5);
+        {
+            // the first ones, then how many more: a rule that warns on every descriptor made a wall of text
+            IEnumerable<string> warnings = result.Warnings.Take(ShownWarnings)
+                .Select(w => (w.Type == "number" ? Texts.Get("Files.Details.RuleWarning", ("rule", w.Rule)) : Texts.Get("Files.Details.CheckFailed", ("rule", w.Rule))) + " " + w.Message);
+            if (result.Warnings.Count > ShownWarnings)
+                warnings = warnings.Append(Texts.Get("Files.Details.MoreWarnings", ("count", Texts.Number(result.Warnings.Count - ShownWarnings))));
+            AddParagraph(string.Join("\n", warnings), "caution", 12.5, 12.5);
+        }
         List<RuleStats> idle = result.Stats.Where(RunRecord.IsIdle).ToList();
         if (idle.Count > 0 && result.Edits > 0)
         {
             string names = string.Join(", ", idle.Take(8).Select(s => "\"" + s.Name + "\""));
-            if (idle.Count > 8) names = Texts.Get("Files.NotNdf.AndMore", ("files", names), ("more", idle.Count - 8));
+            if (idle.Count > 8) names = Texts.Get("Files.NotNdf.AndMore", ("files", names), ("more", Texts.Number(idle.Count - 8)));
             AddParagraph(Texts.Get("Files.Details.IdleRules", ("idle", FileStatus.IdleText(idle.Count)), ("rules", names)), "caution", 0, 8);
         }
 
         AddRuleTable(row, run);
         if (result.Stats.Any(s => s.Skipped > 0))
             AddParagraph(Texts.Get("Files.Details.SkippedMeans"), "muted", 0, 8);
-        AddEditList(run);
+        AddEditList(row, run);
     }
 
     /// <summary>The table of the preset's rules: click one to list its edits below.</summary>
@@ -114,8 +123,11 @@ public sealed class DetailsPanel : StackPanel
         Add(table, 0, 0);
     }
 
-    /// <summary>The edits of the rule picked in the table, in a list box of their own.</summary>
-    private void AddEditList(RunRecord run)
+    /// <summary>
+    /// The edits of the rule picked in the table, in a list box of their own. A double-click on one shows its descriptor
+    /// in the File Editor, in the file as exported.
+    /// </summary>
+    private void AddEditList(FileEntry row, RunRecord run)
     {
         int shown = run.ShownRule ?? 0;
         if (shown >= run.Result.Stats.Count) return;
@@ -130,9 +142,12 @@ public sealed class DetailsPanel : StackPanel
         }
 
         // only the edits in sight are made: up to 500 rows made at once froze the app while the panes were resized
-        // (Double-clicking an edit to see it in the exported file comes with the Editor tab.)
         var table = new LongTable([Texts.Get("Files.Details.Descriptor"), Texts.Get("Files.Details.Target"), Texts.Get("Files.Details.Before"), Texts.Get("Files.Details.After")], [true, true, true, true],
             [.. log.Select(edit => (IReadOnlyList<string>)[edit.Descriptor, edit.Target, edit.Old, edit.New])]);
+        table.RowDoubleClicked += index =>
+        {
+            if (index < log.Count && log[index].Descriptor != "") _ = MainView.Of(this).EditorTab.ShowDescriptor(row, log[index].Descriptor);
+        };
         // #detBox: a sunken list, at most max(14rem, 46% of the window's height less 40 pixels) tall, with a grip under it
         var box = new Bevel { Child = table };
         box.SetResourceReference(Bevel.TopLeftProperty, "lo");

@@ -26,33 +26,141 @@ public static class DivisionDetailsEditor
     /// <summary>The details, one a row with its name at the left: the name, nation, type, activation points and place in the list.</summary>
     public static Grid Details(Division division, IDivisionEditing editing)
     {
-        var grid = new Grid();
+        // in a narrow pane each name sits over its value
+        var grid = new NameValueGrid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        // each value marked when the open mod changed it (DivisionMarks)
-        AddRow(grid, "Divisions.Pane.Name", DivisionMarks.Mark(new EditBox(division.Name, double.NaN, typed =>
+        // each value marked when the open mod changed it (DivisionMarks); one the game's divisions lack, or the Armory
+        // does not write for the game, switched off with the reason
+        AddRow(grid, "Divisions.Pane.Name", DivisionMarks.Mark(OffUnless(new EditBox(division.Name, double.NaN, typed =>
         {
             if (typed == "") return false;
             return editing.Rename(typed);
-        }), ["Name"], each => each.Name));
-        AddRow(grid, "Divisions.Pane.Nation", DivisionMarks.Mark(NationChoice(division, editing), ["Nation"], each => UnitNames.Nation(each.Country) + " · " + UnitNames.Side(each.Side)));
-        AddRow(grid, "Divisions.Pane.Type", DivisionMarks.Mark(TypeChoice(division, editing), ["Type"], each => DivisionNames.Type(each.TypeToken)));
-        AddRow(grid, "Divisions.Pane.Tags", DivisionMarks.Mark(new EditBox(TagsText(division.Tags), double.NaN, typed =>
+        }), editing, DivisionDetail.Name), ["Name"], each => each.Name));
+        AddRow(grid, "Divisions.Pane.Nation", DivisionMarks.Mark(OffUnless(NationChoice(division, editing), editing, DivisionDetail.Nation),
+            ["Nation"], each => UnitNames.Nation(each.Country) + " · " + UnitNames.Side(each.Side)));
+        AddRow(grid, "Divisions.Pane.Type", DivisionMarks.Mark(OffUnless(TypeChoice(division, editing), editing, DivisionDetail.Type), ["Type"], each => DivisionNames.Type(each.TypeToken)));
+        AddRow(grid, "Divisions.Pane.Tags", DivisionMarks.Mark(OffUnless(new EditBox(TagsText(division.Tags), double.NaN, typed =>
         {
             List<string> tags = [.. typed.Split(',').Select(tag => tag.Trim()).Where(tag => tag != "")];
             return editing.ChangeDetails(change => change.Tags = tags);
-        }) { ToolTip = Texts.Get("Divisions.Pane.Tags.Tip") }, ["Tags"], each => TagsText(each.Tags)));
-        AddRow(grid, "Divisions.Pane.Points", DivisionMarks.Mark(new EditBox(Points(division), NumberWidth, typed =>
+        }) { ToolTip = Texts.Get("Divisions.Pane.Tags.Tip") }, editing, DivisionDetail.Tags), ["Tags"], each => TagsText(each.Tags)));
+        AddRow(grid, "Divisions.Pane.Points", DivisionMarks.Mark(OffUnless(new EditBox(Points(division), NumberWidth, typed =>
         {
             if (!int.TryParse(typed, NumberStyles.Integer, Texts.Catalog.Culture, out int points) || points < 0) return false;
             return editing.ChangeDetails(change => change.ActivationPoints = points);
-        }) { HorizontalAlignment = HorizontalAlignment.Left }, ["Points"], Points));
-        AddRow(grid, "Divisions.Pane.ListOrder", DivisionMarks.Mark(new EditBox(ListOrder(division), NumberWidth, typed =>
+        }) { HorizontalAlignment = HorizontalAlignment.Left }, editing, DivisionDetail.Points), ["Points"], Points));
+        AddRow(grid, "Divisions.Pane.ListOrder", DivisionMarks.Mark(OffUnless(new EditBox(ListOrder(division), NumberWidth, typed =>
         {
             if (DivisionTableColumns.ReadDecimal(typed) is not double order) return false;
             return editing.ChangeDetails(change => change.ListOrder = order);
-        }) { HorizontalAlignment = HorizontalAlignment.Left }, ["ListOrder"], ListOrder));
+        }) { HorizontalAlignment = HorizontalAlignment.Left }, editing, DivisionDetail.ListOrder), ["ListOrder"], ListOrder));
         return grid;
+    }
+
+    // ---- Steel Division 2's phases ----
+
+    /// <summary>
+    /// Steel Division 2's phases and income choices: a small table, a row for each phase with when it starts (in
+    /// seconds), its income and its bonus, each in a box kept when it is left, as the details are; then the income
+    /// choices. The section is the pane's width, as three boxes in a row do not fit beside the details' names.
+    /// </summary>
+    public static StackPanel Phases(Division division, IDivisionEditing editing)
+    {
+        var grid = new Grid { ToolTip = Texts.Get("Divisions.Pane.Phase.Tip") };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        for (int column = 0; column < 3; column++) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        string[] headings = [Texts.Get("Divisions.Pane.Phase"), Texts.Get("Divisions.Pane.Phase.Starts"), Texts.Get("Divisions.Pane.Phase.Income"), Texts.Get("Divisions.Pane.Phase.Bonus")];
+        for (int column = 0; column < headings.Length; column++) Place(grid, MutedText(headings[column]), 0, column);
+        for (int phase = 0; phase < division.Phases.Count; phase++)
+        {
+            int at = phase;
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            Place(grid, DivisionMarks.Mark(MutedText(PhaseLetter(at)), ["Phases"], each => PhaseText(each, at)), at + 1, 0);
+            Place(grid, OffUnless(PhaseBox(division, at, division.Phases[at].Start, (each, number) => each with { Start = number }, editing), editing, DivisionDetail.Phases), at + 1, 1);
+            Place(grid, OffUnless(PhaseBox(division, at, division.Phases[at].Income, (each, number) => each with { Income = number }, editing), editing, DivisionDetail.Phases), at + 1, 2);
+            Place(grid, OffUnless(PhaseBox(division, at, division.Phases[at].Bonus, (each, number) => each with { Bonus = number }, editing), editing, DivisionDetail.Phases), at + 1, 3);
+        }
+        var section = new StackPanel { Children = { grid } };
+        if (division.Economy == "") return section;
+        // the income choices on a line of their own under the table, so their name does not widen its first column
+        var name = MutedText(Texts.Get("Divisions.Pane.Economy"));
+        name.Margin = new Thickness(0, 0, 8, 0);
+        DockPanel.SetDock(name, Dock.Left);
+        FrameworkElement choice = DivisionMarks.Mark(OffUnless(EconomyChoice(division, editing), editing, DivisionDetail.Economy), ["Economy"], each => EconomyName(each.Economy));
+        section.Children.Add(new DockPanel { Margin = new Thickness(0, 4, 0, 2), Children = { name, choice } });
+        return section;
+    }
+
+    /// <summary>Puts a part in a cell of a grid, with a little room around it.</summary>
+    private static void Place(Grid grid, FrameworkElement part, int row, int column)
+    {
+        part.Margin = new Thickness(column == 0 ? 0 : 3, 2, column == 0 ? 8 : 0, 2);
+        Grid.SetRow(part, row);
+        Grid.SetColumn(part, column);
+        grid.Children.Add(part);
+    }
+
+    /// <summary>A dim name in the phases' table.</summary>
+    private static TextBlock MutedText(string text)
+    {
+        var block = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center };
+        block.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        return block;
+    }
+
+    /// <summary>A phase's letter, as the game names them: A, B, C.</summary>
+    private static string PhaseLetter(int phase) => ((char)('A' + phase)).ToString();
+
+    /// <summary>A phase of a division as its row shows it, to compare with the game's: "600 s · 140 · +0".</summary>
+    private static string PhaseText(Division division, int phase) =>
+        phase < division.Phases.Count ? Texts.Number(division.Phases[phase].Start) + " s · " + Texts.Number(division.Phases[phase].Income) + " · +" + Texts.Number(division.Phases[phase].Bonus) : "";
+
+    /// <summary>
+    /// A box for one value of one phase: the division's phases with that value changed are kept in the mod when it is
+    /// left; a value that is not a whole number of 0 or more is refused, the box showing the value kept.
+    /// </summary>
+    private static EditBox PhaseBox(Division division, int phase, int value, Func<DivisionPhase, int, DivisionPhase> with, IDivisionEditing editing) =>
+        new(Texts.Number(value), double.NaN, typed =>
+        {
+            if (!int.TryParse(typed, NumberStyles.Integer, Texts.Catalog.Culture, out int number) || number < 0) return false;
+            List<DivisionPhase> phases = [.. division.Phases];
+            phases[phase] = with(phases[phase], number);
+            return editing.ChangeDetails(change => change.Phases = phases);
+        });
+
+    /// <summary>An income choices list's name without the game's prefix: "DivisionEconomy_German" is "German".</summary>
+    public static string EconomyName(string economy) =>
+        economy.StartsWith("DivisionEconomy_", StringComparison.Ordinal) ? economy["DivisionEconomy_".Length..].TrimEnd('_') : economy;
+
+    /// <summary>The income choices, from the lists the game's divisions use.</summary>
+    private static ComboBox EconomyChoice(Division division, IDivisionEditing editing)
+    {
+        var choice = new ComboBox { ToolTip = Texts.Get("Divisions.Pane.Economy.Tip") };
+        foreach (string economy in editing.Economies.Append(division.Economy).Distinct())
+            choice.Items.Add(new ComboBoxItem { Content = EconomyName(economy), Tag = economy, ToolTip = economy });
+        ComboBoxItem? Shown() => choice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == division.Economy);
+        choice.SelectedItem = Shown();
+        choice.SelectionChanged += (_, _) =>
+        {
+            if (choice.SelectedItem is not ComboBoxItem { Tag: string economy } || economy == division.Economy) return;
+            // a refused change puts the division's own back, so the dropdown never shows what was not saved
+            if (!editing.ChangeDetails(change => change.Economy = economy)) choice.SelectedItem = Shown();
+        };
+        return choice;
+    }
+
+    /// <summary>
+    /// A control that changes one of the division's details, switched off when the detail cannot be changed, its
+    /// tooltip then saying why (<see cref="IDivisionEditing.WhyDetailCannotChange"/>).
+    /// </summary>
+    public static T OffUnless<T>(T control, IDivisionEditing editing, string detail) where T : FrameworkElement
+    {
+        if (editing.WhyDetailCannotChange(detail) is not string why) return control;
+        control.IsEnabled = false;
+        OffReason.SetText(control, why);
+        return control;
     }
 
     // ---- the texts ----
@@ -69,9 +177,9 @@ public static class DivisionDetailsEditor
         Children =
         {
             TextPart("Divisions.Pane.Summary", "Divisions.Pane.Summary.Tip", "divisionSummary", division.Summary, SummaryLines, ["Summary"], each => each.Summary,
-                typed => editing.ChangeDetails(change => change.Summary = typed)),
+                typed => editing.ChangeDetails(change => change.Summary = typed), editing.WhyDetailCannotChange(DivisionDetail.Summary)),
             TextPart("Divisions.Pane.History", "Divisions.Pane.History.Tip", "divisionHistory", division.History, HistoryLines, ["History"], each => each.History,
-                typed => editing.ChangeDetails(change => change.History = typed)),
+                typed => editing.ChangeDetails(change => change.History = typed), editing.WhyDetailCannotChange(DivisionDetail.History)),
         },
     };
 
@@ -79,10 +187,15 @@ public static class DivisionDetailsEditor
     /// One text: its name (with "*" in the headings' colour when the mod changed it, its tooltip saying so), a box that
     /// wraps and scrolls past its lines, a grip under it that drags it taller or shorter (as under the Files tab's edit
     /// list), and how many characters it has. A line break would be lost in the game's dictionary, so Enter does not
-    /// make one.
+    /// make one. A text that cannot be changed is shown in a box switched off, its tooltip saying why.
+    /// Folded at first (Paul's choice, option A of the mock): ▸ and its name, its count at the right, and its first line
+    /// cut short with …, so the pane keeps its height while it is resized; a click on the line or the name opens the box,
+    /// ready to type, and ▾ folds it again. Each stays as it is left while the app is open.
     /// </summary>
     /// <param name="sizeKey">The name its height is remembered under, from one session to the next.</param>
-    private static StackPanel TextPart(string nameKey, string tipKey, string sizeKey, string text, int lines, string[] changes, Func<Division, string> write, Func<string, bool> keep)
+    /// <param name="whyOff">Why the text cannot be changed; null when it can.</param>
+    private static StackPanel TextPart(string nameKey, string tipKey, string sizeKey, string text, int lines, string[] changes, Func<Division, string> write, Func<string, bool> keep,
+        string? whyOff)
     {
         var name = new TextBlock { Text = Texts.Get(nameKey), ToolTip = Texts.Get(tipKey), Margin = new Thickness(0, 4, 0, 2) };
         name.SetResourceReference(TextBlock.ForegroundProperty, "muted");
@@ -92,10 +205,18 @@ public static class DivisionDetailsEditor
             Text = text, TextWrapping = TextWrapping.Wrap, AcceptsReturn = false, MinLines = lines, MaxLines = lines,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalContentAlignment = VerticalAlignment.Top, ToolTip = name.ToolTip,
         };
+        if (whyOff is not null)
+        {
+            box.IsEnabled = false;
+            OffReason.SetText(box, whyOff);
+        }
         ResizeGrip grip = GripFor(box, sizeKey, lines);
         var count = new TextBlock { FontSize = 10.5, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 2, 0, 0) };
         count.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        void ShowCount() => count.Text = Texts.Count("Divisions.Pane.Characters", box.Text.Length);
+        var foldedCount = new TextBlock { FontSize = 10.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+        foldedCount.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        DockPanel.SetDock(foldedCount, Dock.Right);
+        void ShowCount() => count.Text = foldedCount.Text = Texts.Count("Divisions.Pane.Characters", box.Text.Length);
         ShowCount();
         box.TextChanged += (_, _) => ShowCount();
         box.LostKeyboardFocus += (_, _) =>
@@ -105,8 +226,51 @@ public static class DivisionDetailsEditor
             if (keep(box.Text)) text = box.Text;
             else box.Text = text;
         };
-        return new StackPanel { Children = { name, box, grip, count } };
+
+        // folded: its first line, cut short, in a sunken line a click opens
+        var firstLine = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap };
+        firstLine.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        var peek = new Bevel { Child = firstLine, Padding = new Thickness(6, 3, 6, 3), Cursor = System.Windows.Input.Cursors.Hand, ToolTip = name.ToolTip };
+        peek.SetResourceReference(Bevel.TopLeftProperty, "lo");
+        peek.SetResourceReference(Bevel.BottomRightProperty, "hi");
+        peek.SetResourceReference(Bevel.BackgroundProperty, "well");
+        peek.MouseEnter += (_, _) => peek.SetResourceReference(Bevel.TopLeftProperty, "accent");
+        peek.MouseLeave += (_, _) => peek.SetResourceReference(Bevel.TopLeftProperty, "lo");
+        var arrow = new TextBlock { Width = 12, VerticalAlignment = VerticalAlignment.Center, FontSize = 10 };
+        arrow.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        name.Margin = new Thickness(0);
+        var heading = new DockPanel { Margin = new Thickness(0, 4, 0, 2), Background = System.Windows.Media.Brushes.Transparent, Cursor = System.Windows.Input.Cursors.Hand, Children = { foldedCount, arrow, name } };
+        DockPanel.SetDock(arrow, Dock.Left);
+        var open = new StackPanel { Children = { box, grip, count } };
+        void Show(bool isOpen, bool focus)
+        {
+            OpenTexts[sizeKey] = isOpen;
+            arrow.Text = isOpen ? "▾" : "▸";
+            firstLine.Text = box.Text == "" ? Texts.Get("Divisions.Pane.Text.Empty") : box.Text;
+            open.Visibility = isOpen ? Visibility.Visible : Visibility.Collapsed;
+            peek.Visibility = foldedCount.Visibility = isOpen ? Visibility.Collapsed : Visibility.Visible;
+            if (isOpen && focus && box.IsEnabled) box.Dispatcher.BeginInvoke(() =>
+            {
+                box.Focus();
+                box.CaretIndex = box.Text.Length;
+            });
+        }
+        heading.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            Show(!OpenTexts.GetValueOrDefault(sizeKey), focus: true);
+        };
+        peek.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            Show(true, focus: true);
+        };
+        Show(OpenTexts.GetValueOrDefault(sizeKey), focus: false);
+        return new StackPanel { Children = { heading, peek, open } };
     }
+
+    /// <summary>The texts opened while the app runs, by name; folded at first.</summary>
+    private static readonly Dictionary<string, bool> OpenTexts = [];
 
     /// <summary>The lowest height a text box can be dragged to: about two lines.</summary>
     private const double LowestTextHeight = 40;
@@ -216,11 +380,14 @@ public static class DivisionDetailsEditor
             string taken = standout;
             units.TryGetValue(standout, out Unit? unit);
             var remove = new Button { Content = "×", Style = (Style)Application.Current.FindResource("HeadingButton"), ToolTip = Texts.Get("Divisions.Pane.RemoveStandout.Tip"), VerticalAlignment = VerticalAlignment.Center };
+            System.Windows.Automation.AutomationProperties.SetName(remove, Texts.Get("Divisions.Pane.RemoveStandout.Tip"));
             remove.Click += (_, _) => editing.ChangeDetails(change => change.StandoutUnits = [.. division.StandoutUnits.Where(each => each != taken)]);
+            OffUnless(remove, editing, DivisionDetail.Standout);
             DockPanel.SetDock(remove, Dock.Right);
             var picture = new UnitPicture { Width = 40, Source = unit?.PictureSource, Factory = unit?.Factory ?? "", Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
             DockPanel.SetDock(picture, Dock.Left);
-            var name = new TextBlock { Text = unit?.Name ?? standout, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = standout };
+            // the whole name first, as it is cut short in a narrow pane, then the descriptor
+            var name = new TextBlock { Text = unit?.Name ?? standout, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = unit is null ? standout : unit.Name + "\n" + standout };
             // a standout unit the open mod adds is marked; the tooltip gives the game's list
             DivisionMarks.MarkText(name, ["Standout"], each => each.StandoutUnits.Contains(taken) ? unit?.Name ?? taken : "");
             var type = new TextBlock { Text = unit is null ? "" : UnitNames.Factory(unit.Factory), FontSize = 11.5, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
@@ -234,92 +401,31 @@ public static class DivisionDetailsEditor
         }
         var add = new Button { Content = Texts.Get("Divisions.Pane.AddStandout"), Style = (Style)Application.Current.FindResource("DashedButton"), ToolTip = Texts.Get("Divisions.Pane.AddStandout.Tip") };
         add.Click += (_, _) => editing.AddStandoutUnits();
-        list.Children.Add(add);
+        list.Children.Add(OffUnless(add, editing, DivisionDetail.Standout));
         return list;
     }
 
     // ---- the files ----
 
     /// <summary>
-    /// Where the division is in the game's files: its internal name, its descriptor, the file it is in (with Open, to
-    /// show it in the File Editor), and the units its rule names that the source does not have (the game would refuse
-    /// such a division). Each name is in a box of its own, under its label, with Copy at the label's right.
+    /// Where the division is in the game's files: its internal name, its descriptor and the file it is in, as the Unit
+    /// pane shows a unit's (<see cref="FileValueRows"/>: a click shows the descriptor or file in the File Editor, and
+    /// copies the internal name), and the units its rule names that the source does not have (the game would refuse
+    /// such a division), which a click copies.
     /// </summary>
     public static StackPanel Files(Division division, IReadOnlyDictionary<string, Unit> units, IDivisionEditing editing)
     {
-        var files = new StackPanel();
-        if (division.CfgName != "") files.Children.Add(NamedValue(Texts.Get("Divisions.Pane.InternalName"), division.CfgName));
-        files.Children.Add(NamedValue(Texts.Get("Divisions.Pane.Descriptor"), division.Descriptor));
-        var open = new Button
-        {
-            Content = Texts.Get("Divisions.Pane.Open"), Style = (Style)Application.Current.FindResource("HeadingButton"), IsEnabled = editing.CanShowDivisionInEditor,
-            ToolTip = editing.CanShowDivisionInEditor ? Texts.Get("Divisions.Pane.Open.Tip") : Texts.Get("Units.Menu.NotLoaded.Tip", ("file", UnitFiles.Divisions)),
-        };
-        ToolTipService.SetShowOnDisabled(open, true);
-        open.Click += (_, _) => editing.ShowDivisionInEditor();
-        files.Children.Add(NamedValue(Texts.Get("Divisions.Pane.File"), UnitFiles.DivisionsPath, open));
+        List<FileValue> values = [];
+        if (division.CfgName != "") values.Add(new(Texts.Get("Divisions.Pane.InternalName"), division.CfgName));
+        values.Add(new(Texts.Get("Divisions.Pane.Descriptor"), division.Descriptor, editing.ShowDivisionInEditor, editing.CanShowDivisionInEditor, UnitFiles.Divisions));
+        values.Add(new(Texts.Get("Divisions.Pane.File"), UnitFiles.DivisionsPath, editing.ShowDivisionInEditor, editing.CanShowDivisionInEditor, UnitFiles.Divisions));
+        var files = new StackPanel { Children = { FileValueRows.Build(values) } };
         List<string> missing = [.. division.Units.Select(unit => unit.Unit).Where(unit => !units.ContainsKey(unit))];
         if (missing.Count == 0) return files;
-        var warning = new TextBlock { Text = "⚠ " + Texts.Count("Divisions.Pane.Missing", missing.Count), FontSize = 11.5, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap };
+        var warning = new TextBlock { Text = "⚠ " + Texts.Count("Divisions.Pane.Missing", missing.Count), FontSize = 11.5, Margin = new Thickness(0, 8, 0, 2), TextWrapping = TextWrapping.Wrap };
         warning.SetResourceReference(TextBlock.ForegroundProperty, "caution");
         files.Children.Add(warning);
-        foreach (string unit in missing) files.Children.Add(NamedValue("", unit));
+        files.Children.Add(FileValueRows.Build(missing.Select(unit => new FileValue("", unit))));
         return files;
-    }
-
-    /// <summary>
-    /// A name the user may want to copy: its label, dim, with Copy (and any other button) at the right, then the name
-    /// in a read-only box the width of the pane, broken over lines when long.
-    /// </summary>
-    private static StackPanel NamedValue(string label, string value, Button? extra = null)
-    {
-        var copy = new Button
-        {
-            Content = CopyIcon(), Style = (Style)Application.Current.FindResource("HeadingButton"), Padding = new Thickness(4, 0, 4, 0),
-            ToolTip = Texts.Get("Divisions.Pane.Copy.Tip"),
-        };
-        System.Windows.Automation.AutomationProperties.SetName(copy, Texts.Get("Divisions.Pane.Copy"));
-        copy.Click += (_, _) => CopyText(value);
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Children = { copy } };
-        if (extra is not null)
-        {
-            extra.Margin = new Thickness(0, 0, 4, 0);
-            buttons.Children.Insert(0, extra);
-        }
-        DockPanel.SetDock(buttons, Dock.Right);
-        var name = new TextBlock { Text = label, FontSize = 11.5, VerticalAlignment = VerticalAlignment.Bottom };
-        name.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        var line = new DockPanel { Margin = new Thickness(0, 0, 0, 2), Children = { buttons, name } };
-        var box = new TextBox { Text = value, IsReadOnly = true, TextWrapping = TextWrapping.Wrap };
-        box.SetResourceReference(FrameworkElement.StyleProperty, "MonoBox");
-        return new StackPanel { Margin = new Thickness(0, 0, 0, 8), Children = { line, box } };
-    }
-
-    /// <summary>
-    /// The copy icon: two squares, the front one lower left over the back one's corner. Only the part of the back one
-    /// not behind the front one is drawn, so the icon needs no fill and looks right on any button colour.
-    /// </summary>
-    private static System.Windows.Shapes.Path CopyIcon()
-    {
-        var icon = new System.Windows.Shapes.Path
-        {
-            Data = System.Windows.Media.Geometry.Parse("M 4.5,4.5 V 0.5 H 12.5 V 8.5 H 8.5 M 0.5,4.5 H 8.5 V 12.5 H 0.5 Z"),
-            StrokeThickness = 1.2, Width = 13, Height = 13, SnapsToDevicePixels = true, VerticalAlignment = VerticalAlignment.Center,
-        };
-        icon.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "ink");
-        return icon;
-    }
-
-    /// <summary>Puts text on the clipboard; another program holding the clipboard just leaves it as it was.</summary>
-    private static void CopyText(string text)
-    {
-        try
-        {
-            Clipboard.SetText(text);
-        }
-        catch (System.Runtime.InteropServices.COMException)
-        {
-            // the clipboard was busy: nothing is copied, as when a copy in another program fails
-        }
     }
 }

@@ -120,7 +120,13 @@ public partial class RowWindow : UserControl
     }
 
     /// <summary>The window sits right of the middle, as far from it as the rule window is left of it (see <see cref="RuleWindow.BesideGap"/>).</summary>
-    private void Place() => Box.Margin = new Thickness(0, 0, RuleWindow.BesideGap(ActualWidth), 0);
+    private void Place()
+    {
+        Box.Margin = new Thickness(0, 0, RuleWindow.BesideGap(ActualWidth), 0);
+        // 30rem wide and at most 92% of the app tall, or less in a small window, so its Done button always shows
+        if (ActualWidth > 0) Box.Width = Math.Max(200, Math.Min(480, ActualWidth - 20));
+        if (ActualHeight > 0) Box.MaxHeight = Math.Max(160, ActualHeight * 0.92);
+    }
 
     /// <summary>
     /// The Rules tab's data changed (Undo, a row moved or deleted in the rule window): the window stays on its row, or
@@ -261,7 +267,8 @@ public partial class RowWindow : UserControl
         options.AddRange(choices.Select(c => new ChoiceOption(c, c)));
         // the operator is named by its label; a property shows its own name, so a name too long for the box can be read in full
         var choice = new ComboBox { ItemsSource = options, Name = field, Margin = new Thickness(0, 3, 0, 0), ToolTip = field == "Operator" ? Texts.Get("Rules.Row.Operator") : NameOrNone(current) };
-        choice.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
+        // a long property name is cut with "…" in the box and its list, which stays inside the window
+        NarrowChoices.OfOptions(choice);
         if (mono)
         {
             choice.SetResourceReference(FontFamilyProperty, "mono");

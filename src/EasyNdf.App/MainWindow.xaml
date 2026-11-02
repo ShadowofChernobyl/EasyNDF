@@ -7,7 +7,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:app="clr-namespace:EasyNdf.App"
         Title="EasyNDF" Icon="Assets/EasyNDF.ico"
-        Width="1280" Height="800" MinWidth="600" MinHeight="640"
+        Width="1280" Height="800" MinWidth="600" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource panel}">
 

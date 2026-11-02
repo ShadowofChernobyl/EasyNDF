@@ -4,6 +4,7 @@ using EasyNdf.Data;
 using System.Windows.Controls;
 using System.Windows.Input;
 using EasyNdf.App.Controls;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Divisions;
 using EasyNdf.App.Text;
 using EasyNdf.App.Units;
@@ -23,12 +24,14 @@ public partial class UnitsPage : IDivisionEditing
 
     /// <summary>
     /// "Add to Division": one item with a menu of its own: New Division… first, then the mod's new divisions, then the
-    /// game's by side and nation, each in a menu of its own; those that have every unit already are dim.
+    /// game's by side and nation, each in a menu of its own; those that have every unit already are dim. For a game
+    /// whose divisions' units the Armory does not write yet, the item is dim, its tip saying why.
     /// </summary>
     /// <param name="units">The unit right-clicked, or the units selected.</param>
     private MenuChoice?[] AddToDivisionChoices(IReadOnlyList<Unit> units)
     {
         if (loaded is null) return [];
+        if (WhyDetailCannotChange(DivisionDetail.Units) is string why) return [new MenuChoice(Texts.Get("Divisions.Menu.AddTo"), () => { }, IsEnabled: false, Tip: why)];
         var choices = new List<MenuChoice?> { new MenuChoice(Texts.Get("Divisions.Menu.AddToNew"), () => _ = AddToNewDivision(units)), Menus.Line };
         List<Division> modsOwn = [.. divisions.Where(IsNewInMod)];
         if (modsOwn.Count > 0)
@@ -53,8 +56,9 @@ public partial class UnitsPage : IDivisionEditing
     private MenuChoice AddToChoice(Division division, IReadOnlyList<Unit> units)
     {
         bool hasAll = units.All(unit => division.Units.Any(rule => rule.Unit == unit.Descriptor));
-        return new MenuChoice(division.Name, () => AddToDivision(division, units), IsEnabled: !hasAll,
-            Tip: hasAll ? Texts.Get("Divisions.Menu.HasIt.Tip") : "");
+        bool isDlc = SteelDivisionDivisions.IsInDlc(division.Descriptor);
+        return new MenuChoice(division.Name, () => AddToDivision(division, units), IsEnabled: !hasAll && !isDlc,
+            Tip: isDlc ? Texts.Get("Divisions.Off.Dlc") : hasAll ? Texts.Get("Divisions.Menu.HasIt.Tip") : "");
     }
 
     // ---- a division's menu, in the list ----
@@ -68,17 +72,24 @@ public partial class UnitsPage : IDivisionEditing
     {
         ModDivision? inMod = DivisionChanges.EntryOf(OpenMod, division.Descriptor);
         bool isRemoved = inMod is { IsRemoved: true };
+        // what the Armory cannot write for the game is dim, its tip saying why
+        string? noRename = WhyDetailCannotChange(DivisionDetail.Name);
+        string? noCopy = WhyDetailCannotChange(DivisionDetail.New);
+        string? noDelete = IsNewInMod(division) ? null : WhyDetailCannotChange(DivisionDetail.TakenOut);
+        string? noUnits = WhyDetailCannotChange(DivisionDetail.Units);
         MenuChoice?[] items =
         [
             Menus.Heading(division.Name),
-            new MenuChoice(Texts.Get("Divisions.Menu.Rename"), () => _ = RenameDivision(division)),
-            new MenuChoice(Texts.Get("Divisions.Menu.Duplicate"), () => _ = DuplicateDivision(division)),
+            new MenuChoice(Texts.Get("Divisions.Menu.Rename"), () => _ = RenameDivision(division), IsEnabled: noRename is null, Tip: noRename ?? ""),
+            new MenuChoice(Texts.Get("Divisions.Menu.Duplicate"), () => _ = DuplicateDivision(division), IsEnabled: noCopy is null, Tip: noCopy ?? ""),
             isRemoved
                 ? new MenuChoice(Texts.Get("Divisions.Menu.Restore"), () => RestoreDivision(division))
-                : new MenuChoice(Texts.Get("Divisions.Menu.Delete"), () => _ = DeleteDivision(division)),
+                : new MenuChoice(Texts.Get("Divisions.Menu.Delete"), () => _ = DeleteDivision(division), IsEnabled: noDelete is null, Tip: noDelete ?? ""),
             Menus.Line,
-            isRemoved ? null : new MenuChoice(Texts.Get("Divisions.Transports.GiveAll"), () => GiveEveryUnitAllTransports(division), Tip: Texts.Get("Divisions.Transports.GiveAll.Tip")),
-            isRemoved ? null : new MenuChoice(Texts.Get("Divisions.Transports.TakeAll"), () => TakeEveryUnitsTransports(division), Tip: Texts.Get("Divisions.Transports.TakeAll.Tip")),
+            isRemoved ? null : new MenuChoice(Texts.Get("Divisions.Transports.GiveAll"), () => GiveEveryUnitAllTransports(division), IsEnabled: noUnits is null,
+                Tip: noUnits ?? Texts.Get("Divisions.Transports.GiveAll.Tip")),
+            isRemoved ? null : new MenuChoice(Texts.Get("Divisions.Transports.TakeAll"), () => TakeEveryUnitsTransports(division), IsEnabled: noUnits is null,
+                Tip: noUnits ?? Texts.Get("Divisions.Transports.TakeAll.Tip")),
             isRemoved ? null : Menus.Line,
             inMod is { IsNew: false } ? new MenuChoice(Texts.Get("Divisions.Menu.Revert"), () => _ = RevertDivision(division, inMod)) : null,
             new MenuChoice(Texts.Get("Units.Menu.CopyName"), () => UnitsPage.Copy(division.Descriptor), Key: division.Descriptor),
@@ -129,12 +140,18 @@ public partial class UnitsPage : IDivisionEditing
         if (start is null) return;
         nation ??= (start.Country, start.Side);
         string name = await MainView.Of(this).Messages.AskName(
-            Texts.Get("Divisions.NewEmpty.Ask", ("nation", UnitNames.Nation(nation.Value.Country))), Texts.Get("Divisions.New.Name"));
+            Texts.Get(NewDivisionQuestion, ("nation", UnitNames.Nation(nation.Value.Country))), Texts.Get("Divisions.New.Name"));
         if (name == "") return;
         string descriptor = "";
         if (!ChangeDivisions(mod => descriptor = DivisionChanges.AddNew(mod, GameDivisions, name, start, [], Game, nation))) return;
         ShowDivisionNamed(descriptor);
     }
+
+    /// <summary>
+    /// The question "+" asks, which says what a new division starts with: WARNO's usual points and card slots, or, in
+    /// Steel Division 2, those of a game division of its nation (<see cref="Data.Divisions.NewDivisionStart"/>).
+    /// </summary>
+    private string NewDivisionQuestion => Game == Data.Game.GameTitle.Warno ? "Divisions.NewEmpty.Ask" : "Divisions.NewEmpty.Ask.FromGameDivision";
 
     /// <summary>The one nation ticked in the filter, with its side; null when none or several are.</summary>
     private (string Country, string Side)? NationTicked()
@@ -369,7 +386,13 @@ public partial class UnitsPage : IDivisionEditing
         [.. GameDivisions.Where(division => division.Country != "").Select(division => (division.Country, division.Side)).Distinct()];
 
     /// <inheritdoc/>
+    public string GameName => Game.Name;
+
+    /// <inheritdoc/>
     public IReadOnlyList<string> Types => [.. GameDivisions.Select(division => division.TypeToken).Where(type => type != "").Distinct()];
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> Economies => [.. GameDivisions.Where(division => division.Tags.Contains("DEFAULT")).Select(division => division.Economy).Where(economy => economy != "").Distinct().Order(StringComparer.Ordinal)];
 
     /// <inheritdoc/>
     public bool Rename(string name)
@@ -377,6 +400,39 @@ public partial class UnitsPage : IDivisionEditing
         if (chosenDivision is null) return false;
         string division = chosenDivision.Descriptor;
         return ChangeDivisions(mod => DivisionChanges.Rename(mod, GameDivisions, division, name));
+    }
+
+    /// <inheritdoc/>
+    public string? WhyDetailCannotChange(string detail)
+    {
+        if (detail == IDivisionEditing.AddingUnits)
+            return chosenDivision is Division dlc && SteelDivisionDivisions.IsInDlc(dlc.Descriptor) ? Texts.Get("Divisions.Off.Dlc") : WhyDetailCannotChange(DivisionDetail.Units);
+        if (!DivisionChangeRules.Has(Game, detail)) return Texts.Get("Divisions.Pane.Off.NotInGame", ("game", Game.Name));
+        if (!DivisionChangeRules.Writes(Game, detail))
+            return detail switch
+            {
+                DivisionDetail.New or DivisionDetail.Generated or DivisionDetail.TakenOut or DivisionDetail.Battlegroup => Texts.Get("Divisions.Off.NotForThisGame", ("game", Game.Name)),
+                DivisionDetail.EmblemPicture => Texts.Get("Divisions.Pane.Off.Picture", ("game", Game.Name)),
+                _ => Texts.Get("Divisions.Pane.Off.Texts", ("game", Game.Name)),
+            };
+        if (detail != DivisionDetail.Costs || chosenDivision is not Division shown || DivisionChangeRules.WritesCosts(Game, shown)) return null;
+        // costs other divisions share would change theirs too; costs written inside the division have no matrix to change
+        return shown.CostsSharedWith > 0
+            ? Texts.Count("Divisions.Cost.Off.Shared", shown.CostsSharedWith, ("matrix", shown.CostMatrixName))
+            : Texts.Get("Divisions.Cost.Off.InPlace", ("game", Game.Name));
+    }
+
+    /// <summary>
+    /// Why the Armory cannot write a mod's changes for the source's game, said when one is refused: the first division
+    /// change it does not write (units in a division, new divisions and the like, or a detail), else what it does not
+    /// write of units and weapons.
+    /// </summary>
+    private string WhyNotWrittenForThisGame(Mod mod)
+    {
+        ModDivision? entry = mod.Divisions.FirstOrDefault(each => !DivisionChangeRules.WritesEverythingOf(each, Game));
+        if (entry is null) return Texts.Get("Divisions.NotForThisGame", ("game", Game.Name));
+        string detail = DivisionChangeRules.DetailsOf(entry).First(each => !DivisionChangeRules.Writes(Game, each));
+        return WhyDetailCannotChange(detail) ?? Texts.Get("Divisions.Off.NotForThisGame", ("game", Game.Name));
     }
 
     /// <inheritdoc/>
@@ -480,8 +536,48 @@ public partial class UnitsPage : IDivisionEditing
     /// <inheritdoc/>
     public void AddCost(string factory) => ChangeCosts(factory, costs => costs.Add(costs.Count > 0 ? costs[^1] : 1));
 
-    /// <summary>The chosen division's costs with one type's changed by <paramref name="change"/>, saved as its costs.</summary>
+    /// <summary>
+    /// The chosen division's costs with one type's changed by <paramref name="change"/>, saved as its costs. Costs
+    /// other divisions share (a WARNO matrix many divisions name) change theirs too: the user is warned first, with how
+    /// many share them, and decides.
+    /// </summary>
     private void ChangeCosts(string factory, Action<List<int>> change)
+    {
+        if (chosenDivision is null) return;
+        // costs that are not the division's own alone are never changed where the game can't take it (Steel Division 2)
+        if (WhyDetailCannotChange(DivisionDetail.Costs) is string why)
+        {
+            _ = MainView.Of(this).Messages.Tell(why);
+            return;
+        }
+        if (chosenDivision.CostsSharedWith > 0 && !sharedCostsAllowed)
+        {
+            _ = ChangeSharedCostsAfterWarning(factory, change, chosenDivision.CostsSharedWith + 1);
+            return;
+        }
+        ChangeCostsNow(factory, change);
+    }
+
+    /// <summary>"Don't ask again during this session" was ticked in the warning before changing shared costs: it is not shown again until the app restarts.</summary>
+    private bool sharedCostsAllowed;
+
+    /// <summary>
+    /// Warns that the costs are shared, by how many divisions, and changes them only when the user says they know what
+    /// they are doing. Nothing is refused here: the user decides.
+    /// </summary>
+    /// <param name="sharing">How many divisions share the costs, the chosen one among them.</param>
+    private async Task ChangeSharedCostsAfterWarning(string factory, Action<List<int>> change, int sharing)
+    {
+        DialogAnswer answer = await MainView.Of(this).Messages.Ask(
+            Texts.Get("Divisions.Cost.Shared.Warn", ("count", Texts.Number(sharing))),
+            new DialogOptions { Ok = Texts.Get("Weapons.Risky.GoOn"), CheckText = Texts.Get("Weapons.Risky.HideForSession") });
+        if (answer.Choice != DialogChoice.Ok) return;
+        if (answer.IsChecked) sharedCostsAllowed = true;
+        ChangeCostsNow(factory, change);
+    }
+
+    /// <summary>The chosen division's costs with one type's changed, saved, after any warning.</summary>
+    private void ChangeCostsNow(string factory, Action<List<int>> change)
     {
         if (chosenDivision is null) return;
         Dictionary<string, List<int>> costs = chosenDivision.Costs.ToDictionary(cost => cost.Key, cost => cost.Value.ToList());

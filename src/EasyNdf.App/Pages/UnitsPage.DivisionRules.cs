@@ -42,6 +42,14 @@ public partial class UnitsPage
             _ = MainView.Of(this).Messages.Tell(reason);
             return false;
         }
+        // a game the Armory writes in part only takes some changes: the others would be saved and never written
+        Mod tried = OpenMod.DeepCopy();
+        change(tried);
+        if (!UnitChangeRules.WritesEverythingOf(tried))
+        {
+            _ = MainView.Of(this).Messages.Tell(WhyNotWrittenForThisGame(tried));
+            return false;
+        }
         List<string> missing = FilesMissingFor(change);
         if (missing.Count > 0)
         {
@@ -54,7 +62,7 @@ public partial class UnitsPage
     }
 
     /// <summary>
-    /// The files a change would write into that are not loaded on the Files tab: those of the rules it adds or
+    /// The files a change would write into that are not loaded on the Files tab for the source's game: those of the rules it adds or
     /// changes in the Armory presets, and UniteDescriptor.ndf for a generated division, whose units are made from it.
     /// UNITS.csv is not among them: it is the mod's own, and the export makes it when the Files tab has none.
     /// </summary>
@@ -74,7 +82,8 @@ public partial class UnitsPage
         if (GeneratedBattlegroups.AnyIn(changed)) files.AddRange(Files.GeneratedListsMaker.BattlegroupFiles);
         IEnumerable<string> needed = files.Distinct(StringComparer.OrdinalIgnoreCase);
         var entries = MainView.Of(this).FilesTab.Model.Entries;
-        return [.. needed.Where(file => !entries.Any(entry => entry.Source is not null && string.Equals(entry.Name, file, StringComparison.OrdinalIgnoreCase)))];
+        // a file of another game would not take the change: only the mods of its own game run on it
+        return [.. needed.Where(file => !entries.Any(entry => entry.Source is not null && entry.Game == Game && string.Equals(entry.Name, file, StringComparison.OrdinalIgnoreCase)))];
     }
 
     private JsonArray RulesOf(Mod mod) => ArmoryPresets.RulesFor(mod, GameDivisions, Texts.Catalog, UnitNameOf, GameBattlegroupCards, GameUnits, GameWeapons, GameLoadouts);
@@ -95,7 +104,9 @@ public partial class UnitsPage
     /// Why the Armory presets cannot be made again now; null when it can. Made again without a change's rules, the
     /// change would still be saved in the mod but shown nowhere and never exported, so it is not made at all:
     /// <list type="bullet">
-    /// <item>Steel Division 2 lays its divisions out differently: its changes cannot be written as rules yet;</item>
+    /// <item>the open mod is for another game than the source's: the changes would be made to the wrong game's files;</item>
+    /// <item>Steel Division 2 lays its files out differently: only changes to its own units', weapons' and divisions'
+    /// values can be written as rules yet (<see cref="UnitChangeRules.WritesEverythingOf"/>);</item>
     /// <item>without the source's divisions no rule can be made;</item>
     /// <item>a change whose starting division the source does not have (another source chosen, or a game update that
     /// renamed the division) cannot be written either; nor can a unit the mod adds whose unit it is made from the source
@@ -105,7 +116,8 @@ public partial class UnitsPage
     /// </summary>
     private string? WhyRulesCannotBeMade()
     {
-        if (Game != Data.Game.GameTitle.Warno) return Texts.Get("Divisions.NotForThisGame", ("game", Game.Name));
+        if (OtherGameReason is string otherGame) return otherGame;
+        if (!UnitChangeRules.WritesEverythingOf(OpenMod)) return WhyNotWrittenForThisGame(OpenMod);
         if (GameDivisions.Count == 0) return Texts.Get("Rules.Locked.ArmoryNotRead");
         ModDivision? lost = OpenMod.Divisions.FirstOrDefault(entry => !GameDivisions.Any(division => division.Descriptor == entry.StartsFrom));
         if (lost is not null) return Texts.Get("Divisions.StartMissing", ("division", lost.Name != "" ? lost.Name : lost.Descriptor), ("start", lost.StartsFrom));

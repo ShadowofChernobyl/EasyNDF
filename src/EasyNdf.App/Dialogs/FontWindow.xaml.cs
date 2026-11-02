@@ -36,6 +36,8 @@ public partial class FontWindow : UserControl
     {
         InitializeComponent();
         PreviewKeyDown += KeyPressed;
+        // narrower and no taller than a small app window, its buttons always showing
+        Backdrop.SizeChanged += (_, _) => DialogFit.Keep(Box, Backdrop, 660);
     }
 
     /// <summary>Whether the window is open.</summary>

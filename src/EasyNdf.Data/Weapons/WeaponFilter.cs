@@ -72,12 +72,10 @@ public sealed class WeaponFilter
             (Side == "" || unit.Side == Side) && (!checkNations || Nations.Count == 0 || Nations.Contains(unit.Nation)));
     }
 
-    /// <summary>Whether the weapon's name or descriptor has the text typed, in any case.</summary>
+    /// <summary>Whether the weapon's name or descriptor has the text typed (see <see cref="Typed"/>).</summary>
     private bool MatchesText(Weapon weapon)
     {
-        string typed = Text.Trim();
-        if (typed == "") return true;
-        return weapon.Name.Contains(typed, StringComparison.OrdinalIgnoreCase) || weapon.Descriptor.Contains(typed, StringComparison.OrdinalIgnoreCase);
+        return Typed.IsIn(weapon.Name, Text) || Typed.IsIn(weapon.Descriptor, Text);
     }
 
     /// <summary>The units that carry a weapon, those the source has.</summary>

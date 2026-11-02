@@ -182,10 +182,10 @@ public partial class UnitsPage
         ChangeDivisions(mod => Data.Divisions.DivisionChanges.Delete(mod, division.Descriptor));
     }
 
-    /// <summary>"⚙", as its button does: the Generate Divisions window.</summary>
+    /// <summary>"⚙", as its button does: the Division Generator.</summary>
     internal void OpenGenerateDivisionsNow() => GenerateDivisionsClicked(this, new System.Windows.RoutedEventArgs());
 
-    /// <summary>Makes a generated division, as Generate in the Generate Divisions window does.</summary>
+    /// <summary>Makes a generated division, as Generate in the Division Generator does.</summary>
     internal void GenerateNow(Data.Divisions.DivisionGeneration generation, string name) => Generate([new Dialogs.GeneratedDivisionChoice(generation, name)]);
 
     /// <summary>"Make Fixed" above the chosen generated division's units.</summary>

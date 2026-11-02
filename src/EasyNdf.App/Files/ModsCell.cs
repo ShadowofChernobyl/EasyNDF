@@ -15,13 +15,18 @@ namespace EasyNdf.App.Files;
 
 /// <summary>
 /// The Files tab's Mods cell, and the Armory's line under its Source: the mods that run, in the order they run, joined by "›". Only whole names are
-/// shown; those that don't fit the column become "2 more", in the accent colour, so no name is ever cut short. A click
+/// shown; those that don't fit the column become "2 more", in the accent colour, so a name is cut short (with "…") only
+/// when the first alone does not fit; the tooltip lists them all, in run order. A click, or Enter or Space,
 /// drops down the whole list, numbered in run order, with each mod's rule sets: it only shows them; the order is changed
 /// on the Mods tab. A mod that changes a value another mod also changes in the file has ⚠ after its name.
 /// </summary>
 public sealed class ModsCell : Border
 {
-    private readonly TextBlock text = new() { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.NoWrap };
+    // ends in "…" when even the first name alone does not fit, rather than being cut off mid-letter
+    private readonly TextBlock text = new() { VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.NoWrap, TextTrimming = TextTrimming.CharacterEllipsis };
+
+    /// <summary>The tooltip the Armory's line gives; null for a file's mods, whose tooltip lists them.</summary>
+    private string? givenTip;
 
     /// <summary>The mods shown, in the order they run.</summary>
     private IReadOnlyList<ModOnFile> mods = [];
@@ -38,14 +43,21 @@ public sealed class ModsCell : Border
         Padding = new Thickness(7, 3, 7, 3);
         // clicks anywhere in the cell count, not only on the text
         Background = Brushes.Transparent;
-        Cursor = Cursors.Hand;
-        ClipToBounds = true;
+        // Tab reaches it, and Enter or Space drops the list down, as a click does
+        Focusable = true;
+        FocusVisualStyle = Application.Current.TryFindResource("KeyboardFocusOutline") as Style;
         SizeChanged += (_, e) =>
         {
             if (e.WidthChanged) ShowNames();
         };
         MouseLeftButtonUp += (_, e) =>
         {
+            e.Handled = true;
+            OpenList();
+        };
+        KeyDown += (_, e) =>
+        {
+            if (e.Key is not (Key.Enter or Key.Space) || Keyboard.Modifiers != ModifierKeys.None || mods.Count == 0) return;
             e.Handled = true;
             OpenList();
         };
@@ -56,8 +68,8 @@ public sealed class ModsCell : Border
     {
         fileKey = file.Key;
         mods = file.ModsOnFile;
+        givenTip = null;
         ShowNames();
-        ToolTip = mods.Count == 0 ? null : Texts.Get("Files.Mods.Tip");
     }
 
     /// <summary>Shows the mods that are on, as the Armory's line under its Source does.</summary>
@@ -67,8 +79,30 @@ public sealed class ModsCell : Border
     {
         fileKey = null;
         mods = [.. modNames.Select(name => new ModOnFile(name, [], HasArmoryChanges: false))];
+        givenTip = tip;
         ShowNames();
+    }
+
+    /// <summary>How many mods a tooltip lists before it says how many more there are.</summary>
+    private const int ListedInTip = 30;
+
+    /// <summary>
+    /// The cell's tooltip: the Armory line's own, or a file's mods one a line in run order, numbered, ⚠ after those in
+    /// conflict. It is on the text too, so a name cut short gives this tooltip rather than only the cut line.
+    /// </summary>
+    private void ShowTip(HashSet<string> inConflict)
+    {
+        string? tip = givenTip;
+        if (tip is null && mods.Count > 0)
+        {
+            IEnumerable<string> lines = mods.Take(ListedInTip).Select((mod, at) => Texts.Number(at + 1) + ". " + mod.Mod + (inConflict.Contains(mod.Mod) ? " ⚠" : ""));
+            if (mods.Count > ListedInTip) lines = lines.Append(Texts.Get("Files.Mods.AndMore", ("count", Texts.Number(mods.Count - ListedInTip))));
+            tip = Texts.Get("Files.Mods.Tip") + "\n" + string.Join("\n", lines);
+        }
         ToolTip = tip;
+        text.ToolTip = tip;
+        // the hand only where a click drops a list down
+        Cursor = mods.Count > 0 ? Cursors.Hand : null;
     }
 
     /// <summary>The mods that change a value another mod also changes in the file, by name, as the last Preview or export found.</summary>
@@ -82,12 +116,13 @@ public sealed class ModsCell : Border
     private void ShowNames()
     {
         text.Inlines.Clear();
+        HashSet<string> inConflict = ModsInConflict();
+        ShowTip(inConflict);
         if (mods.Count == 0)
         {
             text.Inlines.Add(Coloured("–", "muted"));
             return;
         }
-        HashSet<string> inConflict = ModsInConflict();
         double room = ActualWidth - Padding.Left - Padding.Right;
         int shown = mods.Count;
         while (shown > 1 && TextWidth(LineOf(mods, shown, inConflict)) > room) shown--;
@@ -100,7 +135,7 @@ public sealed class ModsCell : Border
         if (shown < mods.Count)
         {
             text.Inlines.Add(Coloured(Separator, "muted"));
-            text.Inlines.Add(Coloured(Texts.Get("Files.Mods.More", ("count", mods.Count - shown)), "accent"));
+            text.Inlines.Add(Coloured(Texts.Get("Files.Mods.More", ("count", Texts.Number(mods.Count - shown))), "accent"));
         }
     }
 
@@ -112,7 +147,7 @@ public sealed class ModsCell : Border
     {
         IEnumerable<string> names = mods.Take(shown).Select(mod => mod.Mod + (inConflict.Contains(mod.Mod) ? " ⚠" : ""));
         string line = string.Join(Separator, names);
-        if (shown < mods.Count) line += Separator + Texts.Get("Files.Mods.More", ("count", mods.Count - shown));
+        if (shown < mods.Count) line += Separator + Texts.Get("Files.Mods.More", ("count", Texts.Number(mods.Count - shown)));
         return line;
     }
 
@@ -148,7 +183,16 @@ public sealed class ModsCell : Border
         heading.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         lines.Children.Add(heading);
         for (int at = 0; at < mods.Count; at++) lines.Children.Add(ListLine(at + 1, mods[at], inConflict));
-        var box = new Bevel { Child = lines, Padding = new Thickness(10, 6, 10, 7) };
+        // fifty mods are taller than the window: the list is held to the window's height (and the screen's) and scrolls
+        double windowHeight = Window.GetWindow(this)?.ActualHeight ?? SystemParameters.WorkArea.Height;
+        var scroller = new ScrollViewer
+        {
+            Content = lines, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            MaxHeight = Math.Max(120, Math.Min(windowHeight, SystemParameters.WorkArea.Height) * 0.7),
+            MaxWidth = Math.Max(240, SystemParameters.WorkArea.Width * 0.6),
+            FocusVisualStyle = null,
+        };
+        var box = new Bevel { Child = scroller, Padding = new Thickness(10, 6, 10, 7) };
         box.SetResourceReference(Bevel.TopLeftProperty, "hi");
         box.SetResourceReference(Bevel.BottomRightProperty, "lo");
         box.SetResourceReference(Bevel.BackgroundProperty, "panel");
@@ -158,6 +202,13 @@ public sealed class ModsCell : Border
             if (e.Key != Key.Escape) return;
             e.Handled = true;
             popup.IsOpen = false;
+        };
+        // the keyboard goes into the list, so Escape closes it and the arrow keys scroll it; it comes back to the cell after
+        IInputElement? before = Keyboard.FocusedElement;
+        popup.Opened += (_, _) => scroller.Focus();
+        popup.Closed += (_, _) =>
+        {
+            if (Keyboard.FocusedElement is null || scroller.IsKeyboardFocusWithin) before?.Focus();
         };
         popup.IsOpen = true;
     }

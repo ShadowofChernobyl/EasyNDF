@@ -11,6 +11,7 @@ using EasyNdf.App.Dialogs;
 using EasyNdf.App.Files;
 using EasyNdf.Data;
 using EasyNdf.Data.FileList;
+using EasyNdf.Data.Game;
 using EasyNdf.Engine;
 using Microsoft.Win32;
 using EasyNdf.App.Text;
@@ -55,7 +56,7 @@ public partial class FilesPage : UserControl
         searchPause.Tick += SearchPaused;
         Rows.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(RowButtonClicked));
         // the Armory column sorts by the parts of the Armory with changes for each file
-        FileListView.ArmoryKey = FileRunner.ArmorySortKey;
+        FileListView.ArmoryKeys = FileListModel.ArmorySortKeys;
         Rows.AddHandler(MouseLeftButtonUpEvent, new MouseButtonEventHandler(RowMouseUp));
         Rows.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(RowDoubleClicked), handledEventsToo: true);
         ListBox.MouseRightButtonUp += ListRightClicked;
@@ -89,8 +90,10 @@ public partial class FilesPage : UserControl
         SourceBar.AddFilesRequested += AddSourceFiles;
         DataContext = Model;
         ListBox.SizeChanged += (_, _) => FitColumns();
+        Texts.LanguageChanged += () => Dispatcher.BeginInvoke(SizeShowOnly, DispatcherPriority.Loaded);
         Loaded += (_, _) =>
         {
+            SizeShowOnly();
             if (MainView.Find(this) is not MainView view || followsSettings) return;
             followsSettings = true;
             view.SettingChanged += key => { if (key is "autoFit" or "wrapRows" or "") FitColumns(); };
@@ -124,7 +127,8 @@ public partial class FilesPage : UserControl
     }
 
     /// <summary>
-    /// Adds files and reads them, as the Add files... and Add folder... buttons do.
+    /// Adds files and reads them, as the Add files... and Add folder... buttons do. Files whose game is not known yet
+    /// are given one first (<see cref="WithGames"/>); nothing is added when the user cancels that question.
     /// </summary>
     /// <param name="files">The files.</param>
     /// <param name="fromFolder">Whether the files came from a folder or an archive.</param>
@@ -136,6 +140,8 @@ public partial class FilesPage : UserControl
             Model.Warn(Texts.Get("Files.Run.WaitToAdd"));
             return;
         }
+        if (await WithGames(files) is not List<FileToAdd> withGames) return;
+        files = withGames;
         bool several = files.Count > 1;
         IReadOnlyList<FileEntry> toRead = await Model.AddFiles(files, fromFolder, (listed, picked) => AskAboutDuplicate(listed, picked, several));
         await ReadAll(toRead);
@@ -192,9 +198,50 @@ public partial class FilesPage : UserControl
         return new DuplicateAnswer(choice, answer.IsChecked);
     }
 
+    // ---- the game of the files added ----
+
+    /// <summary>
+    /// The files, each with the game it is for: a file that has none yet is given the game its path names (inside a
+    /// game's folder, or a folder named for a game, <see cref="GameTitle.OfPath"/>). The files whose game is still not
+    /// known are all given one game, asked once for the batch (<see cref="AskGame"/>). Null when the user cancels.
+    /// </summary>
+    private async Task<List<FileToAdd>?> WithGames(IReadOnlyList<FileToAdd> files)
+    {
+        List<(GameTitle Game, string Folder)> installs = GameInstalls();
+        List<FileToAdd> found = [.. files.Select(file => file.Game is not null ? file : file with { Game = GameTitle.OfPath(file.Source, installs) })];
+        if (found.All(file => file.Game is not null)) return found;
+        if (await AskGame() is not GameTitle game) return null;
+        return [.. found.Select(file => file.Game is null ? file with { Game = game } : file)];
+    }
+
+    /// <summary>The games found on this computer, with their folders, for telling which game a file added by hand is in.</summary>
+    private List<(GameTitle Game, string Folder)> GameInstalls() =>
+        [.. (SourceBar.Selection?.Sources ?? []).Where(source => source.Mod is null).Select(source => (source.Game, source.GameFolder))];
+
+    /// <summary>
+    /// The game of files added whose path names none. When the mods are all for one game (or there are none), that
+    /// game, without asking: they could run on no other. Otherwise the user picks it in a dropdown, starting with the
+    /// Source's game, or the open mod's. Null when the user cancels.
+    /// </summary>
+    private async Task<GameTitle?> AskGame()
+    {
+        List<GameTitle> withMods = [.. AppData.Current.Mods.Select(mod => mod.Game).Distinct()];
+        if (withMods.Count <= 1) return withMods.FirstOrDefault() ?? GameTitle.Warno;
+        var choice = new GameChoice(GameChoice.StartingGame(SourceBar.Selection?.Chosen?.Game));
+        DialogAnswer answer = await Messages.Ask(Texts.Get("Files.Game.Ask"), new DialogOptions
+        {
+            Extra = choice.Labelled(GameChoice.Label, Texts.Get("Files.Game.Tip")),
+            Note = Texts.Get("Files.Game.Note"),
+            Ok = Texts.Get("Files.Game.Add"),
+        });
+        return answer.Choice == DialogChoice.Ok ? choice.Chosen : null;
+    }
+
     /// <summary>Adds files and reads them straight away, without asking or waiting in the background.</summary>
     public void AddAndReadNow(IReadOnlyList<FileToAdd> files, bool fromFolder = false)
     {
+        // the samples ask nothing: a file whose path names no game is WARNO's
+        files = [.. files.Select(file => file.Game is not null ? file : file with { Game = GameTitle.OfPath(file.Source, GameInstalls()) ?? GameTitle.Warno })];
         Task<IReadOnlyList<FileEntry>> adding = Model.AddFiles(files, fromFolder, (_, _) => throw new InvalidOperationException("The sample files are all different."));
         foreach (FileEntry entry in adding.Result)
         {
@@ -225,7 +272,7 @@ public partial class FilesPage : UserControl
     /// <summary>
     /// "Add Its Files": the source's .ndf files are added as a folder's are, so a big one asks whether to take only the
     /// files the open mod has presets for. A mod's files are its own GameData folder; a game's are in its base.zip,
-    /// which is read only for the files taken.
+    /// which is read only for the files taken. The files are the source's game's.
     /// </summary>
     private async void AddSourceFiles()
     {
@@ -235,17 +282,17 @@ public partial class FilesPage : UserControl
             if (source.Mod is not null)
             {
                 string gameData = Path.Combine(source.Mod.Folder, "GameData");
-                await AddFolderFiles(NdfFilesIn(Directory.Exists(gameData) ? gameData : source.Mod.Folder));
+                await AddFolderFiles([.. NdfFilesIn(Directory.Exists(gameData) ? gameData : source.Mod.Folder).Select(file => file with { Game = source.Game })]);
                 return;
             }
             string zip = Data.Game.GameInstall.BaseZipOf(source.GameFolder);
             Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))));
-            List<FileToAdd> listed = await Task.Run(() => ArchiveReader.NdfFilesListedIn(zip));
+            List<FileToAdd> listed = [.. (await Task.Run(() => ArchiveReader.NdfFilesListedIn(zip))).Select(file => file with { Game = source.Game })];
             Model.Say("");
             List<FileToAdd>? taken = await ChooseFolderFiles(listed);
             if (taken is null) return;
             Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))));
-            List<FileToAdd> read = await Task.Run(() => ArchiveReader.WithContent(zip, taken));
+            List<FileToAdd> read = [.. (await Task.Run(() => ArchiveReader.WithContent(zip, taken))).Select(file => file with { Game = source.Game })];
             Model.Say("");
             await AddAndRead(read, fromFolder: true);
         }
@@ -287,11 +334,14 @@ public partial class FilesPage : UserControl
 
     /// <summary>
     /// Adds the .ndf files found in a folder (the HTML app's <c>addFolderFiles</c>). For a big folder, such as the
-    /// game's whole GameData, it offers to take only the files the open mod has presets for.
+    /// game's whole GameData, it offers to take only the files the open mod has presets for. Their game is found or
+    /// asked first, as the mods that may run on them are those of their game.
     /// </summary>
     private async Task AddFolderFiles(List<FileToAdd> found)
     {
-        List<FileToAdd>? taken = await ChooseFolderFiles(found);
+        if (found.Count == 0) { Model.Say(Texts.Get("Files.AddFolder.NoneFound")); return; }
+        if (await WithGames(found) is not List<FileToAdd> withGames) return;
+        List<FileToAdd>? taken = await ChooseFolderFiles(withGames);
         if (taken is not null) await AddAndRead(taken, fromFolder: true);
     }
 
@@ -315,9 +365,16 @@ public partial class FilesPage : UserControl
         if (onlyWithPreset)
         {
             int all = found.Count;
-            // the files the Armory's changes are written into, and those a rule set of a mod that is on applies to, count
-            IReadOnlySet<string> armoryFiles = FileRunner.FilesWithArmoryRules();
-            found = found.Where(file => armoryFiles.Contains(file.Name) || FileRunner.HasRuleSetsFor(file.Name, file.Folder)).ToList();
+            // the files the Armory's changes are written into, and those a rule set of a mod that is on applies to, count;
+            // only the mods of a file's own game run on it
+            var armoryFiles = new Dictionary<GameTitle, IReadOnlySet<string>>();
+            bool HasRules(FileToAdd file)
+            {
+                GameTitle game = file.Game ?? GameTitle.Warno;
+                if (!armoryFiles.TryGetValue(game, out IReadOnlySet<string>? files)) armoryFiles[game] = files = FileRunner.FilesWithArmoryRules(game);
+                return files.Contains(file.Name) || FileRunner.HasRuleSetsFor(file.Name, file.Folder, game);
+            }
+            found = found.Where(HasRules).ToList();
             if (found.Count == 0)
             {
                 Model.Say(Texts.Get("Files.AddFolder.NoneWithPreset", ("count", FileStatus.Count(all))));
@@ -491,6 +548,20 @@ public partial class FilesPage : UserControl
     {
         searchPause.Stop();
         Model.Search = SearchBox.Text;
+    }
+
+    /// <summary>
+    /// Makes "Show only" as wide as its longest choice, so none is cut short in any language: the box's own parts (its
+    /// padding and arrow) are what it asks for beyond the choice shown now.
+    /// </summary>
+    private void SizeShowOnly()
+    {
+        string Choice(object item) => (item as ComboBoxItem)?.Content as string ?? "";
+        ShowOnlyChoice.MinWidth = 0;
+        ShowOnlyChoice.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double parts = ShowOnlyChoice.DesiredSize.Width - TextWidthExact(Choice(ShowOnlyChoice.SelectedItem));
+        double widest = ShowOnlyChoice.Items.Cast<object>().Max(item => TextWidthExact(Choice(item)));
+        ShowOnlyChoice.MinWidth = Math.Ceiling(parts + widest);
     }
 
     private void ShowOnlyChanged(object sender, SelectionChangedEventArgs e)
@@ -789,9 +860,6 @@ public partial class FilesPage : UserControl
             case FileRowView.ChooseFolderAction:
                 if (await ChooseExportFolder() is string folder) Model.SetExportFolder([row.Entry], folder);
                 break;
-            case FileRowView.ClearFolderAction:
-                Model.ClearExportFolder(row.Entry);
-                break;
             case string armory when armory.StartsWith(FileRowView.ArmoryAction, StringComparison.Ordinal)
                                     && Enum.TryParse(armory[FileRowView.ArmoryAction.Length..], out ArmoryPart part):
                 ShowArmoryRules(part);
@@ -841,6 +909,11 @@ public partial class FilesPage : UserControl
         if (view?.DataContext is not FileRow row) return;
         ModifierKeys keys = Keyboard.Modifiers;
         Model.Click(row, control: keys.HasFlag(ModifierKeys.Control), shift: keys.HasFlag(ModifierKeys.Shift));
+        // the arrow keys go on from the row clicked (see FilesPage.Keys.cs)
+        keyRow = row;
+        keysInUse = false;
+        Rows.Focus();
+        ShowKeyRow();
         // after everything the click does, so the Editor tab stays shown
         if (toOpen is not null) Dispatcher.BeginInvoke(() => OpenInEditor(toOpen), System.Windows.Threading.DispatcherPriority.ContextIdle);
     }
@@ -881,17 +954,36 @@ public partial class FilesPage : UserControl
     {
         ShownCount.Visibility = Model.ShownCount == "" ? Visibility.Collapsed : Visibility.Visible;
 
+        // why a button is off, shown as its tooltip while it is
+        string busy = Texts.Get("Files.Off.Busy");
+        string noSelection = Model.IsBusy ? busy : Texts.Get("Files.Off.NoSelection");
+        OffReason.SetText(ExportFolderButton, noSelection);
+        OffReason.SetText(RemoveButton, noSelection);
+        OffReason.SetText(RemoveAllButton, Model.IsBusy ? busy : Texts.Get("Files.Off.NoFiles"));
+        OffReason.SetText(SaveZipButton, Model.IsBusy ? busy : Texts.Get("Files.Off.NothingExported"));
+
         ShowHeadings();
 
         // The bold look marks the next step: Add files... while the list is empty, then Run export.
         var plain = (Style)FindResource(typeof(Button));
         var go = (Style)FindResource("GoButton");
-        AddFilesButton.Style = Model.AddFilesIsNextStep ? go : plain;
-        RunButton.Style = Model.RunIsNextStep ? go : plain;
+        SetLook(AddFilesButton, Model.AddFilesIsNextStep ? go : plain);
+        SetLook(RunButton, Model.RunIsNextStep ? go : plain);
 
         // What is in the columns may have changed, and with it their widths.
         FitColumns();
         ShowDetails();
+    }
+
+    /// <summary>
+    /// Gives a bar button its plain or bold look. Bold words are wider, and the bar (a SnappedRow) keeps each button at
+    /// the width it measured, so it is told to measure again: otherwise "Run Export" turned bold is cut to "Run Expo".
+    /// </summary>
+    private static void SetLook(Button button, Style look)
+    {
+        if (ReferenceEquals(button.Style, look)) return;
+        button.Style = look;
+        (VisualTreeHelper.GetParent(button) as UIElement)?.InvalidateMeasure();
     }
 
     /// <summary>The row and run Details last showed, so it is drawn again only when one of them changes.</summary>

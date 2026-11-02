@@ -96,13 +96,23 @@ public static class ClickToChange
         {
             if (cell.Child is not TextBlock) return;
             e.Handled = true;
+            Open();
+        };
+        // Tab reaches the cell, Enter or Space opens its box as a click does
+        KeyPick.Make(cell, () => { if (cell.Child is TextBlock) Open(); });
+
+        void Open()
+        {
             Control? control = null;
             Thickness padding = cell.Padding;
             void PutTextBack()
             {
                 if (!ReferenceEquals(cell.Child, control)) return;
+                // done with the keys (Enter or Escape), the keyboard stays on the cell rather than being lost with the box
+                bool hadKeys = control!.IsKeyboardFocusWithin;
                 cell.Child = text;
                 cell.Padding = padding;
+                if (hadKeys) cell.Focus();
             }
             control = makeControl(PutTextBack);
             // the box nearly fills the cell, so the row grows as little as it can
@@ -123,7 +133,7 @@ public static class ClickToChange
                 control.Focus();
                 if (control is TextBox box) box.SelectAll();
             };
-        };
+        }
     }
 
     /// <summary>A box with text that is not a value it takes is outlined in the caution colour.</summary>

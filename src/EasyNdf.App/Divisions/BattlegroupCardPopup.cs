@@ -251,6 +251,9 @@ public sealed class BattlegroupCardPopup
         }
         element.Cursor = Cursors.Hand;
         element.MouseLeftButtonUp += (_, _) => Pick(rule);
+        // Tab and the arrows reach the units, Space picks one as a click does; Enter then adds it (see KeyPressed)
+        KeyPick.Make(element, () => Pick(rule), "card:" + rule.Unit);
+        System.Windows.Automation.AutomationProperties.SetName(element, units[rule.Unit].Name);
     }
 
     // ---- the unit picked: its veterancy and transport ----

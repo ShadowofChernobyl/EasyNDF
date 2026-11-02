@@ -20,13 +20,22 @@ internal static class BattlegroupReader
     /// Division 2 keeps its decks elsewhere).
     /// </summary>
     /// <param name="cardNames">When given, it gets the descriptor of every card in DeckPacks.ndf.</param>
-    public static List<(string Division, Battlegroup Battlegroup)> Read(GameDataFiles files, GameTexts texts, List<string> problems, HashSet<string>? cardNames = null)
+    /// <param name="deckNames">
+    /// When given, it gets each division's first deck's name as the file writes it out (DeckNameAsString), without the
+    /// tag in brackets some start with ("[DLC-3] ROM. 1st Armored (Blindată) Div."): Steel Division 2's decks name their
+    /// division in full where its own name token is not in the game's dictionaries.
+    /// </param>
+    public static List<(string Division, Battlegroup Battlegroup)> Read(GameDataFiles files, GameTexts texts, List<string> problems, HashSet<string>? cardNames = null,
+        Dictionary<string, string>? deckNames = null)
     {
         var decks = new List<(string, Battlegroup)>();
         Dictionary<string, BattlegroupCard>? cards = null;
         foreach (Declaration declaration in UnitReader.Declarations(files, DecksFolder + "Decks.ndf", _ => true, problems, mustExist: false))
         {
             if (declaration.Value is not ObjectValue { TypeName: "TDeckDescriptor" } deck) continue;
+            if (deckNames is not null && Text(Own(deck, "DeckDivision")) is string named && Text(Own(deck, "DeckNameAsString")) is string written
+                && System.Text.RegularExpressions.Regex.Replace(written, @"^\s*\[[^\]]*\]\s*", "").Trim() is { Length: > 0 } shown)
+                deckNames.TryAdd(named, shown);
             if (Text(Own(deck, "DeckDivision")) is not string division || Own(deck, "DeckPackList") is not ListValue packs) continue;
             // read only once a deck is found, as the file is long
             cards ??= ReadCards(files, problems);

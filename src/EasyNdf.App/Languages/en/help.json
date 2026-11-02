@@ -1,12 +1,12 @@
 {
   "Help.Popup.CloseEscape.Tip": "Close (Escape)",
-  "Help.Popup.SeeMore": "See more",
+  "Help.Popup.SeeMore": "See More",
   "Help.Popup.More.Tip": "Open this page on the Help tab",
   "Help.Find.Hint": "Search help",
   "Help.Find.Tip": "Search help",
   "Help.Back.Tip": "Back",
   "Help.Forward.Tip": "Forward",
-  "Help.WelcomeWindow": "Welcome window",
+  "Help.WelcomeWindow": "Welcome Window",
   "Help.WelcomeWindow.Tip": "Open the welcome window",
   "Help.Crumb.Tip": "The first page of this group",
   "Help.Previous.Tip": "Previous page",
@@ -14,5 +14,8 @@
   "Help.Previous": "Previous:",
   "Help.Next": "Next:",
   "Help.NoPageHasThat": "No page has that.",
-  "Help.OpenWelcome.Tip": "Open the welcome window"
+  "Help.OpenWelcome.Tip": "Open the welcome window",
+  "Help.Back.Off": "No page to go back to",
+  "Help.Forward.Off": "No page to go forward to",
+  "Help.PageList.Name": "Help pages"
 }

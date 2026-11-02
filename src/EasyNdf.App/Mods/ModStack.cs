@@ -1,5 +1,7 @@
 using System.Text.Json.Nodes;
 using EasyNdf.Data;
+using EasyNdf.Data.FileList;
+using EasyNdf.Data.Game;
 
 namespace EasyNdf.App.Mods;
 
@@ -31,6 +33,19 @@ public static class ModStack
 
     /// <summary>The mods that are on, in the order they run.</summary>
     public static IReadOnlyList<Mod> Running => [.. Ordered.Where(IsOn)];
+
+    /// <summary>The mods of a game that are on, in the order they run: those that run on a file of that game.</summary>
+    public static IReadOnlyList<Mod> RunningFor(GameTitle game) => [.. Running.Where(mod => mod.Game == game)];
+
+    /// <summary>
+    /// The mods that are on whose game has files among these, in the order they run: those an export of the files
+    /// runs. A mod whose game has no file there does not run.
+    /// </summary>
+    public static IReadOnlyList<Mod> RunningOn(IEnumerable<FileEntry> files)
+    {
+        HashSet<GameTitle> games = [.. files.Select(file => file.Game)];
+        return [.. Running.Where(mod => games.Contains(mod.Game))];
+    }
 
     /// <summary>
     /// The first start since mods could run together: only the open mod is on, as only the open mod ran before. From

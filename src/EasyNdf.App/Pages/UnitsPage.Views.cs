@@ -102,8 +102,8 @@ public partial class UnitsPage
     }
 
     /// <summary>
-    /// The list was resized: the rows are made again when a different number of tiles fits across. While a pane beside
-    /// it is being dragged, that waits until the drag pauses (see <see cref="ReflowCardsSoon"/>).
+    /// The list was resized: the rows are made again when a different number of tiles fits across, at most every
+    /// <see cref="ReflowEvery"/> while a pane beside it is being dragged (see <see cref="ReflowCardsSoon"/>).
     /// </summary>
     private void CardsListResized(object sender, SizeChangedEventArgs e)
     {
@@ -116,28 +116,46 @@ public partial class UnitsPage
     }
 
     /// <summary>
-    /// How long the list's width must stay put before its tiles are laid out again for a different number across.
-    /// Making the rows again takes long when many small tiles show (at 50%, a column comes or goes every few dozen
-    /// pixels), and doing it during a drag made the drag stutter; until then the tiles on screen stretch or narrow.
+    /// The least time between two layouts of the tiles while a pane is dragged. Making the units' rows again takes
+    /// some 20 milliseconds at 100%, more when many small tiles show (at 50%, a column comes or goes every few dozen
+    /// pixels): done at every step of a drag it made the drag stutter, and done only once the drag paused the tiles
+    /// stretched out of shape until then.
     /// </summary>
-    private static readonly TimeSpan ReflowWait = TimeSpan.FromMilliseconds(150);
+    private static readonly TimeSpan ReflowEvery = TimeSpan.FromMilliseconds(100);
 
-    /// <summary>Lays the tiles out again once the list's width has stayed put for <see cref="ReflowWait"/>.</summary>
+    /// <summary>Runs while a drag goes on: the tiles are laid out again when it ticks, if the width changed meanwhile.</summary>
     private System.Windows.Threading.DispatcherTimer? reflowTimer;
 
-    /// <summary>Starts, or starts again, the wait before the tiles are laid out again for the list's width.</summary>
+    /// <summary>Whether the width changed since the tiles were last laid out, while <see cref="reflowTimer"/> runs.</summary>
+    private bool reflowIsDue;
+
+    /// <summary>
+    /// Lays the tiles out again for the list's width: at once when it was not done in the last <see cref="ReflowEvery"/>,
+    /// else when that time is up, so the tiles follow a drag closely without making it stutter.
+    /// </summary>
+    /// <remarks>Tuned for speed: at most one layout of the tiles every 100 milliseconds of a drag. Keep it that way when tidying.</remarks>
     private void ReflowCardsSoon()
     {
         if (reflowTimer is null)
         {
-            reflowTimer = new System.Windows.Threading.DispatcherTimer { Interval = ReflowWait };
+            reflowTimer = new System.Windows.Threading.DispatcherTimer { Interval = ReflowEvery };
             reflowTimer.Tick += (_, _) =>
             {
-                reflowTimer.Stop();
+                if (!reflowIsDue)
+                {
+                    reflowTimer.Stop();
+                    return;
+                }
+                reflowIsDue = false;
                 ReflowCards();
             };
         }
-        reflowTimer.Stop();
+        if (reflowTimer.IsEnabled)
+        {
+            reflowIsDue = true;
+            return;
+        }
+        ReflowCards();
         reflowTimer.Start();
     }
 
@@ -147,7 +165,7 @@ public partial class UnitsPage
         if (loaded is null || view != UnitView.Cards) return;
         if (ShowsBattlegroup || drawIsWaiting) return;
         if (!ShowsDivisionUnits && CardRowView.ColumnsFor(CardsRoom()) != cardColumns) ShowCards();
-        if (ShowsDivisionUnits && CardRowView.ColumnsFor(DivisionCardsRoom()) != divisionCardColumns) ShowDivisionCards();
+        if (ShowsDivisionUnits && CardRowView.ColumnsFor(DivisionCardsRoom()) != divisionCardColumns) ShowDivisionColumns();
     }
 
     /// <summary>
@@ -252,8 +270,8 @@ public partial class UnitsPage
     private void UnitListClicked(object sender, MouseButtonEventArgs e)
     {
         if (UnitAt(e.OriginalSource) is not Unit unit) return;
-        // not in a box of the table, where the click is for typing
-        if (!IsInBox(e.OriginalSource)) Focus();
+        // the view itself, so the arrow keys go on from the unit clicked; not in a box of the table, where the click is for typing
+        if (!IsInBox(e.OriginalSource)) ((UIElement)sender).Focus();
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) selection.Toggle(unit);
         else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) selection.SelectRange(UnitsInOrder(), unit);
         else selection.Selected = unit;
@@ -279,7 +297,7 @@ public partial class UnitsPage
         if (DivisionCardsContent.Content is not StackPanel groups) return units;
         // each type is its heading, then its tiles in a grid
         foreach (UniformGrid tiles in groups.Children.OfType<UniformGrid>())
-            units.AddRange(tiles.Children.OfType<UnitTile>().Select(tile => tile.Unit));
+            units.AddRange(Divisions.DivisionCards.UnitsIn(tiles));
         return units;
     }
 

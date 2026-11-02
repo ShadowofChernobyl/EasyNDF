@@ -39,6 +39,8 @@ public partial class UnitsPage : UserControl
     public UnitsPage()
     {
         InitializeComponent();
+        ShowGeneratorIcons();
+        LetDeadSpaceClearFocus();
         Panes.FoldedPlace = PaneSlot;
         PreparePaneButtons();
         selection.Changed += ShowUnitPane;
@@ -56,7 +58,7 @@ public partial class UnitsPage : UserControl
         PreviewKeyDown += ZoomKeys;
         PreviewKeyDown += SelectAllKey;
         PreviewKeyDown += DeleteKey;
-        // the page takes the keys after a click on a unit, for Ctrl+A to reach it (the lists themselves take no focus)
+        // the page can take the keys, for Ctrl+A to reach it; a click on a unit gives them to its view (see UnitsPage.UnitKeys.cs)
         Focusable = true;
         IsTabStop = false;
         FocusVisualStyle = null;
@@ -67,6 +69,8 @@ public partial class UnitsPage : UserControl
         PrepareDivisions();
         PrepareParts();
         PrepareModValues();
+        PrepareUnitKeys();
+        LeftColumnSplit.Prepare(LeftColumn, LeftSplit);
         // Cards or Table, whichever was used last; Compare, kept by an earlier version, counts as Cards
         view = (string?)AppData.Current.State["unitView"] == nameof(UnitView.Table) ? UnitView.Table : UnitView.Cards;
         ShowViewButtons();
@@ -164,6 +168,10 @@ public partial class UnitsPage : UserControl
         UnitSource? chosen = sources.Chosen;
         WhereText.Text = chosen?.Folder ?? "";
         WeaponsView.ShowWhere(chosen?.Folder ?? "");
+        // the game the "only modded" switches compare with: the source's, WARNO until one is chosen
+        string gameName = (chosen?.Game ?? GameTitle.Warno).Name;
+        OnlyModded.ToolTip = Texts.Get("Units.OnlyModded.Tip", ("game", gameName));
+        WeaponsView.ShowGame(gameName);
         if (chosen is null)
         {
             TitleText.Inlines.Add(new System.Windows.Documents.Run(Texts.Get("Main.Units")));
@@ -219,12 +227,23 @@ public partial class UnitsPage : UserControl
         NotShownText.Visibility = Visibility.Collapsed;
         // the source before is let go of, and what reading this one left behind (the game's archive lists, its
         // dictionaries, its unit files) is given back
-        UnitPictureLibrary.Current = new UnitPictureLibrary(read.Pictures, read.Catalog.FlagSources);
+        UnitPictureLibrary.Current = new UnitPictureLibrary(read.Pictures, read.Catalog.FlagSources)
+        {
+            WeaponPicturesInColour = read.Source.Game.WeaponPicturesInColour,
+            CardMarksInBoxes = read.Source.Game.CardMarksInBoxes,
+        };
         UnitCountFont.Use(read.UnitCountFontFile);
         Memory.GiveBack();
         ProblemsText.Visibility = read.Problems.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        ProblemsText.ToolTip = string.Join("\n", read.Problems.Take(20));
+        ProblemsText.ToolTip = ProblemsTip(read.Problems);
         ReadDivisions();
+        // a game with no battlegroups (Steel Division 2) shows its divisions in the Battlegroups sub-tab's place
+        if (part == Data.ArmoryPart.Battlegroups && !Game.HasBattlegroups)
+        {
+            part = Data.ArmoryPart.Divisions;
+            AppData.Current.State["armoryPart"] = part.ToString();
+        }
+        ShowPartButtons();
         ResetFilters();
         // a division chosen last time shows all its categories
         if (chosenDivision is not null) filter.Factory = "";
@@ -235,6 +254,17 @@ public partial class UnitsPage : UserControl
         MessageArea.Visibility = Visibility.Collapsed;
         ShowAll();
         ModValuesMayHaveChanged();
+    }
+
+    /// <summary>How many of the files not read the tooltip names; a longer list would run off the screen.</summary>
+    private const int ProblemsNamed = 20;
+
+    /// <summary>The files not read, the first few by name, then how many more, so none seem to be missing from the list.</summary>
+    private static string ProblemsTip(IReadOnlyList<string> problems)
+    {
+        string tip = string.Join("\n", problems.Take(ProblemsNamed));
+        if (problems.Count > ProblemsNamed) tip += "\n" + Texts.Get("Units.SomeNotRead.More", ("count", Texts.Number(problems.Count - ProblemsNamed)));
+        return tip;
     }
 
     /// <summary>Shows a line where the units go: while reading, or when there is nothing to read; with "Choose a Game Folder…" when it helps.</summary>
@@ -251,8 +281,8 @@ public partial class UnitsPage : UserControl
     // ---- the filters ----
 
     /// <summary>
-    /// The filters as at first, for a source just read: every side, nation, role and division, and every unit, those in
-    /// no division too (a unit only some division's transport is in none, such as the M2A2 BRAT).
+    /// The filters as at first, for a source just read: every type (ALL), side, nation, role and division, and every
+    /// unit, those in no division too (a unit only some division's transport is in none, such as the M2A2 BRAT).
     /// </summary>
     private void ResetFilters()
     {
@@ -262,7 +292,7 @@ public partial class UnitsPage : UserControl
         filter.Role = "";
         filter.OnlyInDivision = false;
         filter.OnlyModded = false;
-        filter.Factory = loaded is not null && loaded.Catalog.Units.Any(unit => unit.Factory == "Tanks") ? "Tanks" : "";
+        filter.Factory = "";
         foldedRoles.Clear();
         SearchBox.Text = "";
         OnlyInDivision.IsChecked = false;
@@ -413,11 +443,15 @@ public partial class UnitsPage : UserControl
         row.SetResourceReference(Bevel.BottomRightProperty, "line");
         row.MouseEnter += (_, _) => row.SetResourceReference(Bevel.BackgroundProperty, "sel");
         row.MouseLeave += (_, _) => row.Background = System.Windows.Media.Brushes.Transparent;
-        row.MouseLeftButtonUp += (_, _) =>
+        void Tick()
         {
             if (!filter.Nations.Remove(nation)) filter.Nations.Add(nation);
             ShowAll();
-        };
+        }
+        row.MouseLeftButtonUp += (_, _) => Tick();
+        // Tab, the arrows and Space tick nations as clicks do
+        KeyPick.Make(row, Tick, "nation:" + nation);
+        System.Windows.Automation.AutomationProperties.SetName(row, UnitNames.Nation(nation));
         return row;
     }
 
@@ -483,6 +517,10 @@ public partial class UnitsPage : UserControl
         AddUnitsButton.Visibility = view == UnitView.Compare && !ShowsBattlegroup ? Visibility.Visible : Visibility.Collapsed;
         // a new unit is made among every unit, where it shows once made
         NewUnitButton.Visibility = part == Data.ArmoryPart.Units && view != UnitView.Compare ? Visibility.Visible : Visibility.Collapsed;
+        // switched off, with the reason, for a game the Armory does not add units to yet
+        string? noNewUnits = WhyUnitsCannotBeAdded();
+        NewUnitButton.IsEnabled = noNewUnits is null;
+        OffReason.SetText(NewUnitButton, noNewUnits);
         ShowZoom();
     }
 

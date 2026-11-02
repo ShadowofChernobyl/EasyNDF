@@ -15,17 +15,19 @@
              Visibility="Collapsed" KeyDown="KeyPressed" Foreground="{DynamicResource ink}">
     <!-- the dimmed backdrop; a click on it closes the window -->
     <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed" SizeChanged="BackdropResized">
-        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource bg}"
+        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
                         MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
             <DockPanel>
-                <!-- the title, and the place dim beside it, with a line under them -->
+                <!-- the title, and the place dim under it, with a line under them -->
                 <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource line}" Edges="0,0,0,1" Padding="10,6">
                     <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
-                        <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
-                            <Run x:Name="TitleText" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" /><Run Text="    " /><Run x:Name="SubtitleText" FontSize="12" Foreground="{DynamicResource muted}" />
-                        </TextBlock>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}" AutomationProperties.Name="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
+                        <!-- the title and the place on lines of their own, each cut short with "…" in a narrow window and whole on hover -->
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="TitleText" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="SubtitleText" FontSize="12" Foreground="{DynamicResource muted}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
                     </DockPanel>
                 </controls:Bevel>
 
@@ -35,17 +37,17 @@
                 </controls:Bevel>
 
                 <DockPanel Margin="10,8,10,8">
-                    <!-- the search, 260 wide, and only the open mod's own weapons -->
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
-                        <TextBox x:Name="SearchBox" Width="260" Tag="{t:Text Weapons.SearchBox.Hint}" ToolTip="{t:Text Weapons.SearchBox.Tip}" TextChanged="FilterChanged" />
+                    <!-- the search, 260 wide, and only the open mod's own weapons, on a second line in a narrow window -->
+                    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+                        <TextBox x:Name="SearchBox" Width="260" Margin="0,0,8,0" Tag="{t:Text Weapons.SearchBox.Hint}" ToolTip="{t:Text Weapons.SearchBox.Tip}" TextChanged="FilterChanged" />
                         <CheckBox x:Name="OnlyOwn" Style="{StaticResource Toggle}" Content="{t:Text Weapons.Swap.OnlyOwn}" ToolTip="{t:Text Weapons.Swap.OnlyOwn.Tip}"
-                                  Margin="8,0,0,0" VerticalAlignment="Center" Click="FilterChanged" />
-                    </StackPanel>
+                                  VerticalAlignment="Center" Click="FilterChanged" />
+                    </WrapPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="300" />
+                            <ColumnDefinition x:Name="PickedColumn" Width="300" />
                         </Grid.ColumnDefinitions>
                         <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
                             <ListBox x:Name="ChoiceList" BorderThickness="0" Background="Transparent" SelectionChanged="ChoiceSelected" MouseDoubleClick="ChoiceDoubleClicked"
@@ -83,8 +85,10 @@
                                 <TextBlock x:Name="BoxNote" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 <TextBlock x:Name="ReasonNote" FontSize="11.5" Foreground="{DynamicResource warn}" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 <StackPanel Margin="0,12,0,0">
-                                    <Button x:Name="UseButton" Style="{StaticResource GoButton}" Content="{t:Text Weapons.Swap.Use}" ToolTip="{t:Text Weapons.Swap.Use.Tip}" Click="UseClicked" />
-                                    <Button x:Name="UseCopyButton" Content="{t:Text Weapons.Swap.UseCopy}" ToolTip="{t:Text Weapons.Swap.UseCopy.Tip}" Margin="0,6,0,0" Click="UseCopyClicked" />
+                                    <Button x:Name="UseButton" Style="{StaticResource GoButton}" Content="{t:Text Weapons.Swap.Use}" ToolTip="{t:Text Weapons.Swap.Use.Tip}" Click="UseClicked"
+                                            controls:OffReason.Text="{t:Text Weapons.Swap.Use.Off}" />
+                                    <Button x:Name="UseCopyButton" Content="{t:Text Weapons.Swap.UseCopy}" ToolTip="{t:Text Weapons.Swap.UseCopy.Tip}" Margin="0,6,0,0" Click="UseCopyClicked"
+                                            controls:OffReason.Text="{t:Text Weapons.Swap.Use.Off}" />
                                 </StackPanel>
                                 <TextBlock x:Name="CopyNote" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" Margin="0,5,0,0" />
                             </StackPanel>

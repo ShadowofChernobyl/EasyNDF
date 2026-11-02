@@ -90,6 +90,9 @@ public partial class UnitsPage
         UnitsPartButton.IsChecked = part == ArmoryPart.Units;
         DivisionsPartButton.IsChecked = part == ArmoryPart.Divisions;
         BattlegroupsPartButton.IsChecked = part == ArmoryPart.Battlegroups;
+        // off, its name dimmed, for a game with no battlegroups in its files (Steel Division 2), the reason as its tooltip
+        BattlegroupsPartButton.IsEnabled = Game.HasBattlegroups;
+        Controls.OffReason.SetText(BattlegroupsPartButton, Game.HasBattlegroups ? null : Text.Texts.Get("Divisions.Battlegroup.NotForThisGame", ("game", Game.Name)));
         WeaponsPartButton.IsChecked = part == ArmoryPart.Weapons;
         // the Weapons sub-tab has a left column and a pane of its own, in the units' place
         UnitsView.Visibility = part == ArmoryPart.Weapons ? Visibility.Collapsed : Visibility.Visible;

@@ -17,7 +17,11 @@ namespace EasyNdf.App.Pages;
 public partial class UnitsPage
 {
     /// <inheritdoc/>
-    public bool CanChangeUnit(Unit unit) => Game == Data.Game.GameTitle.Warno && (IsAddedUnit(unit) || IsSourceUnit(unit));
+    public bool CanChangeUnit(Unit unit) => IsAddedUnit(unit) || IsSourceUnit(unit);
+
+    /// <inheritdoc/>
+    public string? WhyValueCannotChange(Unit unit, string field) =>
+        UnitChangeRules.Writes(Game, field) ? null : Texts.Get("Units.Pane.Off.NotForThisGame", ("game", Game.Name));
 
     /// <summary>Whether a unit is one of the source's own, before the open mod's rules.</summary>
     private bool IsSourceUnit(Unit unit) => GameUnits.Any(each => each.Descriptor == unit.Descriptor);
@@ -25,7 +29,7 @@ public partial class UnitsPage
     /// <inheritdoc/>
     public bool ChangeUnit(Unit unit, string field, string value)
     {
-        if (UnitBeforeChanges(unit) is not Unit before) return false;
+        if (UnitBeforeChanges(unit) is not Unit before || WhyValueCannotChange(unit, field) is not null) return false;
         return field switch
         {
             UnitField.Name => ChangeUnitName(unit, before, value.Trim()),
@@ -75,7 +79,7 @@ public partial class UnitsPage
     private bool ChangeUnitStat(Unit unit, Unit before, string field, string typed)
     {
         if (EditableStat.Of(field) is not EditableStat stat) return false;
-        if (stat.ValueOf(typed, unit, gameUnits?.Catalog.ArmorLevels, Texts.Catalog.Culture) is not double value) return false;
+        if (stat.ValueOf(typed, unit, gameUnits?.Catalog.ArmorLevels, Texts.Catalog.Culture, Game) is not double value) return false;
         return ChangeUnitValues(unit, values => values.Give(field, value == stat.Read(before) ? null : value));
     }
 
@@ -130,7 +134,7 @@ public partial class UnitsPage
     // ---- the card picture ----
 
     /// <inheritdoc/>
-    public bool CanChangePicture(Unit unit) => CanChangeUnit(unit);
+    public bool CanChangePicture(Unit unit) => CanChangeUnit(unit) && WhyValueCannotChange(unit, UnitField.Picture) is null;
 
     /// <summary>
     /// The ✎ on a unit's picture in the Unit pane: "Picture…", a picture of the user's own; and, while it has one, the

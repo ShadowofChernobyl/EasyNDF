@@ -1,10 +1,12 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using EasyNdf.Data;
 using EasyNdf.Data.Divisions;
 using EasyNdf.Data.FileList;
+using EasyNdf.Data.Game;
 using EasyNdf.Data.Units;
 
 namespace EasyNdf.App.Files;
@@ -24,12 +26,27 @@ public static class GeneratedListsMaker
     /// their numbers in deck codes (DeckSerializer.ndf), the game's divisions, for the numbers they give each unit, and,
     /// for generated battlegroups, the units' weapons (WeaponDescriptor.ndf and the ammunition files) and the cards the
     /// game has (DeckPacks.ndf). UniteDescriptor.ndf must be on the Files tab; the others are read when they are.
+    /// These are WARNO's; Steel Division 2's are <see cref="SteelDivisionInputFiles"/>.
     /// </summary>
     public static IReadOnlyList<string> InputFiles { get; } =
     [
         "UniteDescriptor.ndf", "BuildingDescriptors.ndf", "DeckSerializer.ndf", "Divisions.ndf", "DivisionRules.ndf",
         "DeckPacks.ndf", "WeaponDescriptor.ndf", "Ammunition.ndf", "AmmunitionMissiles.ndf",
     ];
+
+    /// <summary>
+    /// Steel Division 2's files the lists are made from, as WARNO's (<see cref="InputFiles"/>) where it has them: its
+    /// units, and its defences in DefenseProductionsDescriptors.ndf, which its divisions list as units; it has no
+    /// battlegroup cards (DeckPacks.ndf) and no buildings file.
+    /// </summary>
+    public static IReadOnlyList<string> SteelDivisionInputFiles { get; } =
+    [
+        "UniteDescriptor.ndf", "DefenseProductionsDescriptors.ndf", "DeckSerializer.ndf", "Divisions.ndf", "DivisionRules.ndf",
+        "WeaponDescriptor.ndf", "Ammunition.ndf", "AmmunitionMissiles.ndf",
+    ];
+
+    /// <summary>A game's files the lists are made from (<see cref="InputFiles"/>, <see cref="SteelDivisionInputFiles"/>).</summary>
+    public static IReadOnlyList<string> InputFilesOf(GameTitle game) => game == GameTitle.SteelDivision2 ? SteelDivisionInputFiles : InputFiles;
 
     /// <summary>The file without which no list can be made.</summary>
     public const string UnitsFile = "UniteDescriptor.ndf";
@@ -83,13 +100,18 @@ public static class GeneratedListsMaker
 
     private static readonly Lock Making = new();
 
-    /// <summary>The files on the Files tab the lists are made from, each with the rules run on it; null when UniteDescriptor.ndf is not there.</summary>
-    internal static List<Input>? InputsFrom(IReadOnlyList<FileEntry> entries)
+    /// <summary>
+    /// A game's files on the Files tab the lists are made from, each with the rules run on it; null when its
+    /// UniteDescriptor.ndf is not there. Files of other games are left out.
+    /// </summary>
+    /// <param name="entries">The files on the Files tab.</param>
+    /// <param name="game">The game whose files are read, and whose units the lists are made of.</param>
+    internal static List<Input>? InputsFrom(IReadOnlyList<FileEntry> entries, GameTitle game)
     {
         var inputs = new List<Input>();
-        foreach (string name in InputFiles)
+        foreach (string name in InputFilesOf(game))
         {
-            FileEntry? entry = entries.Where(each => each.Source is not null && string.Equals(each.Name, name, StringComparison.OrdinalIgnoreCase))
+            FileEntry? entry = entries.Where(each => each.Source is not null && each.Game == game && string.Equals(each.Name, name, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(each => each.On).FirstOrDefault();
             if (entry is null)
             {
@@ -117,9 +139,14 @@ public static class GeneratedListsMaker
         lock (Making)
         {
             if (recent.FirstOrDefault(made => made.Key == key) is { Results: not null } known) return known.Results;
-            Results results = ReadCached(cacheFolder, key) ?? Make(rules, RostersFor(filesKey, inputs, textAfterRules));
+            Results? cached = ReadCached(cacheFolder, key);
+            Results results = cached ?? Make(rules, RostersFor(filesKey, inputs, textAfterRules));
             Remember(key, results);
-            WriteCached(cacheFolder, key, results);
+            // results read from the cache are kept there as they are: writing them again (some 100 MB, a second or
+            // more) would give the same file, so it is only marked as the newest, as writing it did. Tuned for speed:
+            // Keep it that way when tidying.
+            if (cached is null) WriteCached(cacheFolder, key, results);
+            else KeepAsNewest(cacheFolder, key);
             return results;
         }
     }
@@ -129,10 +156,14 @@ public static class GeneratedListsMaker
     {
         if (lastRosters is { } read && read.Key == filesKey) return read.Rosters;
         List<ChangedFile> files = [.. inputs.Select(input => new ChangedFile(input.Entry.Source!, textAfterRules(input)))];
-        DivisionRosters rosters = DivisionRosters.FromFiles(files, Data.Game.GameTitle.Warno);
+        // the inputs are all of one game (InputsFrom), UniteDescriptor.ndf always among them
+        DivisionRosters rosters = DivisionRosters.FromFiles(files, GameOf(inputs));
         lastRosters = (filesKey, rosters);
         return rosters;
     }
+
+    /// <summary>The game the files the lists are made from are of; WARNO when there are none.</summary>
+    private static GameTitle GameOf(IReadOnlyList<Input> inputs) => inputs.Count > 0 ? inputs[0].Entry.Game : GameTitle.Warno;
 
     /// <summary>Makes the lists and battlegroups the rules are for from the units read.</summary>
     private static Results Make(JsonArray rules, DivisionRosters rosters)
@@ -156,6 +187,8 @@ public static class GeneratedListsMaker
         using var sum = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         void Add(string text) => sum.AppendData(Encoding.UTF8.GetBytes(text + "\n"));
         Add(MakerVersion);
+        // another game's files are read as that game's: its results are never another's (WARNO's checksums stay as they were)
+        if (GameOf(inputs) != GameTitle.Warno) Add(GameOf(inputs).Id);
         foreach (Input input in inputs)
         {
             Add(input.Entry.Name);
@@ -210,6 +243,42 @@ public static class GeneratedListsMaker
         }
     }
 
+    /// <summary>
+    /// Marks the results kept for a checksum as the newest, as writing them again would, so they are the last to be let
+    /// go of (<see cref="LetGoOfOldest"/>).
+    /// </summary>
+    private static void KeepAsNewest(string? folder, string key)
+    {
+        if (folder is null) return;
+        try
+        {
+            File.SetLastWriteTimeUtc(CachePath(folder, key), DateTime.UtcNow);
+            LetGoOfOldest(folder);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            // the cache only saves time: an export goes on without it
+        }
+    }
+
+    /// <summary>Deletes the results kept longest ago, past <see cref="ResultsKept"/>.</summary>
+    private static void LetGoOfOldest(string folder)
+    {
+        foreach (FileInfo old in new DirectoryInfo(CacheFolderOf(folder)).GetFiles("*.json").OrderByDescending(file => file.LastWriteTimeUtc).Skip(ResultsKept))
+            old.Delete();
+    }
+
+    /// <summary>
+    /// A value taken out of the object that holds it, to be put into another as it is: a value can belong to one object
+    /// only, and copying each list instead took a good part of writing the results.
+    /// </summary>
+    private static JsonNode? TakenOut(JsonObject json, string name)
+    {
+        JsonNode? value = json[name];
+        json.Remove(name);
+        return value;
+    }
+
     /// <summary>Keeps the results made for a checksum, the oldest let go of past <see cref="ResultsKept"/>.</summary>
     private static void WriteCached(string? folder, string key, Results results)
     {
@@ -220,7 +289,7 @@ public static class GeneratedListsMaker
             Directory.CreateDirectory(CacheFolderOf(folder));
             var lists = new JsonObject();
             foreach ((string division, IReadOnlyList<DivisionUnit> units) in results.Lists)
-                lists[division] = new ModDivision { Added = [.. units] }.ToJson()["Added"]!.DeepClone();
+                lists[division] = TakenOut(new ModDivision { Added = [.. units] }.ToJson(), "Added");
             var battlegroups = new JsonObject();
             foreach ((string division, IReadOnlyList<BattlegroupCard> cards) in results.Battlegroups)
                 battlegroups[division] = new ModDivision { BattlegroupCards = [.. cards] }.ToJson()["Battlegroup"]?["Cards"]?.DeepClone() ?? new JsonArray();
@@ -232,9 +301,12 @@ public static class GeneratedListsMaker
                 ["Units"] = new JsonObject(results.Units.Select(unit => KeyValuePair.Create<string, JsonNode?>(
                     unit.Key, new JsonArray(JsonValue.Create(unit.Value.Name), JsonValue.Create(unit.Value.DeckNumber))))),
             };
-            File.WriteAllText(path, json.ToJsonString());
-            foreach (FileInfo old in new DirectoryInfo(CacheFolderOf(folder)).GetFiles("*.json").OrderByDescending(file => file.LastWriteTimeUtc).Skip(ResultsKept))
-                old.Delete();
+            // written straight into the file, rather than made into one text first: the results are some 100 MB. Tuned
+            // for speed, as are the lists taken out rather than copied above: Keep it that way when tidying.
+            using (FileStream file = File.Create(path))
+            using (var writer = new Utf8JsonWriter(file))
+                json.WriteTo(writer);
+            LetGoOfOldest(folder);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {

@@ -48,7 +48,8 @@ public partial class EditorPage
         Unfold(found, found + wanted.Length);
         Text.Select(found, wanted.Length);
         PointAt(Text.Document.GetLineByOffset(found).LineNumber - 1);
-        Text.TextArea.Focus();
+        // the keyboard stays where it was, as in Sublime Text: Enter in the find box goes on to the next match, and
+        // Escape gives the text the keyboard with the match selected
     }
 
     /// <summary>The last match that starts at or before a place (JavaScript's <c>lastIndexOf</c>); -1 for none.</summary>
@@ -92,6 +93,8 @@ public partial class EditorPage
         double middle = shown.IsFile ? top + LineHeightForSize / 2 - Text.ViewportHeight / 2 : top - Math.Floor(Text.ViewportHeight / 2);
         Text.ScrollToVerticalOffset(Math.Max(0, middle));
         Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
+        // the pointed line's outline is drawn above the selection, on the caret layer
+        Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Caret);
     }
 
     private void GoKeyDown(object sender, KeyEventArgs e)

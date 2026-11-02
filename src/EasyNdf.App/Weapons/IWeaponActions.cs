@@ -1,3 +1,4 @@
+using EasyNdf.Data.Game;
 using EasyNdf.Data.Weapons;
 
 namespace EasyNdf.App.Weapons;
@@ -5,8 +6,11 @@ namespace EasyNdf.App.Weapons;
 /// <summary>What the Weapons sub-tab's parts can do with a weapon; the Armory tab does it.</summary>
 public interface IWeaponActions
 {
-    /// <summary>The open mod's name, which the sub-tab's heading says its changes are saved in.</summary>
-    string OpenModName { get; }
+    /// <summary>
+    /// What the sub-tab's heading says after its title of where changes are saved: " · changes saved in My mod", or,
+    /// while the open mod is for another game than the source's, that they are not saved.
+    /// </summary>
+    string SavedInLine { get; }
 
     /// <summary>
     /// "+ New Weapon…": a weapon of the open mod's own, a copy of one the user picks (an ammunition has some 60 values,
@@ -26,8 +30,23 @@ public interface IWeaponActions
     /// <summary>Shows a unit, by its descriptor, on the Units sub-tab.</summary>
     void ShowUnit(string descriptor);
 
+    /// <summary>The game of the weapons shown, whose own properties the Weapon pane names and changes.</summary>
+    GameTitle Game { get; }
+
     /// <summary>Whether a weapon's values can be changed in the Weapon pane: one of the source's own, or a copy of the open mod's.</summary>
     bool CanChangeWeapon(Weapon weapon);
+
+    /// <summary>
+    /// Why one of a weapon's values cannot be changed though the weapon can (its game's ammunition has no such value,
+    /// or its kind of damage has no level); null when it can.
+    /// </summary>
+    string? WhyValueCannotChange(Weapon weapon, string field);
+
+    /// <summary>
+    /// Why weapons cannot be added to the open mod here (new weapons, and copies for some units): the Armory does not
+    /// add weapons for its game yet; null when they can.
+    /// </summary>
+    string? WhyWeaponsCannotBeAdded { get; }
 
     /// <summary>Whether a weapon is a copy the open mod adds, which can be renamed.</summary>
     bool IsCopy(Weapon weapon);

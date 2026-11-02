@@ -146,7 +146,7 @@ public static class ArmoryPresets
             mod.Presets.Add(preset);
         }
         foreach ((string unit, int number) in missing)
-            foreach (JsonNode? rule in Units.UnitChangeRules.DeckNumberRules(unit, unitName(unit), number, texts))
+            foreach (JsonNode? rule in Units.UnitChangeRules.DeckNumberRules(unit, unitName(unit), number, texts, mod.Game))
                 preset.Rules.Add(rule!.DeepClone());
     }
 

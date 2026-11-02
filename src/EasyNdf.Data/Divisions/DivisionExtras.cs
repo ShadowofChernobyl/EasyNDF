@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using EasyNdf.Data.Game;
 
 namespace EasyNdf.Data.Divisions;
 
@@ -16,13 +17,23 @@ public static class DivisionExtras
     /// </summary>
     public const string NamesFile = "UNITS.csv";
 
-    /// <summary>Whether a file is the dictionary the divisions' texts go into.</summary>
-    public static bool IsNamesFile(string fileName) => string.Equals(fileName, NamesFile, StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Steel Division 2's dictionary file for a mod's texts: one MODDING.csv, in GameData\Localisation itself, serves
+    /// every dictionary of the game (see the Steel Division 2 notes, section 1.4).
+    /// </summary>
+    public const string SteelDivisionNamesFile = "MODDING.csv";
+
+    /// <summary>The dictionary file the Armory's texts go into for a game: WARNO's UNITS.csv, Steel Division 2's MODDING.csv.</summary>
+    public static string NamesFileOf(GameTitle game) => game == GameTitle.SteelDivision2 ? SteelDivisionNamesFile : NamesFile;
+
+    /// <summary>Whether a file is the dictionary the Armory's texts go into for a game (<see cref="NamesFileOf"/>).</summary>
+    public static bool IsNamesFile(string fileName, GameTitle game) => string.Equals(fileName, NamesFileOf(game), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>What was copied, or why not.</summary>
     /// <param name="Pictures">How many pictures were copied.</param>
     /// <param name="Problem">What stopped some of it; "" when nothing did.</param>
-    public sealed record Outcome(int Pictures, string Problem);
+    /// <param name="Emblems">How many of them are division emblems; the others are units' card pictures.</param>
+    public sealed record Outcome(int Pictures, string Problem, int Emblems = 0);
 
     /// <summary>
     /// Copies the pictures of the Armory presets' rules that are on into the GameData folder of a file of theirs just
@@ -39,22 +50,24 @@ public static class DivisionExtras
         string? gameData = GameDataFolderOf(exportedFile);
         if (gameData is null) return new Outcome(0, noGameData.Replace("{path}", exportedFile, StringComparison.Ordinal));
         var missing = new List<string>();
-        int pictures = CopyPicturesInto(gameData, rules, pictureFolders, missing);
-        return new Outcome(pictures, string.Join(" ", missing.Select(path => pictureMissing.Replace("{path}", path, StringComparison.Ordinal))));
+        int pictures = CopyPicturesInto(gameData, rules, pictureFolders, missing, out int emblems);
+        return new Outcome(pictures, string.Join(" ", missing.Select(path => pictureMissing.Replace("{path}", path, StringComparison.Ordinal))), emblems);
     }
 
     /// <summary>
-    /// Whether a rule of the Armory presets gives texts that go into UNITS.csv: a division's or a unit's name, a new
-    /// division's summary and history, or an Official Battlegroup's name. Such a change needs UNITS.csv on the Files tab, as the others
-    /// need the files they are written into.
+    /// Whether a rule of the Armory presets gives texts that go into the game's dictionary (<see cref="NamesFileOf"/>):
+    /// a division's or a unit's name, a new division's summary and history, or an Official Battlegroup's name.
     /// </summary>
     public static bool NeedsNamesFile(JsonNode? rule) =>
         (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ShowsKey] == "Name"
         || (rule?["Actions"] as JsonArray ?? []).Any(action => IsTextTarget((string?)action?["Target"]))
         || (IsAddRule(rule) && rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.TextsKey] is JsonObject { Count: > 0 });
 
-    /// <summary>Whether a rule's target is a text token whose text goes into UNITS.csv: a unit's name is one too.</summary>
-    private static bool IsTextTarget(string? target) => target is "SummaryTextToken" or "HistoryTextToken" or "DeckName" or "NameToken";
+    /// <summary>
+    /// Whether a rule's target is a text token whose text goes into the dictionary: a unit's name is one too, and Steel
+    /// Division 2's division description (DivisionDescription, its SummaryTextToken).
+    /// </summary>
+    private static bool IsTextTarget(string? target) => target is "SummaryTextToken" or "HistoryTextToken" or "DeckName" or "NameToken" or SteelDivisionDivisions.SummaryProperty;
 
     /// <summary>Whether a rule adds a descriptor: its texts are kept by token, as it has no action to name them.</summary>
     private static bool IsAddRule(JsonNode? rule) => (string?)rule?["Kind"] == "Add";
@@ -73,12 +86,14 @@ public static class DivisionExtras
     /// A dictionary file (UNITS.csv, INTERFACE_OUTGAME.csv...) with the given texts: a line "TOKEN";"Text" for each, as
     /// the game writes them, in place of a line of the same token, after the file's other lines. A token given twice
     /// takes the later text, as a lower mod wins. The file's own line endings are kept; an empty file gets the game's
-    /// heading line.
+    /// heading line. A file whose heading line has more columns, as Steel Division 2's MODDING.csv, gets lines with as
+    /// many (<see cref="TextLine"/>).
     /// </summary>
     /// <param name="csvText">The dictionary file on the Files tab, as it is.</param>
     /// <param name="texts">The texts, in the order the rules giving them run.</param>
+    /// <param name="game">The game the file is for: an empty file gets its heading line; WARNO when not given.</param>
     /// <returns>The new file's text, and how many texts it was given.</returns>
-    public static (string Text, int Count) WithTexts(string csvText, IReadOnlyList<DictionaryText> texts)
+    public static (string Text, int Count) WithTexts(string csvText, IReadOnlyList<DictionaryText> texts, GameTitle? game = null)
     {
         var byToken = new Dictionary<string, int>(StringComparer.Ordinal);
         var names = new List<DictionaryText>();
@@ -91,12 +106,43 @@ public static class DivisionExtras
                 names.Add(text);
             }
         }
-        string existing = csvText.Trim() == "" ? "\"TOKEN\";\"REFTEXT\"\r\n" : csvText;
+        string existing = csvText.Trim() == "" ? EmptyDictionaryOf(game) : csvText;
         string lineBreak = existing.Contains("\r\n", StringComparison.Ordinal) || !existing.Contains('\n') ? "\r\n" : "\n";
         List<string> lines = [.. existing.Split('\n').Select(line => line.TrimEnd('\r')).Where(line => line != "")];
+        string[]? headings = lines.Count > 0 && lines[0].Split(';')[0].Trim('"') == "TOKEN" ? lines[0].Split(';') : null;
         lines.RemoveAll(line => byToken.ContainsKey(line.Split(';')[0].Trim('"')));
-        lines.AddRange(names.Select(name => "\"" + name.Token + "\";\"" + CsvText(name.Text) + "\""));
+        lines.AddRange(names.Select(name => TextLine(name, headings)));
         return (string.Join(lineBreak, lines) + lineBreak, names.Count);
+    }
+
+    /// <summary>
+    /// A new dictionary file's heading line, as the game's own: WARNO's UNITS.csv has two columns, with Windows line
+    /// endings; Steel Division 2's MODDING.csv has seven, with a line feed alone, as its CreateNewMod makes it.
+    /// </summary>
+    private static string EmptyDictionaryOf(GameTitle? game) => game == GameTitle.SteelDivision2
+        ? "\"TOKEN\";\"COMMENT\";\"DO NOT TRANSLATE\";CONSTRAINT;\"REFTEXT\";\"CLASSEMENT\";\"ExisteDansSlayer\"\n"
+        : "\"TOKEN\";\"REFTEXT\"\r\n";
+
+    /// <summary>
+    /// A text's line: "TOKEN";"Text" for a file of two columns, or with no heading line. A file with more columns gets
+    /// the token under TOKEN, the text under REFTEXT and the other columns left empty, each quoted when its heading is:
+    /// "TOKEN";"";"";;"Text";"";"" in Steel Division 2's MODDING.csv.
+    /// </summary>
+    /// <param name="text">The token and its text.</param>
+    /// <param name="headings">The file's heading line, split into its columns; null when it has none.</param>
+    private static string TextLine(DictionaryText text, string[]? headings)
+    {
+        int textColumn = headings is null ? -1 : Array.FindIndex(headings, heading => heading.Trim('"') == "REFTEXT");
+        if (headings is null || headings.Length <= 2 || textColumn < 1) return "\"" + text.Token + "\";\"" + CsvText(text.Text) + "\"";
+        var columns = new List<string>();
+        for (int column = 0; column < headings.Length; column++)
+        {
+            if (column == 0) columns.Add("\"" + text.Token + "\"");
+            else if (column == textColumn) columns.Add("\"" + CsvText(text.Text) + "\"");
+            // an empty column, written as its heading is: quoted or not
+            else columns.Add(headings[column].StartsWith('"') ? "\"\"" : "");
+        }
+        return string.Join(";", columns);
     }
 
     /// <summary>
@@ -239,17 +285,21 @@ public static class DivisionExtras
         {
             if (rule is null || on.Contains(rule) || (string?)rule[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PicturePathKey] is not string path) continue;
             if (usedPaths.Contains(path)) continue;
-            if (TargetUnder(gameData, path) is not string target || !File.Exists(target)) continue;
+            if (PictureTargetOf(gameData, path) is not string target || !File.Exists(target)) continue;
             File.Delete(target);
             removed++;
         }
         return removed;
     }
 
-    /// <summary>Copies the pictures of the user's own that the rules that are on give, where they say. Returns how many.</summary>
-    private static int CopyPicturesInto(string gameData, IEnumerable<JsonNode?> rules, IReadOnlyList<string> pictureFolders, List<string> missing)
+    /// <summary>
+    /// Copies the pictures of the user's own that the rules that are on give, where they say. Returns how many, and
+    /// how many of them are division emblems.
+    /// </summary>
+    private static int CopyPicturesInto(string gameData, IEnumerable<JsonNode?> rules, IReadOnlyList<string> pictureFolders, List<string> missing, out int emblems)
     {
         int copied = 0;
+        emblems = 0;
         foreach (JsonNode? rule in RulesThatAreOn(rules))
         {
             if (rule?[DivisionChangeRules.ArmoryKey] is not JsonObject armory || JsonValues.IsFalse(rule["Enabled"])) continue;
@@ -261,12 +311,26 @@ public static class DivisionExtras
                 missing.Add(picture);
                 continue;
             }
-            if (TargetUnder(gameData, path) is not string target) continue;
+            if (PictureTargetOf(gameData, path) is not string target) continue;
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(picture, target, overwrite: true);
             copied++;
+            if (path.StartsWith(DivisionChangeRules.EmblemFolder, StringComparison.OrdinalIgnoreCase)) emblems++;
         }
         return copied;
+    }
+
+    /// <summary>
+    /// Where a picture a rule gives goes: under GameData (WARNO's "Assets/2D/..."), or, for a path that starts with
+    /// AssetsModding (Steel Division 2's pictures of a mod's own, <see cref="Units.UnitChangeRules.AssetsModdingFolder"/>),
+    /// in the mod's AssetsModding folder beside GameData. Null for a path that is not a plain relative one.
+    /// </summary>
+    internal static string? PictureTargetOf(string gameData, string picturePath)
+    {
+        string first = picturePath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        if (string.Equals(first, Units.UnitChangeRules.AssetsModdingFolder, StringComparison.OrdinalIgnoreCase) && Path.GetDirectoryName(gameData) is string modFolder)
+            return TargetUnder(modFolder, picturePath);
+        return TargetUnder(gameData, picturePath);
     }
 
     /// <summary>

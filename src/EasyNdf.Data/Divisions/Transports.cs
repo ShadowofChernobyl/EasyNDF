@@ -12,7 +12,9 @@ public static class Transports
     /// <summary>
     /// The transports a unit can ride in, in the order of the game's units. WARNO: those that can carry it (see
     /// <see cref="CanCarry"/>). Steel Division 2 does not follow those rules throughout, so there it is only the
-    /// transports the game itself gives the unit in one of its divisions. None for a unit that cannot ride in one.
+    /// transports the game itself gives the unit in one of its divisions; for a unit it gives none (one a mod adds, a copy
+    /// of a game unit), those that can carry it as WARNO decides, which every transport SD2 gives a unit also passes.
+    /// None for a unit that cannot ride in one.
     /// </summary>
     public static IReadOnlyList<Unit> ValidFor(Unit unit, UnitCatalog catalog)
     {
@@ -21,6 +23,7 @@ public static class Transports
         HashSet<string> givenByGame = [.. catalog.Divisions.SelectMany(division => division.Units)
             .Where(rule => rule.Unit == unit.Descriptor)
             .SelectMany(rule => rule.Transports)];
+        if (givenByGame.Count == 0) return [.. catalog.Units.Where(transport => CanCarry(transport, unit))];
         return [.. catalog.Units.Where(transport => givenByGame.Contains(transport.Descriptor))];
     }
 

@@ -11,6 +11,7 @@ using EasyNdf.App.Rules;
 using EasyNdf.Data;
 using EasyNdf.Data.Divisions;
 using EasyNdf.Data.FileList;
+using EasyNdf.Data.Game;
 using EasyNdf.Engine.Mods;
 using Microsoft.Win32;
 using EasyNdf.App.Text;
@@ -28,6 +29,15 @@ public partial class RulesPage : UserControl
 
     /// <summary>How many listed files use a preset, for the preset list (set by the main view, from the Files tab).</summary>
     public Func<ModPreset, int> FilesUsing { get; set; } = _ => 0;
+
+    /// <summary>
+    /// The games of the files on the Files tab (set by the main view): a mod that is on whose game has none of them is
+    /// dimmed, as it runs on nothing. Empty while the Files tab has no file.
+    /// </summary>
+    public Func<IReadOnlySet<GameTitle>> FileGames { get; set; } = () => new HashSet<GameTitle>();
+
+    /// <summary>The files on the Files tab changed: a mod's line may now be dimmed, or no longer, for its game.</summary>
+    public void FilesChanged() => ShowMods();
 
     /// <summary>Undo and Redo, set by the main view; Ctrl+Z, Ctrl+Y and the right-click menus use it.</summary>
     public UndoHistory? History { get; set; }
@@ -73,6 +83,13 @@ public partial class RulesPage : UserControl
         // an Armory preset is named after its part of the Armory
         RenamePresetButton.IsEnabled = hasPreset && !several && !Model.OpenPreset!.IsArmoryPreset;
         DuplicatePresetButton.IsEnabled = DeletePresetButton.IsEnabled = hasPreset;
+        // a dim button says why it is dim
+        string noRuleSet = Texts.Get("Rules.Preset.Off.NoneOpen");
+        OffReason.SetText(RenamePresetButton, !hasPreset ? noRuleSet
+            : several ? Texts.Get("Rules.RenamePreset.Off.Several")
+            : Texts.Get("Rules.RenamePreset.Off.Armory"));
+        OffReason.SetText(DuplicatePresetButton, noRuleSet);
+        OffReason.SetText(DeletePresetButton, noRuleSet);
         ClipNote.Visibility = Model.Note == "" ? Visibility.Collapsed : Visibility.Visible;
     }
 
@@ -148,7 +165,7 @@ public partial class RulesPage : UserControl
         public bool AppliesToNothing => RuleSetFiles.Named(Preset).Count == 0;
 
         /// <summary>"12 rules"; "⚠ no file" when it applies to no file at all, as it then never runs.</summary>
-        public string UseText => AppliesToNothing ? Texts.Get("Rules.Preset.NoFile") : Texts.Count("Rules.RuleCount", Preset.Rules.Count);
+        public string UseText => AppliesToNothing ? Texts.Get("Rules.Preset.NoFile") : Texts.CountWide("Rules.RuleCount", Preset.Rules.Count);
 
         /// <summary>The tooltip of "⚠ no file".</summary>
         public string? UseTip => AppliesToNothing ? Texts.Get("Rules.AppliesTo.None.Tip") : null;
@@ -193,13 +210,26 @@ public partial class RulesPage : UserControl
     }
 
     /// <summary>
-    /// A line of the mod list: the mod, whether it is the open one, whether it is on, its Armory parts as letters, and
-    /// the values another mod that is on also changes.
+    /// A line of the mod list: the mod, whether it is the open one, whether it is on, its Armory parts as letters, the
+    /// values another mod that is on also changes, and whether it runs on no file, as none on the Files tab is for its
+    /// game.
     /// </summary>
-    public sealed record ModLine(Mod Mod, bool IsSelected, bool IsOn, IReadOnlyList<ModLetter> Letters, IReadOnlyList<ModConflict> Conflicts)
+    public sealed record ModLine(Mod Mod, bool IsSelected, bool IsOn, IReadOnlyList<ModLetter> Letters, IReadOnlyList<ModConflict> Conflicts, bool HasNoFileOfItsGame)
     {
         /// <summary>The mod's name.</summary>
         public string Name => Mod.Name;
+
+        /// <summary>The game the mod is for, by its short name ("WARNO", "SD2"), small and dim at the right of the name.</summary>
+        public string GameId => Mod.Game.Id;
+
+        /// <summary>The game's tooltip: which game the mod is for, and what that means.</summary>
+        public string GameTip => Texts.Get("Rules.ModGame.Tip", ("game", Mod.Game.Name));
+
+        /// <summary>Whether the mod is on but runs on nothing, as no file on the Files tab is for its game: it is dimmed.</summary>
+        public bool IsIdle => IsOn && HasNoFileOfItsGame;
+
+        /// <summary>The line's tooltip: the mod's name, and, while it runs on nothing, why.</summary>
+        public string LineTip => IsIdle ? Name + "\n" + Texts.Get("Rules.ModIdle.Tip", ("game", Mod.Game.Name)) : Name;
 
         /// <summary>Whether another mod that is on changes a value this one does: it is marked ⚠.</summary>
         public bool HasConflicts => Conflicts.Count > 0;
@@ -247,8 +277,11 @@ public partial class RulesPage : UserControl
     private void ShowMods()
     {
         IReadOnlyList<Mod> mods = ModStack.Ordered;
+        // an empty Files tab says nothing of the games: no mod is dimmed for it
+        IReadOnlySet<GameTitle> fileGames = FileGames();
         ModLines.ItemsSource = mods
-            .Select(mod => new ModLine(mod, ReferenceEquals(mod, Model.OpenMod), ModStack.IsOn(mod), LettersOf(mod), ModConflictList.Of(mod))).ToList();
+            .Select(mod => new ModLine(mod, ReferenceEquals(mod, Model.OpenMod), ModStack.IsOn(mod), LettersOf(mod), ModConflictList.Of(mod),
+                fileGames.Count > 0 && !fileGames.Contains(mod.Game))).ToList();
         ModsLine.Text = Texts.Get("Rules.ModsOn", ("on", Texts.Number(mods.Count(ModStack.IsOn))), ("all", Texts.Number(mods.Count)));
         RuleSetsModName.Text = Model.OpenMod.Name;
         ShowModOffLine();
@@ -314,8 +347,20 @@ public partial class RulesPage : UserControl
         if (files.Count > 1)
         {
             AppliesText.Inlines.Add(Coloured(" " + Texts.Count("Rules.AppliesTo.Others", files.Count - 1, ("count", Texts.Number(files.Count - 1))), "muted"));
-            AppliesText.ToolTip = string.Join("\n", files);
+            AppliesText.ToolTip = FilesTip(files);
         }
+        // one file has no tooltip of its own: cut short, the line shows itself whole on hover (Controls/TrimmedTip.cs)
+    }
+
+    /// <summary>The most files the Applies To tooltip lists; the rest are counted, so a rule set of hundreds of files gives a tooltip that fits.</summary>
+    private const int FilesTipLines = 12;
+
+    /// <summary>The Applies To tooltip: the files, one a line, the first twelve, then "and 40 more".</summary>
+    private static string FilesTip(IReadOnlyList<string> files)
+    {
+        var lines = files.Take(FilesTipLines).ToList();
+        if (files.Count > FilesTipLines) lines.Add(Texts.CountWide("Rules.AppliesTo.More", files.Count - FilesTipLines));
+        return string.Join("\n", lines);
     }
 
     /// <summary>A piece of text in one of the theme's colours.</summary>
@@ -404,12 +449,18 @@ public partial class RulesPage : UserControl
             ? [.. paths.Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))]
             : [];
 
+    /// <summary>
+    /// "New": asks the new mod's name and its game, in a dropdown under the name that starts with the game of the
+    /// Source chosen on the Files tab, or else the open mod's. A mod runs only on files of its game.
+    /// </summary>
     private async void NewModClicked(object sender, RoutedEventArgs e)
     {
-        string name = await Messages.AskName(Texts.Get("Rules.Mod.NewName"));
+        var game = new GameChoice(GameChoice.StartingGame(MainView.Of(this).Sources.Chosen?.Game));
+        string name = await Messages.AskName(Texts.Get("Rules.Mod.NewName"),
+            new DialogOptions { UnderInput = game.Labelled(GameChoice.Label, Texts.Get("Rules.Mod.Game.Tip")) });
         if (name == "") return;
         if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists")); return; }
-        Model.NewMod(name);
+        Model.NewMod(name, game.Chosen);
     }
 
     private async void RenameModClicked(object sender, RoutedEventArgs e)
@@ -431,7 +482,8 @@ public partial class RulesPage : UserControl
         string question = presets > 0
             ? Texts.Get("Rules.Mod.DeleteAskWithPresets", ("mod", Model.OpenMod.Name), ("presets", RulesModel.Count(presets)))
             : Texts.Get("Rules.Mod.DeleteAsk", ("mod", Model.OpenMod.Name));
-        if (await Messages.Confirm(question, Texts.Get("Common.Ok"))) Model.DeleteMod();
+        // the button names what it does, so a quick Enter is not taken for "OK, read that"
+        if (await Messages.Confirm(question, Texts.Get("Rules.Delete"))) Model.DeleteMod();
     }
 
     /// <summary>"Import mod...": adds the mods in mod files or backups; a mod of a name already here asks what to do.</summary>
@@ -572,7 +624,7 @@ public partial class RulesPage : UserControl
             bool onlyBattlegroups = armory.All(preset => preset.ArmoryPart == ArmoryPart.Battlegroups);
             question += " " + Texts.Get(onlyBattlegroups ? "Rules.Locked.BattlegroupsDeleteAsk" : "Rules.Locked.PresetDeleteAsk");
         }
-        if (!await Messages.Confirm(question, Texts.Get("Common.Ok"))) return false;
+        if (!await Messages.Confirm(question, Texts.Get("Rules.Delete"))) return false;
         if (armory.Count > 0) MainView.Of(this).UnitsTab.TakeBack([.. armory.SelectMany(preset => preset.Rules)]);
         Model.DeletePresets(picked);
         return true;
@@ -701,8 +753,12 @@ public partial class RulesPage : UserControl
         MainView.Of(this).RuleWindow.Open(Model, History);
     }
 
-    /// <summary>The rule window closed: the rule list takes the keys again, its edge in the accent colour.</summary>
-    public void RuleWindowClosed() => SetActiveList(KeyList.Rules);
+    /// <summary>The rule window closed: the rule list takes the keys and the keyboard again, its edge in the accent colour.</summary>
+    public void RuleWindowClosed()
+    {
+        SetActiveList(KeyList.Rules);
+        RuleBox.Focus();
+    }
 
     private void RuleSwitchClicked(object sender, RoutedEventArgs e)
     {

@@ -27,9 +27,10 @@
                 <!-- the title and the steps, with a line under them -->
                 <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource line}" Edges="0,0,0,1" Padding="0,0,0,8" Margin="0,0,0,10">
                     <DockPanel>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}" AutomationProperties.Name="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
                         <TextBlock Text="{t:Text Units.New.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Margin="0,0,24,0" />
-                        <StackPanel x:Name="StepStrip" Orientation="Horizontal" VerticalAlignment="Center" />
+                        <!-- the steps wrap onto a second line in a narrow window -->
+                        <WrapPanel x:Name="StepStrip" VerticalAlignment="Center" />
                     </DockPanel>
                 </controls:Bevel>
 
@@ -47,11 +48,12 @@
                     <!-- step 1: the units whose model to use, as the Armory's Units sub-tab, and the one chosen at the right -->
                     <Grid x:Name="ModelStep" Height="440">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="220" />
+                            <!-- the side columns' widths are set to fit the window, so the list in the middle keeps its room (see FitWidth) -->
+                            <ColumnDefinition x:Name="ModelFiltersColumn" Width="220" />
                             <ColumnDefinition Width="12" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="12" />
-                            <ColumnDefinition Width="320" />
+                            <ColumnDefinition x:Name="ModelDetailsColumn" Width="320" />
                         </Grid.ColumnDefinitions>
                         <!-- the filters: side, nations, role -->
                         <DockPanel Grid.Column="0">
@@ -66,7 +68,7 @@
                             <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Nations}" /></controls:Bevel>
                             <controls:Bevel Style="{StaticResource SunkenBox}">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                    <StackPanel x:Name="NationList" />
+                                    <StackPanel x:Name="NationList" KeyboardNavigation.TabNavigation="Once" />
                                 </ScrollViewer>
                             </controls:Bevel>
                         </DockPanel>
@@ -131,7 +133,7 @@
                     <!-- steps 2 to 4: the new unit's tile at the left, as it will be; the step's boxes at the right -->
                     <Grid x:Name="DetailsSteps" Visibility="Collapsed">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="230" />
+                            <ColumnDefinition x:Name="PreviewColumn" Width="230" />
                             <ColumnDefinition Width="18" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>

@@ -2472,11 +2472,6 @@
       "text": "Choisissez le dossier dans lequel ce fichier sera exporté",
       "machine": true
     },
-    "Files.Row.ClearFolder.Tip": {
-      "english": "Clear folder",
-      "text": "Vider le dossier",
-      "machine": true
-    },
     "Files.Row.SaveAnyway.Tip": {
       "english": "Save the file that failed the check, to look at it",
       "text": "Enregistrez le fichier qui n’a pas passé le contrôle, afin de l’examiner",
@@ -4927,9 +4922,19 @@
       "text": "Les volets s’agrandissent en même temps que la fenêtre",
       "machine": true
     },
+    "Units.Pane.FileValue.Open.Tip": {
+      "english": "Click to show it in the File Editor; right-click to copy it",
+      "text": "Cliquez pour l’afficher dans l’éditeur de fichiers ; clic droit pour le copier",
+      "machine": true
+    },
+    "Units.Pane.FileValue.Copy.Tip": {
+      "english": "Click to copy it",
+      "text": "Cliquez pour le copier",
+      "machine": true
+    },
     "Settings.PanesGrowWithThe.Note": {
-      "english": "Details and Descriptors keep their share of the window as it is resized. Off, they keep the size they were dragged to.",
-      "text": "Les détails et les descripteurs conservent leur part de la fenêtre lorsque celle-ci est redimensionnée. Lorsqu’ils sont désactivés, ils conservent la taille à laquelle ils ont été déplacés.",
+      "english": "Details, Descriptors, the Armory's panes and the Mods tab's Mods and Rule Sets lists keep their share of the window as it is resized. Off, they keep the width they were dragged to, and only the main list or editor grows or shrinks.",
+      "text": "Les détails, les descripteurs, les volets de l’Armurerie et les listes Mods et Ensembles de règles de l’onglet Mods conservent leur part de la fenêtre lorsque celle-ci est redimensionnée. Désactivé, ils gardent la largeur choisie, et seule la liste ou l’éditeur principal s’agrandit ou rétrécit.",
       "machine": true
     },
     "Settings.ColumnWidths": {
@@ -6173,8 +6178,8 @@
       "machine": true
     },
     "Help.Page.settings.Html": {
-      "english": "<p>Settings are in groups; the search box at the top finds one by name.</p><h3>Export</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Files to export</td><td>Only changed files, or every file that's switched on. Every file copies unchanged files and files with no preset as they are.</td></tr><tr><td>Keep source comments</td><td>Off: only comments written by rules are exported.</td></tr><tr><td>Line endings</td><td>Leave it on LF, which the game uses, unless you know you need another.</td></tr><tr><td>Decimal places</td><td>How many decimals math results can have. 2 by default.</td></tr><tr><td>\"Edited with EasyNDF\" comment</td><td>The first line added to edited files, with the version.</td></tr><tr><td>Confirm before Run export</td><td>Says how many files will be written, and where, before writing them.</td></tr><tr><td>Back up overwritten files</td><td>A file an export replaces is kept beside it first, as .bak.</td></tr><tr><td>Open the folder after export</td><td>Opens the export folder in File Explorer when Run export finishes.</td></tr></tbody></table></div><h3>Files and Results</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Add folder lists</td><td>Every .ndf file, or only files your mod has rules for.</td></tr><tr><td>Duplicate files</td><td>What to do when you add a file that's already listed: ask, replace or skip.</td></tr><tr><td>Auto-assign presets by file name</td><td>Whether added files get their matching preset by themselves.</td></tr><tr><td>Reopen the last files</td><td>When the app starts, the file list comes back as you left it.</td></tr><tr><td>Wrap text in lists</td><td>Long text in a list runs onto more lines instead of being cut short.</td></tr><tr><td>Auto-fit file list columns</td><td>Columns size themselves to fit, until you drag one yourself.</td></tr><tr><td>Edits listed per rule</td><td>How many before-and-after lines Details shows. It doesn't limit the changes made.</td></tr></tbody></table></div><h3>Editing</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Confirm rule deletion</td><td>Ask before deleting a rule. Presets always ask.</td></tr><tr><td>Undo steps</td><td>How many changes to rules and the file list Ctrl+Z can take back.</td></tr></tbody></table></div><h3>File Editor</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Text size</td><td>The Editor's text size. Ctrl+Scroll changes it too.</td></tr><tr><td>Line numbers, Word wrap, Scope lines</td><td>Numbers down the side, long lines wrapping, and thin lines down each level of indentation.</td></tr><tr><td>Close brackets and quotes</td><td>Typing ( [ { \" or ' also types its partner.</td></tr><tr><td>Show everything in the descriptor tree</td><td>Off: a descriptor opens to the descriptors it names in other files. On: also to its objects, lists and own-file links.</td></tr><tr><td>Reopen the last file</td><td>The file last open in the Editor opens again when the app starts.</td></tr></tbody></table></div><h3>Appearance</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Theme, Fonts, Beveled edges, Tread scrollbars</td><td>See <a href=\"#\" data-p=\"themes\">Themes</a>.</td></tr><tr><td>Interface size</td><td>Makes everything in the window larger or smaller.</td></tr><tr><td>Tooltips</td><td>The notes that appear when the mouse rests on a control.</td></tr><tr><td>Remember the window</td><td>The window opens where it was, at the size it was.</td></tr><tr><td>Panes grow with the window</td><td>Details and Descriptors keep their share of the window as it's resized.</td></tr><tr><td>Column widths</td><td>Reset column widths puts every table back to automatic widths.</td></tr></tbody></table></div>",
-      "text": "<p>Les paramètres sont regroupés ; le champ de recherche en haut de la page permet d’en trouver un par son nom.</p><h3>Exporter</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètre</th><th>Fonction</th></tr></thead><tbody><tr><td>Fichiers à exporter</td><td>Uniquement les fichiers modifiés, ou tous les fichiers pour lesquels l&#x27;option est activée. Tous les fichiers : les fichiers inchangés et ceux sans préréglage sont copiés tels quels.</td></tr><tr><td>Conserver les commentaires source</td><td>Désactivé : seuls les commentaires générés par les règles sont exportés.</td></tr><tr><td>Fin de ligne</td><td>Laissez l&#x27;option sur LF, que le jeu utilise, sauf si vous savez que vous avez besoin d&#x27;un autre format.</td></tr><tr><td>Décimales</td><td>Nombre de décimales que peuvent comporter les résultats mathématiques. 2 par défaut.</td></tr><tr><td>Commentaire « Modifié avec EasyNDF »</td><td>Première ligne ajoutée aux fichiers modifiés, indiquant la version.</td></tr><tr><td>Confirmation avant de lancer l&#x27;export</td><td>Indique le nombre de fichiers qui seront créés, ainsi que leur emplacement, avant leur création.</td></tr><tr><td>Sauvegarder les fichiers écrasés</td><td>Un fichier remplacé par l&#x27;exportation est d&#x27;abord conservé à côté de celui-ci, sous la forme d&#x27;un fichier .bak.</td></tr><tr><td>Ouvrir le dossier après l&#x27;exportation</td><td>Ouvre le dossier d&#x27;exportation dans l&#x27;Explorateur de fichiers une fois l&#x27;export lancé.</td></tr></tbody></table></div><h3>Fichiers et résultats</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètre</th><th>Fonction</th></tr></thead><tbody><tr><td>Ajouter des listes de dossiers</td><td>Tous les fichiers .ndf, ou uniquement les fichiers pour lesquels votre mod dispose de règles.</td></tr><tr><td>Fichiers en double</td><td>Que faire lorsque vous ajoutez un fichier déjà présent dans la liste : demander confirmation, remplacer ou ignorer.</td></tr><tr><td>Attribuer automatiquement des préréglages en fonction du nom de fichier</td><td>Détermine si les fichiers ajoutés se voient automatiquement attribuer le préréglage correspondant.</td></tr><tr><td>Rouvrir les derniers fichiers</td><td>Au démarrage de l’application, la liste des fichiers s’affiche telle que vous l’avez laissée.</td></tr><tr><td>Renvoi à la ligne du texte dans les listes</td><td>Les textes longs d’une liste s’étendent sur plusieurs lignes au lieu d’être tronqués.</td></tr><tr><td>Ajustement automatique des colonnes de la liste de fichiers</td><td>La taille des colonnes s&#x27;adapte automatiquement jusqu&#x27;à ce que vous en redimensionniez une vous-même.</td></tr><tr><td>Modifications répertoriées par règle</td><td>Nombre de lignes « avant » et « après » affichées dans la vue Détails. Cela ne limite pas les modifications apportées.</td></tr></tbody></table></div><h3>Modification</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètres</th><th>Fonction</th></tr></thead><tbody><tr><td>Confirmer la suppression d’une règle</td><td>Demander confirmation avant de supprimer une règle. Les préréglages demandent toujours confirmation.</td></tr><tr><td>Annuler les étapes</td><td>Nombre de modifications apportées aux règles et à la liste des fichiers que la combinaison Ctrl+Z permet d&#x27;annuler.</td></tr></tbody></table></div><h3>Éditeur de fichiers</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètres</th><th>Fonction</th></tr></thead><tbody><tr><td>Taille du texte</td><td>Taille du texte dans l&#x27;éditeur. La combinaison Ctrl+défilement permet également de la modifier.</td></tr><tr><td>Numéros de ligne, retour à la ligne automatique, lignes de portée</td><td>Numéros sur le côté, retour à la ligne pour les lignes longues et fines lignes indiquant chaque niveau d&#x27;indentation.</td></tr><tr><td>Fermeture des parenthèses et des guillemets</td><td>Lorsque vous tapez ( [ { &quot; ou &#x27;, le caractère correspondant s&#x27;affiche automatiquement.</td></tr><tr><td>Afficher tout dans l’arborescence des descripteurs</td><td>Désactivé : un descripteur s&#x27;ouvre sur les descripteurs qu&#x27;il nomme dans d&#x27;autres fichiers. Activé : s&#x27;ouvre également sur ses objets, ses listes et ses liens vers le fichier lui-même.</td></tr><tr><td>Rouvrir le dernier fichier</td><td>Le dernier fichier ouvert dans l’éditeur s’ouvre à nouveau au démarrage de l’application.</td></tr></tbody></table></div><h3>Apparence</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètre</th><th>Fonction</th></tr></thead><tbody><tr><td>Thème, polices, bords biseautés, barres de défilement en relief</td><td>Voir <a href=\"#\" data-p=\"themes\">Thèmes</a>.</td></tr><tr><td>Taille de l&#x27;interface</td><td>Permet d&#x27;agrandir ou de réduire l&#x27;ensemble des éléments de la fenêtre.</td></tr><tr><td>Infobulles</td><td>Les notes qui s&#x27;affichent lorsque vous passez la souris sur un élément de contrôle.</td></tr><tr><td>Mémoriser la fenêtre</td><td>La fenêtre s&#x27;ouvre à l&#x27;endroit où elle se trouvait, avec la même taille.</td></tr><tr><td>Les volets s&#x27;adaptent aux dimensions de la fenêtre</td><td>Les volets « Détails » et « Descripteurs » conservent leur part de la fenêtre lorsque celle-ci est redimensionnée.</td></tr><tr><td>Largeurs des colonnes</td><td>La fonction « Réinitialiser les largeurs de colonnes » rétablit la largeur automatique de chaque tableau.</td></tr></tbody></table></div>",
+      "english": "<p>Settings are in groups; the search box at the top finds one by name.</p><h3>Export</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Files to export</td><td>Only changed files, or every file that's switched on. Every file copies unchanged files and files with no preset as they are.</td></tr><tr><td>Keep source comments</td><td>Off: only comments written by rules are exported.</td></tr><tr><td>Line endings</td><td>Leave it on LF, which the game uses, unless you know you need another.</td></tr><tr><td>Decimal places</td><td>How many decimals math results can have. 2 by default.</td></tr><tr><td>\"Edited with EasyNDF\" comment</td><td>The first line added to edited files, with the version.</td></tr><tr><td>Confirm before Run export</td><td>Says how many files will be written, and where, before writing them.</td></tr><tr><td>Back up overwritten files</td><td>A file an export replaces is kept beside it first, as .bak.</td></tr><tr><td>Open the folder after export</td><td>Opens the export folder in File Explorer when Run export finishes.</td></tr></tbody></table></div><h3>Files and Results</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Add folder lists</td><td>Every .ndf file, or only files your mod has rules for.</td></tr><tr><td>Duplicate files</td><td>What to do when you add a file that's already listed: ask, replace or skip.</td></tr><tr><td>Auto-assign presets by file name</td><td>Whether added files get their matching preset by themselves.</td></tr><tr><td>Reopen the last files</td><td>When the app starts, the file list comes back as you left it.</td></tr><tr><td>Wrap text in lists</td><td>Long text in a list runs onto more lines instead of being cut short.</td></tr><tr><td>Auto-fit file list columns</td><td>Columns size themselves to fit, until you drag one yourself.</td></tr><tr><td>Edits listed per rule</td><td>How many before-and-after lines Details shows. It doesn't limit the changes made.</td></tr></tbody></table></div><h3>Editing</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Confirm rule deletion</td><td>Ask before deleting a rule. Presets always ask.</td></tr><tr><td>Undo steps</td><td>How many changes to rules and the file list Ctrl+Z can take back.</td></tr></tbody></table></div><h3>File Editor</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Text size</td><td>The Editor's text size. Ctrl+Scroll changes it too.</td></tr><tr><td>Line numbers, Word wrap, Scope lines</td><td>Numbers down the side, long lines wrapping, and thin lines down each level of indentation.</td></tr><tr><td>Close brackets and quotes</td><td>Typing ( [ { \" or ' also types its partner.</td></tr><tr><td>Show everything in the descriptor tree</td><td>Off: a descriptor opens to the descriptors it names in other files. On: also to its objects, lists and own-file links.</td></tr><tr><td>Reopen the last file</td><td>The file last open in the Editor opens again when the app starts.</td></tr></tbody></table></div><h3>Appearance</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Setting</th><th>What it does</th></tr></thead><tbody><tr><td>Theme, Fonts, Beveled edges, Tread scrollbars</td><td>See <a href=\"#\" data-p=\"themes\">Themes</a>.</td></tr><tr><td>Interface size</td><td>Makes everything in the window larger or smaller.</td></tr><tr><td>Tooltips</td><td>The notes that appear when the mouse rests on a control.</td></tr><tr><td>Remember the window</td><td>The window opens where it was, at the size it was.</td></tr><tr><td>Panes grow with the window</td><td>Off (the default), each tab's side panes keep the width they were dragged to, and only its main list or editor grows or shrinks with the window. On, Details, Descriptors, the Armory's panes and the Mods tab's Mods and Rule Sets lists keep their share of the window instead.</td></tr><tr><td>Column widths</td><td>Reset column widths puts every table back to automatic widths.</td></tr></tbody></table></div>",
+      "text": "<p>Les paramètres sont regroupés ; le champ de recherche en haut de la page permet d’en trouver un par son nom.</p><h3>Exporter</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètre</th><th>Fonction</th></tr></thead><tbody><tr><td>Fichiers à exporter</td><td>Uniquement les fichiers modifiés, ou tous les fichiers pour lesquels l&#x27;option est activée. Tous les fichiers : les fichiers inchangés et ceux sans préréglage sont copiés tels quels.</td></tr><tr><td>Conserver les commentaires source</td><td>Désactivé : seuls les commentaires générés par les règles sont exportés.</td></tr><tr><td>Fin de ligne</td><td>Laissez l&#x27;option sur LF, que le jeu utilise, sauf si vous savez que vous avez besoin d&#x27;un autre format.</td></tr><tr><td>Décimales</td><td>Nombre de décimales que peuvent comporter les résultats mathématiques. 2 par défaut.</td></tr><tr><td>Commentaire « Modifié avec EasyNDF »</td><td>Première ligne ajoutée aux fichiers modifiés, indiquant la version.</td></tr><tr><td>Confirmation avant de lancer l&#x27;export</td><td>Indique le nombre de fichiers qui seront créés, ainsi que leur emplacement, avant leur création.</td></tr><tr><td>Sauvegarder les fichiers écrasés</td><td>Un fichier remplacé par l&#x27;exportation est d&#x27;abord conservé à côté de celui-ci, sous la forme d&#x27;un fichier .bak.</td></tr><tr><td>Ouvrir le dossier après l&#x27;exportation</td><td>Ouvre le dossier d&#x27;exportation dans l&#x27;Explorateur de fichiers une fois l&#x27;export lancé.</td></tr></tbody></table></div><h3>Fichiers et résultats</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètre</th><th>Fonction</th></tr></thead><tbody><tr><td>Ajouter des listes de dossiers</td><td>Tous les fichiers .ndf, ou uniquement les fichiers pour lesquels votre mod dispose de règles.</td></tr><tr><td>Fichiers en double</td><td>Que faire lorsque vous ajoutez un fichier déjà présent dans la liste : demander confirmation, remplacer ou ignorer.</td></tr><tr><td>Attribuer automatiquement des préréglages en fonction du nom de fichier</td><td>Détermine si les fichiers ajoutés se voient automatiquement attribuer le préréglage correspondant.</td></tr><tr><td>Rouvrir les derniers fichiers</td><td>Au démarrage de l’application, la liste des fichiers s’affiche telle que vous l’avez laissée.</td></tr><tr><td>Renvoi à la ligne du texte dans les listes</td><td>Les textes longs d’une liste s’étendent sur plusieurs lignes au lieu d’être tronqués.</td></tr><tr><td>Ajustement automatique des colonnes de la liste de fichiers</td><td>La taille des colonnes s&#x27;adapte automatiquement jusqu&#x27;à ce que vous en redimensionniez une vous-même.</td></tr><tr><td>Modifications répertoriées par règle</td><td>Nombre de lignes « avant » et « après » affichées dans la vue Détails. Cela ne limite pas les modifications apportées.</td></tr></tbody></table></div><h3>Modification</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètres</th><th>Fonction</th></tr></thead><tbody><tr><td>Confirmer la suppression d’une règle</td><td>Demander confirmation avant de supprimer une règle. Les préréglages demandent toujours confirmation.</td></tr><tr><td>Annuler les étapes</td><td>Nombre de modifications apportées aux règles et à la liste des fichiers que la combinaison Ctrl+Z permet d&#x27;annuler.</td></tr></tbody></table></div><h3>Éditeur de fichiers</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètres</th><th>Fonction</th></tr></thead><tbody><tr><td>Taille du texte</td><td>Taille du texte dans l&#x27;éditeur. La combinaison Ctrl+défilement permet également de la modifier.</td></tr><tr><td>Numéros de ligne, retour à la ligne automatique, lignes de portée</td><td>Numéros sur le côté, retour à la ligne pour les lignes longues et fines lignes indiquant chaque niveau d&#x27;indentation.</td></tr><tr><td>Fermeture des parenthèses et des guillemets</td><td>Lorsque vous tapez ( [ { &quot; ou &#x27;, le caractère correspondant s&#x27;affiche automatiquement.</td></tr><tr><td>Afficher tout dans l’arborescence des descripteurs</td><td>Désactivé : un descripteur s&#x27;ouvre sur les descripteurs qu&#x27;il nomme dans d&#x27;autres fichiers. Activé : s&#x27;ouvre également sur ses objets, ses listes et ses liens vers le fichier lui-même.</td></tr><tr><td>Rouvrir le dernier fichier</td><td>Le dernier fichier ouvert dans l’éditeur s’ouvre à nouveau au démarrage de l’application.</td></tr></tbody></table></div><h3>Apparence</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Paramètre</th><th>Fonction</th></tr></thead><tbody><tr><td>Thème, polices, bords biseautés, barres de défilement en relief</td><td>Voir <a href=\"#\" data-p=\"themes\">Thèmes</a>.</td></tr><tr><td>Taille de l&#x27;interface</td><td>Permet d&#x27;agrandir ou de réduire l&#x27;ensemble des éléments de la fenêtre.</td></tr><tr><td>Infobulles</td><td>Les notes qui s&#x27;affichent lorsque vous passez la souris sur un élément de contrôle.</td></tr><tr><td>Mémoriser la fenêtre</td><td>La fenêtre s&#x27;ouvre à l&#x27;endroit où elle se trouvait, avec la même taille.</td></tr><tr><td>Les volets s&#x27;adaptent aux dimensions de la fenêtre</td><td>Désactivé (par défaut), les volets latéraux de chaque onglet gardent la largeur choisie, et seule sa liste ou son éditeur principal s&#x27;agrandit ou rétrécit avec la fenêtre. Activé, les volets « Détails » et « Descripteurs », ceux de l&#x27;Armurerie et les listes Mods et Ensembles de règles de l&#x27;onglet Mods conservent plutôt leur part de la fenêtre.</td></tr><tr><td>Largeurs des colonnes</td><td>La fonction « Réinitialiser les largeurs de colonnes » rétablit la largeur automatique de chaque tableau.</td></tr></tbody></table></div>",
       "machine": true
     },
     "Help.Page.themes.Title": {
@@ -6523,23 +6528,23 @@
       "machine": true
     },
     "Divisions.Generate": {
-      "english": "Generate Divisions",
-      "text": "Générer des divisions",
+      "english": "Division Generator",
+      "text": "Générateur de divisions",
       "machine": true
     },
     "Divisions.Generate.Tip": {
-      "english": "Generate divisions: one for each nation or side and kind you tick, made again from the files on the Files tab each time you export",
-      "text": "Générer des divisions : une pour chaque nation ou camp et chaque type cochés, recréées à partir des fichiers de l'onglet Fichiers à chaque export",
+      "english": "The Division Generator: one division for each nation or side and kind you select, made again from the files on the Files tab each time you export",
+      "text": "Le Générateur de divisions : une division pour chaque nation ou camp et chaque type sélectionnés, recréée à partir des fichiers de l'onglet Fichiers à chaque export",
       "machine": true
     },
     "Divisions.Generate.Title": {
-      "english": "Generate Divisions",
-      "text": "Générer des Divisions",
+      "english": "Division Generator",
+      "text": "Générateur de Divisions",
       "machine": true
     },
     "Divisions.Generate.Lead": {
-      "english": "One division for each nation, side and kind ticked, made from the files on the Files tab each time you export.",
-      "text": "Une division pour chaque nation, camp et type cochés, créée à partir des fichiers de l'onglet Fichiers à chaque export.",
+      "english": "One division for each choice of units and each kind selected, made again from the files on the Files tab each time you export.",
+      "text": "Une division pour chaque choix d'unités et chaque type sélectionnés, recréée à partir des fichiers de l'onglet Fichiers à chaque export.",
       "machine": true
     },
     "Divisions.Generate.ChangeTitle": {
@@ -6568,28 +6573,13 @@
       "machine": true
     },
     "Divisions.Generate.Sides": {
-      "english": "Sides",
-      "text": "Camps",
-      "machine": true
-    },
-    "Divisions.Generate.Side.Note": {
-      "english": "all its nations",
-      "text": "toutes ses nations",
+      "english": "Whole Sides",
+      "text": "Camps Entiers",
       "machine": true
     },
     "Divisions.Generate.Everything": {
       "english": "Everything, for {side}",
       "text": "Tout, pour {side}",
-      "machine": true
-    },
-    "Divisions.Generate.Everything.Note": {
-      "english": "every unit, under the {side} flag",
-      "text": "toutes les unités, sous le drapeau {side}",
-      "machine": true
-    },
-    "Divisions.Generate.Kinds": {
-      "english": "Kinds",
-      "text": "Types",
       "machine": true
     },
     "Divisions.Generate.Unlimited": {
@@ -6608,8 +6598,8 @@
       "machine": true
     },
     "Divisions.Generate.Same": {
-      "english": "Same for every unit",
-      "text": "Identique pour chaque unité",
+      "english": "Limited",
+      "text": "Limité",
       "machine": true
     },
     "Divisions.Generate.Same.Tip": {
@@ -6658,7 +6648,7 @@
       "machine": true
     },
     "Divisions.Generate.Names.Example": {
-      "english": "such as \"{name}\"",
+      "english": "such as “{name}”",
       "text": "par exemple « {name} »",
       "machine": true
     },
@@ -6668,8 +6658,8 @@
       "machine": true
     },
     "Divisions.Generate.Slots.Note": {
-      "english": "in each category, each costing 1 point",
-      "text": "dans chaque catégorie, chacun coûtant 1 point",
+      "english": "in each of the {categories} categories, each costing 1 point",
+      "text": "dans chacune des {categories} catégories, chacun coûtant 1 point",
       "machine": true
     },
     "Divisions.Generate.Slots.Tip": {
@@ -6688,8 +6678,8 @@
       "machine": true
     },
     "Divisions.Generate.Summary.None": {
-      "english": "Tick a nation or side, and a kind.",
-      "text": "Cochez une nation ou un camp, et un type.",
+      "english": "Select a nation or side, and a kind.",
+      "text": "Sélectionnez une nation ou un camp, et un type.",
       "machine": true
     },
     "Divisions.Generate.Summary.Wrong": {
@@ -6778,8 +6768,8 @@
       "machine": true
     },
     "Divisions.Generate.Ignored": {
-      "english": "As the game's divisions: not from divisions named",
-      "text": "Comme les divisions du jeu : pas d'après les divisions nommées",
+      "english": "not from divisions named",
+      "text": "pas des divisions nommées",
       "machine": true
     },
     "Divisions.Generate.Ignored.Hint": {
@@ -6805,6 +6795,226 @@
     "Divisions.Generate.IgnoredRules.After": {
       "english": "or more",
       "text": "ou plus",
+      "machine": true
+    },
+    "Divisions.Generate.Step.Units": {
+      "english": "Select a Nation/Faction",
+      "text": "Choisir une Nation/Faction",
+      "machine": true
+    },
+    "Divisions.Generate.Step.Kinds": {
+      "english": "Units Per Card",
+      "text": "Unités par Carte",
+      "machine": true
+    },
+    "Divisions.Generate.Step.Names": {
+      "english": "Division Names & Activation Points",
+      "text": "Noms des Divisions et Points d'Activation",
+      "machine": true
+    },
+    "Divisions.Generate.Step.Points": {
+      "english": "Activation Points",
+      "text": "Points d'Activation",
+      "machine": true
+    },
+    "Divisions.Generate.Selected": {
+      "english": "{count} selected",
+      "text": "{count} sélectionnés",
+      "machine": true
+    },
+    "Divisions.Generate.Find.Hint": {
+      "english": "Find a nation",
+      "text": "Chercher une nation",
+      "machine": true
+    },
+    "Divisions.Generate.Find.Tip": {
+      "english": "Shows only the nations whose name holds what you type; what is selected stays selected",
+      "text": "N'affiche que les nations dont le nom contient ce que vous tapez ; la sélection est conservée",
+      "machine": true
+    },
+    "Divisions.Generate.Side": {
+      "english": "All {side} nations",
+      "text": "Toutes les nations {side}",
+      "machine": true
+    },
+    "Divisions.Generate.Flag": {
+      "english": "Under One Flag",
+      "text": "Sous un Seul Drapeau",
+      "machine": true
+    },
+    "Divisions.Generate.Everything.Tip": {
+      "english": "Every unit of both sides, under the {side} flag",
+      "text": "Toutes les unités des deux camps, sous le drapeau {side}",
+      "machine": true
+    },
+    "Divisions.Generate.ModTag": {
+      "english": "mod",
+      "text": "mod",
+      "machine": true
+    },
+    "Divisions.Generate.ModNation.Tip": {
+      "english": "A nation your mods add of their own",
+      "text": "Une nation ajoutée par vos mods",
+      "machine": true
+    },
+    "Divisions.Generate.Same.Note": {
+      "english": "the numbers below, for every unit",
+      "text": "les nombres ci-dessous, pour chaque unité",
+      "machine": true
+    },
+    "Divisions.Generate.Same.Detail": {
+      "english": "{counts} a card",
+      "text": "{counts} par carte",
+      "machine": true
+    },
+    "Divisions.Generate.Level.Tip": {
+      "english": "Veterancy {level}",
+      "text": "Vétérance {level}",
+      "machine": true
+    },
+    "Divisions.Generate.AsTheGame.Short": {
+      "english": "As the game's",
+      "text": "Comme le jeu",
+      "machine": true
+    },
+    "Divisions.Generate.LeaveOut": {
+      "english": "Leave out…",
+      "text": "Exclure…",
+      "machine": true
+    },
+    "Divisions.Generate.LeaveOut.Tip": {
+      "english": "The game divisions and rules \"As the game's divisions\" does not learn its numbers from",
+      "text": "Les divisions et règles du jeu dont « Comme les divisions du jeu » ne tire pas ses nombres",
+      "machine": true
+    },
+    "Divisions.Generate.LeaveOut.None": {
+      "english": "none set",
+      "text": "aucune",
+      "machine": true
+    },
+    "Divisions.Generate.LeaveOut.Set": {
+      "english": "{count} set",
+      "text": "{count} définies",
+      "machine": true
+    },
+    "Divisions.Generate.Sample": {
+      "english": "A card holds",
+      "text": "Une carte contient",
+      "machine": true
+    },
+    "Divisions.Generate.Sample.Kind.Tip": {
+      "english": "Show the card for {kind}",
+      "text": "Afficher la carte pour {kind}",
+      "machine": true
+    },
+    "Divisions.Generate.Sample.AsTheGame": {
+      "english": "This unit's own numbers, from the game's divisions",
+      "text": "Les nombres propres à cette unité, tirés des divisions du jeu",
+      "machine": true
+    },
+    "Divisions.Generate.Sample.None": {
+      "english": "Select an option to see a card",
+      "text": "Sélectionnez une option pour voir une carte",
+      "machine": true
+    },
+    "Divisions.Generate.Names.Hint": {
+      "english": "Type { for the names you can use",
+      "text": "Tapez { pour les noms utilisables",
+      "machine": true
+    },
+    "Divisions.Generate.Var.Mod": {
+      "english": "the mod's name · {example}",
+      "text": "le nom du mod · {example}",
+      "machine": true
+    },
+    "Divisions.Generate.Var.Nation": {
+      "english": "the nation's or side's code · {example}",
+      "text": "le code de la nation ou du camp · {example}",
+      "machine": true
+    },
+    "Divisions.Generate.Var.Kind": {
+      "english": "the kind · {example}",
+      "text": "le type · {example}",
+      "machine": true
+    },
+    "Divisions.Generate.Points": {
+      "english": "Activation points",
+      "text": "Points d'activation",
+      "machine": true
+    },
+    "Divisions.Generate.Points.Tip": {
+      "english": "The division's activation points: card slots × {categories} categories. Type them and the card slots follow",
+      "text": "Les points d'activation de la division : emplacements × {categories} catégories. Tapez-les et les emplacements suivent",
+      "machine": true
+    },
+    "Divisions.Generate.Points.Rounded": {
+      "english": "rounded down to {points}",
+      "text": "arrondi à {points}",
+      "machine": true
+    },
+    "Divisions.Generate.Preview": {
+      "english": "Generation Preview",
+      "text": "Aperçu de la Génération",
+      "machine": true
+    },
+    "Divisions.Generate.Col.Division": {
+      "english": "Division",
+      "text": "Division",
+      "machine": true
+    },
+    "Divisions.Generate.Col.Units": {
+      "english": "Nation/Faction",
+      "text": "Nation/Faction",
+      "machine": true
+    },
+    "Divisions.Generate.Col.Kind": {
+      "english": "Units Per Card",
+      "text": "Unités par carte",
+      "machine": true
+    },
+    "Divisions.Generate.Col.Count": {
+      "english": "Units",
+      "text": "Unités",
+      "machine": true
+    },
+    "Divisions.Generate.Col.Points": {
+      "english": "Activation points",
+      "text": "Points d'activation",
+      "machine": true
+    },
+    "Divisions.Generate.Col.Sort.Tip": {
+      "english": "Sort by this; click again to reverse",
+      "text": "Trier par cette colonne ; cliquez à nouveau pour inverser",
+      "machine": true
+    },
+    "Divisions.Generate.Row.Make.Tip": {
+      "english": "Make this division",
+      "text": "Créer cette division",
+      "machine": true
+    },
+    "Divisions.Generate.Taken.Tip": {
+      "english": "Your mod already has a division of this name; another is made beside it",
+      "text": "Votre mod a déjà une division de ce nom ; une autre est créée à côté",
+      "machine": true
+    },
+    "Divisions.Generate.Preview.NoUnits": {
+      "english": "Select a nation or faction in step 1.",
+      "text": "Sélectionnez une nation ou une faction à l'étape 1.",
+      "machine": true
+    },
+    "Divisions.Generate.Preview.NoKind": {
+      "english": "Select an option in step 2.",
+      "text": "Sélectionnez une option à l'étape 2.",
+      "machine": true
+    },
+    "Divisions.Generate.Totals": {
+      "english": "{kept} of {count} divisions · {units} units · about {size} MB in DivisionRules.ndf",
+      "text": "{kept} divisions sur {count} · {units} unités · environ {size} Mo dans DivisionRules.ndf",
+      "machine": true
+    },
+    "Divisions.Generate.Summary.AllLeftOut": {
+      "english": "Every division is left out in the Generation Preview.",
+      "text": "Toutes les divisions sont exclues dans l'aperçu.",
       "machine": true
     },
     "Divisions.Generated.WithNations": {

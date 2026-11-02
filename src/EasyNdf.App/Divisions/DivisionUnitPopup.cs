@@ -41,6 +41,9 @@ public sealed class DivisionUnitPopup
     private int unitsPerCard;
     private readonly double[] multipliers;
 
+    /// <summary>Steel Division 2's units per card in phases A, B and C; empty for a game with one number per card.</summary>
+    private readonly int[] unitsByPhase;
+
     private readonly List<LevelRow> levels = [];
 
     /// <summary>Opens the pop-up at the right of a tile's veterancy strip.</summary>
@@ -59,6 +62,7 @@ public sealed class DivisionUnitPopup
         cards = rule.Cards;
         unitsPerCard = rule.UnitsPerCard ?? 0;
         multipliers = [.. rule.VeterancyMultipliers];
+        unitsByPhase = rule.UnitsPerCard is null ? [.. rule.UnitsPerCardByPhase] : [];
         floating = MainView.Of(strip).Floating;
 
         var parts = new StackPanel();
@@ -66,12 +70,29 @@ public sealed class DivisionUnitPopup
         string unitName = rule.Unit;
         parts.Children.Add(NumberRow(Texts.Get("Divisions.Column.Cards"), cards, least: 0, changed => cards = changed,
             DivisionMarks.UnitChanges(unitName, "Cards"), division => DivisionMarks.UnitIn(division, unitName)?.Cards.ToString(Texts.Catalog.Culture) ?? ""));
-        parts.Children.Add(NumberRow(Texts.Get("Divisions.Column.PerCard"), unitsPerCard, least: 1, changed =>
+        if (unitsByPhase.Length == 0)
+            parts.Children.Add(NumberRow(Texts.Get("Divisions.Column.PerCard"), unitsPerCard, least: 1, changed =>
+            {
+                unitsPerCard = changed;
+                // the units each level makes follow the units per card
+                foreach (LevelRow level in levels) level.Show();
+            }, DivisionMarks.UnitChanges(unitName, "UnitsPerCard"), division => DivisionMarks.UnitIn(division, unitName)?.UnitsPerCard?.ToString(Texts.Catalog.Culture) ?? ""));
+        else
         {
-            unitsPerCard = changed;
-            // the units each level makes follow the units per card
-            foreach (LevelRow level in levels) level.Show();
-        }, DivisionMarks.UnitChanges(unitName, "UnitsPerCard"), division => DivisionMarks.UnitIn(division, unitName)?.UnitsPerCard?.ToString(Texts.Catalog.Culture) ?? ""));
+            // Steel Division 2 gives the units per card for each phase: a row for each, 0 where the card can't be
+            // taken in that phase
+            parts.Children.Add(SectionHeading(Texts.Get("Divisions.Column.PerCard")));
+            for (int phase = 0; phase < unitsByPhase.Length; phase++)
+            {
+                int at = phase;
+                parts.Children.Add(NumberRow(Texts.Get("Divisions.Phase.Name", ("phase", PhaseLetter(at))), unitsByPhase[at], least: 0, changed =>
+                {
+                    unitsByPhase[at] = changed;
+                    foreach (LevelRow level in levels) level.Show();
+                }, DivisionMarks.UnitChanges(unitName, "UnitsPerCard"), division =>
+                    DivisionMarks.UnitIn(division, unitName) is DivisionUnit each && at < each.UnitsPerCardByPhase.Count ? each.UnitsPerCardByPhase[at].ToString(Texts.Catalog.Culture) : ""));
+            }
+        }
         parts.Children.Add(SectionHeading(Texts.Get("Divisions.Column.Veterancy")));
         // the highest level at the top, as the tiles' strips and the game's cards stack them
         for (int level = multipliers.Length - 1; level >= 0; level--)
@@ -81,9 +102,12 @@ public sealed class DivisionUnitPopup
             parts.Children.Add(row.Row);
         }
         parts.Children.Add(Muted(Texts.Get("Divisions.Veterancy.Popup.Note"), new Thickness(0, 4, 0, 0)));
-        var done = new Button { Content = Texts.Get("Divisions.Veterancy.Popup.Done"), HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0) };
+        var done = new Button { Content = Texts.Get("Divisions.Veterancy.Popup.Done") };
         done.Click += (_, _) => Keep();
-        parts.Children.Add(done);
+        // Cancel at the right of Done: the pop-up closes, its changes left
+        var cancel = new Button { Content = Texts.Get("Common.Cancel"), ToolTip = Texts.Get("Common.Cancel.Tip"), Margin = new Thickness(6, 0, 0, 0) };
+        cancel.Click += (_, _) => floating.Close();
+        parts.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0), Children = { done, cancel } });
 
         box = new Bevel { Child = parts, Padding = new Thickness(9, 7, 9, 8), Width = Width, Focusable = true, FocusVisualStyle = null };
         box.SetResourceReference(Bevel.TopLeftProperty, "hi");
@@ -117,13 +141,18 @@ public sealed class DivisionUnitPopup
     {
         Cards = cards,
         UnitsPerCard = rule.UnitsPerCard is null ? null : unitsPerCard,
+        UnitsPerCardByPhase = unitsByPhase.Length == 0 ? rule.UnitsPerCardByPhase : [.. unitsByPhase],
         VeterancyMultipliers = [.. multipliers],
     };
 
     /// <summary>Whether anything was changed in the pop-up.</summary>
     private bool HasChanges =>
         cards != rule.Cards || (rule.UnitsPerCard is not null && unitsPerCard != rule.UnitsPerCard)
+        || (unitsByPhase.Length > 0 && !unitsByPhase.SequenceEqual(rule.UnitsPerCardByPhase))
         || !multipliers.SequenceEqual(rule.VeterancyMultipliers);
+
+    /// <summary>A phase's letter, as the game names them: A, B, C.</summary>
+    private static string PhaseLetter(int phase) => ((char)('A' + phase)).ToString();
 
     /// <summary>Done: the changes are kept, in the open mod, and the pop-up closes.</summary>
     private void Keep()
@@ -161,10 +190,7 @@ public sealed class DivisionUnitPopup
         return block;
     }
 
-    /// <summary>
-    /// A whole number's row: its name, −, the number in a box, +. Steel Division 2 counts units by phase, which this
-    /// pop-up does not change, so its units per card are not offered (see the caller).
-    /// </summary>
+    /// <summary>A whole number's row: its name, −, the number in a box, +.</summary>
     /// <param name="changes">The changes that set the value, for its mark when the open mod changed it.</param>
     /// <param name="write">The value in a division as the box shows it, to compare with the game's.</param>
     private static DockPanel NumberRow(string name, int value, int least, Action<int> changed, string[] changes, Func<Division, string> write)
@@ -281,8 +307,9 @@ public sealed class DivisionUnitPopup
         {
             double multiplier = owner.multipliers[level];
             box.Text = multiplier.ToString("0.##", Texts.Catalog.Culture);
-            units.Text = multiplier == 0
-                ? Texts.Get("Divisions.Veterancy.NotOffered")
+            // the units it makes; in Steel Division 2, in each phase
+            units.Text = multiplier == 0 ? Texts.Get("Divisions.Veterancy.NotOffered")
+                : owner.unitsByPhase.Length > 0 ? Texts.Get("Divisions.Veterancy.UnitsByPhase", ("units", DivisionNames.UnitsAtByPhase(owner.unitsByPhase, multiplier)))
                 : Texts.Count("Divisions.Veterancy.Units", DivisionNames.UnitsAt(owner.unitsPerCard, multiplier));
             Row.Opacity = multiplier == 0 ? 0.55 : 1;
         }

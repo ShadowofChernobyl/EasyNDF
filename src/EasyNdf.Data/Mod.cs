@@ -8,6 +8,12 @@ public sealed class Mod
     /// <summary>The mod's name, as shown in the Mod dropdown and written into its files.</summary>
     public string Name { get; set; } = "";
 
+    /// <summary>
+    /// The game the mod is for: it runs only on files of that game, and the Armory saves into it only changes made with
+    /// a source of that game. Mods made before mods had a game, and those of other apps, are WARNO's.
+    /// </summary>
+    public Game.GameTitle Game { get; set; } = Data.Game.GameTitle.Warno;
+
     /// <summary>The mod's watermark settings, or null when they were never set for this mod.</summary>
     public ModWatermark? Watermark { get; set; }
 
@@ -66,6 +72,7 @@ public sealed class Mod
     public Mod DeepCopy() => new()
     {
         Name = Name,
+        Game = Game,
         Watermark = Watermark,
         Presets = [.. Presets.Select(p => new ModPreset { Name = p.Name, Rules = (JsonArray)p.Rules.DeepClone(), ArmoryPart = p.ArmoryPart, AppliesTo = p.AppliesTo is null ? null : [.. p.AppliesTo] })],
         Divisions = [.. Divisions.Select(division => Data.Divisions.ModDivision.FromJson(division.ToJson()))],
@@ -85,9 +92,64 @@ public sealed class ModPreset
 
     /// <summary>
     /// The rules, kept as the JSON of the mod file format so that fields this version does not know about are kept too.
-    /// <see cref="EasyNdf.Engine.Mods.RuleLoading.LoadForEngine"/> turns them into rules the engine runs.
+    /// <see cref="EasyNdf.Engine.Mods.RuleLoading.LoadForEngine"/> turns them into rules the engine runs. A large rule
+    /// set put away with <see cref="PackRules"/> is unpacked here the first time it is read again.
     /// </summary>
-    public JsonArray Rules { get; set; } = [];
+    public JsonArray Rules
+    {
+        get
+        {
+            lock (packing)
+            {
+                if (rules is null)
+                {
+                    rules = JsonNode.Parse(packedRules!.Unpack()) as JsonArray ?? [];
+                    packedRules = null;
+                }
+                return rules;
+            }
+        }
+        set
+        {
+            lock (packing)
+            {
+                rules = value;
+                packedRules = null;
+            }
+        }
+    }
+
+    private JsonArray? rules = [];
+
+    /// <summary>The rules as packed JSON text while they are put away; null while they are in use.</summary>
+    private FileList.PackedBytes? packedRules;
+
+    private readonly object packing = new();
+
+    /// <summary>The fewest rules a rule set has for <see cref="PackRules"/> to put it away; smaller ones take little room.</summary>
+    public const int FewestRulesPacked = 100;
+
+    /// <summary>
+    /// Puts a large rule set's rules away while nothing uses them (Paul's choice, option C of the memory report): kept
+    /// as JSON objects, a mod's thousands of Armory rules took some 70 MB; packed text takes a few hundred KB. The next
+    /// read of <see cref="Rules"/> unpacks them, in some tens of milliseconds. Only call it while no rule of the set is
+    /// held elsewhere (shown on the Rules tab, open in a rule window), as a change made to one held would be lost.
+    /// </summary>
+    public void PackRules()
+    {
+        lock (packing)
+        {
+            if (rules is null || rules.Count < FewestRulesPacked) return;
+            packedRules = FileList.PackedBytes.Pack(System.Text.Encoding.UTF8.GetBytes(rules.ToJsonString()));
+            rules = null;
+        }
+    }
+
+    /// <summary>Whether the rules are put away (<see cref="PackRules"/>).</summary>
+    public bool IsPacked
+    {
+        get { lock (packing) return rules is null; }
+    }
 
     /// <summary>
     /// The part of the Armory whose changes the preset keeps as rules, made again whenever these change (see

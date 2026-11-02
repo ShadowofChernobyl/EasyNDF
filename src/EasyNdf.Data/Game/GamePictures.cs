@@ -53,6 +53,13 @@ public sealed class GamePictures(GameArchives archives)
         return texture;
     }
 
+    /// <summary>
+    /// Lets go of the atlas textures kept, once a batch of pictures is taken out: an interface atlas is up to 64 MB
+    /// even as stored, and four of them stayed for as long as the source was shown. The pictures taken out are saved
+    /// as files, so a texture is seldom wanted again.
+    /// </summary>
+    public void LetGoOfTextures() => recentTextures.Clear();
+
     /// <summary>Where every small picture is, from the interface's atlases (those of 3D models and effects hold none of them).</summary>
     private Dictionary<string, AtlasPart> ReadAtlases()
     {

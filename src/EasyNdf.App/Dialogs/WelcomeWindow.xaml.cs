@@ -14,6 +14,8 @@ public partial class WelcomeWindow : UserControl
     public WelcomeWindow()
     {
         InitializeComponent();
+        // narrower and no taller than a small app window, its buttons always showing
+        Backdrop.SizeChanged += (_, _) => DialogFit.Keep(Box, Backdrop, 544);
     }
 
     /// <summary>Whether the window is open.</summary>

@@ -23,10 +23,13 @@
     </UserControl.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300" />
+            <ColumnDefinition x:Name="LeftColumn" Width="300" />
             <ColumnDefinition Width="14" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
+
+        <!-- drag to widen the left column, for long names; double-click for its first width (see LeftColumnSplit) -->
+        <controls:SplitBar x:Name="LeftSplit" Grid.Column="1" HorizontalAlignment="Center" ToolTip="{t:Text Units.LeftSplit.Tip}" />
 
         <!-- the left column: where the weapons come from, the filters, then the nations of the units that carry them -->
         <DockPanel Grid.Column="0">
@@ -60,7 +63,7 @@
             </StackPanel>
             <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
                 <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Weapons.Show}" /></controls:Bevel>
-                <CheckBox x:Name="OnlyModded" Style="{StaticResource Toggle}" Content="{t:Text Weapons.OnlyModded}" ToolTip="{t:Text Weapons.OnlyModded.Tip}"
+                <CheckBox x:Name="OnlyModded" Style="{StaticResource Toggle}" Content="{t:Text Weapons.OnlyModded}"
                           IsChecked="False" Click="OnlyModdedClicked" />
                 <CheckBox x:Name="OnlyInUse" Style="{StaticResource Toggle}" Content="{t:Text Weapons.OnlyInUse}" ToolTip="{t:Text Weapons.OnlyInUse.Tip}"
                           IsChecked="False" Margin="0,6,0,0" Click="OnlyInUseClicked" />
@@ -73,7 +76,7 @@
                 <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}"><TextBlock Text="{t:Text Weapons.CarriedByUnitsOf}" /></controls:Bevel>
                 <controls:Bevel Style="{StaticResource SunkenBox}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                        <StackPanel x:Name="NationList" />
+                        <StackPanel x:Name="NationList" KeyboardNavigation.TabNavigation="Once" />
                     </ScrollViewer>
                 </controls:Bevel>
             </DockPanel>
@@ -97,7 +100,7 @@
                         </ToggleButton>
                         <ToggleButton x:Name="CompareButton" Style="{StaticResource PressedToggle}" Padding="9,1" FontWeight="Normal" Margin="-1,0,0,0"
                                       Content="{t:Text Units.Compare}" ToolTip="{t:Text Weapons.Compare.Tip}" Click="ViewClicked" />
-                        <Button Style="{StaticResource HelpButton}" Margin="8,0,0,0" FontWeight="Bold" controls:QuickHelp.Page="units-weapons" />
+                        <Button Style="{StaticResource HelpButton}" controls:QuickHelp.Page="units-weapons" />
                     </StackPanel>
                 </controls:FlexRow>
             </controls:Bevel>
@@ -105,8 +108,8 @@
             <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
                 <!-- the zoom of Cards or Table, at the far right, as on the Units sub-tab -->
                 <ComboBox x:Name="ZoomChoice" DockPanel.Dock="Right" MinWidth="72" FontSize="12" Margin="12,0,0,0" ToolTip="{t:Text Units.Zoom.Tip}" />
-                <!-- as the mock's status bar: how many, then what the view shows -->
-                <TextBlock x:Name="CountText" DockPanel.Dock="Left" Foreground="{DynamicResource muted}" Margin="0,0,12,0" />
+                <!-- what the view shows, then how many at the right, as on the Units sub-tab -->
+                <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" Margin="12,0,0,0" />
                 <TextBlock x:Name="FootnoteText" Style="{StaticResource Note}" />
             </DockPanel>
 

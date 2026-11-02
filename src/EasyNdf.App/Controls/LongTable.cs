@@ -53,6 +53,15 @@ public sealed class LongTable : DockPanel
 
         lines = new RowList(this) { ItemsSource = rows };
         lines.SetResourceReference(StyleProperty, "LongTableLines");
+        lines.MouseDoubleClick += (_, e) =>
+        {
+            if (e.ChangedButton != MouseButton.Left || e.OriginalSource is not Visual source
+                || ItemsControl.ContainerFromElement(lines, source) is not ListBoxItem line) return;
+            int index = lines.ItemContainerGenerator.IndexFromContainer(line);
+            if (index < 0 || RowDoubleClicked is null) return;
+            e.Handled = true;
+            RowDoubleClicked(index);
+        };
         Children.Add(lines);
         // the rows' columns are narrower by the scrollbar's width while it shows; the headings' are made so too
         lines.Loaded += (_, _) =>
@@ -61,6 +70,9 @@ public sealed class LongTable : DockPanel
                 scroller.ScrollChanged += (_, _) => this.headings.Margin = new Thickness(0, 0, scroller.ComputedVerticalScrollBarVisibility == Visibility.Visible ? ScrollBarWidth(scroller) : 0, 0);
         };
     }
+
+    /// <summary>Raised with a row's place in the rows given when it is double-clicked.</summary>
+    public event Action<int>? RowDoubleClicked;
 
     /// <summary>The headings' column widths, the first shown row's, and how wide that row and the list are.</summary>
     internal (double[] Headings, double[] Row, double RowWidth, double ListWidth)? Widths()

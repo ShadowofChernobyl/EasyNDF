@@ -14,6 +14,9 @@ public static class UnitField
     /// <summary>The nation (and with it the side), and the role.</summary>
     public const string Nation = "Nation", Role = "Role";
 
+    /// <summary>The card picture.</summary>
+    public const string Picture = "Picture";
+
     /// <summary>The cost in command points.</summary>
     public const string Cost = "Cost";
 
@@ -255,10 +258,11 @@ public sealed class UnitChanges
     }
 
     /// <summary>
-    /// The edits by the descriptor they are in ("Descriptor_Unit_X > TModule" is in Descriptor_Unit_X), so each
-    /// unit's are found at once among the thousands a mod can make.
+    /// The edits by the descriptor they are in ("Descriptor_Unit_X > TModule" is in Descriptor_Unit_X), each
+    /// descriptor's in the order they were made, so each unit's (or weapon's) are found at once among the thousands a
+    /// mod can make.
     /// </summary>
-    private static Dictionary<string, List<RuleEdit>> ByDescriptor(IReadOnlyList<RuleEdit> edits)
+    internal static Dictionary<string, List<RuleEdit>> ByDescriptor(IReadOnlyList<RuleEdit> edits)
     {
         var byDescriptor = new Dictionary<string, List<RuleEdit>>(StringComparer.Ordinal);
         foreach (RuleEdit edit in edits)
@@ -287,27 +291,56 @@ public sealed class UnitChanges
     }
 
     /// <summary>
-    /// The property of the game's files a value is in, as the Armory's panes show it under the value's name: WARNO's
-    /// name, which comes first; null for a value with none.
+    /// The property of a game's files a value is in, as the Armory's panes show it under the value's name: the
+    /// game's own name for it (Steel Division 2's "Maxspeed" for the speed); null for a value with none.
     /// </summary>
-    public static string? FileNameOf(string field) => PropertiesOf(field).FirstOrDefault();
+    public static string? FileNameOf(string field, Game.GameTitle game) =>
+        (game == Game.GameTitle.SteelDivision2 ? SteelDivisionPropertiesOf(field) : WarnoPropertiesOf(field)).FirstOrDefault();
 
-    /// <summary>The properties of the game's files a value is read from (see <see cref="UnitReader"/>).</summary>
-    private static string[] PropertiesOf(string field) => field switch
+    /// <summary>The properties of the game's files a value is read from or written to, in either game (see <see cref="UnitReader"/>).</summary>
+    private static string[] PropertiesOf(string field) => [.. WarnoPropertiesOf(field), .. SteelDivisionPropertiesOf(field)];
+
+    /// <summary>WARNO's properties a value is in, the one shown first.</summary>
+    private static string[] WarnoPropertiesOf(string field) => field switch
     {
         UnitField.Name => ["NameToken"],
         UnitField.Nation => ["MotherCountry", "Coalition"],
         UnitField.Role => ["UnitRole"],
         UnitField.Cost => ["ProductionRessourcesNeeded", "Resource_CommandPoints"],
-        UnitField.Strength => ["MaxPhysicalDamages", "MaxDamages"],
-        UnitField.FrontArmor => ["ResistanceFront", "ArmorDescriptorFront", "Index"],
-        UnitField.SideArmor => ["ResistanceSides", "ArmorDescriptorSides", "Index"],
-        UnitField.RearArmor => ["ResistanceRear", "ArmorDescriptorRear", "Index"],
-        UnitField.TopArmor => ["ResistanceTop", "ArmorDescriptorTop", "Index"],
-        UnitField.Speed => ["MaxSpeedInKmph", "Maxspeed"],
-        UnitField.RoadSpeed => ["DisplayRoadSpeedInKmph", "RealRoadSpeed"],
-        UnitField.Optics => ["OpticalStrengths", "OpticalStrength"],
-        UnitField.Vision => ["VisionRangesGRU", "PorteeVision"],
+        UnitField.Strength => ["MaxPhysicalDamages"],
+        UnitField.FrontArmor => ["ResistanceFront", "Index"],
+        UnitField.SideArmor => ["ResistanceSides", "Index"],
+        UnitField.RearArmor => ["ResistanceRear", "Index"],
+        UnitField.TopArmor => ["ResistanceTop", "Index"],
+        UnitField.Speed => ["MaxSpeedInKmph"],
+        UnitField.RoadSpeed => ["DisplayRoadSpeedInKmph"],
+        UnitField.Optics => ["OpticalStrengths"],
+        UnitField.Vision => ["VisionRangesGRU"],
+        UnitField.Stealth => ["UnitConcealmentBonus"],
+        UnitField.Fuel => ["FuelCapacity"],
+        UnitField.Specialties => ["SpecialtiesList"],
+        _ => [],
+    };
+
+    /// <summary>
+    /// Steel Division 2's properties a value is in, the one shown first: those <see cref="UnitChangeRules"/> writes,
+    /// such as the copy of the strength the HUD shows (MaxHPForHUD).
+    /// </summary>
+    private static string[] SteelDivisionPropertiesOf(string field) => field switch
+    {
+        UnitField.Name => ["NameToken", "UnitName"],
+        UnitField.Nation => ["MotherCountry", "Nationalite", "CountryTexture"],
+        UnitField.Role => ["TypeSpecificToken"],
+        UnitField.Cost => ["ProductionRessourcesNeeded", "~/Resource_CommandPoints"],
+        UnitField.Strength => ["MaxDamages", "MaxHPForHUD"],
+        UnitField.FrontArmor => ["ArmorDescriptorFront", "PlatingValue"],
+        UnitField.SideArmor => ["ArmorDescriptorSides"],
+        UnitField.RearArmor => ["ArmorDescriptorRear"],
+        UnitField.TopArmor => ["ArmorDescriptorTop"],
+        UnitField.Speed => ["Maxspeed", "VitesseCombat", "Speed"],
+        UnitField.RoadSpeed => ["RealRoadSpeed"],
+        UnitField.Optics => ["OpticalStrength"],
+        UnitField.Vision => ["PorteeVision"],
         UnitField.Stealth => ["UnitConcealmentBonus"],
         UnitField.Fuel => ["FuelCapacity"],
         UnitField.Specialties => ["SpecialtiesList"],

@@ -14,7 +14,7 @@ namespace EasyNdf.Data;
 public static class ModFiles
 {
     /// <summary>
-    /// The text "Export mod" saves: <c>{ModName, FormatVersion, Watermark?, Presets: [{PresetName, Rules}], Divisions?, Units?, UnitEdits?, WeaponEdits?, Weapons?}</c>.
+    /// The text "Export mod" saves: <c>{ModName, FormatVersion, Game, Watermark?, Presets: [{PresetName, Rules}], Divisions?, Units?, UnitEdits?, WeaponEdits?, Weapons?}</c>.
     /// The HTML app reads such a file but leaves out its Divisions, Units, UnitEdits, WeaponEdits and Weapons.
     /// Conditions and actions without a name get one made from what they do, as in the HTML app.
     /// </summary>
@@ -64,7 +64,7 @@ public static class ModFiles
 
     /// <summary>
     /// The text "Back up all mods" saves: a list of every preset, each naming its mod. The first preset of each mod also
-    /// carries the mod's watermark; versions before 0.71.0 ignore it. Mods without presets are not in it, as in the HTML app.
+    /// carries the mod's game and watermark; versions before 0.71.0 ignore them. Mods without presets are not in it, as in the HTML app.
     /// </summary>
     /// <param name="mods">Every mod.</param>
     /// <param name="store">Where the files of the mods' File rules are kept: the first entry carries them all. Null leaves them out.</param>
@@ -77,6 +77,7 @@ public static class ModFiles
             {
                 JsonObject entry = PresetToJson(mod.Presets[i], mod.Presets[i].Rules.DeepClone());
                 entry["Mod"] = mod.Name;
+                if (i == 0) entry["Game"] = mod.Game.Id;
                 if (i == 0 && mod.Watermark is not null) entry["Watermark"] = mod.Watermark.ToJson();
                 // the divisions ride with the first preset, as the watermark does
                 if (i == 0 && mod.Divisions.Count > 0) entry["Divisions"] = DivisionsToJson(mod);
@@ -125,6 +126,7 @@ public static class ModFiles
         string name = JsonValues.IsTruthy(modFile["ModName"]) ? JsText.Trim(JsonValues.AsText(modFile["ModName"])) : "";
         if (name == "") name = fileBaseName;
         Mod mod = ModWithPresets(name, presets);
+        mod.Game = GameFromJson(modFile["Game"]);
         if (modFile["Watermark"] is JsonObject watermark) mod.Watermark = ModWatermark.FromJson(watermark);
         mod.Divisions = DivisionsFromJson(modFile["Divisions"]);
         mod.Units = UnitsFromJson(modFile["Units"]);
@@ -153,6 +155,7 @@ public static class ModFiles
         foreach (string name in order)
         {
             Mod mod = ModWithPresets(name, new JsonArray(byMod[name].Select(e => (JsonNode)e.DeepClone()).ToArray()));
+            mod.Game = GameFromJson(byMod[name].Select(e => e["Game"]).FirstOrDefault(game => game is not null));
             JsonObject? withWatermark = byMod[name].FirstOrDefault(e => e["Watermark"] is JsonObject);
             if (withWatermark is not null) mod.Watermark = ModWatermark.FromJson((JsonObject)withWatermark["Watermark"]!);
             JsonObject? withDivisions = byMod[name].FirstOrDefault(e => e["Divisions"] is JsonArray);
@@ -224,7 +227,7 @@ public static class ModFiles
 
     private static JsonObject ToJson(Mod mod, bool nameRows)
     {
-        var json = new JsonObject { ["ModName"] = mod.Name, ["FormatVersion"] = 1 };
+        var json = new JsonObject { ["ModName"] = mod.Name, ["FormatVersion"] = 1, ["Game"] = mod.Game.Id };
         if (mod.Watermark is not null) json["Watermark"] = mod.Watermark.ToJson();
         json["Presets"] = new JsonArray(mod.Presets.Select(p => (JsonNode)PresetToJson(p, nameRows ? RulesWithRowNames(p.Rules) : p.Rules.DeepClone())).ToArray());
         if (mod.Divisions.Count > 0) json["Divisions"] = DivisionsToJson(mod);
@@ -268,6 +271,12 @@ public static class ModFiles
         if (!JsonValues.IsTruthy(preset["FromArmory"])) return null;
         return Enum.TryParse(JsonValues.AsText(preset["ArmoryPart"]), out ArmoryPart part) ? part : ArmoryPart.Divisions;
     }
+
+    /// <summary>
+    /// The game a mod file names by its id ("WARNO", "SD2"); WARNO when it names none, as every mod made before mods had
+    /// a game, and those of the HTML app, were made for WARNO, or names a game this version does not know.
+    /// </summary>
+    private static Game.GameTitle GameFromJson(JsonNode? game) => Game.GameTitle.WithId(JsonValues.AsText(game)) ?? Game.GameTitle.Warno;
 
     /// <summary>A mod's divisions as the mod file keeps them.</summary>
     private static JsonArray DivisionsToJson(Mod mod) => new([.. mod.Divisions.Select(division => (JsonNode)division.ToJson())]);

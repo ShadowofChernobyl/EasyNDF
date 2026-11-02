@@ -81,6 +81,11 @@ public sealed class ModStore
     /// mod moves to a file named after its new name, and one kept as "WTO (2)" moves to "WTO" once that is free, so
     /// its file never keeps a name it no longer has.
     /// </summary>
+    /// <remarks>
+    /// Tuned for speed, as every change saves the open mod on the window's thread: the mod's text is written as it is
+    /// made, rather than read back into JSON and made again, which gives the same text but for one rare case
+    /// (<see cref="JsonFiles.AsMadeAgain"/>) and took a tenth of a second for a large mod. Keep it that way when tidying.
+    /// </remarks>
     public void Save(Mod mod)
     {
         if (folder is null) { Mods.Sort(ByName); return; }
@@ -89,7 +94,7 @@ public sealed class ModStore
         // Windows names files without minding case: a name changed in case only is the same file, renamed after
         bool sameFile = string.Equals(oldPath, path, StringComparison.OrdinalIgnoreCase);
 
-        JsonFiles.Write(sameFile ? oldPath! : path, JsonFiles.Parse(ModFiles.StoredText(mod)));
+        JsonFiles.WriteText(sameFile ? oldPath! : path, JsonFiles.AsMadeAgain(ModFiles.StoredText(mod)));
         if (sameFile && oldPath != path) File.Move(oldPath!, path);
         else if (oldPath is not null && !sameFile) File.Delete(oldPath);
         pathOf[mod] = path;

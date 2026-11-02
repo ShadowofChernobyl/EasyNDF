@@ -27,7 +27,7 @@ public partial class EditorPage
     /// </summary>
     private static string RulesNameOf(FileEntry entry)
     {
-        IEnumerable<string> armory = FileRunner.ArmoryPartsFor(entry.Name).Select(ArmoryPartTexts.Name);
+        IEnumerable<string> armory = FileRunner.ArmoryPartsFor(entry.Name, entry.Game).Select(ArmoryPartTexts.Name);
         IEnumerable<string> ruleSets = entry.ModsOnFile.SelectMany(mod => mod.RuleSets);
         return string.Join(" + ", ruleSets.Concat(armory));
     }

@@ -26,6 +26,8 @@ public static class CostButtons
     public static WrapPanel Build(string factory, IReadOnlyList<int> costs, IDivisionEditing editing)
     {
         var row = new WrapPanel();
+        // costs the Armory cannot change for this division (shared with others, say) are shown, switched off with the reason
+        string? whyOff = editing.WhyDetailCannotChange(Data.Divisions.DivisionDetail.Costs);
         for (int card = 0; card < costs.Count; card++)
         {
             int chosen = card;
@@ -34,13 +36,24 @@ public static class CostButtons
             button.ToolTip = Texts.Get("Divisions.Cost.Tip", ("card", Texts.Number(card + 1)), ("cost", Texts.Number(costs[card])));
             MarkIfChanged(button, factory, card);
             button.Click += (_, _) => OpenChoice(button, factory, chosen, costs[chosen], editing);
+            SwitchOff(button, whyOff);
             row.Children.Add(button);
         }
         var add = new Button { Style = (Style)Application.Current.FindResource("DashedButton"), Content = "+", Padding = new Thickness(0), Width = 20, Height = 20, Margin = new Thickness(0, 0, 2, 2) };
         add.ToolTip = Texts.Get("Divisions.Pane.AddSlot.Tip");
+        System.Windows.Automation.AutomationProperties.SetName(add, (string)add.ToolTip);
         add.Click += (_, _) => editing.AddCost(factory);
+        SwitchOff(add, whyOff);
         row.Children.Add(add);
         return row;
+    }
+
+    /// <summary>A button switched off with the reason as its tooltip; left as it is when there is none.</summary>
+    private static void SwitchOff(Button button, string? why)
+    {
+        if (why is null) return;
+        button.IsEnabled = false;
+        OffReason.SetText(button, why);
     }
 
     /// <summary>

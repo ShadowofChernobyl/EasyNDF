@@ -21,48 +21,59 @@ public static class RuleSetFiles
     /// </param>
     public static List<ModPreset> For(string fileName, string folder, IEnumerable<ModPreset> ruleSets, bool byName)
     {
-        List<ModPreset> own = [.. ruleSets.Where(ruleSet => !ruleSet.IsArmoryPreset)];
-        HashSet<ModPreset> byTheirNames = byName ? BestByName(fileName, folder, own) : [];
-        return [.. own.Where(ruleSet => byTheirNames.Contains(ruleSet) || Lists(ruleSet, fileName, folder))];
+        // This runs for every file on the Files tab, for each mod, each time a mod is opened or changed: the file's
+        // folders are worked out once for all the rule sets, and nothing else is copied, as the copies made tens of
+        // megabytes of memory to clean up after each click on a mod. Tuned for speed: Keep it that way when tidying.
+        string[] folders = FoldersOf(folder);
+        int bestFit = byName ? BestFitByName(fileName, folders, ruleSets) : -1;
+        var applying = new List<ModPreset>();
+        foreach (ModPreset ruleSet in ruleSets)
+        {
+            if (ruleSet.IsArmoryPreset) continue;
+            if (FitsBestByName(ruleSet, fileName, folders, bestFit) || Lists(ruleSet, fileName, folders)) applying.Add(ruleSet);
+        }
+        return applying;
     }
 
     /// <summary>
-    /// The rule sets without files of their own whose names fit the file best: when two hold its name, the one that also
-    /// names more of its folders, as "WTO (Strategic/GDConstants.ndf)" for Strategic/GDConstants.ndf. Rule sets that fit
-    /// equally well all apply.
+    /// How well the best name of the rule sets without files of their own fits the file (<see cref="PresetMatching.Fit"/>):
+    /// when two hold its name, the one that also names more of its folders fits better, as "WTO (Strategic/GDConstants.ndf)"
+    /// for Strategic/GDConstants.ndf. -1 when no name holds the file's. Armory presets are left out.
     /// </summary>
-    private static HashSet<ModPreset> BestByName(string fileName, string folder, List<ModPreset> ruleSets)
+    private static int BestFitByName(string fileName, string[] folders, IEnumerable<ModPreset> ruleSets)
     {
-        string[] folders = FoldersOf(folder);
         int best = -1;
-        var bestRuleSets = new HashSet<ModPreset>();
-        foreach (ModPreset ruleSet in ruleSets.Where(ruleSet => ruleSet.AppliesTo is null))
-        {
-            int fit = PresetMatching.Fit(ruleSet.Name, fileName, folders);
-            if (fit < 0) continue;
-            if (fit > best)
-            {
-                best = fit;
-                bestRuleSets.Clear();
-            }
-            if (fit == best) bestRuleSets.Add(ruleSet);
-        }
-        return bestRuleSets;
+        foreach (ModPreset ruleSet in ruleSets)
+            if (!ruleSet.IsArmoryPreset && ruleSet.AppliesTo is null) best = Math.Max(best, PresetMatching.Fit(ruleSet.Name, fileName, folders));
+        return best;
     }
+
+    /// <summary>
+    /// Whether a rule set without files of its own applies to the file by its name: its name fits the file as well as
+    /// the best does (<see cref="BestFitByName"/>). Rule sets that fit equally well all apply.
+    /// </summary>
+    private static bool FitsBestByName(ModPreset ruleSet, string fileName, string[] folders, int bestFit) =>
+        bestFit >= 0 && ruleSet.AppliesTo is null && PresetMatching.Fit(ruleSet.Name, fileName, folders) == bestFit;
 
     /// <summary>
     /// Whether a rule set lists a file in its Applies To: a name equal to the file's, with any folders written before it
     /// being the file's own nearest folders.
     /// </summary>
-    public static bool Lists(ModPreset ruleSet, string fileName, string folder)
+    public static bool Lists(ModPreset ruleSet, string fileName, string folder) =>
+        ruleSet.AppliesTo is List<string> && Lists(ruleSet, fileName, FoldersOf(folder));
+
+    /// <summary><see cref="Lists(ModPreset, string, string)"/>, with the file's folders worked out already (<see cref="FoldersOf"/>).</summary>
+    private static bool Lists(ModPreset ruleSet, string fileName, string[] folders)
     {
         if (ruleSet.AppliesTo is not List<string> listed) return false;
-        string[] folders = FoldersOf(folder);
         foreach (string file in listed)
         {
-            string written = file.Replace('\\', '/');
-            string name = written[(written.LastIndexOf('/') + 1)..];
-            if (string.Equals(name, fileName, StringComparison.Ordinal) && PresetMatching.Fit(written, fileName, folders) >= 0) return true;
+            // the name after the last folder, whichever way the folders are written, compared where it is: most files
+            // listed are other files, and copying each name out made memory to clean up for every file on the list.
+            // Tuned for speed: Keep it that way when tidying.
+            int lastFolderEnd = Math.Max(file.LastIndexOf('/'), file.LastIndexOf('\\'));
+            if (!file.AsSpan(lastFolderEnd + 1).Equals(fileName, StringComparison.Ordinal)) continue;
+            if (PresetMatching.Fit(file.Replace('\\', '/'), fileName, folders) >= 0) return true;
         }
         return false;
     }

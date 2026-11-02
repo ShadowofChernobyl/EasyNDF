@@ -1,4 +1,5 @@
 using System.Globalization;
+using EasyNdf.Data.Game;
 using EasyNdf.Data.Units;
 using EasyNdf.Engine.Rules;
 
@@ -57,7 +58,7 @@ public sealed record WeaponStat(string Field, Func<Weapon, double?> Read, Func<W
     /// <summary>Every value that can be changed, in the order the Weapon pane shows them.</summary>
     public static IReadOnlyList<WeaponStat> All { get; } =
     [
-        new(WeaponField.DamageLevel, weapon => weapon.DamageFamily == "" ? null : weapon.DamageLevel, (weapon, value) => weapon with { DamageLevel = (int)value },
+        new(WeaponField.DamageLevel, weapon => weapon.DamageFamily == "" ? null : weapon.DamageLevel, (weapon, value) => WithDamageLevel(weapon, (int)value),
             "Arme" + Separator + "Index", IsWhole: true),
         new(WeaponField.Damage, weapon => weapon.Damage, (weapon, value) => weapon with { Damage = value }, "PhysicalDamages", IsWhole: false),
         new(WeaponField.Suppression, weapon => weapon.Suppression, (weapon, value) => weapon with { Suppression = value }, "SuppressDamages", IsWhole: false),
@@ -109,10 +110,35 @@ public sealed record WeaponStat(string Field, Func<Weapon, double?> Read, Func<W
     /// is its field too.
     /// </summary>
     private static WeaponStat FromFile(string name, bool isWhole, double lowest = 0, double? highest = null, double shownTimes = 1) =>
-        new(name, weapon => weapon.FileNumber(name), (weapon, value) => weapon.WithFileValue(name, WrittenAs(value, isWhole)), name, isWhole, highest, lowest, shownTimes);
+        new(name, weapon => weapon.FileNumber(name), (weapon, value) => weapon.WithFileValue(name, WrittenAs(value, isWhole && value == Math.Floor(value))),
+            name, isWhole, highest, lowest, shownTimes);
 
     /// <summary>The value of a field; null for a field that cannot be changed.</summary>
     public static WeaponStat? Of(string field) => All.FirstOrDefault(stat => stat.Field == field);
+
+    /// <summary>
+    /// A weapon with another level of damage. Where its kind of damage is kept with the level in it (Steel Division 2's
+    /// "EArmeType/AP_26"), the kind is given the level too, as the game's file will then have it.
+    /// </summary>
+    private static Weapon WithDamageLevel(Weapon weapon, int level)
+    {
+        Weapon changed = weapon with { DamageLevel = level };
+        bool levelInKind = weapon.FileValue(WeaponFileValues.DamageFamily)?.StartsWith(SteelDivisionAmmunition.DamageTypePrefix, StringComparison.Ordinal) == true;
+        if (levelInKind && SteelDivisionAmmunition.DamageTypeWithLevel(weapon, level) is string kind) changed = changed.WithFileValue(WeaponFileValues.DamageFamily, kind);
+        return changed;
+    }
+
+    /// <summary>
+    /// Whether a game writes it as a whole number: WARNO as <see cref="IsWhole"/> says; Steel Division 2 as its own
+    /// property is written (<see cref="SteelDivisionAmmunition"/>), whose distances are shown in metres, which can have
+    /// decimals (127 in the files is 25.4 m), and whose supply cost is whole.
+    /// </summary>
+    /// <param name="game">The game; null for WARNO.</param>
+    public bool IsWholeIn(GameTitle? game)
+    {
+        if (game != GameTitle.SteelDivision2 || SteelDivisionAmmunition.Of(Field) is not SteelDivisionAmmunition.Property property) return IsWhole;
+        return property.Form is SteelDivisionAmmunition.Form.Whole or SteelDivisionAmmunition.Form.DamageLevel;
+    }
 
     /// <summary>
     /// The key of a weapon's kind of damage among the game's levels (<see cref="UnitCatalog.ArmorLevels"/>, which
@@ -129,10 +155,11 @@ public sealed record WeaponStat(string Field, Func<Weapon, double?> Read, Func<W
     /// </summary>
     /// <param name="text">What was typed.</param>
     /// <param name="weapon">The weapon it is for.</param>
-    /// <param name="levels">The levels of each damage family, from the game's DamageResistance.ndf; null when not known.</param>
+    /// <param name="levels">The levels of each damage family, from the game's files; null when not known.</param>
     /// <param name="culture">How the app writes numbers in its language; null for English. Not this computer's own
     /// settings, which can differ: "2,5" typed in English must be refused, not read as 2.5 or 25.</param>
-    public double? ValueOf(string text, Weapon weapon, IReadOnlyDictionary<string, int>? levels, CultureInfo? culture = null)
+    /// <param name="game">The game the weapon is from, which says what is whole (<see cref="IsWholeIn"/>); null for WARNO.</param>
+    public double? ValueOf(string text, Weapon weapon, IReadOnlyDictionary<string, int>? levels, CultureInfo? culture = null, GameTitle? game = null)
     {
         string trimmed = text.Trim();
         bool read = double.TryParse(trimmed, NumberStyles.Float, culture ?? CultureInfo.InvariantCulture, out double shown)
@@ -140,7 +167,7 @@ public sealed record WeaponStat(string Field, Func<Weapon, double?> Read, Func<W
         if (!read || double.IsInfinity(shown) || double.IsNaN(shown)) return null;
         double value = shown / ShownTimes;
         if (value < Lowest) return null;
-        if (IsWhole && (value != Math.Floor(value) || value > int.MaxValue)) return null;
+        if (IsWholeIn(game) && (value != Math.Floor(value) || value > int.MaxValue)) return null;
         if (Highest is double highest && value > highest) return null;
         if (Field == WeaponField.DamageLevel && !ArmorLevels.Allows(levels, DamageFamilyKey(weapon), (int)value)) return null;
         // shots fired at the same moment come out of one salvo

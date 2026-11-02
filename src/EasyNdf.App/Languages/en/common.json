@@ -7,6 +7,8 @@
   "Common.TextWindow.CloseEscape.Tip": "Close (Escape)",
   "Common.Ok": "OK",
   "Common.Cancel": "Cancel",
+  "Common.Cancel.Tip": "Close without keeping the changes made here (Escape)",
+  "Common.Game": "Game",
   "Common.ResizeGrip.Tip": "Drag to resize. Double-click to reset.",
   "Common.Menu.Paste": "Paste",
   "Common.Menu.Configure": "Configure",
@@ -42,5 +44,7 @@
   "Common.Pane.Heading": "Panes",
   "Common.Pane.Beside": "Beside",
   "Common.Pane.Below": "Below",
-  "Common.Pane.Automatic": "Arrange Automatically"
+  "Common.Pane.Automatic": "Arrange Automatically",
+  "Common.HelpButton.Tip": "Help for this tab",
+  "Common.HelpButton.Name": "Help"
 }

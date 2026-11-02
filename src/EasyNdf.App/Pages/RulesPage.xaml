@@ -9,6 +9,8 @@
              xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              xmlns:theming="clr-namespace:EasyNdf.App.Theming"
+             xmlns:rules="clr-namespace:EasyNdf.App.Rules"
+             xmlns:pages="clr-namespace:EasyNdf.App.Pages"
              PreviewMouseDown="PageMouseDown">
     <UserControl.Resources>
         <!-- the line under each of the three headings, all of one height, so the three lists start level -->
@@ -62,32 +64,44 @@
     <!-- the window never scrolls: both lists stretch down to its bottom, their buttons under them -->
     <DockPanel>
         <!--
-          .cols: the mods (270, never folded), the open mod's presets (310), and the open preset's rules
-          in the rest, 14 pixels apart. A grip in each gap makes the column at its left wider or narrower (RulesPage.Columns.cs).
+          .cols: the mods, the open mod's presets and the open preset's rules, 14 pixels apart, sharing the width in
+          proportion (at first 270, 310 and the rest). A grip in each gap moves the line between two columns
+          (RulesPage.Columns.cs). Narrower than the columns' least widths together, they scroll sideways.
         -->
-        <Grid x:Name="ColumnsGrid">
+        <pages:SidewaysScroller x:Name="ColumnsScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Focusable="False">
+        <Grid x:Name="ColumnsGrid" HorizontalAlignment="Left">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="ModsColumnDefinition" Width="270*" />
                 <ColumnDefinition Width="14" />
-                <ColumnDefinition x:Name="RuleSetsColumn" Width="310" />
+                <ColumnDefinition x:Name="RuleSetsColumn" Width="310*" />
                 <ColumnDefinition Width="14" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="RulesColumnDefinition" Width="620*" />
             </Grid.ColumnDefinitions>
 
             <!-- the mods: a click opens one; right-click has its commands; a mod file dropped on the list is imported -->
-            <DockPanel x:Name="ModsColumn" Grid.Column="0" Width="270">
+            <DockPanel x:Name="ModsColumn" Grid.Column="0">
                 <Grid DockPanel.Dock="Top">
-                    <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Rules.Mods}" /></controls:Bevel>
-                    <!-- +, 5 pixels above the heading, as the rules' ? is -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,0,0">
-                        <Button Style="{StaticResource IconButton}" Content="+" ToolTip="{t:Text Rules.New.Tip}" Click="NewModClicked" />
-                    </StackPanel>
+                    <!-- + in the heading, at its right and centred on it, the size of every tab's ? (the three headings are as tall) -->
+                    <controls:Bevel Style="{StaticResource Heading}" MinHeight="31">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource HelpButton}" Content="+" ToolTip="{t:Text Rules.New.Tip}"
+                                    AutomationProperties.Name="{t:Text Rules.New.Tip}" Click="NewModClicked" />
+                            <TextBlock Text="{t:Text Rules.Mods}" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </controls:Bevel>
                 </Grid>
                 <!-- a line under each of the three headings, so the three lists start level: here, how many mods are on -->
                 <Grid DockPanel.Dock="Top" Style="{StaticResource HeadingLine}">
                     <TextBlock x:Name="ModsLine" Foreground="{DynamicResource muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </Grid>
                 <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Note}" Margin="0" Text="{t:Text Rules.Mods.Note}" />
+                <!-- the open mod's commands, also on the list's right-click menu, as the Rule Sets column has its buttons -->
+                <controls:WrapRow DockPanel.Dock="Bottom" Margin="0,0,0,8">
+                    <Button x:Name="RenameModButton" Content="{t:Text Rules.Rename}" ToolTip="{t:Text Rules.RenameMod.Tip}" Click="RenameModClicked" />
+                    <Button x:Name="ExportModButton" Content="{t:Text Rules.ExportModButton}" ToolTip="{t:Text Rules.ExportMod.Tip}" Click="ExportModClicked" />
+                    <Button x:Name="WatermarkButton" Content="{t:Text Rules.WatermarkButton}" ToolTip="{t:Text Rules.WatermarkButton.Tip}" Click="WatermarkClicked" />
+                    <Button x:Name="DeleteModButton" Content="{t:Text Rules.Delete}" ToolTip="{t:Text Rules.DeleteMod.Tip}" Click="DeleteModClicked" />
+                </controls:WrapRow>
                 <!-- while the open mod is off: it won't run, with Switch On, and OK to hide the line until another mod is opened -->
                 <DockPanel x:Name="ModOffLine" DockPanel.Dock="Bottom" Margin="0,0,0,8" Visibility="Collapsed">
                     <Button DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{t:Text Common.Ok}" ToolTip="{t:Text Rules.ModOff.Ok.Tip}"
@@ -97,16 +111,17 @@
                     <TextBlock DockPanel.Dock="Left" Text="&#x26A0;" Foreground="{DynamicResource caution}" FontWeight="Bold" Margin="0,0,5,0" VerticalAlignment="Center" />
                     <TextBlock x:Name="ModOffText" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource ink}" />
                 </DockPanel>
-                <controls:Bevel x:Name="ModBox" Style="{StaticResource SunkenList}" Margin="0,0,0,8" AllowDrop="True"
+                <controls:Bevel x:Name="ModBox" Style="{StaticResource SunkenList}" Margin="0,0,0,8" AllowDrop="True" Focusable="True" FocusVisualStyle="{x:Null}"
+                                AutomationProperties.Name="{t:Text Rules.Mods}" GotKeyboardFocus="ListGotKeyboardFocus" KeyDown="ListKeyDown"
                                 DragOver="ModFilesDraggedOver" Drop="ModFilesDropped" MouseRightButtonUp="ModListRightClicked">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                         <ItemsControl x:Name="ModLines" Focusable="False">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource ListLine}" MouseLeftButtonUp="ModClicked" ToolTip="{Binding Name}">
+                                    <Border Style="{StaticResource ListLine}" MouseLeftButtonUp="ModClicked" ToolTip="{Binding LineTip}">
                                         <DockPanel>
                                             <!-- on or off: every mod that is on runs, in the list's order, as a rule's switch does in its preset -->
-                                            <CheckBox DockPanel.Dock="Left" Style="{StaticResource Toggle}" IsChecked="{Binding IsOn, Mode=OneWay}" Margin="0,0,5,0"
+                                            <CheckBox DockPanel.Dock="Left" Style="{StaticResource Toggle}" IsChecked="{Binding IsOn, Mode=OneWay}" Margin="0,0,5,0" AutomationProperties.Name="{Binding Name}"
                                                       VerticalAlignment="Center" ToolTip="{t:Text Rules.ModSwitch.Tip}" Click="ModSwitchClicked" />
                                             <!-- a value another mod that is on also changes, found by the last Preview or export -->
                                             <TextBlock x:Name="Conflict" DockPanel.Dock="Right" Text="&#x26A0;" FontWeight="Bold" Foreground="{DynamicResource caution}"
@@ -131,18 +146,33 @@
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <TextBlock x:Name="Name" Style="{StaticResource LineName}" Text="{Binding Name}" />
+                                            <!-- the game the mod is for, small and dim: plain text, not a button or a tag -->
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding GameId}" ToolTip="{Binding GameTip}" FontSize="10.5" VerticalAlignment="Center"
+                                                       Margin="6,0,0,0" Foreground="{DynamicResource muted}" />
+                                            <!--
+                                              the name, cut in its middle when it does not fit, so mods whose names start
+                                              alike can still be told apart by their ends; the line's tooltip has it whole
+                                            -->
+                                            <rules:MiddleTrimmedText x:Name="Name" Text="{Binding Name}" Padding="2" VerticalAlignment="Center"
+                                                                     Foreground="{DynamicResource ink}" />
                                         </DockPanel>
                                     </Border>
                                     <DataTemplate.Triggers>
-                                        <!-- a mod that is off is dim, as a rule that is off -->
-                                        <DataTrigger Binding="{Binding IsOn}" Value="False">
-                                            <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource muted}" />
-                                        </DataTrigger>
                                         <!-- the open mod: bold, in the accent colour -->
                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                             <Setter TargetName="Name" Property="FontWeight" Value="Bold" />
                                             <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource accent}" />
+                                        </DataTrigger>
+                                        <!--
+                                          a mod that is off is dim, as a rule that is off, the open one too (still bold), so
+                                          on and off can be told apart down the whole list
+                                        -->
+                                        <DataTrigger Binding="{Binding IsOn}" Value="False">
+                                            <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource muted}" />
+                                        </DataTrigger>
+                                        <!-- a mod that is on but runs on nothing, as no file on the Files tab is for its game, is dim too -->
+                                        <DataTrigger Binding="{Binding IsIdle}" Value="True">
+                                            <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource muted}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding HasConflicts}" Value="True">
                                             <Setter TargetName="Conflict" Property="Visibility" Value="Visible" />
@@ -161,7 +191,7 @@
 
             <!-- the open mod's presets -->
             <DockPanel Grid.Column="2">
-                <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}"><TextBlock Text="{Binding PresetsTitle}" TextTrimming="CharacterEllipsis" /></controls:Bevel>
+                <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}" MinHeight="31"><TextBlock Text="{Binding PresetsTitle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /></controls:Bevel>
                 <!-- the line under the heading: the mod the rule sets are in -->
                 <Grid DockPanel.Dock="Top" Style="{StaticResource HeadingLine}">
                     <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
@@ -195,14 +225,15 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </controls:Bevel>
-                <controls:Bevel DockPanel.Dock="Bottom" Style="{StaticResource Heading}" Margin="0,12,0,6"><TextBlock Text="{t:Text Rules.ArmoryChanges}" /></controls:Bevel>
+                <controls:Bevel DockPanel.Dock="Bottom" Style="{StaticResource Heading}" Margin="0,12,0,6"><TextBlock Text="{t:Text Rules.ArmoryChanges}" TextTrimming="CharacterEllipsis" /></controls:Bevel>
                 <controls:WrapRow DockPanel.Dock="Bottom" Margin="0">
                     <Button x:Name="NewPresetButton" ToolTip="{t:Text Rules.NewPreset.Tip}" Content="{t:Text Rules.New}" Click="NewPresetClicked" />
                     <Button x:Name="RenamePresetButton" ToolTip="{t:Text Rules.RenamePreset.Tip}" Content="{t:Text Rules.Rename}" Click="RenamePresetClicked" />
                     <Button x:Name="DuplicatePresetButton" ToolTip="{t:Text Rules.DuplicatePreset.Tip}" Content="{t:Text Rules.Duplicate}" Click="DuplicatePresetClicked" />
                     <Button x:Name="DeletePresetButton" ToolTip="{t:Text Rules.DeletePreset.Tip}" Content="{t:Text Rules.Delete}" Click="DeletePresetClicked" />
                 </controls:WrapRow>
-                <controls:Bevel x:Name="PresetBox" Style="{StaticResource SunkenList}" Margin="0,0,0,10" MouseRightButtonUp="PresetListRightClicked">
+                <controls:Bevel x:Name="PresetBox" Style="{StaticResource SunkenList}" Margin="0,0,0,10" MouseRightButtonUp="PresetListRightClicked"
+                                Focusable="True" FocusVisualStyle="{x:Null}" AutomationProperties.Name="{t:Text Rules.Presets}" GotKeyboardFocus="ListGotKeyboardFocus" KeyDown="ListKeyDown">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                         <StackPanel>
                             <TextBlock x:Name="NoPresets" Text="{t:Text Rules.NoPresetsInThis}" Foreground="{DynamicResource muted}" Padding="4,2" />
@@ -236,20 +267,24 @@
             <!-- the open preset's rules -->
             <DockPanel Grid.Column="4">
                 <Grid DockPanel.Dock="Top">
-                    <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{Binding RulesTitle}" /></controls:Bevel>
-                    <!--
-                      the ? at the heading's right, 5 pixels above the heading, clear of the line under it
-                      (on purpose: the HTML app's button.qhelp.qf reaches down to the line)
-                    -->
-                    <Button Style="{StaticResource HelpButton}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,0,0" controls:QuickHelp.Page="tab-rules" />
+                    <!-- the heading stops short of the ?, and a long rule set's name is cut with "…" (the whole of it on hover) -->
+                    <!-- the ? in the heading, at its right and centred on it, above the line under it; a long rule set's name stops short of it -->
+                    <controls:Bevel Style="{StaticResource Heading}" MinHeight="31">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource HelpButton}" controls:QuickHelp.Page="tab-rules"
+                                    AutomationProperties.Name="{t:Text Rules.HelpButton.Name}" />
+                            <TextBlock Text="{Binding RulesTitle}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </DockPanel>
+                    </controls:Bevel>
                 </Grid>
                 <!-- the line under the heading: which files the open rule set applies to, and Change... (the Applies To window) -->
                 <Grid DockPanel.Dock="Top" Style="{StaticResource HeadingLine}">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock x:Name="AppliesText" VerticalAlignment="Center" Foreground="{DynamicResource ink}" />
-                        <Button x:Name="ChangeAppliesButton" Style="{StaticResource SmallButton}" Content="{t:Text Rules.AppliesTo.Change}" ToolTip="{t:Text Rules.AppliesTo.Change.Tip}"
+                    <!-- Change... always shows: the text before it is cut with "…" when the line is too narrow for both -->
+                    <DockPanel VerticalAlignment="Center" HorizontalAlignment="Left">
+                        <Button x:Name="ChangeAppliesButton" DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{t:Text Rules.AppliesTo.Change}" ToolTip="{t:Text Rules.AppliesTo.Change.Tip}"
                                 Margin="8,0,0,0" VerticalAlignment="Center" Click="ChangeAppliesClicked" />
-                    </StackPanel>
+                        <TextBlock x:Name="AppliesText" VerticalAlignment="Center" Foreground="{DynamicResource ink}" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
                 </Grid>
                 <!-- under the list, kept at the column's foot: adding rules, what the clipboard did, and the keys (copying, pasting and opening rules are on the right-click menu and the keys) -->
                 <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Note}" Margin="0"
@@ -259,7 +294,8 @@
                     <!-- a menu of the rule types, each with its symbol and a line on what it does -->
                     <Button x:Name="NewRuleButton" Content="{t:Text Rules.NewRule}" ToolTip="{t:Text Rules.NewRule.Tip}" Click="NewRuleClicked" />
                 </controls:WrapRow>
-                <controls:Bevel x:Name="RuleBox" Style="{StaticResource SunkenList}" Margin="0,0,0,10" MouseRightButtonUp="RuleListRightClicked">
+                <controls:Bevel x:Name="RuleBox" Style="{StaticResource SunkenList}" Margin="0,0,0,10" MouseRightButtonUp="RuleListRightClicked"
+                                Focusable="True" FocusVisualStyle="{x:Null}" AutomationProperties.Name="{t:Text Rules.Rules}" GotKeyboardFocus="ListGotKeyboardFocus" KeyDown="ListKeyDown">
                     <!--
                       only the lines in view are made, as in the Armory's lists: a preset of hundreds of rules (a division's
                       group) made every line on each click or fold, which made them lag
@@ -288,19 +324,19 @@
                                                        Margin="4,0,2,0" Visibility="Collapsed" ToolTip="{t:Text Rules.Locked.Tip}" />
                                             <!-- ↑ ↓ + ×, 4 pixels apart -->
                                             <StackPanel x:Name="LineButtons" DockPanel.Dock="Right" Orientation="Horizontal">
-                                                <Button Style="{StaticResource IconButton}" Content="&#x2191;" Tag="up" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveUp.Tip}" Click="RuleButtonClicked" />
-                                                <Button Style="{StaticResource IconButton}" Content="&#x2193;" Tag="down" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveDown.Tip}" Click="RuleButtonClicked" />
+                                                <Button Style="{StaticResource IconButton}" Content="&#x2191;" Tag="up" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveUp.Tip}" AutomationProperties.Name="{t:Text Rules.MoveUp.Tip}" Click="RuleButtonClicked" />
+                                                <Button Style="{StaticResource IconButton}" Content="&#x2193;" Tag="down" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveDown.Tip}" AutomationProperties.Name="{t:Text Rules.MoveDown.Tip}" Click="RuleButtonClicked" />
                                                 <!-- Duplicate: the copy icon, two square outlines, the front one over the corner of the one behind -->
-                                                <Button Style="{StaticResource IconButton}" Tag="dup" Margin="4,0,0,0" ToolTip="{t:Text Rules.Duplicate.Tip}" Click="RuleButtonClicked">
+                                                <Button Style="{StaticResource IconButton}" Tag="dup" Margin="4,0,0,0" ToolTip="{t:Text Rules.Duplicate.Tip}" AutomationProperties.Name="{t:Text Rules.Duplicate.Tip}" Click="RuleButtonClicked">
                                                     <Path Width="11" Height="11" StrokeThickness="1" VerticalAlignment="Center"
                                                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
                                                           Data="M 3.5,3.5 V 0.5 H 10.5 V 7.5 H 7.5 M 0.5,3.5 H 7.5 V 10.5 H 0.5 Z" />
                                                 </Button>
-                                                <Button Style="{StaticResource IconButton}" Content="&#xD7;" Tag="del" Margin="4,0,0,0" ToolTip="{t:Text Rules.Delete.Tip}" Click="RuleButtonClicked" />
+                                                <Button Style="{StaticResource IconButton}" Content="&#xD7;" Tag="del" Margin="4,0,0,0" ToolTip="{t:Text Rules.Delete.Tip}" AutomationProperties.Name="{t:Text Rules.Delete.Tip}" Click="RuleButtonClicked" />
                                             </StackPanel>
                                             <Button x:Name="Fold" DockPanel.Dock="Left" Style="{StaticResource IconButton}" Tag="fold" Margin="0,0,4,0"
-                                                    Content="&#x25BE;" ToolTip="{t:Text Rules.Fold.Tip}" Visibility="Collapsed" Click="RuleButtonClicked" />
-                                            <CheckBox DockPanel.Dock="Left" Style="{StaticResource Toggle}" IsChecked="{Binding IsOn, Mode=OneWay}" Margin="0,0,4,0"
+                                                    Content="&#x25BE;" ToolTip="{t:Text Rules.Fold.Tip}" AutomationProperties.Name="{t:Text Rules.Fold.Tip}" Visibility="Collapsed" Click="RuleButtonClicked" />
+                                            <CheckBox DockPanel.Dock="Left" Style="{StaticResource Toggle}" IsChecked="{Binding IsOn, Mode=OneWay}" Margin="0,0,4,0" AutomationProperties.Name="{Binding Name}"
                                                       ToolTip="{t:Text Rules.EnableRule.Tip}" Click="RuleSwitchClicked" />
                                             <!-- .ksym: the type's symbol, in its colour; a click opens the rule -->
                                             <!-- the rule's type symbol opens the rule; under the mouse it takes the hover colour, as menus do -->
@@ -327,7 +363,7 @@
                                                 </Grid>
                                             </Border>
                                             <TextBlock x:Name="Count" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" FontSize="11" VerticalAlignment="Center"
-                                                       Margin="4,0,0,0" Visibility="Collapsed" />
+                                                       Margin="4,0,0,0" Visibility="Collapsed" Text="{Binding HiddenText}" />
                                             <TextBlock x:Name="Name" Style="{StaticResource LineName}" Text="{Binding Name}" />
                                         </DockPanel>
                                     </Border>
@@ -351,7 +387,7 @@
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsFolded}" Value="True">
                                             <Setter TargetName="Fold" Property="Content" Value="&#x25B8;" />
-                                            <Setter TargetName="Fold" Property="ToolTip" Value="Show the rules in this group" />
+                                            <Setter TargetName="Fold" Property="ToolTip" Value="{t:Text Rules.Unfold.Tip}" />
                                             <Setter TargetName="Count" Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                         <!-- li.off: a rule switched off, or in a group that is, has a dim name -->
@@ -367,5 +403,6 @@
                 </controls:Bevel>
             </DockPanel>
         </Grid>
+        </pages:SidewaysScroller>
     </DockPanel>
 </UserControl>

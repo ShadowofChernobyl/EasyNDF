@@ -7,9 +7,16 @@ namespace EasyNdf.Data.Weapons;
 /// every unit carrying them shares.
 /// </summary>
 /// <param name="Descriptor">The loadout's descriptor.</param>
-/// <param name="AmmoBoxes">The rounds of each ammo box, by its place (Salves): a mounted weapon's AmmoBoxIndex picks one.</param>
+/// <param name="AmmoBoxes">
+/// The rounds of each ammo box, by its place (Salves): a mounted weapon's AmmoBoxIndex (Steel Division 2's
+/// SalvoStockIndex) picks one. Steel Division 2 lists 29 places, those it does not use as -1.
+/// </param>
 /// <param name="Turrets">The turrets, in the order the file lists them.</param>
-public sealed record Loadout(string Descriptor, IReadOnlyList<int> AmmoBoxes, IReadOnlyList<LoadoutTurret> Turrets)
+/// <param name="MainSalvoCount">
+/// How many entries Steel Division 2's SalvoIsMainSalvo has, one for each ammo box in use (some loadouts one more); null
+/// for a loadout without that list, as WARNO's.
+/// </param>
+public sealed record Loadout(string Descriptor, IReadOnlyList<int> AmmoBoxes, IReadOnlyList<LoadoutTurret> Turrets, int? MainSalvoCount = null)
 {
     /// <summary>Every mounted weapon, turret by turret.</summary>
     public IEnumerable<LoadoutMount> Mounts => Turrets.SelectMany(turret => turret.Mounts);
@@ -29,8 +36,11 @@ public sealed record LoadoutTurret(int Index, string Tag, string Type, IReadOnly
 /// <param name="Turret">Its turret's place in the loadout.</param>
 /// <param name="Index">Its place on the turret, from 0.</param>
 /// <param name="Ammunition">Its weapon, by the ammunition's descriptor, such as "Ammo_HMG_12_7_mm_M2HB".</param>
-/// <param name="AmmoBox">The ammo box it draws from (AmmoBoxIndex).</param>
+/// <param name="AmmoBox">The ammo box it draws from (AmmoBoxIndex; Steel Division 2's SalvoStockIndex).</param>
 /// <param name="Count">How many of the weapon the mount has (NbWeapons).</param>
 /// <param name="EffectTag">The flash and sound it fires with, such as "FireEffect_HMG_12_7_mm_M2HB".</param>
-/// <param name="WeaponNumber">Its number in the unit (the N of WeaponAlternative_N), which the 3D model's firing points use.</param>
+/// <param name="WeaponNumber">
+/// Its number in the unit, which the 3D model's firing points use: the N of WeaponAlternative_N; in Steel Division 2,
+/// which has none, the N of its EffectTag 'weapon_effet_tagN', one of its own in each loadout.
+/// </param>
 public sealed record LoadoutMount(int Turret, int Index, string Ammunition, int AmmoBox, int Count, string EffectTag, int WeaponNumber);
