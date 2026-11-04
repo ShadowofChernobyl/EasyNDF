@@ -9,10 +9,9 @@ namespace EasyNdf.Data.Divisions;
 /// <remarks>
 /// What the Division pane changes and the game's divisions lack is not written (<see cref="Lacks"/>): a type key, a
 /// place in the list, a history and standout units. A name and a description are tokens whose texts go into the mod's
-/// MODDING.csv, of seven columns (DivisionName, DivisionDescription). What the game has but the Armory does not write
-/// for it yet is not written either: an emblem picture of the user's own (a texture of the Modded kind, its file under
-/// the mod's AssetsModding folder), and generated divisions. A new division is written by
-/// <see cref="DivisionChangeRules"/>'s Steel Division 2 new-division rules. The
+/// MODDING.csv, of seven columns (DivisionName, DivisionDescription). An emblem picture of the user's own is a texture
+/// of the Modded kind, its file under the mod's AssetsModding folder. A new division, generated ones among them, is
+/// written by <see cref="DivisionChangeRules"/>'s Steel Division 2 new-division rules. The
 /// division's units, spread over DivisionRules.ndf, Packs.ndf, DeckSerializer.ndf and the division's own PackList, are
 /// written by <see cref="DivisionChangeRules"/>'s Steel Division 2 unit rules. Values only Steel Division 2 has have no place in the pane and are not written: its phases' income, start
 /// times and bonuses (PhaseList), its income choices (DivisionEconomyList), its portrait, type picture and power class,
@@ -23,9 +22,38 @@ public static class SteelDivisionDivisions
     /// <summary>The details of a game division the Armory writes for Steel Division 2.</summary>
     public static IReadOnlyList<string> Written { get; } =
         [
-            DivisionDetail.Points, DivisionDetail.Nation, DivisionDetail.Tags, DivisionDetail.Emblem, DivisionDetail.Costs, DivisionDetail.Units, DivisionDetail.TakenOut,
-            DivisionDetail.Name, DivisionDetail.Summary, DivisionDetail.New, DivisionDetail.Phases, DivisionDetail.Economy,
+            DivisionDetail.Points, DivisionDetail.Nation, DivisionDetail.Tags, DivisionDetail.Emblem, DivisionDetail.EmblemPicture, DivisionDetail.Costs, DivisionDetail.Units, DivisionDetail.TakenOut,
+            DivisionDetail.Name, DivisionDetail.Summary, DivisionDetail.New, DivisionDetail.Phases, DivisionDetail.Economy, DivisionDetail.Generated,
         ];
+
+    /// <summary>
+    /// The game's nine cost categories, named as its divisions' matrices are read (DivisionReader: "EDefaultFactories/tank"
+    /// is "Tanks"), for the costs of a generated division.
+    /// </summary>
+    public static IReadOnlyList<string> CostCategories { get; } = ["Recons", "Infantry", "Tanks", "Support", "AT", "DCA", "Art", "Planes", "Defense"];
+
+    /// <summary>
+    /// The phases of an income choice (a DivisionEconomy list's name): those of the first of the game's multiplayer
+    /// divisions (tagged DEFAULT) with that choice; null when none has it.
+    /// </summary>
+    public static IReadOnlyList<DivisionPhase>? PhasesOf(string economy, IEnumerable<Division> game) =>
+        game.FirstOrDefault(division => division.Economy == economy && division.Phases.Count > 0 && division.Tags.Contains("DEFAULT"))?.Phases;
+
+    /// <summary>
+    /// The units only DLC divisions give (<see cref="IsInDlc"/>): those some of the game's divisions have, every one of
+    /// them a DLC division. A generated division leaves them out until the game is known to take them in a division of
+    /// the base game (Paul's choice, November 2026).
+    /// </summary>
+    public static HashSet<string> UnitsOnlyInDlc(IEnumerable<Division> game)
+    {
+        var inBase = new HashSet<string>(StringComparer.Ordinal);
+        var inDlc = new HashSet<string>(StringComparer.Ordinal);
+        foreach (Division division in game)
+            foreach (DivisionUnit unit in division.Units)
+                (IsInDlc(division.Descriptor) ? inDlc : inBase).Add(unit.Unit);
+        inDlc.ExceptWith(inBase);
+        return inDlc;
+    }
 
     /// <summary>
     /// Whether a game division comes with one of Steel Division 2's DLCs. The game keeps each division's and pack's DLC

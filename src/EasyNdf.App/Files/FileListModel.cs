@@ -971,6 +971,16 @@ public sealed class FileListModel : INotifyPropertyChanged
     }
 
     /// <summary>
+    /// Gives each file how many conflicts the last run found in it (<see cref="FileEntry.ConflictCount"/>), from the
+    /// conflicts by file key, and shows the list again when "Show only" goes by them.
+    /// </summary>
+    public void ConflictsFound(Func<string, int> countIn)
+    {
+        foreach (FileEntry entry in entries) entry.ConflictCount = countIn(entry.Key);
+        if (ShowOnly is ShowOnly.HasConflicts or ShowOnly.ErrorsOrWarnings) Refilter();
+    }
+
+    /// <summary>
     /// Works out again which rows are shown and in what order. Rows the search or filter hides are deselected, so a
     /// button that acts on the selection never acts on something unseen; rows in a closed folder stay selected.
     /// </summary>

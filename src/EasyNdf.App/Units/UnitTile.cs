@@ -282,12 +282,13 @@ public sealed class UnitTile : Grid
     /// as the strip needs.
     /// </summary>
     /// <param name="counts">What to write beside each level's mark, lowest first: a number, "?" or nothing.</param>
-    public void ShowVeterancyCounts(IReadOnlyList<string> counts)
+    /// <param name="tips">Each level's tooltip, lowest first, where its count alone does not say it (Steel Division 2's, by phase).</param>
+    public void ShowVeterancyCounts(IReadOnlyList<string> counts, IReadOnlyList<string>? tips = null)
     {
         DockPanel column = Side();
         column.Width = double.NaN;
         column.Children.Clear();
-        column.Children.Add(Divisions.VeterancyMarks.CountStrip(counts));
+        column.Children.Add(Divisions.VeterancyMarks.CountStrip(counts, tips));
     }
 
     /// <summary>

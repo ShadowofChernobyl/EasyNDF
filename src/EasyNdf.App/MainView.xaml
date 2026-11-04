@@ -65,6 +65,9 @@
                     </DockPanel>
                 </controls:Bevel>
 
+                <!-- the usage readout (Settings, Debug), along the bottom while it is switched on -->
+                <controls:UsageReadout x:Name="Readout" DockPanel.Dock="Bottom" />
+
                 <!-- #tabs and the pages. Code picks a tab by its name (EditorTabItem...), so tabs can be added between others. -->
                 <TabControl x:Name="Tabs">
                     <TabItem x:Name="FilesTabItem" Header="{t:Text Main.Files}" Tag="{t:Text Main.Files.Tip}">

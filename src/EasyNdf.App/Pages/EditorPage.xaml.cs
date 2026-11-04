@@ -158,7 +158,10 @@ public partial class EditorPage : UserControl
         Texts.LanguageChanged += ShowInNewLanguage;
         // the Descriptor Tree refreshes the first time it shows: opened, or already open when the tab first shows
         Panes.FoldChanged += RefreshTreeOnFirstOpen;
-        IsVisibleChanged += (_, _) => { if (IsVisible) RefreshTreeOnFirstOpen(); };
+        IsVisibleChanged += (_, _) =>
+        {
+            if (IsVisible) RefreshTreeOnFirstOpen();
+        };
         Text.Options.ConvertTabsToSpaces = true; // Tab types four spaces, as the Sublime settings file asks
         Text.Options.IndentationSize = 4;
         Text.Options.EnableHyperlinks = false;
@@ -262,18 +265,27 @@ public partial class EditorPage : UserControl
     private async Task Open(FileEntry entry, bool showTab)
     {
         if (entry.Source is null || !await MayLeave()) return;
+        using Work.Job job = Work.Start(Texts.Get("Main.Usage.Job.Opening", ("file", entry.Name)));
         if (showTab) MainView.Of(this).Tabs.SelectedItem = MainView.Of(this).EditorTabItem;
         Note.Text = Texts.Get("Editor.Viewer.ReadingFile", ("file", entry.Name));
+        int loading = StartLoading(Texts.Get("Editor.Loading.Opening", ("file", entry.Name)), entry.Folder,
+            Texts.Get("Editor.Loading.Reading"), Texts.Get("Editor.Loading.Colouring"), Texts.Get("Editor.Loading.Showing"));
         try
         {
             string text = await Task.Run(() => FileContent.Text(entry));
-            await LoadAside(entry.Name, text, entry);
+            ShowLoadingStep(loading, 1);
+            await LoadAside(entry.Name, text, entry, loading: loading);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
+            EndLoading(loading);
             shown = null;
             ShowText();
             await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", entry.Name), ("problem", error.Message)));
+        }
+        finally
+        {
+            EndLoading(loading);
         }
     }
 
@@ -290,7 +302,8 @@ public partial class EditorPage : UserControl
     /// 117 MB UniteDescriptor.ndf they take two seconds. A file opened meanwhile is the one shown.
     /// </summary>
     /// <param name="folds">The blocks to fold, where a file let go of had them (see <see cref="BringBackLetGo"/>); null for none.</param>
-    private async Task LoadAside(string name, string text, FileEntry? entry, List<(int Start, int End)>? folds = null)
+    /// <param name="loading">The load the loading card shows (see <see cref="StartLoading"/>), or 0 for none.</param>
+    private async Task LoadAside(string name, string text, FileEntry? entry, List<(int Start, int End)>? folds = null, int loading = 0)
     {
         int load = ++loads;
         // a file opened now takes the place of one let go of
@@ -298,6 +311,11 @@ public partial class EditorPage : UserControl
         Thread screen = Thread.CurrentThread;
         ShownText prepared = await Task.Run(() => Prepared(name, text, entry, screen));
         if (load != loads) return;
+        if (loading != 0)
+        {
+            await ShowStepThatHolds(loading, 2, text.Length);
+            if (load != loads) return;
+        }
         if (folds is not null) prepared.Folds = folds;
         shown = prepared;
         ShowText();

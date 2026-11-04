@@ -45,7 +45,7 @@ public partial class UnitsPage : IBattlegroupEditing
     /// <summary>The view was resized: the rows are made again when a different number of tiles fits across.</summary>
     private void BattlegroupResized(object sender, SizeChangedEventArgs e)
     {
-        if (!ShowsBattlegroup || drawIsWaiting || CardRowView.ColumnsFor(RoomIn(BattlegroupScroller)) == battlegroupColumns) return;
+        if (!ShowsBattlegroup || drawIsWaiting || Controls.LayoutDrag.IsUnderWay || CardRowView.ColumnsFor(RoomIn(BattlegroupScroller)) == battlegroupColumns) return;
         DrawBattlegroup();
     }
 

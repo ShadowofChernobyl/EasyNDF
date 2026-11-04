@@ -95,8 +95,15 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
     public List<Unit> UnitsTaken(DivisionGeneration generation)
     {
         HashSet<string> everywhere = [.. generation.EveryDivisionNations];
-        return [.. UnitsAToZ.Where(IsDeckable).Where(unit => everywhere.Contains(unit.Nation) || IsInScope(unit, generation))];
+        // Steel Division 2's units only DLC divisions give are left out: the game may refuse them in a division of the base game
+        HashSet<string> leftOut = generation.ByPhase ? UnitsOnlyInDlc : [];
+        return [.. UnitsAToZ.Where(IsDeckable).Where(unit => !leftOut.Contains(unit.Descriptor) && (everywhere.Contains(unit.Nation) || IsInScope(unit, generation)))];
     }
+
+    private HashSet<string>? unitsOnlyInDlc;
+
+    /// <summary>The units only the game's DLC divisions give (<see cref="SteelDivisionDivisions.UnitsOnlyInDlc"/>), found once.</summary>
+    private HashSet<string> UnitsOnlyInDlc => unitsOnlyInDlc ??= SteelDivisionDivisions.UnitsOnlyInDlc(game);
 
     private List<Unit>? unitsAToZ;
 
@@ -145,6 +152,24 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
     /// <param name="transports">The division's units that carry others, and the transports each unit gets from them.</param>
     private DivisionUnit RuleFor(Unit unit, DivisionGeneration generation, DivisionTransports transports)
     {
+        if (generation.ByPhase)
+        {
+            (IReadOnlyList<int> phases, IReadOnlyList<double> levels) = generation.Numbers switch
+            {
+                GeneratedNumbers.Unlimited => ([DivisionGeneration.UnlimitedCount, DivisionGeneration.UnlimitedCount, DivisionGeneration.UnlimitedCount], (IReadOnlyList<double>)[1, 1, 1]),
+                GeneratedNumbers.Same => (generation.PhaseCounts, generation.VeterancyShares),
+                _ => GameNumbersByPhase(unit, generation),
+            };
+            return new DivisionUnit
+            {
+                Unit = unit.Descriptor,
+                Cards = generation.Slots,
+                UnitsPerCardByPhase = phases,
+                VeterancyMultipliers = levels,
+                AvailableWithoutTransport = true,
+                Transports = generation.AllTransports ? transports.For(unit) : [],
+            };
+        }
         (int perCard, IReadOnlyList<double> shares) = generation.Numbers switch
         {
             GeneratedNumbers.Unlimited => (DivisionGeneration.UnlimitedCount, (IReadOnlyList<double>)[1, 1, 1, 1]),
@@ -261,6 +286,41 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
         return (rule.UnitsPerCard ?? Fallback.UnitsPerCard!.Value, rule.VeterancyMultipliers);
     }
 
+    /// <summary>
+    /// A unit's numbers by phase as the game's divisions give them (Steel Division 2): the most generous rule any of
+    /// them has for it, as <see cref="GameNumbers"/> finds it; for a unit none has, the most generous rule of the most
+    /// similar units, as it is; else one unit in the first phase, at the lowest veterancy, as a unit put in a division
+    /// with no rule to go by is given (<see cref="DivisionChanges.RuleFor"/>).
+    /// </summary>
+    private (IReadOnlyList<int>, IReadOnlyList<double>) GameNumbersByPhase(Unit unit, DivisionGeneration generation)
+    {
+        Dictionary<string, DivisionUnit> rules = GameRules(generation);
+        DivisionUnit? rule = rules.TryGetValue(unit.Descriptor, out DivisionUnit? own) && GivesUnits(own) ? own : SimilarUnitsRuleByPhase(unit, rules, generation);
+        if (rule is null || rule.UnitsPerCardByPhase.Count != 3) return ([1, 0, 0], [1, 0, 0]);
+        return (rule.UnitsPerCardByPhase, [.. rule.VeterancyMultipliers.Take(3).Concat(Enumerable.Repeat(0.0, 3)).Take(3)]);
+    }
+
+    /// <summary>
+    /// For a unit no game division has, by phase: the most generous rule of the units closest to it (<see
+    /// cref="ClosestSimilarUnits"/>), from the lowest veterancy up; null when none is like it.
+    /// </summary>
+    private DivisionUnit? SimilarUnitsRuleByPhase(Unit unit, Dictionary<string, DivisionUnit> rules, DivisionGeneration generation)
+    {
+        string key = "phase|" + unit.Descriptor + "|" + string.Join("|", generation.IgnoredDivisions) + "|" + generation.IgnoredRulesFrom;
+        if (similarRules.TryGetValue(key, out DivisionUnit? known)) return known.Unit == "" ? null : known;
+        List<Unit> closest = ClosestSimilarUnits(unit, rules);
+        DivisionUnit? best = closest.Count == 0 ? null : closest.Select(similar => rules[similar.Descriptor]).Aggregate((most, rule) => IsMoreGenerousByLevel(rule, most) ? rule : most);
+        similarRules[key] = best ?? new DivisionUnit { Unit = "" };
+        return best;
+    }
+
+    /// <summary>
+    /// The units a rule's card holds at most: WARNO's units per card; Steel Division 2's, the most in any phase; null
+    /// when the rule gives no count.
+    /// </summary>
+    private static int? PerCardOf(DivisionUnit rule) =>
+        rule.UnitsPerCard ?? (rule.UnitsPerCardByPhase.Count > 0 ? rule.UnitsPerCardByPhase.Max() : null);
+
     /// <summary>Each unit's most generous rule in the game's divisions, leaving out the divisions and rules the generation ignores.</summary>
     private Dictionary<string, DivisionUnit> GameRules(DivisionGeneration generation)
     {
@@ -271,7 +331,7 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
         {
             foreach (DivisionUnit rule in division.Units)
             {
-                if (rule.UnitsPerCard is null || IsIgnoredRule(rule, generation)) continue;
+                if (PerCardOf(rule) is null || IsIgnoredRule(rule, generation)) continue;
                 if (!best.TryGetValue(rule.Unit, out DivisionUnit? before) || IsMoreGenerous(rule, before)) best[rule.Unit] = rule;
             }
         }
@@ -285,7 +345,7 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
 
     /// <summary>Whether a rule gives so many cards or units that the generation ignores it.</summary>
     private static bool IsIgnoredRule(DivisionUnit rule, DivisionGeneration generation) =>
-        generation.IgnoredRulesFrom is int from && (rule.Cards >= from || (rule.UnitsPerCard ?? 0) >= from || PeakCount(rule) >= from);
+        generation.IgnoredRulesFrom is int from && (rule.Cards >= from || (PerCardOf(rule) ?? 0) >= from || PeakCount(rule) >= from);
 
     /// <summary>Whether a rule gives any unit at all: some cards, and some units at some veterancy.</summary>
     private static bool GivesUnits(DivisionUnit rule) => rule.Cards > 0 && CountsByVeterancy(rule).Any(count => count > 0);
@@ -298,7 +358,7 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
     {
         if (PeakCount(rule) != PeakCount(than)) return PeakCount(rule) > PeakCount(than);
         if (rule.Cards != than.Cards) return rule.Cards > than.Cards;
-        return (rule.UnitsPerCard ?? 0) > (than.UnitsPerCard ?? 0);
+        return (PerCardOf(rule) ?? 0) > (PerCardOf(than) ?? 0);
     }
 
     /// <summary>The most units a card of a rule holds, at any veterancy.</summary>
@@ -311,7 +371,7 @@ public sealed class DivisionRosters(IReadOnlyList<Unit> units, IReadOnlyList<Div
     /// </summary>
     private static int[] CountsByVeterancy(DivisionUnit rule)
     {
-        int perCard = rule.UnitsPerCard ?? 0;
+        int perCard = PerCardOf(rule) ?? 0;
         return [.. Enumerable.Range(0, VeterancyLevels).Select(level =>
         {
             double share = level < rule.VeterancyMultipliers.Count ? rule.VeterancyMultipliers[level] : 0;

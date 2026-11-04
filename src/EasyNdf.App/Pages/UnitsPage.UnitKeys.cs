@@ -145,7 +145,7 @@ public partial class UnitsPage
         {
             if (CardsList.ItemsSource is not List<CardLine> lines) return;
             int line = lines.FindIndex(each => each is CardRowLine row && row.Units.Any(shownUnit => ReferenceEquals(shownUnit, unit)));
-            if (line >= 0 && WeaponsArmory.VisualsIn<VirtualizingStackPanel>(CardsList).FirstOrDefault() is VirtualizingStackPanel panel) panel.BringIndexIntoViewPublic(line);
+            if (line >= 0 && WeaponsArmory.VisualsIn<Controls.LinesPanel>(CardsList).FirstOrDefault() is Controls.LinesPanel panel) panel.BringIndexIntoViewPublic(line);
             return;
         }
         FrameworkElement holder = ShowsBattlegroup ? BattlegroupScroller : DivisionCardsScroller;

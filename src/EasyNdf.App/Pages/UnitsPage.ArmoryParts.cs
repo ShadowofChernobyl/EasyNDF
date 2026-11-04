@@ -15,6 +15,15 @@ public partial class UnitsPage
     /// <summary>The sub-tab shown.</summary>
     private ArmoryPart part = ArmoryPart.Units;
 
+    /// <summary>The name of the sub-tab shown, as its button says it, for the usage readout's slow moments.</summary>
+    internal string ShownPartName => (part switch
+    {
+        ArmoryPart.Divisions => DivisionsPartButton,
+        ArmoryPart.Battlegroups => BattlegroupsPartButton,
+        ArmoryPart.Weapons => WeaponsPartButton,
+        _ => UnitsPartButton,
+    }).Content as string ?? "";
+
     /// <summary>Whether the centre shows a division's units: the Divisions sub-tab, with a division chosen.</summary>
     private bool ShowsDivisionUnits => part == ArmoryPart.Divisions && chosenDivision is not null;
 
@@ -29,6 +38,7 @@ public partial class UnitsPage
     {
         part = Enum.TryParse((string?)AppData.Current.State["armoryPart"], out ArmoryPart remembered) ? remembered : ArmoryPart.Units;
         BattlegroupScroller.SizeChanged += BattlegroupResized;
+        HoldCardsDuringResizes();
         ShowPartButtons();
     }
 

@@ -19,6 +19,8 @@ public enum ShowOnly
     ErrorsOrWarnings,
     /// <summary>A rule changed nothing.</summary>
     RuleChangedNothing,
+    /// <summary>Has conflicts: the last run found mods changing the same values or making the same descriptors in it.</summary>
+    HasConflicts,
     /// <summary>Not read.</summary>
     NotRead,
 }
@@ -93,8 +95,10 @@ public static class FileListView
         ShowOnly.On => row.On,
         ShowOnly.Off => !row.On,
         ShowOnly.Changed => row.Edits > 0,
-        ShowOnly.ErrorsOrWarnings => row.IsError || row.WarningCount != 0,
+        // a conflict between mods counts as a warning too
+        ShowOnly.ErrorsOrWarnings => row.IsError || row.WarningCount != 0 || row.ConflictCount != 0,
         ShowOnly.RuleChangedNothing => row.IdleRuleCount != 0,
+        ShowOnly.HasConflicts => row.ConflictCount != 0,
         ShowOnly.NotRead => !row.Scanned,
         _ => true,
     };

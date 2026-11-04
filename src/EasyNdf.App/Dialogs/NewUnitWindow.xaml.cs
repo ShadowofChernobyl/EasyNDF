@@ -881,7 +881,18 @@ public partial class NewUnitWindow : UserControl
         if (create(made, copies)) Close();
     }
 
-    private void Close() => Visibility = Visibility.Collapsed;
+    /// <summary>
+    /// Closes the window, letting go of its cards and preview, which hold the units' pictures: nothing of a closed
+    /// window is on screen, and opening it fills everything again.
+    /// </summary>
+    private void Close()
+    {
+        Visibility = Visibility.Collapsed;
+        ModelList.ItemsSource = null;
+        PreviewSlot.Content = null;
+        preview = null;
+        units = [];
+    }
 
     // ---- for the workbench's checks, which drive the window without a mouse ----
 

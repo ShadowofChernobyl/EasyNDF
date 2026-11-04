@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -62,9 +63,12 @@ public partial class UnitsPage
     /// <summary>"Show mods' changes", under the Source: on, the Armory shows the values as the mods that are on make them; off, as the source has them.</summary>
     internal static bool ArmoryShowsModChanges => AppData.Current.Settings["armoryModChanges"]?.GetValue<bool>() != false;
 
-    /// <summary>The divisions as shown: with the open mod's changes when the Armory shows them.</summary>
+    /// <summary>
+    /// The divisions as shown: with the open mod's changes when the Armory shows them. Only those offered in skirmish
+    /// and multiplayer either way; the game's campaign divisions have no units of their own to show.
+    /// </summary>
     private List<Division> DivisionsShown() =>
-        ShowsOpenMod ? DivisionChanges.Apply(DivisionsBeforeArmoryChanges, OpenMod, Rosters) : [.. DivisionsBeforeArmoryChanges];
+        ShowsOpenMod ? DivisionChanges.Apply(DivisionsBeforeArmoryChanges, OpenMod, Rosters) : [.. DivisionsBeforeArmoryChanges.Where(division => division.IsForMultiplayer)];
 
     /// <summary>The generated divisions' units, made from the units shown (<see cref="DivisionRosters"/>), and what they were made from.</summary>
     private (DivisionRosters Rosters, object? Units, object? Game)? rosters;
@@ -107,6 +111,9 @@ public partial class UnitsPage
         // another mod opened, or the open one changed: its divisions are shown
         AppData.Current.ModsChanged += _ => ModChanged();
         DivisionCardsScroller.AddHandler(MouseLeftButtonDownEvent, new MouseButtonEventHandler(UnitListDoubleClicked), handledEventsToo: true);
+        // the cards drawn while hidden, or laid out again without a scroll, make their tiles once laid out where they show
+        DivisionCardsScroller.IsVisibleChanged += (_, _) => MakeDivisionTilesNow();
+        DivisionCardsScroller.SizeChanged += (_, _) => MakeDivisionTilesSoon();
         PrepareSplits();
     }
 
@@ -238,7 +245,7 @@ public partial class UnitsPage
         // switched off, with the reason, for a game the Armory does not add divisions to yet
         string? noNewDivisions = DivisionChangeRules.Writes(Game, DivisionDetail.New)
             ? null : Texts.Get("Divisions.Off.NotForThisGame", ("game", Game.Name));
-        // generated divisions are a kind of their own, written for fewer games (not Steel Division 2's yet)
+        // generated divisions are a kind of their own, written for the games DivisionChangeRules.Writes says
         string? noGeneratedDivisions = noNewDivisions ?? (DivisionChangeRules.Writes(Game, DivisionDetail.Generated)
             ? null : Texts.Get("Divisions.Off.NotForThisGame", ("game", Game.Name)));
         NewDivisionButton.IsEnabled = loaded is not null && divisions.Count > 0 && noNewDivisions is null;
@@ -412,10 +419,14 @@ public partial class UnitsPage
         List<DivisionGroup> groups = DivisionGroups.Of(division, shownUnits, Game, filter.Factory, unitsByDescriptor, withEmpty: true);
         Dictionary<string, int> inDivision = DivisionGroups.CountsByFactory(division, unitsByDescriptor);
         divisionCardColumns = CardRowView.ColumnsFor(DivisionCardsRoom());
+        SessionLog.Write("Armory", $"Division {division.Name} ({division.CfgName}): {division.Units.Count} units in it, {inDivision.Values.Sum()} known to the source,"
+            + $" {groups.Sum(group => group.Entries.Count)} shown after the filters");
+        MakeDivisionTilesSoon();
         DivisionCardsContent.Content = groups.Count == 0
             ? new TextBlock { Text = Texts.Get("Units.NoneMatch"), Margin = new Thickness(10), TextWrapping = TextWrapping.Wrap }
             : DivisionCards.Build(groups, division.Name, factory => inDivision.GetValueOrDefault(factory), Game, selection, divisionCardColumns,
                 foldedCategories, CategoryFoldClicked, this, unitsByDescriptor, divisionPhase, PhaseChosen);
+        MakeDivisionTilesNow();
     }
 
     /// <summary>
@@ -426,6 +437,26 @@ public partial class UnitsPage
     {
         if (DivisionCardsContent.Content is StackPanel cards) DivisionCards.MakeTilesInView(cards, DivisionCardsScroller);
     }
+
+    /// <summary>
+    /// Makes the tiles in sight before the screen is next drawn, not a frame later, so it never shows them as empty
+    /// places: the cards are laid out first. Nothing when they are hidden; they are made as they are shown.
+    /// </summary>
+    private void MakeDivisionTilesNow()
+    {
+        if (!DivisionCardsScroller.IsVisible || DivisionCardsContent.Content is not StackPanel cards) return;
+        DivisionCardsScroller.UpdateLayout();
+        DivisionCards.MakeTilesInView(cards, DivisionCardsScroller);
+    }
+
+    /// <summary>
+    /// Makes the tiles in sight once the cards are laid out: a scroll is not always there to do it, as when the cards
+    /// were drawn while the tab was hidden, and the tiles were left empty places but the first.
+    /// </summary>
+    private void MakeDivisionTilesSoon() => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+    {
+        if (DivisionCardsContent.Content is StackPanel cards) DivisionCards.MakeTilesInView(cards, DivisionCardsScroller);
+    });
 
     /// <summary>The phase chosen above a Steel Division 2 division's cards, 0 to 2 for A to C; -1 for every phase.</summary>
     private int divisionPhase = -1;
@@ -446,7 +477,8 @@ public partial class UnitsPage
     /// </summary>
     private void DivisionCardsResized(object sender, SizeChangedEventArgs e)
     {
-        if (!ShowsDivisionUnits || view != UnitView.Cards || drawIsWaiting) return;
+        // while the window or a pane is resized, the tiles keep their width until the mouse pauses (see HoldCards)
+        if (!ShowsDivisionUnits || view != UnitView.Cards || drawIsWaiting || Controls.LayoutDrag.IsUnderWay) return;
         if (CardRowView.ColumnsFor(DivisionCardsRoom()) == divisionCardColumns) return;
         if (e.PreviousSize.Width == 0) ShowDivisionCards();
         else ShowDivisionColumns();

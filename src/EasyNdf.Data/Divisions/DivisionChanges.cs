@@ -170,22 +170,37 @@ public static class DivisionChanges
         created.KeepsUnits = true;
         created.ActivationPoints = generation.ActivationPoints;
         created.Costs = generation.Costs();
-        // its Official Battlegroup is made from its units too, as its Generation Settings choose
-        created.BattlegroupGeneration = new BattlegroupGeneration();
+        GiveIncome(created, generation, game);
+        // its Official Battlegroup is made from its units too, as its Generation Settings choose (Steel Division 2's
+        // divisions have none)
+        if (!generation.ByPhase) created.BattlegroupGeneration = new BattlegroupGeneration();
         return descriptor;
+    }
+
+    /// <summary>
+    /// A generated division by phase (Steel Division 2): its generation's income choices, and the phases of the game's
+    /// divisions with them; nothing when its generation keeps those of the division it is made from.
+    /// </summary>
+    private static void GiveIncome(ModDivision entry, DivisionGeneration generation, IReadOnlyList<Division> game)
+    {
+        if (!generation.ByPhase || generation.Economy == "") return;
+        entry.Economy = generation.Economy;
+        if (SteelDivisionDivisions.PhasesOf(generation.Economy, game) is IReadOnlyList<DivisionPhase> phases) entry.Phases = [.. phases];
     }
 
     /// <summary>
     /// "Change…": gives a generated division another way of being made. Its points and costs follow; the user's own
     /// changes to its units are kept.
     /// </summary>
-    public static void ChangeGeneration(Mod mod, string descriptor, DivisionGeneration generation, (string Country, string Side) nation)
+    /// <param name="game">The game's divisions, for the phases of a Steel Division 2 division's income choices.</param>
+    public static void ChangeGeneration(Mod mod, string descriptor, DivisionGeneration generation, (string Country, string Side) nation, IReadOnlyList<Division>? game = null)
     {
         if (EntryOf(mod, descriptor) is not { IsGenerated: true } entry) return;
         entry.Generation = generation;
         (entry.Country, entry.Side) = nation;
         entry.ActivationPoints = generation.ActivationPoints;
         entry.Costs = generation.Costs();
+        GiveIncome(entry, generation, game ?? []);
     }
 
     /// <summary>"Make Fixed": a generated division keeps the units it has now, as an ordinary new division (<see cref="ModDivision.MakeFixed"/>).</summary>

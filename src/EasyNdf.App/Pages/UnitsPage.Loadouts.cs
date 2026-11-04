@@ -340,8 +340,7 @@ public partial class UnitsPage
 
         public string? WhyCopiesCannotBeMade => page.WhyWeaponsCannotBeAdded;
 
-        public string? WhyCountCannotChange =>
-            LoadoutRules.Writes(page.Game, LoadoutChange.Count) ? null : Texts.Get("Units.Pane.Off.NotForThisGame", ("game", page.Game.Name));
+        public bool HasCount => LoadoutRules.Writes(page.Game, LoadoutChange.Count);
 
         public void OpenWeaponMenu(string ammunition, FrameworkElement at)
         {

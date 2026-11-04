@@ -40,10 +40,10 @@ public interface ILoadoutActions
     void ShowWeapon(string ammunition) { }
 
     /// <summary>
-    /// Why the number of a weapon at one place cannot be typed in, shown as its tooltip: a game that does not keep it in
-    /// the loadout (Steel Division 2). Null when it can.
+    /// Whether a weapon at one place has a number of its own to type in. A game that does not keep it in the loadout
+    /// (Steel Division 2, whose weapons have it in their names: "Lee Enfield x8") shows no such box.
     /// </summary>
-    string? WhyCountCannotChange => null;
+    bool HasCount => true;
 
     /// <summary>Why "Copy and Change…" is switched off: copies of weapons the Armory can't make for the game yet. Null when it is on.</summary>
     string? WhyCopiesCannotBeMade => null;
@@ -162,7 +162,7 @@ public static class LoadoutEditor
         else sub.Text = What(weapon);
 
         FrameworkElement box = BoxField(original, mount, salvos, actions);
-        FrameworkElement number = actions.WhyCountCannotChange is string why ? FixedCount(mount.Count, why) : CountField(mount.Count, count?.Number, updated =>
+        FrameworkElement? number = !actions.HasCount ? null : CountField(mount.Count, count?.Number, updated =>
             actions.Replace(count, updated == mount.Count ? null : new LoadoutChange(LoadoutChange.Count, mount.Turret, mount.Index, Number: updated)));
 
         // the row's actions in one ⋯ menu (Paul's choice, option B of the mock), rather than a row of buttons on every weapon
@@ -197,7 +197,7 @@ public static class LoadoutEditor
         FrameworkElement box = Field(
             Texts.Get("Weapons.Loadout.BoxLabel", ("box", boxNumber + 1)), add.Number, null, 1, HighestSalvos, Texts.Get("Weapons.Loadout.Salvos"),
             Texts.Get("Weapons.Loadout.OwnBox.Tip"), salvosTyped => actions.Replace(add, add with { Number = salvosTyped }));
-        FrameworkElement number = actions.WhyCountCannotChange is string why ? FixedCount(count, why) : CountField(count, null, countTyped =>
+        FrameworkElement? number = !actions.HasCount ? null : CountField(count, null, countTyped =>
             actions.Replace(add, add with { MountText = WithCount(add.MountText, count, countTyped) }));
         Panel buttons = Buttons(MoreButton(
         [
@@ -389,15 +389,6 @@ public static class LoadoutEditor
     /// <param name="keep">Keeps a number typed.</param>
     private static FrameworkElement CountField(int game, int? changed, Action<int> keep) =>
         Field(Texts.Get("Weapons.Loadout.CountLabel"), changed ?? game, changed is null ? null : game, 1, HighestCount, "", Texts.Get("Weapons.Loadout.Count.Tip"), keep);
-
-    /// <summary>"Count · ×1" as a field shows it, but not to type in: its tooltip says why.</summary>
-    private static FrameworkElement FixedCount(int count, string why)
-    {
-        var number = new TextBlock { Text = count.ToString(CultureInfo.InvariantCulture), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(3, 0, 1, 0) };
-        number.SetResourceReference(TextBlock.ForegroundProperty, "ink");
-        var parts = new StackPanel { Orientation = Orientation.Horizontal, Children = { new TextBlock { Text = Texts.Get("Weapons.Loadout.CountLabel"), VerticalAlignment = VerticalAlignment.Center }, number } };
-        return Well(parts, why);
-    }
 
     /// <summary>
     /// A field as the mock's: a well holding a label, a number and a unit after it. The number is text until the field

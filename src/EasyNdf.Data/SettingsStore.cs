@@ -72,6 +72,12 @@ public sealed class SettingsStore(string settingsFolder)
         ["undoSteps"] = "60",
         // the language of the app's texts: "en", or the code of an imported language pack
         ["lang"] = "en",
+        // the desktop app's own: the usage readout along the bottom of the window (Settings, Debug), and how often it updates, in seconds
+        ["usageReadout"] = false,
+        ["usageEvery"] = "1",
+        // the desktop app's own: a log file for each session (Settings, Debug), and how many sessions' files are kept
+        ["logOn"] = false,
+        ["logKeep"] = "10",
     };
 
     /// <summary>The settings: what was saved, over the defaults (a setting added in a later version gets its default).</summary>

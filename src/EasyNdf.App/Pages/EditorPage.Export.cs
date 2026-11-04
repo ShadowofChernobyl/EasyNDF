@@ -32,12 +32,24 @@ public partial class EditorPage
         return string.Join(" + ", ruleSets.Concat(armory));
     }
 
-    internal async Task ShowExportOrSource()
+    /// <param name="loading">The load the loading card shows already ("Changes only" running the export first), or 0.</param>
+    internal async Task ShowExportOrSource(int loading = 0)
     {
         if (shown is null) return;
         if (shown.IsExport)
         {
-            SwapKeepingPlace(shown.File);
+            // back to the source: quick, but a big one holds the screen while it is laid out
+            ShownText source = shown.File;
+            int back = StartLoading(Texts.Get("Editor.Loading.Opening", ("file", source.Name)), source.Entry?.Folder ?? "", Texts.Get("Editor.Loading.Showing"));
+            try
+            {
+                await ShowStepThatHolds(back, 0, source.Document.TextLength);
+                if (ReferenceEquals(shown?.File, source) && shown.IsExport) SwapKeepingPlace(source);
+            }
+            finally
+            {
+                EndLoading(back);
+            }
             return;
         }
         if (shown.Entry is not FileEntry entry || Files is null || !Files.Entries.Contains(entry) || entry.Source is null) return;
@@ -61,11 +73,26 @@ public partial class EditorPage
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
 
         Say(Texts.Get("Editor.Working"));
+        int exporting = loading != 0 ? loading
+            : StartLoading(Texts.Get("Editor.Loading.Exporting", ("file", entry.Name)), RulesNameOf(entry), Texts.Get("Editor.Loading.Rules"), Texts.Get("Editor.Loading.ShowingExport"));
+        try
+        {
+            await ShowExportAfterRun(file, entry, typed, current, first, exporting);
+        }
+        finally
+        {
+            if (loading == 0) EndLoading(exporting);
+        }
+    }
+
+    /// <summary>Runs the file's rules and shows the export, the loading card's steps following along.</summary>
+    private async Task ShowExportAfterRun(ShownText file, FileEntry entry, string? typed, string? current, string? first, int loading)
+    {
         RunResult result;
         string exported;
         try
         {
-            FileRunner runner = new(Files, RunSettings.From(AppData.Current.Settings));
+            FileRunner runner = new(Files!, RunSettings.From(AppData.Current.Settings));
             (result, exported) = await Task.Run(() => runner.WouldExport(entry, typed ?? FileContent.Text(entry)));
         }
         catch (Exception error)
@@ -73,6 +100,8 @@ public partial class EditorPage
             Say(Texts.Get("Editor.Export.Failed", ("problem", error.Message)), "warn");
             return;
         }
+        if (!ReferenceEquals(shown, file)) return;
+        await ShowStepThatHolds(loading, 1, exported.Length);
         if (!ReferenceEquals(shown, file)) return;
 
         string edits = Texts.CountWide("Editor.Export.Edits", result.Edits);
@@ -124,11 +153,33 @@ public partial class EditorPage
                 await Messages.Tell(Texts.Get("Editor.Export.RunFirst", ("file", notRun.Name)));
                 return;
             }
-            await ShowExportOrSource();
+        }
+        string changesOf = shown.Name;
+        string rules = shown.Entry is FileEntry ofEntry ? RulesNameOf(ofEntry) : "";
+        int loading = StartLoading(Texts.Get("Editor.Loading.Changes", ("file", changesOf)), rules,
+            Texts.Get("Editor.Loading.Rules"), Texts.Get("Editor.Loading.Finding"), Texts.Get("Editor.Loading.ShowingChanges"));
+        try
+        {
+            await ShowChangesOnly(loading);
+        }
+        finally
+        {
+            EndLoading(loading);
+        }
+    }
+
+    private async Task ShowChangesOnly(int loading)
+    {
+        if (shown is null) return;
+        if (!shown.IsExport)
+        {
+            await ShowExportOrSource(loading);
             if (shown is not { IsExport: true }) return;
         }
 
         ShownText export = shown;
+        await ShowStepThatHolds(loading, 1, export.Document.TextLength);
+        if (!ReferenceEquals(shown, export)) return;
         List<string> before = [.. (export.FirstText ?? export.File.Document.Text).Split('\n')];
         List<string> after = [.. export.Document.Text.Split('\n')];
         ChangedLines? changes = LineComparison.ChangesOnly(before, NdfColouring.BlocksOfLines(before), after, export.Colourizer!.Blocks);
@@ -138,6 +189,8 @@ public partial class EditorPage
             return;
         }
         var document = new TextDocument(string.Join("\n", changes.Lines));
+        await ShowStepThatHolds(loading, 2, document.TextLength);
+        if (!ReferenceEquals(shown, export)) return;
         Swap(new ShownText
         {
             Name = export.Name, Entry = export.Entry, Document = document, Colourizer = new NdfColourizer(document, changes.Blocks),

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 
 namespace EasyNdf.Data.Divisions;
@@ -32,12 +33,51 @@ public static class GeneratedUnitLists
     public static void Fill(IEnumerable<JsonNode?> rules, IReadOnlyDictionary<string, IReadOnlyList<DivisionUnit>> units)
     {
         // a rule made editable (unlocked) is the user's own from then on: its list is not made again over their edits
+        // the packs' numbers for deck codes, so no two of this export's share one
+        var packNumbers = new HashSet<int>();
         foreach (JsonNode? rule in rules.Where(rule => IsGeneratedListRule(rule) && ArmoryPresets.IsLocked(rule)))
         {
-            string division = JsonValues.AsText(rule![DivisionChangeRules.ArmoryKey]![DivisionChangeRules.GeneratedDivisionKey]!["Descriptor"]);
+            JsonObject armory = (JsonObject)rule![DivisionChangeRules.ArmoryKey]!;
+            string division = JsonValues.AsText(armory[DivisionChangeRules.GeneratedDivisionKey]!["Descriptor"]);
             if (!units.TryGetValue(division, out IReadOnlyList<DivisionUnit>? list)) continue;
+            if (armory[DivisionChangeRules.GeneratedPartKey] is JsonNode part)
+            {
+                FillSteelDivisionPart((JsonObject)rule, JsonValues.AsText(part), division, list, packNumbers);
+                continue;
+            }
             foreach (JsonObject action in (rule["Actions"] as JsonArray ?? []).OfType<JsonObject>())
                 if (JsonValues.AsText(action["Target"]) == "UnitRuleList") action["Value"] = ListText(list);
+        }
+    }
+
+    /// <summary>
+    /// Fills one part of a Steel Division 2 generated division with its units (<see cref="DivisionChangeRules.GeneratedParts"/>):
+    /// its entry of DivisionRules.ndf, with a cap for each transport (the highest the game gives it, else 1); its
+    /// PackList, a card count for each unit's pack; a pack for each unit; and each pack's number for deck codes.
+    /// </summary>
+    private static void FillSteelDivisionPart(JsonObject rule, string part, string division, IReadOnlyList<DivisionUnit> list, HashSet<int> packNumbers)
+    {
+        string PackOf(DivisionUnit unit) => DivisionChangeRules.OwnPackOf(division, unit.Unit);
+        switch (part)
+        {
+            case DivisionChangeRules.GeneratedParts.Entry:
+                JsonObject caps = rule[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.TransportCapsKey] as JsonObject ?? [];
+                int CapFor(string transport) => caps[transport] is JsonNode cap && int.TryParse(JsonValues.AsText(cap), out int highest) && highest > 0 ? highest : 1;
+                foreach (JsonObject action in (rule["Actions"] as JsonArray ?? []).OfType<JsonObject>())
+                    action["Value"] = "LastIndex: " + DivisionChangeRules.SteelDivisionEntryText(division, list, CapFor);
+                break;
+            case DivisionChangeRules.GeneratedParts.PackList:
+                foreach (JsonObject action in (rule["Actions"] as JsonArray ?? []).OfType<JsonObject>())
+                    action["Value"] = "MAP [" + string.Join(", ", list.Select(unit => "(~/" + PackOf(unit) + ", " + unit.Cards.ToString(CultureInfo.InvariantCulture) + ")")) + "]";
+                break;
+            case DivisionChangeRules.GeneratedParts.Packs:
+                if (rule["Params"] is JsonObject parameters)
+                    parameters["Text"] = string.Join("\n", list.Select(unit => DivisionChangeRules.PackText(PackOf(unit), unit.Unit)));
+                break;
+            case DivisionChangeRules.GeneratedParts.PackIds:
+                rule["Actions"] = new JsonArray([.. list.Select(unit => (JsonNode)DivisionChangeRules.Action("PackIds", "Insert [array]",
+                    "LastIndex: (" + PackOf(unit) + ", " + DivisionChangeRules.PackNumberFor(PackOf(unit), packNumbers).ToString(CultureInfo.InvariantCulture) + ")"))]);
+                break;
         }
     }
 

@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Windows.Threading;
@@ -28,14 +30,14 @@ public sealed class UndoHistory
     private readonly List<UndoState> redoSteps = [];
     private UndoState now;
 
-    /// <summary>The mods' part of <see cref="now"/>'s comparison text, worked out again only after the mods change.</summary>
-    private string? modsText;
+    /// <summary>The mods' fingerprints (see <see cref="PrintOf"/>) as they are now, worked out again only after the mods change.</summary>
+    private IReadOnlyList<string>? modsPrints;
 
     /// <summary>
-    /// The mods as they were when <see cref="modsText"/> was worked out (see <see cref="ShapeOf"/>), to tell whether
+    /// The mods as they were when <see cref="modsPrints"/> was worked out (see <see cref="ShapeOf"/>), to tell whether
     /// opening another mod came with a mod added or taken away; null when not known.
     /// </summary>
-    private List<object?>? modsTextShape;
+    private List<object?>? modsPrintsShape;
 
     /// <summary>While a filed state is put back, the changes that makes are not filed.</summary>
     private bool isPuttingBack;
@@ -69,17 +71,17 @@ public sealed class UndoHistory
 
     /// <summary>
     /// The mods have changed: the next <see cref="Mark"/> compares them again. Tuned for speed: opening another mod
-    /// keeps the mods' text rather than writing it out again (see <see cref="ShapeOf"/>). Keep it that way when tidying.
+    /// keeps the mods' fingerprints rather than working them out again (see <see cref="ShapeOf"/>). Keep it that way when tidying.
     /// </summary>
-    /// <param name="change">What changed. Opening another mod changes nothing in the mods themselves, so their text is
-    /// kept: writing out every mod's rules again (some megabytes for a large mod) after each click on a mod took about
-    /// a third of the click, with the memory it took to clean up. It is kept only while the mods are the same ones,
+    /// <param name="change">What changed. Opening another mod changes nothing in the mods themselves, so their fingerprints
+    /// are kept: writing out every mod's rules again (some megabytes for a large mod) after each click on a mod took about
+    /// a third of the click, with the memory it took to clean up. They are kept only while the mods are the same ones,
     /// holding as many rule sets, rules and changes as before (see <see cref="ShapeOf"/>), as a mod is opened just
     /// after it is added (New, Make Copy) without telling of the mod added.</param>
     public void ModsChanged(ModsChange change)
     {
-        bool onlyOpened = change.OpenModChanged && !change.PresetsAdded && modsTextShape is not null && ShapeOf(data.Mods).SequenceEqual(modsTextShape);
-        if (!onlyOpened) modsText = null;
+        bool onlyOpened = change.OpenModChanged && !change.PresetsAdded && modsPrintsShape is not null && ShapeOf(data.Mods).SequenceEqual(modsPrintsShape);
+        if (!onlyOpened) modsPrints = null;
         Mark();
     }
 
@@ -98,14 +100,17 @@ public sealed class UndoHistory
     public void Mark()
     {
         if (isPuttingBack || IsPaused) return;
-        string modsNow = ModsTextNow();
+        IReadOnlyList<string> modsNow = ModsPrintsNow();
         string foldersText = FoldersText(data);
         // most changes to the list are not the user's (a file read, a status shown): this check needs no copying
-        if (modsNow == now.ModsText && foldersText == now.FoldersText && RowsAreAsFiled()) return;
+        bool sameMods = SamePrints(modsNow, now.ModPrints);
+        if (sameMods && foldersText == now.FoldersText && RowsAreAsFiled()) return;
         List<UndoRow> rows = [.. files.Entries.Select(UndoRow.Of)];
         string rowsText = RowsText(rows);
-        if (modsNow == now.ModsText && foldersText == now.FoldersText && rowsText == now.RowsText) return;
+        if (sameMods && foldersText == now.FoldersText && rowsText == now.RowsText) return;
 
+        // the mods are copied only now that they are filed: a click that changes nothing copies nothing
+        List<FiledMod> filed = File(data.Mods, modsNow, now);
         // one action is one step, even when it saves in several parts
         if (!isInOneAction)
         {
@@ -118,8 +123,7 @@ public sealed class UndoHistory
             Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.Background, () => isInOneAction = false);
         }
         redoSteps.Clear();
-        // the mods are copied only now that they are filed: a click that changes nothing copies nothing
-        now = new UndoState(modsNow, [.. data.Mods.Select(m => m.DeepCopy())], rows, rowsText, foldersText);
+        now = new UndoState(filed, rows, rowsText, foldersText);
         Changed?.Invoke();
     }
 
@@ -142,6 +146,7 @@ public sealed class UndoHistory
             ChangePlace.Rules => Texts.Get("Main.Undo.Rules"),
             _ => Texts.Get("Main.Undo.Files"),
         };
+        SessionLog.Write("Undo", undone);
         return new UndoResult(undone, IsDone: true);
     }
 
@@ -163,6 +168,7 @@ public sealed class UndoHistory
             ChangePlace.Rules => Texts.Get("Main.Redo.Rules"),
             _ => Texts.Get("Main.Redo.Files"),
         };
+        SessionLog.Write("Redo", redone);
         return new UndoResult(redone, IsDone: true);
     }
 
@@ -172,30 +178,17 @@ public sealed class UndoHistory
     /// </summary>
     private void OpenModChanged(UndoState one, UndoState other)
     {
-        Dictionary<string, string> before = TextByMod(one.ModsText), after = TextByMod(other.ModsText);
-        string? changed = after.Keys.FirstOrDefault(name => before.TryGetValue(name, out string? text) && text != after[name]);
+        Dictionary<string, string> before = PrintByMod(one), after = PrintByMod(other);
+        string? changed = after.Keys.FirstOrDefault(name => before.TryGetValue(name, out string? print) && print != after[name]);
         if (changed is null || changed == data.OpenMod.Name || data.ModStore.Find(changed) is not Mod mod) return;
         data.Open(mod);
     }
 
-    /// <summary>A <see cref="ModsText"/> split into each mod's part, by the mod's name.</summary>
-    private static Dictionary<string, string> TextByMod(string modsText)
+    /// <summary>A state's mods' fingerprints (see <see cref="PrintOf"/>), by the mod's name.</summary>
+    private static Dictionary<string, string> PrintByMod(UndoState state)
     {
         var byMod = new Dictionary<string, string>(StringComparer.Ordinal);
-        string? mod = null;
-        var text = new StringBuilder();
-        foreach (string line in modsText.Split('\n'))
-        {
-            if (line.StartsWith("mod ", StringComparison.Ordinal))
-            {
-                if (mod is not null) byMod[mod] = text.ToString();
-                mod = line[4..];
-                text.Clear();
-                continue;
-            }
-            text.Append(line).Append('\n');
-        }
-        if (mod is not null) byMod[mod] = text.ToString();
+        foreach (FiledMod mod in state.Mods) byMod[mod.Copy.Name] = mod.Print;
         return byMod;
     }
 
@@ -209,25 +202,27 @@ public sealed class UndoHistory
     /// </summary>
     private static ChangePlace WhereChanged(UndoState one, UndoState other)
     {
-        if (ArmoryPart(one.ModsText) != ArmoryPart(other.ModsText)) return ChangePlace.Armory;
-        if (one.ModsText != other.ModsText || StackPart(one.FoldersText) != StackPart(other.FoldersText)) return ChangePlace.Rules;
+        if (ArmoryPart(one.Mods) != ArmoryPart(other.Mods)) return ChangePlace.Armory;
+        if (!SamePrints(one.ModPrints, other.ModPrints) || StackPart(one.FoldersText) != StackPart(other.FoldersText)) return ChangePlace.Rules;
         return ChangePlace.Files;
     }
 
     /// <summary>The mods' order and which are on, from a <see cref="FoldersText"/>.</summary>
     private static string StackPart(string foldersText) => JsonNode.Parse(foldersText)?["stack"]?.ToJsonString() ?? "";
 
-    /// <summary>The lines of a <see cref="ModsText"/> for the division changes and units added, with the mods they are in.</summary>
-    private static string ArmoryPart(string modsText)
+    /// <summary>The filed mods' division changes, units added and unit changes, with the mods they are in.</summary>
+    private static string ArmoryPart(IEnumerable<FiledMod> mods)
     {
         // each line with its mod's name, so adding or renaming a mod without divisions or units is not an Armory change
         var part = new StringBuilder();
-        string mod = "";
-        foreach (string line in modsText.Split('\n'))
+        foreach (Mod mod in mods.Select(filed => filed.Copy))
         {
-            if (line.StartsWith("mod ", StringComparison.Ordinal)) mod = line;
-            else if (line.StartsWith("division ", StringComparison.Ordinal) || line.StartsWith("unit ", StringComparison.Ordinal))
-                part.Append(mod).Append('|').Append(line).Append('\n');
+            foreach (Data.Divisions.ModDivision division in mod.Divisions)
+                part.Append(mod.Name).Append("|division ").Append(division.ToJson().ToJsonString()).Append('\n');
+            foreach (Data.Units.ModUnit unit in mod.Units)
+                part.Append(mod.Name).Append("|unit ").Append(unit.ToJson().ToJsonString()).Append('\n');
+            foreach (Data.Units.UnitEdit edit in mod.UnitEdits)
+                part.Append(mod.Name).Append("|unit edit ").Append(edit.ToJson().ToJsonString()).Append('\n');
         }
         return part.ToString();
     }
@@ -239,8 +234,8 @@ public sealed class UndoHistory
         redoSteps.Clear();
         // the next change is a step of its own, even within the moment of the last one
         isInOneAction = false;
-        modsText = null;
-        modsTextShape = null;
+        modsPrints = null;
+        modsPrintsShape = null;
         now = Here();
         Changed?.Invoke();
     }
@@ -248,14 +243,14 @@ public sealed class UndoHistory
     /// <summary>The state as it is now.</summary>
     private UndoState Here()
     {
-        string modsNow = ModsTextNow();
+        IReadOnlyList<string> modsNow = ModsPrintsNow();
         List<UndoRow> rows = [.. files.Entries.Select(UndoRow.Of)];
-        return new UndoState(modsNow, [.. data.Mods.Select(m => m.DeepCopy())], rows, RowsText(rows), FoldersText(data));
+        return new UndoState(File(data.Mods, modsNow, null), rows, RowsText(rows), FoldersText(data));
     }
 
     /// <summary>
-    /// Puts a filed state back (the HTML app's <c>histApply</c>). The mods get copies of the filed ones, so the history
-    /// keeps its own. A mod that comes back is opened; when the open mod is gone, the first one is.
+    /// Puts a filed state back (the HTML app's <c>histApply</c>). The mods get unpacked copies of the filed ones, so the
+    /// history keeps its own, packed. A mod that comes back is opened; when the open mod is gone, the first one is.
     /// </summary>
     private void PutBack(UndoState state)
     {
@@ -263,7 +258,7 @@ public sealed class UndoHistory
         try
         {
             var hadMods = data.Mods.Select(m => m.Name).ToHashSet();
-            List<Mod> mods = [.. state.Mods.Select(m => m.DeepCopy())];
+            List<Mod> mods = [.. state.Mods.Select(m => m.Copy.DeepCopy())];
             // the watermarks stay as they are now, as in the HTML app
             foreach (Mod mod in mods)
                 if (data.ModStore.Find(mod.Name) is Mod current) mod.Watermark = current.Watermark;
@@ -276,8 +271,8 @@ public sealed class UndoHistory
             data.SaveState();
 
             files.PutBack([.. state.Rows.Select(row => row.ToSaved())]);
-            modsText = state.ModsText;
-            modsTextShape = null;
+            modsPrints = state.ModPrints;
+            modsPrintsShape = null;
             // not as another mod opened: the rows keep the presets they had
             data.TellModsChanged();
         }
@@ -310,15 +305,15 @@ public sealed class UndoHistory
         if (folders["stack"] is JsonObject stack) Mods.ModStack.PutBack(stack);
     }
 
-    /// <summary>The mods' text (see <see cref="ModsText"/>), worked out again when the mods have changed since.</summary>
-    private string ModsTextNow()
+    /// <summary>The mods' fingerprints (see <see cref="PrintOf"/>), worked out again when the mods have changed since.</summary>
+    private IReadOnlyList<string> ModsPrintsNow()
     {
-        if (modsText is null)
+        if (modsPrints is null)
         {
-            modsText = ModsText(data.Mods);
-            modsTextShape = ShapeOf(data.Mods);
+            modsPrints = [.. data.Mods.Select(PrintOf)];
+            modsPrintsShape = ShapeOf(data.Mods);
         }
-        return modsText;
+        return modsPrints;
     }
 
     /// <summary>
@@ -333,36 +328,38 @@ public sealed class UndoHistory
         {
             shape.AddRange([mod, mod.Name, mod.Game, mod.Presets, mod.Presets.Count]);
             foreach (ModPreset preset in mod.Presets)
-                shape.AddRange([preset, preset.Name, preset.Rules, preset.Rules.Count, preset.AppliesTo, preset.AppliesTo?.Count]);
+                // the version and count rather than the rules themselves: reading them would unpack every rule set put away
+                shape.AddRange([preset, preset.Name, preset.RulesVersion, preset.RuleCount, preset.AppliesTo, preset.AppliesTo?.Count]);
             shape.AddRange([mod.Divisions, mod.Divisions.Count, mod.Units, mod.Units.Count, mod.UnitEdits, mod.UnitEdits.Count,
                 mod.WeaponEdits, mod.WeaponEdits.Count, mod.Weapons, mod.Weapons.Count]);
         }
         return shape;
     }
 
-    /// <summary>The mods' names, games, presets, rules, division, unit and weapon changes as one text, to tell whether they changed.</summary>
-    private static string ModsText(IEnumerable<Mod> mods)
+    /// <summary>
+    /// A fingerprint of a mod's name, game, presets, rules, division, unit and weapon changes, to tell whether it changed.
+    /// Tuned for memory: each state's mods were compared by their whole text, held unpacked for the state now even with
+    /// nothing to undo: some 90 MB for mods of 65 MB on disk. A fingerprint takes a few bytes, and no such text is ever
+    /// put together. Keep it that way when tidying.
+    /// </summary>
+    private static string PrintOf(Mod mod)
     {
-        var text = new StringBuilder();
-        foreach (Mod mod in mods)
+        using var print = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        void Add(string text) => print.AppendData(MemoryMarshal.AsBytes(text.AsSpan()));
+        Add("mod " + mod.Name + "\n");
+        Add("game " + mod.Game.Id + "\n");
+        foreach (ModPreset preset in mod.Presets)
         {
-            text.Append("mod ").Append(mod.Name).Append('\n');
-            text.Append("game ").Append(mod.Game.Id).Append('\n');
-            foreach (ModPreset preset in mod.Presets)
-                text.Append("preset ").Append(preset.Name).Append('\n').Append(preset.Rules.ToJsonString()).Append('\n')
-                    .Append("applies to ").Append(preset.AppliesTo is null ? "-" : string.Join("|", preset.AppliesTo)).Append('\n');
-            foreach (Data.Divisions.ModDivision division in mod.Divisions)
-                text.Append("division ").Append(division.ToJson().ToJsonString()).Append('\n');
-            foreach (Data.Units.ModUnit unit in mod.Units)
-                text.Append("unit ").Append(unit.ToJson().ToJsonString()).Append('\n');
-            foreach (Data.Units.UnitEdit edit in mod.UnitEdits)
-                text.Append("unit edit ").Append(edit.ToJson().ToJsonString()).Append('\n');
-            foreach (Data.Weapons.WeaponEdit edit in mod.WeaponEdits)
-                text.Append("weapon edit ").Append(edit.ToJson().ToJsonString()).Append('\n');
-            foreach (Data.Weapons.ModWeapon weapon in mod.Weapons)
-                text.Append("weapon ").Append(weapon.ToJson().ToJsonString()).Append('\n');
+            Add("preset " + preset.Name + "\n");
+            Add(preset.RulesText());
+            Add("\napplies to " + (preset.AppliesTo is null ? "-" : string.Join("|", preset.AppliesTo)) + "\n");
         }
-        return text.ToString();
+        foreach (Data.Divisions.ModDivision division in mod.Divisions) Add("division " + division.ToJson().ToJsonString() + "\n");
+        foreach (Data.Units.ModUnit unit in mod.Units) Add("unit " + unit.ToJson().ToJsonString() + "\n");
+        foreach (Data.Units.UnitEdit edit in mod.UnitEdits) Add("unit edit " + edit.ToJson().ToJsonString() + "\n");
+        foreach (Data.Weapons.WeaponEdit edit in mod.WeaponEdits) Add("weapon edit " + edit.ToJson().ToJsonString() + "\n");
+        foreach (Data.Weapons.ModWeapon weapon in mod.Weapons) Add("weapon " + weapon.ToJson().ToJsonString() + "\n");
+        return Convert.ToHexString(print.GetHashAndReset());
     }
 
     /// <summary>
@@ -388,8 +385,70 @@ public sealed class UndoHistory
     private static string RowsText(IEnumerable<UndoRow> rows) =>
         string.Join("\n", rows.Select(r => r.Entry.Id + "|" + (r.On ? 1 : 0) + "|" + r.ExportFolder));
 
-    /// <summary>One filed state: the mods (copies), the file rows, the mods' folders, and the texts that compare them.</summary>
-    private sealed record UndoState(string ModsText, IReadOnlyList<Mod> Mods, IReadOnlyList<UndoRow> Rows, string RowsText, string FoldersText);
+    /// <summary>Whether two lists of the mods' fingerprints are the same.</summary>
+    private static bool SamePrints(IReadOnlyList<string> one, IReadOnlyList<string> other) =>
+        ReferenceEquals(one, other) || one.Count == other.Count && one.Zip(other).All(pair => pair.First == pair.Second);
+
+    /// <summary>
+    /// The mods as filed: copies with their rules packed. Tuned for speed and memory: each step kept every mod as JSON
+    /// objects, some hundreds of MB a step for a mod of 8,000 rules (WARNO ACTUAL); packed, a few MB. A mod as it was in
+    /// the state before shares that state's packed rules, so a change to one mod packs that one only. Keep it that way
+    /// when tidying.
+    /// </summary>
+    /// <param name="mods">The mods now.</param>
+    /// <param name="prints">Their fingerprints (see <see cref="PrintOf"/>).</param>
+    /// <param name="before">The state filed before, whose packed mods can be shared; null for none.</param>
+    private static List<FiledMod> File(IReadOnlyList<Mod> mods, IReadOnlyList<string> prints, UndoState? before)
+    {
+        var earlier = new Dictionary<string, FiledMod>(StringComparer.Ordinal);
+        if (before is not null)
+            foreach (FiledMod mod in before.Mods) earlier[mod.Copy.Name] = mod;
+        var filed = new List<FiledMod>(mods.Count);
+        for (int i = 0; i < mods.Count; i++)
+        {
+            bool same = earlier.TryGetValue(mods[i].Name, out FiledMod? was) && was.Print == prints[i];
+            filed.Add(new FiledMod(mods[i].DeepCopy(packRules: true, sameRulesAs: same ? was!.Copy : null), prints[i]));
+        }
+        return filed;
+    }
+
+    /// <summary>A mod as filed: a copy with its rules packed, and its fingerprint (see <see cref="PrintOf"/>).</summary>
+    private sealed record FiledMod(Mod Copy, string Print);
+
+    /// <summary>One filed state: the mods (packed copies), the file rows, the mods' folders, and what compares them.</summary>
+    private sealed class UndoState(IReadOnlyList<FiledMod> mods, IReadOnlyList<UndoRow> rows, string rowsText, string foldersText)
+    {
+        public IReadOnlyList<FiledMod> Mods => mods;
+
+        /// <summary>Each mod's fingerprint (see <see cref="PrintOf"/>), in the mods' order.</summary>
+        public IReadOnlyList<string> ModPrints { get; } = [.. mods.Select(mod => mod.Print)];
+
+        public IReadOnlyList<UndoRow> Rows => rows;
+
+        public string RowsText => rowsText;
+
+        public string FoldersText => foldersText;
+    }
+
+    /// <summary>
+    /// About how much memory the history takes, for the usage readout: the packed rules of each step's mods (counted once
+    /// where steps share them), and the texts the file rows are compared by. The copies' division, unit and weapon changes are left out: they are small beside the rules.
+    /// </summary>
+    public long AboutBytes()
+    {
+        var counted = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        long bytes = 0;
+        foreach (UndoState state in undoSteps.Concat(redoSteps).Append(now))
+        {
+            foreach (FiledMod mod in state.Mods)
+            {
+                foreach (ModPreset preset in mod.Copy.Presets)
+                    if (preset.PackedRules is PackedBytes packed && counted.Add(packed)) bytes += packed.PackedLength;
+            }
+            if (counted.Add(state.RowsText)) bytes += 2L * state.RowsText.Length;
+        }
+        return bytes;
+    }
 
     /// <summary>A file row as filed: the row, its On box and its export folder.</summary>
     private sealed record UndoRow(FileEntry Entry, bool On, string? ExportFolder)

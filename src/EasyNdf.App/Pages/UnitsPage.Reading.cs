@@ -9,7 +9,7 @@ namespace EasyNdf.App.Pages;
 
 /// <summary>
 /// While a source is read: the tab's layout is there already, its list empty, and over the dimmed page a card says
-/// what is read and from where, with a bar that fills block by block and the four steps ticked off as they finish.
+/// what is read and from where, with a bar that fills block by block and a line naming the step under way.
 /// </summary>
 public partial class UnitsPage
 {
@@ -43,9 +43,9 @@ public partial class UnitsPage
         MessageArea.Visibility = Visibility.Collapsed;
         CountText.Text = "";
         ShowEmptyLayout();
-        ReadingTitle.Text = Texts.Get("Units.Reading.Title", ("name", source.Name));
-        ReadingWhere.Text = source.Folder;
-        ReadingBar.Fraction = 0;
+        ReadingCard.TitleText.Text = Texts.Get("Units.Reading.Title", ("name", source.Name));
+        ReadingCard.WhereText.Text = source.Folder;
+        ReadingCard.Bar.Fraction = 0;
         isReading = true;
         ShowReadingCover();
         ShowReadingStep(UnitReadStep.FindingFiles);
@@ -72,26 +72,23 @@ public partial class UnitsPage
     /// <summary>A step has begun: the bar is at least at its start, and the steps before it are ticked.</summary>
     private void ShowReadingStep(UnitReadStep step)
     {
+        // the mods being applied meanwhile give the card back to the source's read
+        applyingRead = 0;
         (double start, double end) = ShareOf(step);
-        ReadingBar.Fraction = Math.Max(ReadingBar.Fraction, start);
+        ReadingCard.Bar.Fraction = Math.Max(ReadingCard.Bar.Fraction, start);
         readingStepEnd = end;
         int now = Array.IndexOf(ReadingStepsInOrder, step);
-        ReadingStepCount.Text = Texts.Get("Units.Reading.StepCount", ("step", Texts.Number(now + 1)), ("steps", Texts.Number(ReadingStepsInOrder.Length)));
-        ReadingSteps.Children.Clear();
-        for (int i = 0; i < ReadingStepsInOrder.Length; i++)
-            ReadingSteps.Children.Add(StepLine(ReadingStepsInOrder[i], i < now ? StepState.Done : i == now ? StepState.Now : StepState.ToCome));
+        ReadingCard.StepCountText.Text = Texts.Get("Units.Reading.StepCount", ("step", Texts.Number(now + 1)), ("steps", Texts.Number(ReadingStepsInOrder.Length)));
+        ShowStepLine(Texts.Get(StepTextName(step)));
     }
 
-    private enum StepState { Done, Now, ToCome }
-
-    /// <summary>A step's line: ✓ in the accent colour once done, ● and bold in the accent colour while it runs, ○ dim before.</summary>
-    private static DockPanel StepLine(UnitReadStep step, StepState state)
+    /// <summary>The card's one line under the bar: the step under way, in the accent colour.</summary>
+    private void ShowStepLine(string step)
     {
-        var mark = new TextBlock { Text = state switch { StepState.Done => "✓", StepState.Now => "●", _ => "○" }, Width = 14, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
-        var name = new TextBlock { Text = Texts.Get(StepTextName(step)), FontWeight = state == StepState.Now ? FontWeights.Bold : FontWeights.Normal };
-        mark.SetResourceReference(TextBlock.ForegroundProperty, state == StepState.ToCome ? "muted" : "accent");
-        name.SetResourceReference(TextBlock.ForegroundProperty, state switch { StepState.Done => "ink", StepState.Now => "accent", _ => "muted" });
-        return new DockPanel { Margin = new Thickness(0, 2, 0, 2), Children = { mark, name } };
+        var line = new TextBlock { Text = step };
+        line.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+        ReadingCard.StepLines.Children.Clear();
+        ReadingCard.StepLines.Children.Add(line);
     }
 
     private static string StepTextName(UnitReadStep step) => step switch
@@ -106,12 +103,13 @@ public partial class UnitsPage
     private void CreepReadingBar()
     {
         double oneBlock = 1.0 / BlockBar.Blocks;
-        if (ReadingBar.Fraction + oneBlock < readingStepEnd - oneBlock / 2) ReadingBar.Fraction += oneBlock;
+        if (ReadingCard.Bar.Fraction + oneBlock < readingStepEnd - oneBlock / 2) ReadingCard.Bar.Fraction += oneBlock;
     }
 
     /// <summary>Hides the reading card: the read is done, or a message takes its place.</summary>
     private void StopReading()
     {
+        applyingRead = 0;
         readingTimer.Stop();
         isReading = false;
         ShowReadingCover();
@@ -130,11 +128,17 @@ public partial class UnitsPage
     {
         ReadingCardHolder.Visibility = isReading ? Visibility.Visible : Visibility.Collapsed;
         if (MainView.Find(this) is not MainView main) return;
+        if (!(isReading && IsVisible))
+        {
+            // another page's card (the Editor's) may be in the cover now: it is left as it is
+            if (ReferenceEquals(main.ReadingCoverCard.Content, ReadingCard)) main.ReadingCover.Visibility = Visibility.Collapsed;
+            return;
+        }
         if (!ReferenceEquals(main.ReadingCoverCard.Content, ReadingCard))
         {
             ReadingCardHolder.Children.Remove(ReadingCard);
             main.ReadingCoverCard.Content = ReadingCard;
         }
-        main.ReadingCover.Visibility = isReading && IsVisible ? Visibility.Visible : Visibility.Collapsed;
+        main.ReadingCover.Visibility = Visibility.Visible;
     }
 }

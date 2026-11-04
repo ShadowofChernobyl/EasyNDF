@@ -84,6 +84,12 @@ public sealed class FileEntry
     public int IdleRuleCount { get; set; }
 
     /// <summary>
+    /// How many values in the file more than one mod changes, or descriptors more than one mod makes, as the last run of
+    /// it found them (the Mod Conflicts window's). The app sets it, as it keeps the conflicts.
+    /// </summary>
+    public int ConflictCount { get; set; }
+
+    /// <summary>
     /// What the file declares and what each declaration refers to, once the file has been read; null before. The File
     /// Editor's descriptor viewer follows references from one file to another with it.
     /// </summary>

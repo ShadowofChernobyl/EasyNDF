@@ -321,5 +321,21 @@
   "Settings.Fonts.ThemeFont": "Theme's font ({font})",
   "Settings.Clear.Confirm": "Clear All Data",
   "Settings.RemoveLanguage.Off": "Only a language pack you imported can be removed; this language comes with EasyNDF",
-  "Settings.HelpButton.Name": "Help on the Settings tab"
+  "Settings.HelpButton.Name": "Help on the Settings tab",
+  "Settings.Debug": "Debug",
+  "Settings.UsageReadout": "Show usage readout",
+  "Settings.UsageReadout.Note": "A bar along the bottom of the window: CPU, memory, graphics card, disk and how quickly the app answers, kept up to date as you work. It measures only while it is on.",
+  "Settings.UsageEvery": "Update every",
+  "Settings.UsageEvery.Note": "How often the usage readout measures.",
+  "Settings.UsageEvery.Half": "Half a second",
+  "Settings.UsageEvery.One": "1 second",
+  "Settings.UsageEvery.Two": "2 seconds",
+  "Settings.KeepLog": "Keep a log",
+  "Settings.KeepLog.Note": "A file for each session, with a line for each job and what it found, each change saved to a mod, mods switched on or off, Undo and Redo, settings changed, tabs shown, errors and slow moments. For finding out what happened when.",
+  "Settings.LogKeep": "Sessions kept",
+  "Settings.LogKeep.Note": "How many sessions' log files are kept; the oldest goes when a new session starts.",
+  "Settings.LogFiles": "Log files",
+  "Settings.LogFiles.Note": "The logs are kept in the data folder's Logs.",
+  "Settings.OpenLogFolder": "Open Log Folder",
+  "Settings.OpenLogFolder.Tip": "Shows the log files in File Explorer"
 }

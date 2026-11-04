@@ -19,7 +19,32 @@ public static class JsonFiles
     };
 
     /// <summary>The text of a JSON value, as the app writes it.</summary>
-    public static string ToText(JsonNode? value) => value is null ? "null" : value.ToJsonString(Options);
+    public static string ToText(JsonNode? value) => value is null ? "null" : TextOf(value, Options);
+
+    /// <summary>
+    /// Tuned for memory: a JSON value's text as UTF-8, as <see cref="JsonNode.ToJsonString"/> writes it, but in memory of
+    /// its own. ToJsonString borrows .NET's shared buffers and hands them back for reuse, where they stay: writing out
+    /// WARNO ACTUAL's rules left some 33 MB of them held for good (Paul: "Other .NET data" should stay small). Keep it
+    /// that way when tidying.
+    /// </summary>
+    public static byte[] Utf8Of(JsonNode value, JsonSerializerOptions? options = null)
+    {
+        var written = new System.Buffers.ArrayBufferWriter<byte>();
+        var writerOptions = new JsonWriterOptions
+        {
+            Encoder = options?.Encoder,
+            Indented = options?.WriteIndented ?? false,
+            IndentSize = options?.IndentSize ?? 2,
+            // as deep as ToJsonString writes: 64 unless the options say otherwise (a writer's own default is 1,000)
+            MaxDepth = options?.MaxDepth is int depth and > 0 ? depth : 64,
+        };
+        using (var writer = new Utf8JsonWriter(written, writerOptions))
+            value.WriteTo(writer, options);
+        return written.WrittenSpan.ToArray();
+    }
+
+    /// <summary>A JSON value's text, as <see cref="JsonNode.ToJsonString"/> writes it, without .NET's shared buffers (see <see cref="Utf8Of"/>).</summary>
+    public static string TextOf(JsonNode value, JsonSerializerOptions? options = null) => System.Text.Encoding.UTF8.GetString(Utf8Of(value, options));
 
     /// <summary>
     /// JSON text made by <see cref="ToText"/> as it is when read back and made again: the same text, unless it holds half

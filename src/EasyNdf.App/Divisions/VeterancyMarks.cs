@@ -91,7 +91,32 @@ public static class VeterancyMarks
             };
             marks.Children.Add(place);
         }
-        return StripAround(marks);
+        Bevel strip = StripAround(marks);
+        // a tile's strip takes the height its column leaves it, under the transport button too: the marks are drawn
+        // shorter to fit rather than push the button below the picture
+        strip.Child = null;
+        strip.Child = new Squeezable { Child = new Viewbox { Child = marks, Stretch = Stretch.Fill, StretchDirection = StretchDirection.DownOnly } };
+        return strip;
+    }
+
+    /// <summary>
+    /// Holds the marks without asking for any height, so the strip can be shorter than its marks would like: it is given
+    /// what its column has left, and the marks are drawn shorter to fit.
+    /// </summary>
+    private sealed class Squeezable : Decorator
+    {
+        protected override Size MeasureOverride(Size constraint)
+        {
+            if (Child is null) return default;
+            Child.Measure(new Size(constraint.Width, double.PositiveInfinity));
+            return new Size(Child.DesiredSize.Width, 0);
+        }
+
+        protected override Size ArrangeOverride(Size arrangeSize)
+        {
+            Child?.Arrange(new Rect(arrangeSize));
+            return arrangeSize;
+        }
     }
 
     /// <summary>
@@ -151,7 +176,8 @@ public static class VeterancyMarks
     /// keeps one width whatever is written, so the card does not change size as numbers are typed.
     /// </summary>
     /// <param name="counts">What to write beside each level's mark, lowest first: a number, "?" or nothing.</param>
-    public static Bevel CountStrip(IReadOnlyList<string> counts)
+    /// <param name="tips">Each level's tooltip, lowest first, in place of the one its count makes (Steel Division 2's, by phase); null for those.</param>
+    public static Bevel CountStrip(IReadOnlyList<string> counts, IReadOnlyList<string>? tips = null)
     {
         var marks = new System.Windows.Controls.Primitives.UniformGrid { Columns = 1, Width = CountStripWidth };
         for (int level = counts.Count - 1; level >= 0; level--)
@@ -166,7 +192,7 @@ public static class VeterancyMarks
                 Child = row,
                 Padding = new Thickness(3, 0, 0, 0),
                 Opacity = counts[level] == "0" ? NotOfferedOpacity : 1,
-                ToolTip = int.TryParse(counts[level], out int units) ? CountTip(level, units) : null,
+                ToolTip = tips is not null && level < tips.Count ? tips[level] : int.TryParse(counts[level], out int units) ? CountTip(level, units) : null,
             };
             marks.Children.Add(place);
         }

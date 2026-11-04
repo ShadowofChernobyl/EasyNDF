@@ -278,7 +278,15 @@ public partial class SwapWeaponWindow : UserControl
         chosen(picked.Weapon, asCopy);
     }
 
-    private void Close() => Visibility = Visibility.Collapsed;
+    /// <summary>
+    /// Closes the window, letting go of its list of weapons: nothing of a closed window is on screen, and opening it
+    /// fills the list again.
+    /// </summary>
+    private void Close()
+    {
+        Visibility = Visibility.Collapsed;
+        ChoiceList.ItemsSource = null;
+    }
 
     private void CancelClicked(object sender, RoutedEventArgs e) => Close();
 

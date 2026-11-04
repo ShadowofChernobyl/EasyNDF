@@ -406,7 +406,7 @@ public partial class WeaponsArmory : UserControl
             return;
         }
         int at = shown.FindIndex(weapon => weapon.Descriptor == selected);
-        if (at >= 0 && VisualsIn<VirtualizingStackPanel>(CardsList).FirstOrDefault() is VirtualizingStackPanel rows)
+        if (at >= 0 && VisualsIn<LinesPanel>(CardsList).FirstOrDefault() is LinesPanel rows)
             rows.BringIndexIntoViewPublic(at / Math.Max(1, cardColumns));
     }
 

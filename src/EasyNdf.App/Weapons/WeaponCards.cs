@@ -11,7 +11,11 @@ namespace EasyNdf.App.Weapons;
 /// <param name="Weapons">The weapons on the row, left to right.</param>
 /// <param name="Columns">How many cards fit across, so a short last row keeps the others' card width.</param>
 /// <param name="IsLast">Whether it is the last row, which keeps the gap under it.</param>
-public sealed record WeaponCardRow(IReadOnlyList<Weapon> Weapons, int Columns, bool IsLast);
+public sealed record WeaponCardRow(IReadOnlyList<Weapon> Weapons, int Columns, bool IsLast) : ILineKind
+{
+    /// <summary>The last row keeps a gap under it, so it is taller than the others.</summary>
+    public object Kind => IsLast;
+}
 
 /// <summary>
 /// One weapon as a card on the Weapons sub-tab, as the mock's: a line with its damage level at the left and how many

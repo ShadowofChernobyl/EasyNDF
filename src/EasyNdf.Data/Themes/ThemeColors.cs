@@ -110,7 +110,18 @@ public static partial class ThemeColors
         colors["scroll-track"] = ScrollTrack(colors);
         colors["meter"] = Meter(colors);
         (colors["side-a"], colors["side-b"]) = Sides(colors);
+        colors["usage-waiting"] = Waiting(colors);
+        colors["usage-modded"] = Modded(colors);
     }
+
+    /// <summary>
+    /// The usage readout's colour for memory waiting to be freed: a cyan no other part of the Memory card uses, darker on
+    /// a light theme.
+    /// </summary>
+    public static string Waiting(IReadOnlyDictionary<string, string> colors) => IsLight(colors["bg"]) ? "#1b8189" : "#4cc4cc";
+
+    /// <summary>The usage readout's colour for the Armory's units as the mods make them: an indigo no other part uses.</summary>
+    public static string Modded(IReadOnlyDictionary<string, string> colors) => IsLight(colors["bg"]) ? "#5a46c4" : "#8f7bea";
 
     /// <summary>
     /// The Units tab's bar colour: the accent, as Slate, Paper and Cartridge show it; but where the accent is the "ok"

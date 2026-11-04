@@ -315,7 +315,8 @@ public static class DivisionExtras
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(picture, target, overwrite: true);
             copied++;
-            if (path.StartsWith(DivisionChangeRules.EmblemFolder, StringComparison.OrdinalIgnoreCase)) emblems++;
+            if (path.StartsWith(DivisionChangeRules.EmblemFolder, StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith(DivisionChangeRules.SteelDivisionEmblemFolder, StringComparison.OrdinalIgnoreCase)) emblems++;
         }
         return copied;
     }

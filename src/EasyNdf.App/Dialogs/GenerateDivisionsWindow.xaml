@@ -118,21 +118,40 @@
                                             </Grid.ColumnDefinitions>
                                             <StackPanel>
                                                 <CheckBox x:Name="UnlimitedTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Generate.Unlimited}" ToolTip="{t:Text Divisions.Generate.Unlimited.Tip}" Click="TickClicked" />
-                                                <TextBlock Style="{StaticResource Note}" Text="{t:Text Divisions.Generate.Unlimited.Note}" Margin="22,0,0,7" />
+                                                <TextBlock x:Name="UnlimitedNote" Style="{StaticResource Note}" Text="{t:Text Divisions.Generate.Unlimited.Note}" Margin="22,0,0,7" />
                                                 <CheckBox x:Name="SameTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Generate.Same}" ToolTip="{t:Text Divisions.Generate.Same.Tip}" Click="TickClicked" />
                                                 <TextBlock Style="{StaticResource Note}" Text="{t:Text Divisions.Generate.Same.Note}" Margin="22,0,0,0" />
-                                                <!-- the four numbers, each with its level's mark under it; dim while Limited is not selected -->
+                                                <!-- dim while Limited is not selected -->
                                                 <StackPanel x:Name="SameSettings" Margin="20,3,0,7">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBox x:Name="CountLowest" Width="38" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
-                                                        <TextBox x:Name="CountSecond" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
-                                                        <TextBox x:Name="CountThird" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
-                                                        <TextBox x:Name="CountHighest" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                                                    <!-- WARNO's: the four numbers, each with its level's mark under it -->
+                                                    <StackPanel x:Name="VeterancyCounts">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBox x:Name="CountLowest" Width="38" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                                                            <TextBox x:Name="CountSecond" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                                                            <TextBox x:Name="CountThird" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                                                            <TextBox x:Name="CountHighest" Width="38" Margin="4,0,0,0" ToolTip="{t:Text Divisions.Generate.Count.Tip}" TextChanged="ValueChanged" />
+                                                        </StackPanel>
+                                                        <StackPanel x:Name="CountMarks" Orientation="Horizontal" Margin="0,3,0,0" />
                                                     </StackPanel>
-                                                    <StackPanel x:Name="CountMarks" Orientation="Horizontal" Margin="0,3,0,0" />
+                                                    <!-- Steel Division 2's: the units in phases A, B and C, then the share of them at each of its three levels -->
+                                                    <StackPanel x:Name="PhaseSettings" Visibility="Collapsed">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBox x:Name="PhaseA" Width="38" TextChanged="ValueChanged" />
+                                                            <TextBox x:Name="PhaseB" Width="38" Margin="4,0,0,0" TextChanged="ValueChanged" />
+                                                            <TextBox x:Name="PhaseC" Width="38" Margin="4,0,0,0" TextChanged="ValueChanged" />
+                                                        </StackPanel>
+                                                        <StackPanel x:Name="PhaseMarks" Orientation="Horizontal" Margin="0,3,0,0" />
+                                                        <TextBlock Style="{StaticResource Note}" Text="{t:Text Divisions.Generate.Shares}" Margin="0,6,0,3" />
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBox x:Name="ShareLowest" Width="38" TextChanged="ValueChanged" />
+                                                            <TextBox x:Name="ShareMiddle" Width="38" Margin="4,0,0,0" TextChanged="ValueChanged" />
+                                                            <TextBox x:Name="ShareHighest" Width="38" Margin="4,0,0,0" TextChanged="ValueChanged" />
+                                                        </StackPanel>
+                                                        <StackPanel x:Name="ShareMarks" Orientation="Horizontal" Margin="0,3,0,0" />
+                                                    </StackPanel>
                                                 </StackPanel>
                                                 <CheckBox x:Name="AsTheGameTick" Style="{StaticResource Tick}" Content="{t:Text Divisions.Generate.AsTheGame}" ToolTip="{t:Text Divisions.Generate.AsTheGame.Tip}" Click="TickClicked" />
-                                                <TextBlock Style="{StaticResource Note}" Text="{t:Text Divisions.Generate.AsTheGame.Note}" Margin="22,0,0,0" />
+                                                <TextBlock x:Name="AsTheGameNote" Style="{StaticResource Note}" Text="{t:Text Divisions.Generate.AsTheGame.Note}" Margin="22,0,0,0" />
                                                 <!-- the game divisions and rules its numbers are not learnt from, in a pop-up so the step keeps its size -->
                                                 <Button x:Name="LeaveOutButton" Style="{StaticResource SmallButton}" HorizontalAlignment="Left" Margin="20,3,0,0" ToolTip="{t:Text Divisions.Generate.LeaveOut.Tip}" Click="LeaveOutClicked">
                                                     <TextBlock><Run Text="{t:Text Divisions.Generate.LeaveOut}" /><Run x:Name="LeaveOutCount" Foreground="{DynamicResource muted}" /></TextBlock>
@@ -182,6 +201,7 @@
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
                                             <!-- how the divisions are named; not asked when one division's making is changed -->
                                             <TextBlock x:Name="NamesLabel" Text="{t:Text Divisions.Generate.Names}" VerticalAlignment="Center" Margin="0,6,8,0" />
@@ -198,6 +218,12 @@
                                                     <TextBox x:Name="PointsBox" Width="52" VerticalAlignment="Center" TextChanged="PointsTyped" LostKeyboardFocus="PointsLeft" />
                                                 </StackPanel>
                                                 <TextBlock x:Name="SlotsNote" Style="{StaticResource Note}" Margin="8,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                            </DockPanel>
+                                            <!-- Steel Division 2's income choices, which bring their phases; hidden for WARNO, whose divisions have none -->
+                                            <TextBlock x:Name="IncomeLabel" Grid.Row="3" Text="{t:Text Divisions.Generate.Income}" VerticalAlignment="Center" Margin="0,6,8,0" Visibility="Collapsed" />
+                                            <DockPanel x:Name="IncomeRow" Grid.Row="3" Grid.Column="1" Margin="0,6,0,0" Visibility="Collapsed">
+                                                <ComboBox x:Name="IncomeChoice" Width="110" ToolTip="{t:Text Divisions.Generate.Income.Tip}" SelectionChanged="IncomeChosen" />
+                                                <TextBlock x:Name="IncomeNote" Style="{StaticResource Note}" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                             </DockPanel>
                                         </Grid>
                                     </DockPanel>

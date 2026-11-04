@@ -53,6 +53,7 @@ public sealed class ResizeGrip : FrameworkElement
         dragStartHeight = Target.ActualHeight;
         isDragging = true;
         PixelSnapping.PauseForDrag();
+        LayoutDrag.Start(LayoutDragKind.Panes);
         CaptureMouse(); // the drag carries on when the pointer leaves the window
         InvalidateVisual();
     }
@@ -60,6 +61,7 @@ public sealed class ResizeGrip : FrameworkElement
     protected override void OnMouseMove(MouseEventArgs e)
     {
         if (!isDragging) return;
+        LayoutDrag.Step();
         HeightChosen?.Invoke(Math.Round(dragStartHeight + e.GetPosition(null).Y - dragStartY, MidpointRounding.AwayFromZero));
     }
 
@@ -67,6 +69,7 @@ public sealed class ResizeGrip : FrameworkElement
 
     protected override void OnLostMouseCapture(MouseEventArgs e)
     {
+        if (isDragging) LayoutDrag.End();
         if (isDragging) HeightSettled?.Invoke();
         if (isDragging) PixelSnapping.ResumeAfterDrag();
         isDragging = false;

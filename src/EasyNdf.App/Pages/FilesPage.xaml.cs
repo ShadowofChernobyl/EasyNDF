@@ -155,8 +155,13 @@ public partial class FilesPage : UserControl
     private async Task ReadAll(IReadOnlyList<FileEntry> rows)
     {
         if (rows.Count == 0) return;
+        using Work.Job job = Work.Start("");
         using (Memory.DuringLongWork())
-            foreach (FileEntry entry in rows) await ReadInBackground(entry);
+            for (int i = 0; i < rows.Count; i++)
+            {
+                job.Rename(Texts.Get("Main.Usage.Job.ReadingFiles", ("done", i + 1), ("count", rows.Count)));
+                await ReadInBackground(rows[i]);
+            }
     }
 
     /// <summary>
@@ -365,13 +370,14 @@ public partial class FilesPage : UserControl
         if (onlyWithPreset)
         {
             int all = found.Count;
-            // the files the Armory's changes are written into, and those a rule set of a mod that is on applies to, count;
-            // only the mods of a file's own game run on it
+            // the files the Armory's changes are written into, those generated divisions are made from, and those a rule
+            // set of a mod that is on applies to, count; only the mods of a file's own game run on it
             var armoryFiles = new Dictionary<GameTitle, IReadOnlySet<string>>();
             bool HasRules(FileToAdd file)
             {
                 GameTitle game = file.Game ?? GameTitle.Warno;
-                if (!armoryFiles.TryGetValue(game, out IReadOnlySet<string>? files)) armoryFiles[game] = files = FileRunner.FilesWithArmoryRules(game);
+                if (!armoryFiles.TryGetValue(game, out IReadOnlySet<string>? files))
+                    armoryFiles[game] = files = new HashSet<string>(FileRunner.FilesWithArmoryRules(game).Concat(FileRunner.FilesGeneratedListsRead(game)), StringComparer.OrdinalIgnoreCase);
                 return files.Contains(file.Name) || FileRunner.HasRuleSetsFor(file.Name, file.Folder, game);
             }
             found = found.Where(HasRules).ToList();
@@ -617,6 +623,8 @@ public partial class FilesPage : UserControl
         int count = Mods.ModConflictList.Count;
         ConflictsButton.Content = Texts.Get("Files.Conflicts", ("count", Texts.Number(count)));
         ConflictsButton.Visibility = count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        // and each file's, for "Has conflicts" and "Errors or warnings"
+        Model?.ConflictsFound(Mods.ModConflictList.CountIn);
     }
 
     /// <summary>The Conflicts button: the Mod Conflicts window, on every conflict found.</summary>

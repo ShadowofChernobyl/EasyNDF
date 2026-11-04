@@ -116,6 +116,7 @@
                     <ComboBoxItem Content="{t:Text Files.Changed}" />
                     <ComboBoxItem Content="{t:Text Files.ErrorsOrWarnings}" />
                     <ComboBoxItem Content="{t:Text Files.ARuleChangedNothing}" />
+                    <ComboBoxItem Content="{t:Text Files.HasConflicts}" />
                     <ComboBoxItem Content="{t:Text Files.NotRead}" />
                 </ComboBox>
                 <!-- #colWrap: the Columns button, and the popup that shows or hides columns, 2 pixels under it -->

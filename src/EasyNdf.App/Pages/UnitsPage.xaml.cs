@@ -202,6 +202,7 @@ public partial class UnitsPage : UserControl
         LoadedUnits read;
         try
         {
+            using Work.Job job = Work.Start(Texts.Get("Main.Usage.Job.Reading", ("source", source.Name)));
             read = await Task.Run(() => UnitLibrary.Load(source, cacheRoot, progress: progress));
         }
         // any failure, not only a file problem: one not caught left the reading card up for good, and the same source

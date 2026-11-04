@@ -111,8 +111,7 @@ public static class GeneratedListsMaker
         var inputs = new List<Input>();
         foreach (string name in InputFilesOf(game))
         {
-            FileEntry? entry = entries.Where(each => each.Source is not null && each.Game == game && string.Equals(each.Name, name, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(each => each.On).FirstOrDefault();
+            FileEntry? entry = InputFile(entries, name, game);
             if (entry is null)
             {
                 if (name == UnitsFile) return null;
@@ -123,6 +122,16 @@ public static class GeneratedListsMaker
         }
         return inputs;
     }
+
+    /// <summary>
+    /// The file of a name on the Files tab the lists are made from; null when there is none of the game. Of two of one
+    /// name, the one in the game's Generated folder is taken (<see cref="DivisionChangeRules.WritesTo"/>), whether it is
+    /// on or not, as the Armory reads that one: Steel Division 2 has a 60-byte GameData/Gameplay/Gfx/UniteDescriptor.ndf
+    /// beside its Generated one, and a generated division made from it got its defences alone. Then one that is on.
+    /// </summary>
+    public static FileEntry? InputFile(IEnumerable<FileEntry> entries, string name, GameTitle game) =>
+        entries.Where(each => each.Source is not null && each.Game == game && string.Equals(each.Name, name, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(DivisionChangeRules.WritesTo).ThenByDescending(each => each.On).FirstOrDefault();
 
     /// <summary>
     /// The unit lists and battlegroups the rules are for: those made earlier when nothing they are made from has
@@ -140,7 +149,7 @@ public static class GeneratedListsMaker
         {
             if (recent.FirstOrDefault(made => made.Key == key) is { Results: not null } known) return known.Results;
             Results? cached = ReadCached(cacheFolder, key);
-            Results results = cached ?? Make(rules, RostersFor(filesKey, inputs, textAfterRules));
+            Results results = WithNamesShared(cached ?? Make(rules, RostersFor(filesKey, inputs, textAfterRules)));
             Remember(key, results);
             // results read from the cache are kept there as they are: writing them again (some 100 MB, a second or
             // more) would give the same file, so it is only marked as the newest, as writing it did. Tuned for speed:
@@ -173,6 +182,36 @@ public static class GeneratedListsMaker
         return new(GeneratedUnitLists.UnitsOf(rules, rosters), GeneratedBattlegroups.CardsOf(rules, rosters), [.. rosters.PacksInFile], units);
     }
 
+    /// <summary>
+    /// Tuned for memory: the results with each unit name kept once, shared by every list that names it. Each unit of each
+    /// list had its own copy of its name and its transports' names, read from the cache folder or made apart: some 3
+    /// million texts, 320 MB with Paul's mods, kept in memory and shown as "Other .NET data". Keep it that way when tidying.
+    /// </summary>
+    private static Results WithNamesShared(Results results)
+    {
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
+        string Shared(string name)
+        {
+            if (names.TryGetValue(name, out string? kept)) return kept;
+            names[name] = name;
+            return name;
+        }
+        // units that ride in the same transports share one list of them too: some 40 MB more
+        var transportLists = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        IReadOnlyList<string> SharedTransports(IReadOnlyList<string> transports)
+        {
+            string key = string.Join('\n', transports);
+            if (transportLists.TryGetValue(key, out IReadOnlyList<string>? kept)) return kept;
+            IReadOnlyList<string> list = [.. transports.Select(Shared)];
+            transportLists[key] = list;
+            return list;
+        }
+        var lists = new Dictionary<string, IReadOnlyList<DivisionUnit>>(results.Lists.Count, StringComparer.Ordinal);
+        foreach ((string division, IReadOnlyList<DivisionUnit> units) in results.Lists)
+            lists[division] = [.. units.Select(unit => unit with { Unit = Shared(unit.Unit), Transports = SharedTransports(unit.Transports) })];
+        return results with { Lists = lists };
+    }
+
     /// <summary>Keeps results in memory, the oldest let go of past <see cref="ResultsKept"/>.</summary>
     private static void Remember(string key, Results results)
     {
@@ -193,7 +232,11 @@ public static class GeneratedListsMaker
         {
             Add(input.Entry.Name);
             sum.AppendData(SHA256.HashData(FileContent.Bytes(input.Entry)));
-            foreach (FileRunner.ModRules part in input.Stack) Add(part.Rules.ToJsonString());
+            foreach (FileRunner.ModRules part in input.Stack)
+            {
+                sum.AppendData(JsonFiles.Utf8Of(part.Rules));
+                sum.AppendData("\n"u8);
+            }
         }
         return Convert.ToHexStringLower(sum.GetHashAndReset());
     }

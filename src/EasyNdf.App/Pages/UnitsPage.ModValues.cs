@@ -18,7 +18,10 @@ public partial class UnitsPage
     /// <summary>The units as the source has them, before the open mod's rules; null until a source has been read.</summary>
     private LoadedUnits? gameUnits;
 
-    /// <summary>What the units shown were last worked out from (<see cref="OpenModUnits.InputsOf"/>).</summary>
+    /// <summary>
+    /// What the units shown were last worked out from: a fingerprint of <see cref="OpenModUnits.InputsOf"/>. Tuned for
+    /// memory: the text itself holds every rule run, some 80 MB with WARNO ACTUAL on. Keep it that way when tidying.
+    /// </summary>
     private string modValuesFrom = "";
 
     /// <summary>The units as the open mod's rules make them, before the units it adds in the Armory are put in; null until read.</summary>
@@ -84,10 +87,17 @@ public partial class UnitsPage
     private async Task ShowModValues()
     {
         if (gameUnits is not LoadedUnits game || MainView.Find(this) is not MainView main) return;
+        // the pictures and flags the mods shown bring (a division's emblem, a new unit's picture, a nation's flag),
+        // found again only when the mods change: drawn with the units below when they differ
+        // (the open mod's always, as its divisions show either way)
+        ModPictureSources modPictures = ModPictureSources.Of(ArmoryShowsModChanges
+            ? Mods.ModStack.RunningFor(game.Source.Game).Append(OpenMod).Distinct()
+            : [OpenMod], AppData.Current.ModFileStore.Folder);
+        bool picturesChanged = UnitPictureLibrary.Current?.UseModPictures(modPictures) == true;
         var entries = main.FilesTab.Model.Entries.ToList();
         var settings = RunSettings.From(AppData.Current.Settings);
         // with "Show mods' changes" off, the units are shown as the source has them
-        string inputs = ArmoryShowsModChanges ? OpenModUnits.InputsOf(entries, AppData.Current.OpenMod, game.Source.Game, settings) : "as the source has them";
+        string inputs = ArmoryShowsModChanges ? Fingerprint(OpenModUnits.InputsOf(entries, AppData.Current.OpenMod, game.Source.Game, settings)) : "as the source has them";
         bool readNow = inputs != modValuesFrom;
         if (readNow && !ArmoryShowsModChanges)
         {
@@ -100,9 +110,11 @@ public partial class UnitsPage
             modValuesFrom = inputs;
             int mine = ++modValueReads;
             ModUnits read;
+            StartApplyingMods(mine);
             try
             {
-                read = await OpenModUnits.Read(game, entries, AppData.Current.OpenMod, settings);
+                read = await OpenModUnits.Read(game, entries, AppData.Current.OpenMod, settings,
+                    new Progress<ModApplyStep>(step => { if (mine == modValueReads) ShowApplyingStep(step); }));
             }
             catch (Exception problem) when (problem is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException
                 or Engine.Ndf.NdfParseException)
@@ -111,18 +123,37 @@ public partial class UnitsPage
                 // (the Files tab says so when it is run): the values stay as they are, and are worked out again at the
                 // next change
                 modValuesFrom = "";
+                StopApplyingMods(mine);
                 return;
             }
             // a newer read, or another source read meanwhile, wins
             if (mine != modValueReads || !ReferenceEquals(game, gameUnits)) return;
             unitsByRules = read;
+            ShowApplyingStep(ModApplyStep.Showing);
         }
         // the units the mod adds and changes are not in its rules' run (their rules are locked), so they are looked at on their own
         string added = AddedUnitsText();
-        if (!readNow && added == addedUnitsShown) return;
+        if (!readNow && added == addedUnitsShown && !picturesChanged) return;
         addedUnitsShown = added;
-        ShowUnitsMadeBy(unitsByRules ?? new ModUnits(game.Catalog, UnitChanges.None));
+        try
+        {
+            ShowUnitsMadeBy(unitsByRules ?? new ModUnits(game.Catalog, UnitChanges.None));
+        }
+        finally
+        {
+            StopApplyingMods(modValueReads);
+        }
     }
+
+    /// <summary>A text's fingerprint: the same for the same text, short whatever its length.</summary>
+    private static string Fingerprint(string text) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Runtime.InteropServices.MemoryMarshal.AsBytes(text.AsSpan())));
+
+    /// <summary>
+    /// The units as the mods shown make them, when they are not the source's own: kept beside the source's, for the
+    /// usage readout.
+    /// </summary>
+    internal int ModdedUnitCount => unitsByRules is ModUnits read && !ReferenceEquals(read.Catalog, gameUnits?.Catalog) ? read.Catalog.Units.Count : 0;
 
     /// <summary>
     /// "Some of your mod's changes aren't shown", while a game mod is the source and files on the Files tab with the

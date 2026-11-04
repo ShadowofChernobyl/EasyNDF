@@ -31,6 +31,7 @@ public partial class MainWindow : Window
             View.EditorTab.KeepOpenFile();
             WindowPlace.Keep(this);
             View.FilesTab.KeepSession();
+            AppData.Current.SaveWhatWaits();
         };
         WindowPlace.Restore(this);
         Loaded += async (_, _) =>
