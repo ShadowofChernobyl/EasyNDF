@@ -34,7 +34,11 @@ public sealed record CardGroupLine(string Role, string Name, int Count, bool IsF
 /// <param name="IsFirstSide">Whether a unit is on the game's first side (NATO, the Allies), for its nation's mark.</param>
 /// <param name="Decorate">What else each tile shows where the row is (the Add Units window's tick box); null for nothing.</param>
 public sealed record CardRowLine(IReadOnlyList<Unit> Units, int Columns, bool IsLast, UnitSelection Selection, Func<Unit, bool> IsFirstSide,
-    Action<UnitTile>? Decorate = null) : CardLine;
+    Action<UnitTile>? Decorate = null) : CardLine, ILineKind
+{
+    /// <summary>A role's last row keeps a gap under it, so it is taller than the others.</summary>
+    public object Kind => IsLast;
+}
 
 /// <summary>What a list says while it has nothing to show, such as "No units match."</summary>
 /// <param name="Text">The words.</param>

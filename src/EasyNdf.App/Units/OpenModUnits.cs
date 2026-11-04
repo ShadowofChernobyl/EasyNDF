@@ -234,12 +234,21 @@ public static class OpenModUnits
                 // the same text as the rules in a JSON list: [rule,rule]
                 inputs.Append('|').Append(mod.Name).Append("|[");
                 for (int index = 0; index < rules.Count; index++)
-                    inputs.Append(index == 0 ? "" : ",").Append(rules[index].ToJsonString());
+                    inputs.Append(index == 0 ? "" : ",").Append(WithoutFold(rules[index]).ToJsonString());
                 inputs.Append(']');
             }
             inputs.Append('\n');
         }
         return inputs.ToString();
+    }
+
+    /// <summary>A rule as it runs: a Group without whether it is folded on the Mods tab, which changes nothing it does.</summary>
+    private static JsonNode WithoutFold(JsonNode rule)
+    {
+        if (rule is not JsonObject group || !group.ContainsKey("Collapsed")) return rule;
+        var copy = (JsonObject)group.DeepClone();
+        copy.Remove("Collapsed");
+        return copy;
     }
 
     /// <summary>
@@ -251,16 +260,19 @@ public static class OpenModUnits
     /// <param name="entries">The Files tab's files.</param>
     /// <param name="openMod">The mod open on the Rules tab.</param>
     /// <param name="settings">The settings Preview follows, such as the decimal places.</param>
-    public static async Task<ModUnits> Read(LoadedUnits loaded, IReadOnlyList<FileEntry> entries, Mod openMod, RunSettings settings)
+    /// <param name="progress">Told as the rules start running and as the changed units start being read.</param>
+    public static async Task<ModUnits> Read(LoadedUnits loaded, IReadOnlyList<FileEntry> entries, Mod openMod, RunSettings settings,
+        IProgress<ModApplyStep>? progress = null)
     {
         var notShown = new List<string>();
         List<FileToRun> files = FilesToRun(entries, openMod, loaded.Source, notShown, loaded.Catalog);
         if (files.Count == 0) return new ModUnits(loaded.Catalog, UnitChanges.None) { FilesNotShown = notShown };
-        ModUnits read = await Task.Run(() => RunAndRead(loaded, files, openMod.Name, settings));
+        progress?.Report(ModApplyStep.RunningRules);
+        ModUnits read = await Task.Run(() => RunAndRead(loaded, files, openMod.Name, settings, progress));
         return read with { FilesNotShown = notShown };
     }
 
-    private static ModUnits RunAndRead(LoadedUnits loaded, List<FileToRun> files, string modName, RunSettings settings)
+    private static ModUnits RunAndRead(LoadedUnits loaded, List<FileToRun> files, string modName, RunSettings settings, IProgress<ModApplyStep>? progress)
     {
         var changedFiles = new List<ChangedFile>();
         var edits = new List<RuleEdit>();
@@ -273,6 +285,7 @@ public static class OpenModUnits
             edits.AddRange(fileEdits);
         }
         if (changedFiles.Count == 0) return new ModUnits(loaded.Catalog, UnitChanges.None);
+        progress?.Report(ModApplyStep.ReadingUnits);
         UnitCatalog catalog = UnitLibrary.ReadChanged(loaded, changedFiles);
         return new ModUnits(catalog, UnitChanges.Between(modName, loaded.Catalog, catalog, edits))
         {
@@ -317,4 +330,15 @@ public static class OpenModUnits
             DecimalPlaces = settings.DecimalPlaces,
         });
     }
+}
+
+/// <summary>A step of working out the units from the mods that are on.</summary>
+public enum ModApplyStep
+{
+    /// <summary>Running the mods' rules on the unit files.</summary>
+    RunningRules,
+    /// <summary>Reading the units from the files the rules changed.</summary>
+    ReadingUnits,
+    /// <summary>Showing them in the Armory.</summary>
+    Showing,
 }

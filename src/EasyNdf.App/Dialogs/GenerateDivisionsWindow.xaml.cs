@@ -70,8 +70,35 @@ public partial class GenerateDivisionsWindow : UserControl
             ((FrameworkElement)place.Child).HorizontalAlignment = HorizontalAlignment.Center;
             CountMarks.Children.Add(place);
         }
+        // Steel Division 2's: a phase's letter under each of its boxes, and a level's mark under each share
+        TextBox[] phaseBoxes = PhaseBoxes(), shareBoxes = ShareBoxes();
+        for (int phase = 0; phase < phaseBoxes.Length; phase++)
+        {
+            string letter = ((char)('A' + phase)).ToString();
+            phaseBoxes[phase].ToolTip = Texts.Get("Divisions.Generate.Phase.Tip", ("phase", letter));
+            var mark = new TextBlock { Text = letter, FontWeight = FontWeights.Bold, HorizontalAlignment = HorizontalAlignment.Center };
+            mark.SetResourceReference(TextBlock.ForegroundProperty, "ink");
+            PhaseMarks.Children.Add(new Border { Width = 38, Margin = new Thickness(phase == 0 ? 0 : 4, 0, 0, 0), Child = mark, ToolTip = phaseBoxes[phase].ToolTip });
+        }
+        for (int level = 0; level < shareBoxes.Length; level++)
+        {
+            string tip = Texts.Get("Divisions.Generate.Share.Tip", ("level", Texts.Number(level + 1)));
+            shareBoxes[level].ToolTip = tip;
+            var place = new Border { Width = 38, Margin = new Thickness(level == 0 ? 0 : 4, 0, 0, 0), Background = Brushes.Transparent, Child = VeterancyMarks.Mark(level), ToolTip = tip };
+            ((FrameworkElement)place.Child).HorizontalAlignment = HorizontalAlignment.Center;
+            ShareMarks.Children.Add(place);
+        }
         Suggestions.Attach(NamesBox, NameSuggestions);
     }
+
+    /// <summary>
+    /// Whether the divisions' cards hold units by phase, as Steel Division 2's do (<see cref="DivisionGeneration.ByPhase"/>):
+    /// step 2 then asks for the units in each phase and their share at each veterancy, and step 3 for the income choices.
+    /// </summary>
+    private bool ByPhase => game == GameTitle.SteelDivision2;
+
+    /// <summary>The income choices offered in step 3 (Steel Division 2's DivisionEconomy lists); none for WARNO.</summary>
+    private IReadOnlyList<string> economies = [];
 
     /// <summary>Whether the window is open.</summary>
     public bool IsOpen => Visibility == Visibility.Visible;
@@ -85,9 +112,10 @@ public partial class GenerateDivisionsWindow : UserControl
     /// <param name="mod">The open mod's name, for the name pattern.</param>
     /// <param name="divisionNames">The names of the open mod's divisions, to mark a name made again.</param>
     /// <param name="modNations">The nations the mods add of their own (no unit of the game is of them).</param>
+    /// <param name="incomes">The game's income choices (Steel Division 2's DivisionEconomy lists); none for WARNO.</param>
     /// <param name="whenDone">What Generate does with the divisions made.</param>
     public void Open(DivisionRosters units, GameTitle title, string mod, IEnumerable<string> divisionNames, IReadOnlyList<string> modNations,
-        Action<List<GeneratedDivisionChoice>> whenDone)
+        IReadOnlyList<string> incomes, Action<List<GeneratedDivisionChoice>> whenDone)
     {
         generate = whenDone;
         change = null;
@@ -99,12 +127,18 @@ public partial class GenerateDivisionsWindow : UserControl
         OffReason.SetText(GoButton, null);
         GoButton.Content = Texts.Get("Divisions.Generate.Go");
         GoButton.ToolTip = Texts.Get("Divisions.Generate.Go.Tip");
+        game = title;
+        economies = incomes;
         ShowNames(true);
         NamesBox.Text = DefaultNames;
-        Prepare(units, title, mod, new DivisionGeneration(), modNations);
+        Prepare(units, title, mod, new DivisionGeneration { ByPhase = ByPhase, Economy = FirstEconomy(incomes) }, modNations);
         SameTick.IsChecked = true;
         Show();
     }
+
+    /// <summary>The income choice a new set of divisions starts with: the game's Default one, else the first.</summary>
+    private static string FirstEconomy(IReadOnlyList<string> incomes) =>
+        incomes.FirstOrDefault(economy => DivisionDetailsEditor.EconomyName(economy) == "Default") ?? incomes.FirstOrDefault() ?? "";
 
     /// <summary>Opens the window to change how one generated division is made, its choices selected.</summary>
     /// <param name="division">The division's name, for the title.</param>
@@ -112,9 +146,10 @@ public partial class GenerateDivisionsWindow : UserControl
     /// <param name="units">The units it is made from (as the Armory shows them).</param>
     /// <param name="title">The game, for its sides.</param>
     /// <param name="modNations">The nations the mods add of their own.</param>
+    /// <param name="incomes">The game's income choices (Steel Division 2's DivisionEconomy lists); none for WARNO.</param>
     /// <param name="whenDone">What Done does with its new making.</param>
     public void OpenToChange(string division, DivisionGeneration current, DivisionRosters units, GameTitle title, IReadOnlyList<string> modNations,
-        Action<DivisionGeneration> whenDone)
+        IReadOnlyList<string> incomes, Action<DivisionGeneration> whenDone)
     {
         generate = null;
         change = whenDone;
@@ -126,7 +161,12 @@ public partial class GenerateDivisionsWindow : UserControl
         OffReason.SetText(GoButton, null);
         GoButton.Content = Texts.Get("Divisions.Generate.Done");
         GoButton.ToolTip = Texts.Get("Divisions.Generate.Done.Tip");
+        game = title;
+        economies = incomes;
         ShowNames(false);
+        // a division made before it was by phase (or with no income choices) is shown as a new one starts
+        if (title == GameTitle.SteelDivision2 && !current.ByPhase) current = current with { ByPhase = true };
+        if (current.ByPhase && current.Economy == "") current = current with { Economy = FirstEconomy(incomes) };
         Prepare(units, title, "", current, modNations);
         SelectWhatMakes(current);
         Show();
@@ -137,8 +177,56 @@ public partial class GenerateDivisionsWindow : UserControl
     {
         Visibility visibility = shown ? Visibility.Visible : Visibility.Collapsed;
         NamesLabel.Visibility = NamesRow.Visibility = NamesHint.Visibility = visibility;
-        NamesHeading.Text = Texts.Get(shown ? "Divisions.Generate.Step.Names" : "Divisions.Generate.Step.Points");
+        NamesHeading.Text = Texts.Get((shown, ByPhase) switch
+        {
+            (true, false) => "Divisions.Generate.Step.Names",
+            (false, false) => "Divisions.Generate.Step.Points",
+            (true, true) => "Divisions.Generate.Step.NamesIncome",
+            _ => "Divisions.Generate.Step.PointsIncome",
+        });
     }
+
+    /// <summary>
+    /// What the game asks for: WARNO's four numbers by veterancy; or Steel Division 2's numbers by phase with their
+    /// shares by veterancy, its notes saying "in every phase" and "in each phase", and its income choices, those of a
+    /// generation selected.
+    /// </summary>
+    private void ShowGameParts(DivisionGeneration start)
+    {
+        VeterancyCounts.Visibility = ByPhase ? Visibility.Collapsed : Visibility.Visible;
+        PhaseSettings.Visibility = IncomeLabel.Visibility = IncomeRow.Visibility = ByPhase ? Visibility.Visible : Visibility.Collapsed;
+        UnlimitedNote.Text = Texts.Get(ByPhase ? "Divisions.Generate.UnlimitedByPhase.Note" : "Divisions.Generate.Unlimited.Note");
+        UnlimitedTick.ToolTip = Texts.Get(ByPhase ? "Divisions.Generate.UnlimitedByPhase.Tip" : "Divisions.Generate.Unlimited.Tip");
+        SameTick.ToolTip = Texts.Get(ByPhase ? "Divisions.Generate.SameByPhase.Tip" : "Divisions.Generate.Same.Tip");
+        AsTheGameNote.Text = Texts.Get(ByPhase ? "Divisions.Generate.AsTheGameByPhase.Note" : "Divisions.Generate.AsTheGame.Note");
+        TextBox[] phaseBoxes = PhaseBoxes(), shareBoxes = ShareBoxes();
+        for (int phase = 0; phase < phaseBoxes.Length; phase++) phaseBoxes[phase].Text = start.PhaseCounts[phase].ToString(Texts.Catalog.Culture);
+        for (int level = 0; level < shareBoxes.Length; level++) shareBoxes[level].Text = start.VeterancyShares[level].ToString("0.0##", Texts.Catalog.Culture);
+        IncomeChoice.Items.Clear();
+        foreach (string economy in economies.Append(start.Economy).Where(economy => economy != "").Distinct(StringComparer.Ordinal))
+            IncomeChoice.Items.Add(new ComboBoxItem { Content = DivisionDetailsEditor.EconomyName(economy), Tag = economy, ToolTip = economy });
+        IncomeChoice.SelectedItem = IncomeChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == start.Economy);
+        IncomeChoice.IsEnabled = IncomeChoice.Items.Count > 0;
+        ShowIncomeNote();
+    }
+
+    private TextBox[] PhaseBoxes() => [PhaseA, PhaseB, PhaseC];
+
+    private TextBox[] ShareBoxes() => [ShareLowest, ShareMiddle, ShareHighest];
+
+    /// <summary>The income choice selected; "" when there is none to choose.</summary>
+    private string EconomyChosen() => IncomeChoice.SelectedItem is ComboBoxItem { Tag: string economy } ? economy : "";
+
+    /// <summary>An income choice chosen: its note follows.</summary>
+    private void IncomeChosen(object sender, SelectionChangedEventArgs e)
+    {
+        ShowIncomeNote();
+        ShowSummary();
+    }
+
+    /// <summary>The note beside the income choices: whose phases and income they bring.</summary>
+    private void ShowIncomeNote() =>
+        IncomeNote.Text = EconomyChosen() is { Length: > 0 } economy ? Texts.Get("Divisions.Generate.Income.Note", ("economy", DivisionDetailsEditor.EconomyName(economy))) : "";
 
     /// <summary>
     /// The nations offered for every division: the mods' own, and those the division being changed has already. Empty
@@ -186,7 +274,8 @@ public partial class GenerateDivisionsWindow : UserControl
         SlotsBox.Text = start.Slots.ToString(Texts.Catalog.Culture);
         SlotsNote.Text = Texts.Get("Divisions.Generate.Slots.Note", ("categories", Categories));
         PointsBox.ToolTip = Texts.Get("Divisions.Generate.Points.Tip", ("categories", Categories));
-        bytesPerUnit = MeasureBytesPerUnit(units);
+        ShowGameParts(start);
+        bytesPerUnit = MeasureBytesPerUnit(units, ByPhase);
     }
 
     private void Show()
@@ -198,8 +287,8 @@ public partial class GenerateDivisionsWindow : UserControl
 
     private TextBox[] CountBoxes() => [CountLowest, CountSecond, CountThird, CountHighest];
 
-    /// <summary>The categories a division has cards in, each with as many slots as typed: nine.</summary>
-    private static int Categories => NewDivisionStart.WarnoCosts().Count;
+    /// <summary>The categories a division has cards in, each with as many slots as typed: nine, in either game.</summary>
+    private int Categories => new DivisionGeneration { ByPhase = ByPhase }.CostCategories.Count;
 
     // ---- step 1: the nations and sides ----
 
@@ -210,15 +299,17 @@ public partial class GenerateDivisionsWindow : UserControl
     private void FillNations(DivisionRosters units)
     {
         NationTicks.Children.Clear();
+        // each nation with the units its division gets, as the Generation Preview counts them (Steel Division 2's leave out
+        // those only DLC divisions carry); a nation left with none is not offered
         var byNation = units.AllUnits.Where(DivisionRosters.IsDeckable)
             .GroupBy(unit => unit.Nation)
-            .OrderByDescending(group => group.Count())
-            .ThenBy(group => UnitNames.Nation(group.Key), StringComparer.Create(Texts.Catalog.Culture, ignoreCase: true));
-        foreach (IGrouping<string, Unit> nation in byNation)
-        {
-            var generation = new DivisionGeneration { Units = GeneratedUnits.Nation, Nation = nation.Key, Side = nation.First().Side };
-            NationTicks.Children.Add(ScopeTick(UnitNames.Nation(nation.Key), nation.Count(), generation, isModNation: modNationCodes.Contains(nation.Key)));
-        }
+            .Select(nation => new DivisionGeneration { Units = GeneratedUnits.Nation, Nation = nation.Key, Side = nation.First().Side, ByPhase = ByPhase })
+            .Select(generation => (Generation: generation, Count: UnitsIn(generation)))
+            .Where(nation => nation.Count > 0)
+            .OrderByDescending(nation => nation.Count)
+            .ThenBy(nation => UnitNames.Nation(nation.Generation.Nation), StringComparer.Create(Texts.Catalog.Culture, ignoreCase: true));
+        foreach ((DivisionGeneration generation, int count) in byNation)
+            NationTicks.Children.Add(ScopeTick(UnitNames.Nation(generation.Nation), count, generation, isModNation: modNationCodes.Contains(generation.Nation)));
     }
 
     /// <summary>A tick for each side's nations, then one for every unit under each side's flag.</summary>
@@ -229,12 +320,12 @@ public partial class GenerateDivisionsWindow : UserControl
         IReadOnlyList<string> sides = UnitNames.SidesOf(game);
         foreach (string side in sides)
         {
-            var generation = new DivisionGeneration { Units = GeneratedUnits.Side, Side = side };
+            var generation = new DivisionGeneration { Units = GeneratedUnits.Side, Side = side, ByPhase = ByPhase };
             SideTicks.Children.Add(ScopeTick(Texts.Get("Divisions.Generate.Side", ("side", UnitNames.Side(side))), UnitsIn(generation), generation));
         }
         foreach (string side in sides)
         {
-            var generation = new DivisionGeneration { Units = GeneratedUnits.Everything, Side = side };
+            var generation = new DivisionGeneration { Units = GeneratedUnits.Everything, Side = side, ByPhase = ByPhase };
             FlagTicks.Children.Add(ScopeTick(Texts.Get("Divisions.Generate.Everything", ("side", UnitNames.Side(side))), UnitsIn(generation),
                 generation, Texts.Get("Divisions.Generate.Everything.Tip", ("side", UnitNames.Side(side)))));
         }
@@ -338,6 +429,33 @@ public partial class GenerateDivisionsWindow : UserControl
         return counts.Max() > 0 ? counts : null;
     }
 
+    /// <summary>The units a card holds in each phase, as typed; null when one is not a whole number above nothing.</summary>
+    private List<int>? PhasesTyped()
+    {
+        var counts = new List<int>();
+        foreach (TextBox box in PhaseBoxes())
+        {
+            if (!int.TryParse(box.Text.Trim(), System.Globalization.NumberStyles.Integer, Texts.Catalog.Culture, out int count) || count < 0) return null;
+            counts.Add(count);
+        }
+        return counts.Max() > 0 ? counts : null;
+    }
+
+    /// <summary>The share at each veterancy, as typed; null when one is not a number from 0, or none is above it.</summary>
+    private List<double>? SharesTyped()
+    {
+        var shares = new List<double>();
+        foreach (TextBox box in ShareBoxes())
+        {
+            if (!double.TryParse(box.Text.Trim(), System.Globalization.NumberStyles.Float, Texts.Catalog.Culture, out double share) || share < 0) return null;
+            shares.Add(share);
+        }
+        return shares.Max() > 0 ? shares : null;
+    }
+
+    /// <summary>Whether Limited's numbers are typed right for the game: four whole numbers, or three by phase and three shares.</summary>
+    private bool LimitedTypedRight() => ByPhase ? PhasesTyped() is not null && SharesTyped() is not null : CountsTyped() is not null;
+
     /// <summary>The parts of division names typed in "not from divisions named", one between each comma.</summary>
     private List<string> IgnoredDivisionsTyped() =>
         [.. IgnoredDivisionsBox.Text.Split(',').Select(part => part.Trim()).Where(part => part != "")];
@@ -370,11 +488,17 @@ public partial class GenerateDivisionsWindow : UserControl
     /// </summary>
     private List<DivisionGeneration> Generations()
     {
-        if (CountsTyped() is not List<int> counts || SlotsTyped() is not int slots) return [];
+        if (!LimitedTypedRight() || SlotsTyped() is not int slots) return [];
+        DivisionGeneration typed = new();
+        if (ByPhase) typed = typed with { PhaseCounts = PhasesTyped()!, VeterancyShares = SharesTyped()!, Economy = EconomyChosen() };
+        else typed = typed with { Counts = CountsTyped()! };
         return [.. ScopesSelected().SelectMany(scope => KindsSelected().Select(kind => scope with
         {
             Numbers = kind,
-            Counts = counts,
+            Counts = typed.Counts,
+            PhaseCounts = typed.PhaseCounts,
+            VeterancyShares = typed.VeterancyShares,
+            Economy = typed.Economy,
             Slots = slots,
             EveryDivisionNations = ModNationsTick.IsChecked == true ? everyDivisionNations : [],
             IgnoredDivisions = IgnoredDivisionsTyped(),
@@ -502,9 +626,9 @@ public partial class GenerateDivisionsWindow : UserControl
         List<DivisionGeneration> kept = GenerationsKept();
         NameExample.Text = generations.Count == 0 ? "" : Texts.Get("Divisions.Generate.Names.Example", ("name", NameOf(generations[0])));
         GoButton.IsEnabled = kept.Count > 0 && (IsChanging || NamesBox.Text.Trim() != "");
-        if (CountsTyped() is null || SlotsTyped() is null)
+        if (!LimitedTypedRight() || SlotsTyped() is null)
         {
-            Summary.Text = Texts.Get("Divisions.Generate.Summary.Wrong");
+            Summary.Text = Texts.Get(ByPhase ? "Divisions.Generate.Summary.WrongByPhase" : "Divisions.Generate.Summary.Wrong");
             return;
         }
         // read as empty, it would learn from every rule, the opposite of what was typed: said, and Generate waits
@@ -531,9 +655,10 @@ public partial class GenerateDivisionsWindow : UserControl
             return;
         }
         long units = kept.Sum(generation => (long)UnitsIn(generation));
+        // Steel Division 2's divisions are written in Packs.ndf too, a pack for each unit
         Summary.Text = IsChanging
-            ? Texts.Get("Divisions.Generate.Summary.One", ("units", Texts.Number(units)), ("size", SizeOf(units)))
-            : Texts.Count("Divisions.Generate.Summary", kept.Count, ("count", Texts.Number(kept.Count)), ("size", SizeOf(units)));
+            ? Texts.Get(ByPhase ? "Divisions.Generate.Summary.One.Packs" : "Divisions.Generate.Summary.One", ("units", Texts.Number(units)), ("size", SizeOf(units)))
+            : Texts.Count(ByPhase ? "Divisions.Generate.Summary.Packs" : "Divisions.Generate.Summary", kept.Count, ("count", Texts.Number(kept.Count)), ("size", SizeOf(units)));
     }
 
     /// <summary>About how many megabytes so many units' lines add to the exported DivisionRules.ndf.</summary>
@@ -591,7 +716,12 @@ public partial class GenerateDivisionsWindow : UserControl
             sampleTile = new UnitTile(unit, sides.Count > 0 && unit.Side == sides[0], new UnitSelection()) { Cursor = Cursors.Arrow, IsHitTestVisible = true };
             SampleSlot.Content = sampleTile;
         }
-        sampleTile.ShowVeterancyCounts(SampleCounts(unit));
+        if (ByPhase)
+        {
+            (List<string> counts, List<string>? tips) = SampleCountsByPhase(unit);
+            sampleTile.ShowVeterancyCounts(counts, tips);
+        }
+        else sampleTile.ShowVeterancyCounts(SampleCounts(unit));
         SampleNote.Text = sampleKind switch
         {
             null => Texts.Get("Divisions.Generate.Sample.None"),
@@ -642,11 +772,41 @@ public partial class GenerateDivisionsWindow : UserControl
         }
     }
 
+    /// <summary>
+    /// Steel Division 2's sample card (see <see cref="SampleCounts"/>): beside each of its three levels, the units a card
+    /// holds there in the first phase it can be taken in, as the Armory's tiles count them; each level's tooltip gives
+    /// them in every phase, "6 / 12 / 0".
+    /// </summary>
+    private (List<string> Counts, List<string>? Tips) SampleCountsByPhase(Unit unit)
+    {
+        DivisionUnit? rule = sampleKind switch
+        {
+            GeneratedNumbers.Unlimited or GeneratedNumbers.Same when rosters is not null => rosters.NumbersFor(unit, SampleGeneration((GeneratedNumbers)sampleKind)),
+            GeneratedNumbers.AsTheGame when rosters is not null => rosters.NumbersFor(unit, SampleGeneration(GeneratedNumbers.AsTheGame)),
+            _ => null,
+        };
+        if (rule is null) return (["", "", ""], null);
+        if (sampleKind == GeneratedNumbers.Same && (PhasesTyped() is null || SharesTyped() is null)) return (["?", "?", "?"], null);
+        IReadOnlyList<int> counts = DivisionNames.UnitsAtEachVeterancy(rule);
+        return counts.Count == 3 ? ([.. counts.Select(count => count.ToString(Texts.Catalog.Culture))], [.. DivisionNames.VeterancyTipsByPhase(rule) ?? []]) : (["?", "?", "?"], null);
+    }
+
+    /// <summary>A generation of a kind, with the numbers typed, for the sample card's unit alone.</summary>
+    private DivisionGeneration SampleGeneration(GeneratedNumbers kind) => new()
+    {
+        ByPhase = true,
+        Numbers = kind,
+        PhaseCounts = PhasesTyped() ?? [0, 0, 0],
+        VeterancyShares = SharesTyped() ?? [0, 0, 0],
+        IgnoredDivisions = IgnoredDivisionsTyped(),
+        IgnoredRulesFrom = IgnoredRulesTyped(),
+    };
+
     /// <summary>The sample card's unit: the most expensive a division of a nation or side takes; of the biggest nation for none.</summary>
     private Unit? SampleUnitFor(DivisionGeneration? scope)
     {
         if (rosters is null) return null;
-        scope ??= BiggestNation(rosters);
+        scope ??= BiggestNation(rosters, ByPhase);
         if (scope is null) return null;
         if (sampleScope == RowKey(scope) && sampleUnit is not null) return sampleUnit;
         sampleScope = RowKey(scope);
@@ -657,10 +817,10 @@ public partial class GenerateDivisionsWindow : UserControl
     private string sampleScope = "";
 
     /// <summary>A division of the nation with the most units, for the sample card while nothing is selected.</summary>
-    private static DivisionGeneration? BiggestNation(DivisionRosters units)
+    private static DivisionGeneration? BiggestNation(DivisionRosters units, bool byPhase)
     {
         IGrouping<string, Unit>? biggest = units.AllUnits.Where(DivisionRosters.IsDeckable).GroupBy(unit => unit.Nation).MaxBy(group => group.Count());
-        return biggest is null ? null : new DivisionGeneration { Units = GeneratedUnits.Nation, Nation = biggest.Key, Side = biggest.First().Side };
+        return biggest is null ? null : new DivisionGeneration { Units = GeneratedUnits.Nation, Nation = biggest.Key, Side = biggest.First().Side, ByPhase = byPhase };
     }
 
     // ---- the Generation Preview ----
@@ -709,7 +869,7 @@ public partial class GenerateDivisionsWindow : UserControl
         if (ScopesSelected().Count == 0 || KindsSelected().Count == 0 || generations.Count == 0)
         {
             string empty = ScopesSelected().Count == 0 ? "Divisions.Generate.Preview.NoUnits"
-                : KindsSelected().Count == 0 ? "Divisions.Generate.Preview.NoKind" : "Divisions.Generate.Summary.Wrong";
+                : KindsSelected().Count == 0 ? "Divisions.Generate.Preview.NoKind" : ByPhase ? "Divisions.Generate.Summary.WrongByPhase" : "Divisions.Generate.Summary.Wrong";
             var note = new TextBlock { Text = Texts.Get(empty), Margin = new Thickness(8, 6, 8, 6), TextWrapping = TextWrapping.Wrap };
             note.SetResourceReference(TextBlock.ForegroundProperty, "muted");
             PreviewRows.Children.Add(note);
@@ -725,7 +885,7 @@ public partial class GenerateDivisionsWindow : UserControl
         List<PreviewRow> kept = [.. rows.Where(row => !leftOut.Contains(RowKey(row.Generation)))];
         long units = kept.Sum(row => (long)row.Units);
         PreviewTotals.Inlines.Clear();
-        PreviewTotals.Inlines.Add(new System.Windows.Documents.Run(Texts.Get("Divisions.Generate.Totals",
+        PreviewTotals.Inlines.Add(new System.Windows.Documents.Run(Texts.Get(ByPhase ? "Divisions.Generate.Totals.Packs" : "Divisions.Generate.Totals",
             ("kept", Texts.Number(kept.Count)), ("count", Texts.Number(rows.Count)), ("units", Texts.Number(units)), ("size", SizeOf(units)))));
     }
 
@@ -738,11 +898,15 @@ public partial class GenerateDivisionsWindow : UserControl
             GeneratedUnits.Side => Texts.Get("Divisions.Generate.Side", ("side", UnitNames.Side(generation.Side))),
             _ => Texts.Get("Divisions.Generate.Everything", ("side", UnitNames.Side(generation.Side))),
         };
-        string detail = generation.Numbers switch
+        string detail = (generation.Numbers, generation.ByPhase) switch
         {
-            GeneratedNumbers.Unlimited => Texts.Get("Divisions.Generate.Unlimited.Note"),
-            GeneratedNumbers.Same => Texts.Get("Divisions.Generate.Same.Detail", ("counts", string.Join(" / ", generation.Counts))),
-            _ => Texts.Get("Divisions.Generate.AsTheGame.Note"),
+            (GeneratedNumbers.Unlimited, false) => Texts.Get("Divisions.Generate.Unlimited.Note"),
+            (GeneratedNumbers.Unlimited, true) => Texts.Get("Divisions.Generate.UnlimitedByPhase.Note"),
+            (GeneratedNumbers.Same, false) => Texts.Get("Divisions.Generate.Same.Detail", ("counts", string.Join(" / ", generation.Counts))),
+            (GeneratedNumbers.Same, true) => Texts.Get("Divisions.Generate.SameByPhase.Detail",
+                ("counts", string.Join(" / ", generation.PhaseCounts)), ("shares", string.Join(" / ", generation.VeterancyShares.Select(share => share.ToString("0.0##", Texts.Catalog.Culture))))),
+            (_, false) => Texts.Get("Divisions.Generate.AsTheGame.Note"),
+            _ => Texts.Get("Divisions.Generate.AsTheGameByPhase.Note"),
         };
         return new PreviewRow(generation, NameOf(generation), scope, KindName(generation.Numbers), detail, UnitsIn(generation), generation.ActivationPoints);
     }
@@ -879,11 +1043,16 @@ public partial class GenerateDivisionsWindow : UserControl
     /// The bytes a unit's line takes in the exported file: measured on the 999-a-card list of the nation with the most
     /// units, which takes a moment, once as the window opens.
     /// </summary>
-    private static double MeasureBytesPerUnit(DivisionRosters units)
+    /// <param name="byPhase">Whether the divisions are Steel Division 2's: a unit there is its line, and its pack in Packs.ndf.</param>
+    private static double MeasureBytesPerUnit(DivisionRosters units, bool byPhase)
     {
-        if (BiggestNation(units) is not DivisionGeneration biggest) return DefaultBytesPerUnit;
+        if (BiggestNation(units, byPhase) is not DivisionGeneration biggest) return DefaultBytesPerUnit;
         IReadOnlyList<DivisionUnit> list = units.UnitsFor(biggest);
-        return list.Count == 0 ? DefaultBytesPerUnit : (double)GeneratedUnitLists.ListText(list).Length / list.Count;
+        if (list.Count == 0) return DefaultBytesPerUnit;
+        if (!byPhase) return (double)GeneratedUnitLists.ListText(list).Length / list.Count;
+        const string Division = "Descriptor_Deck_Division_X_multi";
+        return (double)list.Sum(unit => DivisionChangeRules.SteelDivisionUnitLine(unit).Length
+            + DivisionChangeRules.PackText(DivisionChangeRules.OwnPackOf(Division, unit.Unit), unit.Unit).Length) / list.Count;
     }
 
     private void GoClicked(object sender, RoutedEventArgs e)

@@ -331,11 +331,16 @@ public static class DivisionDetailsEditor
         grid.Children.Add(control);
     }
 
-    /// <summary>The nation, from those of the game's divisions, A to Z; choosing one sets the side its divisions are on.</summary>
+    /// <summary>
+    /// The nation, from those of the game's divisions, A to Z, the division's own among them; choosing one sets the side
+    /// its divisions are on. Steel Division 2's German divisions have no nation code of their own (no CountryId), so a
+    /// generated German division, of its units' nation (GER), would otherwise show none.
+    /// </summary>
     private static ComboBox NationChoice(Division division, IDivisionEditing editing)
     {
         var choice = new ComboBox();
-        IEnumerable<(string Country, string Side)> nations = editing.Nations
+        IEnumerable<(string Country, string Side)> own = division.Country != "" ? [(division.Country, division.Side)] : [];
+        IEnumerable<(string Country, string Side)> nations = editing.Nations.Concat(own).Distinct()
             .OrderBy(nation => UnitNames.Nation(nation.Country), StringComparer.Create(Texts.Catalog.Culture, ignoreCase: true));
         foreach ((string country, string side) in nations)
             choice.Items.Add(new ComboBoxItem { Content = UnitNames.Nation(country) + "  ·  " + UnitNames.Side(side), Tag = (country, side) });

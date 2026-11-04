@@ -60,11 +60,16 @@ public sealed partial class DivisionChangeRules
         }, CostsFile, division, "Add");
         Edit(DeckNumbersFile, DeckSerializerDescriptor, Line(shown, "Divisions.Rule.DeckNumber", ("number", change.DeckNumber)),
             [Action("DivisionIds", "Insert [array]", "LastIndex: (" + division + ", " + Whole(change.DeckNumber ?? 0) + ")")], division);
-        Edit(RulesFile, SteelDivisionRulesDescriptor, Line(shown, "Divisions.Rule.NewUnitList"),
-            [Action(SteelDivisionRulesDescriptor, "Insert [array]", "LastIndex: " + SteelDivisionRuleEntry(division, shown))], division);
+        JsonObject entry = Edit(RulesFile, SteelDivisionRulesDescriptor, Line(shown, "Divisions.Rule.NewUnitList"),
+            [Action(SteelDivisionRulesDescriptor, "Insert [array]", "LastIndex: " + SteelDivisionEntryText(division, shown.Units, transport => TransportCapFor(transport, shown)))], division);
         Edit(SteelDivisionDivisions.ListFile, SteelDivisionDivisions.ListDescriptor, Line(shown, "Divisions.Rule.InList"),
             [Action(SteelDivisionDivisions.ListDescriptor, "Insert [array]", "LastIndex: ~/" + division)], division);
 
+        if (change.Generation is DivisionGeneration generation)
+        {
+            GeneratedSteelDivisionRules(change, shown, generation, entry);
+            return;
+        }
         // each unit's pack, in the division's PackList, numbered for deck codes; its line is in the entry already
         foreach (DivisionUnit unit in shown.Units)
         {
@@ -74,16 +79,57 @@ public sealed partial class DivisionChangeRules
     }
 
     /// <summary>
-    /// A new division's entry of DivisionRules.ndf's MAP, whole: its units' lines, and a cap for each transport they
-    /// ride in (<see cref="TransportCapFor"/>), as the game writes an entry, on one line.
+    /// A generated division's units (Steel Division 2): what depends on them, written by the export each time from the
+    /// files on the Files tab (<see cref="GeneratedUnitLists.Fill"/>), as WARNO's unit list is. They are in four places
+    /// (see <see cref="SteelDivisionUnitRules"/>): its entry of DivisionRules.ndf, written whole with them; its PackList;
+    /// a pack for each in Packs.ndf; and the packs' numbers for deck codes. Each such rule keeps the division's entry and
+    /// its part; the entry's rule keeps the caps the game gives transports too, as the caps follow the units. Empty
+    /// until the export fills them.
     /// </summary>
-    private string SteelDivisionRuleEntry(string division, Division shown)
+    private void GeneratedSteelDivisionRules(ModDivision change, Division shown, DivisionGeneration generation, JsonObject entry)
     {
-        List<string> transports = [.. shown.Units.SelectMany(unit => unit.Transports).Distinct(StringComparer.Ordinal)];
-        string units = string.Join(", ", shown.Units.Select(SteelDivisionUnitLine));
+        string division = shown.Descriptor;
+        string how = Line(shown, "Divisions.Rule.GeneratedUnits", ("how", generation.Describe(texts)));
+        entry["Name"] = how;
+        MarkGenerated(entry, change, GeneratedParts.Entry);
+        var caps = new JsonObject();
+        foreach ((string transport, int cap) in gameDivisions.SelectMany(each => each.TransportCaps)
+            .GroupBy(pair => pair.Key, StringComparer.Ordinal).Select(group => (group.Key, group.Max(pair => pair.Value))).OrderBy(pair => pair.Key, StringComparer.Ordinal))
+            caps[transport] = cap;
+        ((JsonObject)entry[ArmoryKey]!)[TransportCapsKey] = caps;
+        MarkGenerated(Edit(DivisionsFile, division, how, Action("PackList", "Set To [list, object]", "MAP [ ]")), change, GeneratedParts.PackList);
+        MarkGenerated(Rule(new JsonObject
+        {
+            ["Name"] = how,
+            ["Kind"] = "Add",
+            ["Params"] = new JsonObject { ["Text"] = "", ["Name"] = "" },
+        }, PacksFile, division, "Add"), change, GeneratedParts.Packs);
+        MarkGenerated(Edit(DeckNumbersFile, DeckSerializerDescriptor, how, Array.Empty<JsonObject>(), division), change, GeneratedParts.PackIds);
+    }
+
+    /// <summary>Marks a rule as one the export fills in for a generated division, with the division's entry and the part it writes.</summary>
+    private static void MarkGenerated(JsonObject rule, ModDivision change, string part)
+    {
+        var armory = (JsonObject)rule[ArmoryKey]!;
+        armory[GeneratedDivisionKey] = change.ToJson();
+        armory[GeneratedPartKey] = part;
+    }
+
+    /// <summary>
+    /// A division's entry of DivisionRules.ndf's MAP, whole: its units' lines, and a cap for each transport they ride in,
+    /// as the game writes an entry, on one line.
+    /// </summary>
+    /// <param name="division">The division's descriptor.</param>
+    /// <param name="units">Its units.</param>
+    /// <param name="capFor">The cap a transport is given (<see cref="TransportCapFor"/>).</param>
+    public static string SteelDivisionEntryText(string division, IEnumerable<DivisionUnit> units, Func<string, int> capFor)
+    {
+        List<DivisionUnit> all = [.. units];
+        List<string> transports = [.. all.SelectMany(unit => unit.Transports).Distinct(StringComparer.Ordinal)];
+        string lines = string.Join(", ", all.Select(SteelDivisionUnitLine));
         string caps = string.Join(", ", transports.Select(transport =>
-            "TDeckTransportRule ( TransportDescriptor = ~/" + transport + " MaxNumber = " + Whole(TransportCapFor(transport, shown)) + " )"));
-        return "(~/" + division + ", TDeckDivisionRule ( UnitRuleList = [" + units + "] TransportRuleList = [" + caps + "] ))";
+            "TDeckTransportRule ( TransportDescriptor = ~/" + transport + " MaxNumber = " + Whole(capFor(transport)) + " )"));
+        return "(~/" + division + ", TDeckDivisionRule ( UnitRuleList = [" + lines + "] TransportRuleList = [" + caps + "] ))";
     }
 
     /// <summary>

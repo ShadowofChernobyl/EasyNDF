@@ -62,6 +62,7 @@ public sealed class SplitBar : FrameworkElement
         }
         isDragging = true;
         PixelSnapping.PauseForDrag();
+        LayoutDrag.Start(LayoutDragKind.Panes);
         CaptureMouse(); // the drag carries on when the pointer leaves the bar
         InvalidateVisual();
     }
@@ -70,6 +71,7 @@ public sealed class SplitBar : FrameworkElement
     {
         if (!isDragging || Parent is not IInputElement holder) return;
         Point at = e.GetPosition(holder);
+        LayoutDrag.Step();
         Moved?.Invoke(liesFlat ? at.Y : at.X);
     }
 
@@ -77,6 +79,7 @@ public sealed class SplitBar : FrameworkElement
 
     protected override void OnLostMouseCapture(MouseEventArgs e)
     {
+        if (isDragging) LayoutDrag.End();
         if (isDragging) Settled?.Invoke();
         if (isDragging) PixelSnapping.ResumeAfterDrag();
         isDragging = false;

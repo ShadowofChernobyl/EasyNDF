@@ -21,6 +21,9 @@ public sealed class PackedBytes
     /// <summary>The size of the bytes before packing.</summary>
     public long Length { get; }
 
+    /// <summary>The size of the bytes packed: the memory they take while put away.</summary>
+    public long PackedLength => packed.Length;
+
     /// <summary>Packs bytes. The quickest packing is used: it still makes game files about 30 times smaller.</summary>
     public static PackedBytes Pack(ReadOnlySpan<byte> bytes)
     {

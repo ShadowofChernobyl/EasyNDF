@@ -44,6 +44,8 @@ public static class UnitReader
     [
         "UniteDescriptor.ndf", "BuildingDescriptors.ndf", "DefenseProductionsDescriptors.ndf", "WeaponDescriptor.ndf", "Ammunition.ndf", "AmmunitionMissiles.ndf", "DeckSerializer.ndf",
         "Divisions.ndf", "DivisionList.ndf", "DivisionRules.ndf", "DivisionCostMatrix.ndf", "Decks.ndf", "DeckPacks.ndf",
+        // where the units' pictures and the divisions' emblems are: a mod's new units and divisions name their own
+        "ButtonTexturesUnites.ndf", "DefenseTextures.ndf", "DivisionTextures.ndf",
     ];
 
     /// <summary>Reads every unit. What cannot be read is listed in the catalogue's problems; the rest is still read.</summary>

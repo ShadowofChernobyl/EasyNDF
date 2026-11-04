@@ -119,9 +119,11 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 entry.Message = Texts.Get("Files.Run.Waiting");
                 model.RowChanged(entry);
             }
+            using Work.Job job = Work.Start("");
             foreach (FileEntry entry in list)
             {
                 if (model.IsCancelRequested) break;
+                job.Rename(Texts.Get(write ? "Main.Usage.Job.Exporting" : "Main.Usage.Job.Previewing", ("done", finished.Count + 1), ("count", list.Count)));
                 model.ShowProgress(entry.Name, finished.Count, list.Count);
                 entry.Message = Texts.Get("Files.Run.Working");
                 model.RowChanged(entry);
@@ -192,7 +194,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         string? cache = AppData.Current.Folders?.Cache;
         // the units come with the generated lists, so when nothing has changed since the last export both are read
         // from the cache instead of running the rules on every unit file again
-        GeneratedListsMaker.Results made = await Task.Run(() => GeneratedListsMaker.ResultsFor(rules, inputs, TextAfterRules, cache));
+        GeneratedListsMaker.Results made;
+        using (Work.Start(Texts.Get("Main.Usage.Job.Generating")))
+            made = await Task.Run(() => GeneratedListsMaker.ResultsFor(rules, inputs, TextAfterRules, cache));
 
         Dictionary<string, GeneratedListsMaker.KnownUnit> units = made.Units;
         List<Mod> gameMods = [.. AppData.Current.Mods.Where(mod => mod.Game == game)];
@@ -496,6 +500,10 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             lock (modFileProblems) modFileProblems.Add(Texts.Get("Files.Run.ModFiles.NoGameData", ("path", exportPath)));
             return;
         }
+        // the game reads a WARNO mod's dictionaries only from GameData\Localisation\&lt;the mod's folder&gt;: a carried one goes
+        // there whatever folder its rule names, which is the folder of the mod it came from
+        if (entry.Game == Data.Game.GameTitle.Warno)
+            files = [.. files.Select(file => InTheModsLocalisation(file, Path.GetFileName(modFolder)))];
         List<FileAndTextRules.CarriedFile> notYetWritten;
         lock (modFilesWritten)
             notYetWritten = [.. files.Where(file => modFilesWritten.Add(Path.Combine(modFolder, file.Destination.Replace('\\', '/'))))];
@@ -511,6 +519,19 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             lock (modFileProblems) modFileProblems.Add(Texts.Get("Files.Run.ModFiles.Failed", ("problem", error.Message)));
         }
+    }
+
+    /// <summary>
+    /// A carried file bound for a folder under GameData\Localisation, moved to the mod's own folder there (see
+    /// <see cref="DivisionExtras.NamesFilePathFor"/>); any other file as it is.
+    /// </summary>
+    public static FileAndTextRules.CarriedFile InTheModsLocalisation(FileAndTextRules.CarriedFile file, string gameMod)
+    {
+        string[] folders = file.Destination.Split('/', '\\');
+        int localisation = Array.FindIndex(folders, folder => string.Equals(folder, "Localisation", StringComparison.OrdinalIgnoreCase));
+        if (localisation < 1 || localisation + 2 >= folders.Length || !string.Equals(folders[localisation - 1], "GameData", StringComparison.OrdinalIgnoreCase))
+            return file;
+        return file with { Destination = DivisionExtras.NamesFilePathFor(file.Destination, gameMod).Replace('\\', '/') };
     }
 
     /// <summary>After an export: how many files the File rules wrote, or what stopped them. The counts start again for the next export.</summary>
@@ -585,6 +606,21 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         IReadOnlyList<JsonNode?> rules = ArmoryRulesOf(ModStack.RunningFor(game));
         HashSet<string> files = DivisionChangeRules.FilesOf(rules);
         if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFileOf(game));
+        return files;
+    }
+
+    /// <summary>
+    /// The names of the files the export reads a game's generated divisions and battlegroups from, when a mod that is
+    /// on has any (<see cref="GeneratedListsMaker.InputFilesOf"/>): none have rules of their own, but a generated
+    /// division made without one lacks its units, as Steel Division 2's lacked its defences without
+    /// DefenseProductionsDescriptors.ndf. Empty when there are none.
+    /// </summary>
+    internal static IReadOnlySet<string> FilesGeneratedListsRead(Data.Game.GameTitle game)
+    {
+        IReadOnlyList<JsonNode?> rules = ArmoryRulesOf(ModStack.RunningFor(game));
+        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (GeneratedUnitLists.AnyIn(rules)) files.UnionWith(GeneratedListsMaker.InputFilesOf(game));
+        if (GeneratedBattlegroups.AnyIn(rules)) files.UnionWith(GeneratedListsMaker.BattlegroupFiles);
         return files;
     }
 

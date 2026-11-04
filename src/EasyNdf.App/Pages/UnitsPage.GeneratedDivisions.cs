@@ -32,7 +32,7 @@ public partial class UnitsPage
     private void GenerateDivisionsClicked(object sender, RoutedEventArgs e)
     {
         if (loaded is null) return;
-        MainView.Of(this).GenerateDivisions.Open(Rosters, Game, OpenMod.Name, OpenMod.Divisions.Select(division => division.Name), ModNations(), Generate);
+        MainView.Of(this).GenerateDivisions.Open(Rosters, Game, OpenMod.Name, OpenMod.Divisions.Select(division => division.Name), ModNations(), Economies, Generate);
     }
 
     /// <summary>Makes the divisions chosen in the Division Generator, one undo step for all, and shows the first.</summary>
@@ -98,9 +98,9 @@ public partial class UnitsPage
     {
         if (chosenDivision is not Division division || EntryShown(division.Descriptor)?.Generation is not DivisionGeneration current) return;
         string descriptor = division.Descriptor;
-        MainView.Of(this).GenerateDivisions.OpenToChange(division.Name, current, Rosters, Game, ModNations(), generation =>
+        MainView.Of(this).GenerateDivisions.OpenToChange(division.Name, current, Rosters, Game, ModNations(), Economies, generation =>
         {
-            if (ChangeDivisions(mod => DivisionChanges.ChangeGeneration(mod, descriptor, generation, NationFor(generation)))) ShowDivisionNamed(descriptor);
+            if (ChangeDivisions(mod => DivisionChanges.ChangeGeneration(mod, descriptor, generation, NationFor(generation), GameDivisions))) ShowDivisionNamed(descriptor);
         });
     }
 

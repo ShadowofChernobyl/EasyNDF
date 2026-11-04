@@ -71,6 +71,7 @@ public static class ModStack
     /// </summary>
     public static void SetOn(Mod mod, bool on)
     {
+        SessionLog.Write("Mods", (on ? "Switched on " : "Switched off ") + mod.Name);
         List<string> names = [.. Ordered.Where(each => ReferenceEquals(each, mod) ? on : IsOn(each)).Select(each => each.Name)];
         Data.State[OnKey] = new JsonArray([.. names.Select(name => (JsonNode?)name)]);
         Data.SaveState();

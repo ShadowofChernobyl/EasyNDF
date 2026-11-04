@@ -248,7 +248,7 @@
                                                 </ItemsControl.Template>
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
-                                                        <VirtualizingStackPanel />
+                                                        <controls:LinesPanel />
                                                     </ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.Resources>
@@ -356,20 +356,7 @@
           it reads, clear, so nothing on it is clicked meanwhile; the app's tabs, outside the page, can be.
         -->
         <Grid x:Name="ReadingCardHolder" Visibility="Collapsed" Background="Transparent">
-            <controls:Bevel x:Name="ReadingCard" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
-                            Padding="18,14" HorizontalAlignment="Center" VerticalAlignment="Center" Width="420">
-                <!-- always the same width: a long mod name is cut short rather than widening the card -->
-                <StackPanel>
-                    <DockPanel>
-                        <TextBlock x:Name="ReadingStepCount" DockPanel.Dock="Right" FontSize="12" Foreground="{DynamicResource muted}" VerticalAlignment="Bottom" Margin="16,0,0,1" />
-                        <TextBlock x:Name="ReadingTitle" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource accent}" TextTrimming="CharacterEllipsis" />
-                    </DockPanel>
-                    <TextBlock x:Name="ReadingWhere" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" MaxWidth="420" HorizontalAlignment="Left" Margin="0,2,0,10" />
-                    <!-- a bar that fills block by block, always the same size -->
-                    <controls:BlockBar x:Name="ReadingBar" />
-                    <StackPanel x:Name="ReadingSteps" Margin="0,10,0,0" />
-                </StackPanel>
-            </controls:Bevel>
+            <controls:LoadingCard x:Name="ReadingCard" />
         </Grid>
     </Grid>
 </UserControl>

@@ -43,6 +43,8 @@
     <SolidColorBrush x:Key="meter" Color="#bfac5f" />
     <SolidColorBrush x:Key="side-a" Color="#6f93bd" />
     <SolidColorBrush x:Key="side-b" Color="#bd6f68" />
+    <SolidColorBrush x:Key="usage-waiting" Color="#4cc4cc" />
+    <SolidColorBrush x:Key="usage-modded" Color="#8f7bea" />
 
     <FontFamily x:Key="ui-font">Tahoma, Verdana, Segoe UI</FontFamily>
     <FontFamily x:Key="mono">Cascadia Mono, Consolas, Lucida Console</FontFamily>

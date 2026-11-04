@@ -296,7 +296,16 @@ public partial class AddUnitsWindow : UserControl
         add(picked);
     }
 
-    private void Close() => Visibility = Visibility.Collapsed;
+    /// <summary>
+    /// Closes the window, letting go of its cards, which hold the units' pictures: nothing of a closed window is on
+    /// screen, and opening it fills the list again.
+    /// </summary>
+    private void Close()
+    {
+        Visibility = Visibility.Collapsed;
+        UnitList.ItemsSource = null;
+        units = [];
+    }
 
     private void CancelClicked(object sender, RoutedEventArgs e) => Close();
 

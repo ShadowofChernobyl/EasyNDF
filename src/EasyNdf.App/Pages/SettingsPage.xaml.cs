@@ -166,9 +166,9 @@ public partial class SettingsPage : UserControl
             DecimalsRow.NoteIsWarning = false;
             foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
                 ConfirmExportSwitch, AskFolderSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch, ArmoryMarksSwitch,
-                ArmoryFileNamesSwitch, MonitorScalingSwitch })
+                ArmoryFileNamesSwitch, MonitorScalingSwitch, UsageSwitch, LogSwitch })
                 toggle.IsChecked = IsOn((string)toggle.Tag);
-            foreach (ComboBox choice in new[] { LineEndChoice, ScopeChoice, FolderChoice, DuplicateChoice, UndoChoice, ScaleChoice })
+            foreach (ComboBox choice in new[] { LineEndChoice, ScopeChoice, FolderChoice, DuplicateChoice, UndoChoice, ScaleChoice, UsageEveryChoice, LogKeepChoice })
             {
                 string current = (string?)Settings[(string)choice.Tag] ?? "";
                 choice.SelectedItem = choice.Items.OfType<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == current) ?? choice.Items[0];
@@ -230,6 +230,21 @@ public partial class SettingsPage : UserControl
     {
         if (showing || TextSizeChoice.SelectedItem is not int size) return;
         View.EditorTab.ChangeTextSize(size);
+    }
+
+    /// <summary>Open Log Folder: the session logs' folder in File Explorer, made first when no log was kept yet.</summary>
+    private void OpenLogFolderClicked(object sender, RoutedEventArgs e)
+    {
+        if (SessionLog.Folder is not string folder) return;
+        try
+        {
+            System.IO.Directory.CreateDirectory(folder);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "\"" + folder + "\"") { UseShellExecute = true });
+        }
+        catch (Exception problem) when (problem is System.IO.IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            _ = View.Messages.Tell(problem.Message);
+        }
     }
 
     /// <summary>A dropdown: the value of its choice (in the choice's Tag) is saved under its setting (in its own Tag).</summary>

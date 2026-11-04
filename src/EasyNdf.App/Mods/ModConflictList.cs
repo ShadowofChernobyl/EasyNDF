@@ -41,6 +41,9 @@ public static class ModConflictList
     public static IEnumerable<(string FileKey, ConflictedValue Value)> All =>
         byFile.SelectMany(file => file.Value.Select(value => (file.Key, value)));
 
+    /// <summary>How many values are in conflict in one file, by its key on the Files tab; none when none were found, or it was not run.</summary>
+    public static int CountIn(string fileKey) => byFile.TryGetValue(fileKey, out List<ConflictedValue>? values) ? values.Count : 0;
+
     /// <summary>The conflicts found in one file, by its key on the Files tab; none when none were found, or it was not run.</summary>
     public static IReadOnlyList<ModConflict> InFile(string fileKey) =>
         byFile.TryGetValue(fileKey, out List<ConflictedValue>? values) ? [.. values.SelectMany(value => value.Pairs())] : [];

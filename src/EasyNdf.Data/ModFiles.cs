@@ -107,7 +107,10 @@ public static class ModFiles
 
         List<Mod>? mods = null;
         if (json is JsonObject modFile && modFile["Presets"] is JsonArray presets)
+        {
             mods = [ReadModFile(modFile, presets, NameFromFileName(fileName))];
+            mods[0].ReadFromCharacters = text.Length;
+        }
         else if (json is JsonArray list && IsBackup(list))
             mods = ReadBackup(list);
         if (mods is not null)

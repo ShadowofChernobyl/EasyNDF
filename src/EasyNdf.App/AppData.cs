@@ -259,6 +259,7 @@ public sealed class AppData
     /// <summary>Opens another mod, and remembers it for the next start.</summary>
     public void Open(Mod mod)
     {
+        SessionLog.Write("Mods", "Opened " + mod.Name);
         State["openMod"] = mod.Name;
         SaveState();
         TellModsChanged(new ModsChange(OpenModChanged: true));
@@ -267,8 +268,28 @@ public sealed class AppData
     /// <summary>Saves a mod after a change, and tells every tab.</summary>
     public void Save(Mod mod)
     {
+        SessionLog.Write("Mods", $"Saved {mod.Name}: {mod.Presets.Count} rule sets, {mod.Divisions.Count} divisions changed or new"
+            + $" ({mod.Divisions.Sum(division => division.ToJson().ToJsonString().Length):N0} characters), {mod.Units.Count} new units,"
+            + $" {mod.UnitEdits.Count} unit changes, {mod.WeaponEdits.Count} weapon changes, {mod.Weapons.Count} new weapons");
         Saving(() => ModStore.Save(mod));
+        savesLater.Remove(mod);
         TellModsChanged();
+    }
+
+    /// <summary>The mods with a change that only alters what the Mods tab shows (a folded group), not yet saved.</summary>
+    private readonly HashSet<Mod> savesLater = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// A change to a mod that only alters what the Mods tab shows, such as a folded group: kept by the mod's next save,
+    /// or by <see cref="SaveWhatWaits"/> as the app closes. Nothing is told to the other tabs.
+    /// </summary>
+    public void SaveLater(Mod mod) => savesLater.Add(mod);
+
+    /// <summary>Saves the mods whose small changes wait (<see cref="SaveLater"/>); called as the app closes.</summary>
+    public void SaveWhatWaits()
+    {
+        foreach (Mod mod in savesLater.Where(Mods.Contains).ToList()) Saving(() => ModStore.Save(mod));
+        savesLater.Clear();
     }
 
     /// <summary>Saves the settings after a change.</summary>

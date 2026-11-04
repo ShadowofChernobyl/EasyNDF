@@ -33,7 +33,7 @@ public partial class UnitsPage
         StartReading(sources.Chosen ?? throw new InvalidOperationException("no source chosen"));
         readingTimer.Stop();
         ShowReadingStep(step);
-        ReadingBar.Fraction = fraction;
+        ReadingCard.Bar.Fraction = fraction;
     }
 
     /// <summary>Hides the reading card again.</summary>

@@ -28,6 +28,7 @@
   "Files.Changed": "Changed",
   "Files.ErrorsOrWarnings": "Errors or warnings",
   "Files.ARuleChangedNothing": "A rule changed nothing",
+  "Files.HasConflicts": "Has conflicts",
   "Files.NotRead": "Not read",
   "Files.Columns": "Columns",
   "Files.Columns.Tip": "Show or hide columns",

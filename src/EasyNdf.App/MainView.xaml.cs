@@ -49,11 +49,12 @@ public partial class MainView : UserControl
         Tabs.SelectionChanged += (_, e) =>
         {
             if (!ReferenceEquals(e.OriginalSource, Tabs)) return;
+            SessionLog.Write("Tab", WhereTheUserIs());
             if (Tabs.SelectedItem == EditorTabItem) EditorTab.Refresh();
             // a large file in the editor is let go of a while after its tab is left (EditorPage.LetGo.cs)
             else if (e.RemovedItems.Contains(EditorTabItem)) EditorTab.TabLeft();
         };
-        Memory.BeforeGivingBack = PackUnusedRuleSets;
+        Memory.WhenIdle = PackUnusedRuleSets;
         Watermark.AppVersion = AppVersion;
         RowWindow.OpenChanged += RuleWindow.ShowBeside;
         RuleWindow.ListedFiles = () => FilesTab.Model.Entries;
@@ -73,7 +74,16 @@ public partial class MainView : UserControl
         SettingChanged += key => { if (key is "treeShowsAll" or "") _ = EditorTab.RebuildTree(); };
         SettingChanged += key => { if (key is "uiScale" or "") ApplyScale(); };
         SettingChanged += key => { if (key is "armoryMarks" or "armoryFileNames" or "") UnitsTab.MarksSettingChanged(); };
+        // the usage readout measures only while it is switched on (Settings, Debug)
+        SettingChanged += key => { if (key is "usageReadout" or "usageEvery" or "") Readout.Apply(); };
+        // the session log (Settings, Debug); every setting changed is a line in it
+        SettingChanged += key => { if (key is "logOn" or "logKeep" or "") SessionLog.Apply(); };
+        SettingChanged += key => { if (key != "") SessionLog.Write("Settings", key + " = " + AppData.Current.Settings[key]?.ToJsonString()); };
+        Readout.Where = WhereTheUserIs;
+        Readout.MemoryParts = MemoryParts;
         ApplyScale();
+        Readout.Apply();
+        SessionLog.Apply();
         Controls.PaneArrangement.Changed += () => SettingsTab.Show();
         HelpPopup.ShowPage += ShowHelpPage;
         PreviewMouseDown += CloseHelpPopupOnClickElsewhere;
@@ -133,9 +143,10 @@ public partial class MainView : UserControl
     private static string ChangeLogText() => Help.WikiPages.ChangeLogHtml;
 
     /// <summary>
-    /// Before the idle clean-up: the large rule sets of every mod put away (<see cref="Data.ModPreset.PackRules"/>), but
-    /// those shown or selected on the Rules tab, and none while a rule window is open, as a rule held there would lose
-    /// a change made to it.
+    /// Tuned for memory: whenever the app is idle, every rule set of every mod put away (<see cref="Data.ModPreset.PackRules"/>),
+    /// switched on or off and whatever its size, but those shown or selected on the Rules tab, and none while a rule
+    /// window is open, as a rule held there would lose a change made to it. With Paul's mods it took rule sets from
+    /// about 246 MB to a few, the mod files they were read from let go of with them. Keep it that way when tidying.
     /// </summary>
     private void PackUnusedRuleSets()
     {

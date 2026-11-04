@@ -55,6 +55,7 @@ public partial class App : Application
     private void ErrorNotCaught(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
         e.Handled = true;
+        SessionLog.Write("Error", e.Exception.ToString());
         string? logFile = AppData.Current.Folders?.Root is string root ? System.IO.Path.Combine(root, "Errors.txt") : null;
         try
         {

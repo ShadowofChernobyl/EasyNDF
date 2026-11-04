@@ -59,6 +59,25 @@ public sealed partial class DivisionChangeRules
     public const string GeneratedDivisionKey = "GeneratedDivision";
 
     /// <summary>
+    /// The key, under <see cref="ArmoryKey"/>, of which part of a Steel Division 2 generated division a rule writes, its
+    /// units filled in by the export (<see cref="GeneratedUnitLists.Fill"/>): its entry of DivisionRules.ndf, its
+    /// PackList, its units' packs, or their numbers for deck codes (<see cref="GeneratedParts"/>). WARNO's one rule has none.
+    /// </summary>
+    public const string GeneratedPartKey = "GeneratedPart";
+
+    /// <summary>
+    /// The key, under <see cref="ArmoryKey"/>, of the caps the game gives transports, the highest in any of its divisions,
+    /// on a generated division's entry: its transports' caps are written once its units are made.
+    /// </summary>
+    public const string TransportCapsKey = "TransportCaps";
+
+    /// <summary>The parts of a Steel Division 2 generated division the export fills in (<see cref="GeneratedPartKey"/>).</summary>
+    public static class GeneratedParts
+    {
+        public const string Entry = "Entry", PackList = "PackList", Packs = "Packs", PackIds = "PackIds";
+    }
+
+    /// <summary>
     /// The key, among a rule's Armory details, of a generated battlegroup's part: its deck (Decks.ndf) or its cards
     /// (DeckPacks.ndf), each written by the export once it has made the cards (<see cref="GeneratedBattlegroups"/>).
     /// </summary>
@@ -171,10 +190,10 @@ public sealed partial class DivisionChangeRules
     private bool WritesInFull => GamesWrittenInFull.Contains(game);
 
     /// <summary>
-    /// Whether a new division is written for the game: always for a game written in full; for Steel Division 2, one that
-    /// is not generated (<see cref="SteelDivisionNewDivision"/>).
+    /// Whether a new division is written for the game: always for a game written in full; for Steel Division 2, in its
+    /// own way (<see cref="SteelDivisionNewDivision"/>), generated ones too.
     /// </summary>
-    private bool WritesNew(ModDivision change) => WritesInFull || (game == GameTitle.SteelDivision2 && change.Generation is null);
+    private bool WritesNew(ModDivision change) => WritesInFull || game == GameTitle.SteelDivision2;
 
     /// <summary>The property of a division's summary, a text token: WARNO's SummaryTextToken, Steel Division 2's DivisionDescription.</summary>
     private string SummaryProperty => game == GameTitle.SteelDivision2 ? SteelDivisionDivisions.SummaryProperty : "SummaryTextToken";
@@ -416,6 +435,11 @@ public sealed partial class DivisionChangeRules
         if (!change.IsNew) changeBeingWritten = "Emblem";
         if (change.EmblemFile is string file && Writes(game, DivisionDetail.EmblemPicture))
         {
+            if (game == GameTitle.SteelDivision2)
+            {
+                SteelDivisionEmblemRules(shown, file);
+                return;
+            }
             string texture = "Texture_Division_Emblem_" + CoreName(division);
             string path = EmblemFolder + CoreName(division) + ".png";
             Rule(new JsonObject
@@ -450,6 +474,51 @@ public sealed partial class DivisionChangeRules
             if (shown.EmblemSource is { Length: > 0 } source) ((JsonObject)picture[ArmoryKey]!)[PictureSourceKey] = source;
         }
     }
+
+    /// <summary>
+    /// An emblem picture of the user's own in Steel Division 2, as its modding manual says to add one: a texture of its
+    /// own of the Modded kind (TUIResourceTexture_CommonModded, as the game's emblems are TUIResourceTexture_Common),
+    /// whose FileName is under the mod's AssetsModding folder; its entry in the game's bank of division pictures
+    /// (DivisionAdditionalTextureBank); and the division's EmblemTexture naming it. The export copies the picture into
+    /// AssetsModding, beside the mod's GameData folder.
+    /// </summary>
+    private void SteelDivisionEmblemRules(Division shown, string file)
+    {
+        string division = shown.Descriptor;
+        // a name of its own: the game's emblem of the division is named after it already
+        string texture = "Texture_Division_Emblem_EZ_" + CoreName(division);
+        string path = SteelDivisionEmblemFolder + "EZ_" + CoreName(division) + ".png";
+        // relative to AssetsModding, with the backslashes the game's own FileNames have
+        string fileName = path[(Units.UnitChangeRules.AssetsModdingFolder.Length + 1)..].Replace('/', '\\');
+        Rule(new JsonObject
+        {
+            ["Name"] = Line(shown, "Divisions.Rule.EmblemTexture"),
+            ["Kind"] = "Add",
+            ["Params"] = new JsonObject
+            {
+                ["Text"] = "export " + texture + " is TUIResourceTexture_CommonModded\n(\n    FileName = '" + fileName + "'\n)",
+                ["Name"] = "",
+            },
+        }, TexturesFile, division, "Add");
+        Rule(new JsonObject
+        {
+            ["Name"] = Line(shown, "Divisions.Rule.EmblemBank"),
+            ["Kind"] = "Edit",
+            ["Conditions"] = new JsonArray(Condition(Conditions.DescriptorTitle, SteelDivisionEmblemBank)),
+            ["Actions"] = new JsonArray(Action("Textures", "Insert [array]", "LastIndex: (\"" + texture + "\", MAP [(~/ComponentState/Normal, ~/" + texture + ")])")),
+        }, TexturesFile, division, "Edit");
+        JsonObject picture = Edit(DivisionsFile, division, Line(shown, "Divisions.Rule.Emblem", ("picture", Path.GetFileName(file))),
+            Action("EmblemTexture", "Set To [int, float, string, boolean]", Quoted(texture)));
+        Shows(picture, "Picture");
+        ((JsonObject)picture[ArmoryKey]!)[PictureFileKey] = file;
+        ((JsonObject)picture[ArmoryKey]!)[PicturePathKey] = path;
+    }
+
+    /// <summary>Steel Division 2's bank of division pictures, at the end of DivisionTextures.ndf, which names each texture a division's EmblemTexture may give.</summary>
+    private const string SteelDivisionEmblemBank = "DivisionAdditionalTextureBank";
+
+    /// <summary>Where the Armory puts Steel Division 2 emblems of the user's own, in the mod's AssetsModding folder.</summary>
+    public const string SteelDivisionEmblemFolder = Units.UnitChangeRules.AssetsModdingFolder + "/Division/Emblem/";
 
     // ---- the units of a division ----
 

@@ -177,6 +177,7 @@ public sealed class UnitChanges
         var gameUnits = new Dictionary<string, Unit>(StringComparer.Ordinal);
         foreach (Unit unit in game.Units) gameUnits.TryAdd(unit.Descriptor, unit);
         var found = new Dictionary<string, UnitChange>(StringComparer.Ordinal);
+        var named = new RulesNamed(modName, edits);
         foreach (Unit unit in changed.Units)
         {
             if (!gameUnits.TryGetValue(unit.Descriptor, out Unit? before))
@@ -187,7 +188,7 @@ public sealed class UnitChanges
             List<string> fields = FieldsChanged(before, unit);
             if (fields.Count == 0) continue;
             var rules = new Dictionary<string, IReadOnlyList<RuleOfMod>>(StringComparer.Ordinal);
-            foreach (string field in fields) rules[field] = RulesThatChanged(modName, unit, field, edits, editsByDescriptor);
+            foreach (string field in fields) rules[field] = RulesThatChanged(named, unit, field, editsByDescriptor);
             found[unit.Descriptor] = new UnitChange(before, rules);
         }
         return new UnitChanges(modName, found);
@@ -240,21 +241,50 @@ public sealed class UnitChanges
     /// or for a weapon its ammunition and the unit's weapon set). Where some of those edits are to the properties the
     /// value is read from, only their rules are named.
     /// </summary>
-    private static IReadOnlyList<RuleOfMod> RulesThatChanged(string modName, Unit unit, string field, IReadOnlyList<RuleEdit> edits, Dictionary<string, List<RuleEdit>> editsByDescriptor)
+    private static IReadOnlyList<RuleOfMod> RulesThatChanged(RulesNamed named, Unit unit, string field, Dictionary<string, List<RuleEdit>> editsByDescriptor)
     {
-        List<RuleEdit> inThem;
-        if (field == UnitField.Divisions)
-        {
-            // a unit's divisions change in the divisions' own descriptors
-            inThem = edits.Where(edit => edit.Descriptor.StartsWith("Descriptor_Deck_", StringComparison.Ordinal)).ToList();
-        }
-        else
-        {
-            inThem = [.. DescriptorsOf(unit, field).Distinct(StringComparer.Ordinal).SelectMany(descriptor => editsByDescriptor.GetValueOrDefault(descriptor) ?? [])];
-        }
+        // a unit's divisions change in the divisions' own descriptors: the same rules for every unit
+        if (field == UnitField.Divisions) return named.OfDivisions();
+        List<RuleEdit> inThem = [.. DescriptorsOf(unit, field).Distinct(StringComparer.Ordinal).SelectMany(descriptor => editsByDescriptor.GetValueOrDefault(descriptor) ?? [])];
+        return named.Of(Narrowed(inThem, field));
+    }
+
+    /// <summary>Where some of the edits are to the properties a value is read from, only those; else all of them.</summary>
+    private static List<RuleEdit> Narrowed(List<RuleEdit> inThem, string field)
+    {
         string[] properties = PropertiesOf(field);
         List<RuleEdit> toProperties = inThem.Where(edit => properties.Contains(LastPart(edit.Target), StringComparer.Ordinal)).ToList();
-        return (toProperties.Count > 0 ? toProperties : inThem).Select(edit => edit.Of(modName)).Distinct().ToList();
+        return toProperties.Count > 0 ? toProperties : inThem;
+    }
+
+    /// <summary>
+    /// The rules named for the changes of one comparison. Tuned for memory: each rule is one <see cref="RuleOfMod"/>
+    /// shared by every value it changed, and the rules that changed the divisions are one list shared by every unit. A
+    /// mod changing thousands of divisions' descriptors (WARNO ACTUAL) gave each of some 3,000 units its own list of
+    /// those thousands of rules: 18 million names, about 750 MB. Keep it that way when tidying.
+    /// </summary>
+    private sealed class RulesNamed(string modName, IReadOnlyList<RuleEdit> edits)
+    {
+        private readonly Dictionary<(string Mod, string Rule), RuleOfMod> rules = [];
+        private IReadOnlyList<RuleOfMod>? ofDivisions;
+
+        /// <summary>The rules of these edits, each once, in the order the edits were made.</summary>
+        public IReadOnlyList<RuleOfMod> Of(IEnumerable<RuleEdit> made)
+        {
+            var named = new List<RuleOfMod>();
+            var seen = new HashSet<RuleOfMod>(ReferenceEqualityComparer.Instance);
+            foreach (RuleEdit edit in made)
+            {
+                string mod = edit.Mod == "" ? modName : edit.Mod;
+                if (!rules.TryGetValue((mod, edit.Rule), out RuleOfMod? rule)) rules[(mod, edit.Rule)] = rule = new RuleOfMod(mod, edit.Rule);
+                if (seen.Add(rule)) named.Add(rule);
+            }
+            return named;
+        }
+
+        /// <summary>The rules that changed a unit's divisions, worked out once.</summary>
+        public IReadOnlyList<RuleOfMod> OfDivisions() =>
+            ofDivisions ??= Of(Narrowed([.. edits.Where(edit => edit.Descriptor.StartsWith("Descriptor_Deck_", StringComparison.Ordinal))], UnitField.Divisions));
     }
 
     /// <summary>

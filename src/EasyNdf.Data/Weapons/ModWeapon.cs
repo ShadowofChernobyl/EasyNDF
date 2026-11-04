@@ -41,7 +41,8 @@ public sealed class ModWeapon : WeaponValues
 
     /// <summary>
     /// A descriptor for a weapon named <paramref name="name"/>: its letters and digits, with "_" between words:
-    /// "M256 (DU)" is "Ammo_EZ_M256_DU". "_2", "_3"... are added when <paramref name="taken"/> has it already.
+    /// "M256 (DU)" is "Ammo_EZ_M256_DU". When <paramref name="taken"/> has it already, the number goes on the EZ, as a
+    /// new unit's does (Paul's choice, the same in every game): "Ammo_EZ2_M256_DU".
     /// </summary>
     public static string NewDescriptor(string name, IReadOnlyCollection<string> taken)
     {
@@ -52,7 +53,7 @@ public sealed class ModWeapon : WeaponValues
         if (words == "") words = "Weapon";
         string descriptor = DescriptorPrefix + words;
         for (int number = 2; taken.Contains(descriptor); number++)
-            descriptor = DescriptorPrefix + words + "_" + number;
+            descriptor = "Ammo_EZ" + number + "_" + words;
         return descriptor;
     }
 

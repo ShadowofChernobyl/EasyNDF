@@ -59,8 +59,17 @@ public sealed class CustomTitleBar
         }
         // while the window is resized by its edges, the panes are laid out again on every move of the mouse, as when a
         // pane's bar is dragged: whole-pixel edges are checked once, when it ends (moving the window starts this too)
-        if (message == WmEnterSizeMove) Controls.PixelSnapping.PauseForDrag();
-        if (message == WmExitSizeMove) Controls.PixelSnapping.ResumeAfterDrag();
+        if (message == WmEnterSizeMove)
+        {
+            Controls.PixelSnapping.PauseForDrag();
+            Controls.LayoutDrag.Start(Controls.LayoutDragKind.Window);
+        }
+        if (message == WmSize) Controls.LayoutDrag.Step();
+        if (message == WmExitSizeMove)
+        {
+            Controls.LayoutDrag.End();
+            Controls.PixelSnapping.ResumeAfterDrag();
+        }
         return IntPtr.Zero;
     }
 
@@ -108,7 +117,7 @@ public sealed class CustomTitleBar
 
     // ---- Windows functions and values used above ----
 
-    private const int WmNcCalcSize = 0x0083, WmNcHitTest = 0x0084, WmEnterSizeMove = 0x0231, WmExitSizeMove = 0x0232;
+    private const int WmSize = 0x0005, WmNcCalcSize = 0x0083, WmNcHitTest = 0x0084, WmEnterSizeMove = 0x0231, WmExitSizeMove = 0x0232;
     private static readonly IntPtr HtClient = 1, HtCaption = 2, HtTop = 12;
     private const int SmCyFrame = 33, SmCxPaddedBorder = 92;
     private const int DwmWindowCornerPreference = 33, DwmCornerDoNotRound = 1, DwmBorderColor = 34;

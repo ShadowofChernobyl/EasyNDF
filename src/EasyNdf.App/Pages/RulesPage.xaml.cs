@@ -165,7 +165,7 @@ public partial class RulesPage : UserControl
         public bool AppliesToNothing => RuleSetFiles.Named(Preset).Count == 0;
 
         /// <summary>"12 rules"; "⚠ no file" when it applies to no file at all, as it then never runs.</summary>
-        public string UseText => AppliesToNothing ? Texts.Get("Rules.Preset.NoFile") : Texts.CountWide("Rules.RuleCount", Preset.Rules.Count);
+        public string UseText => AppliesToNothing ? Texts.Get("Rules.Preset.NoFile") : Texts.CountWide("Rules.RuleCount", Preset.RuleCount);
 
         /// <summary>The tooltip of "⚠ no file".</summary>
         public string? UseTip => AppliesToNothing ? Texts.Get("Rules.AppliesTo.None.Tip") : null;
@@ -182,7 +182,7 @@ public partial class RulesPage : UserControl
 
         /// <summary>How many rules its preset has, group headings left out; "None" when it has none.</summary>
         public string CountText => Preset is null ? Texts.Get("Rules.Armory.None")
-            : RulesModel.CountRules(Preset.Rules.Count(rule => (string?)rule?["Kind"] != "Group"));
+            : RulesModel.CountRules(Preset.RuleCountWithoutGroups);
 
         /// <summary>Whether no change was made in the part: its name is dim, and it opens with no rules.</summary>
         public bool IsEmpty => Preset is null;
@@ -497,10 +497,48 @@ public partial class RulesPage : UserControl
     /// <summary>Imports mod files or backups (also the Settings tab's "Restore backup..."), asking about each mod of a name already here.</summary>
     public async Task ImportModFiles(IEnumerable<string> paths)
     {
+        using Work.Job job = Work.Start(Texts.Get("Main.Usage.Job.Importing"));
         var problems = new List<string>();
         int added = 0, skipped = 0;
         Mod? last = null;
-        foreach (string path in paths)
+        int loading = 0;
+        try
+        {
+            foreach (string path in paths)
+            {
+                loading = Loading.Start(Texts.Get("Rules.Loading.Importing", ("file", Path.GetFileName(path))), Path.GetDirectoryName(path) ?? "",
+                    Texts.Get("Rules.Loading.Reading"), Texts.Get("Rules.Loading.Adding"), Texts.Get("Rules.Loading.Carried"), Texts.Get("Rules.Loading.Showing"));
+                (bool read, Mod? lastOfFile, int addedOfFile, int skippedOfFile) = await ImportModFile(path, loading, problems);
+                if (!read) continue;
+                added += addedOfFile;
+                skipped += skippedOfFile;
+                last = lastOfFile ?? last;
+            }
+            if (last is not null)
+            {
+                await Loading.StepThatHolds(loading, 3, showNow: false);
+                AppData.Current.Open(last);
+                AppData.Current.TellModsChanged(new ModsChange(PresetsAdded: true));
+            }
+            Model.Refresh();
+        }
+        finally
+        {
+            Loading.End(loading);
+        }
+        var parts = new List<string>();
+        if (added > 0) parts.Add(Texts.Get("Rules.Mod.ImportAdded", ("count", added)));
+        if (skipped > 0) parts.Add(Texts.Get("Rules.Mod.ImportSkipped", ("count", skipped)));
+        if (parts.Count > 0) Model.Say(Texts.Get("Rules.Mod.Imported", ("parts", string.Join(", ", parts))));
+        if (problems.Count > 0) await Messages.Tell(Texts.Get("Rules.Mod.ImportFailed", ("problems", string.Join(", ", problems))));
+    }
+
+    /// <summary>
+    /// Imports one mod file, the loading card's steps following along: hidden while a question is asked about a mod of
+    /// a name already here.
+    /// </summary>
+    private async Task<(bool Read, Mod? Last, int Added, int Skipped)> ImportModFile(string path, int loading, List<string> problems)
+    {
         {
             List<Mod> incoming;
             // read away from the window: a mod carrying files can be 100 MB, a second or more to read, and the window
@@ -509,60 +547,65 @@ public partial class RulesPage : UserControl
             catch (Exception error) when (error is ModFileException or IOException or UnauthorizedAccessException)
             {
                 problems.Add(Path.GetFileName(path) + " (" + error.Message + ")");
-                continue;
+                return (false, null, 0, 0);
             }
             // what to do with each mod of a name already here, asked before anything changes
             var choices = new Dictionary<Mod, ImportChoice>();
             foreach (Mod mod in incoming)
             {
                 if (AppData.Current.Mods.FirstOrDefault(m => m.Name == mod.Name) is not Mod existing) continue;
+                Loading.Hide(loading);
                 DialogAnswer answer = await Messages.Ask(
                     Texts.Get("Rules.Mod.ImportExists", ("mod", mod.Name), ("existing", RulesModel.Count(existing.Presets.Count)), ("count", mod.Presets.Count)),
                     new DialogOptions { Ok = Texts.Get("Files.Duplicate.Replace"), Alternative = Texts.Get("Files.Duplicate.KeepBoth"), Cancel = Texts.Get("Files.Duplicate.Skip") });
                 choices[mod] = answer.Choice switch { DialogChoice.Ok => ImportChoice.Replace, DialogChoice.Alternative => ImportChoice.KeepBoth, _ => ImportChoice.Skip };
             }
+            await Loading.StepThatHolds(loading, 1, showNow: false);
             ImportResult result = AppData.Current.ModStore.Import(incoming, (_, mod) => choices[mod]);
             // the files the mods' File rules carry go into the app's store, where their rules find them
-            foreach (Mod mod in incoming.Where(AppData.Current.Mods.Contains))
+            List<Mod> kept = [.. incoming.Where(AppData.Current.Mods.Contains)];
+            await Loading.StepThatHolds(loading, 2, showNow: kept.Any(mod => mod.CarriedFiles.Count > 0));
+            foreach (Mod mod in kept)
             {
                 try { AppData.Current.ModFileStore.KeepCarried(mod.CarriedFiles); }
                 catch (Exception error) when (error is IOException or UnauthorizedAccessException) { problems.Add(Path.GetFileName(path) + " (" + error.Message + ")"); }
             }
             // each mod comes in switched on or off as it was when exported; on when its file doesn't say
-            foreach (Mod mod in incoming.Where(AppData.Current.Mods.Contains)) ModStack.SetOn(mod, mod.WasOn ?? true);
-            added += result.Added;
-            skipped += result.Skipped;
-            last = result.LastMod ?? last;
+            foreach (Mod mod in kept) ModStack.SetOn(mod, mod.WasOn ?? true);
+            return (true, result.LastMod, result.Added, result.Skipped);
         }
-        if (last is not null)
-        {
-            AppData.Current.Open(last);
-            AppData.Current.TellModsChanged(new ModsChange(PresetsAdded: true));
-        }
-        Model.Refresh();
-        var parts = new List<string>();
-        if (added > 0) parts.Add(Texts.Get("Rules.Mod.ImportAdded", ("count", added)));
-        if (skipped > 0) parts.Add(Texts.Get("Rules.Mod.ImportSkipped", ("count", skipped)));
-        if (parts.Count > 0) Model.Say(Texts.Get("Rules.Mod.Imported", ("parts", string.Join(", ", parts))));
-        if (problems.Count > 0) await Messages.Tell(Texts.Get("Rules.Mod.ImportFailed", ("problems", string.Join(", ", problems))));
     }
 
     /// <summary>"Export mod": saves the open mod as a mod file, to share or keep.</summary>
-    private void ExportModClicked(object sender, RoutedEventArgs e)
+    private async void ExportModClicked(object sender, RoutedEventArgs e)
     {
         Mod mod = Model.OpenMod;
         var dialog = new SaveFileDialog { Title = Texts.Get("Rules.ExportMod"), FileName = FileNames.ForName(mod.Name) + ".mod.json", Filter = Texts.Get("Rules.Mod.ExportFilter") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        string path = dialog.FileName;
+        bool on = ModStack.IsOn(mod);
+        int loading = Loading.Start(Texts.Get("Rules.Loading.Exporting", ("mod", mod.Name)), path, Texts.Get("Rules.Loading.Writing"));
         try
         {
-            File.WriteAllText(dialog.FileName, ModFiles.ExportText(mod, ModStack.IsOn(mod), AppData.Current.ModFileStore));
+            // written away from the window: a mod carrying files can be hundreds of megabytes
+            await Task.Run(() => File.WriteAllText(path, ModFiles.ExportText(mod, on, AppData.Current.ModFileStore)));
             Model.Say(Texts.Get("Rules.Mod.Exported", ("mod", mod.Name), ("presets", RulesModel.Count(mod.Presets.Count))));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
+            Loading.End(loading);
             _ = Messages.Tell(Texts.Get("Rules.Mod.NotSaved", ("reason", error.Message)));
         }
+        finally
+        {
+            Loading.End(loading);
+        }
     }
+
+    private Controls.LoadingCover? loadingCover;
+
+    /// <summary>The loading card while a mod is imported or exported.</summary>
+    private Controls.LoadingCover Loading => loadingCover ??= new Controls.LoadingCover(this);
 
     // ---- presets ----
 

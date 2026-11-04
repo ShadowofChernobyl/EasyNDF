@@ -39,6 +39,13 @@ public sealed class UnitPictureStore
     public int PicturesTakenOut { get; private set; }
 
     /// <summary>
+    /// The pictures EasyNDF mods carry (their File rules), by their path under GameData, such as
+    /// "Assets/2D/Interface/UseOutGame/Division/Emblem/X.png": the file kept on this computer, or null. Looked at before
+    /// the game's own, as the mods' files take the place of the game's on export. Null for none.
+    /// </summary>
+    public Func<string, string?>? ModPictures { get; set; }
+
+    /// <summary>
     /// The .png file of a "GameData:/....png" picture: the mod's own, an already saved one, or one read out of the
     /// game's archives now and saved. Null when the picture cannot be found or read. Called from one task at a time is
     /// best, as reading a picture can be slow; it is safe from several.
@@ -54,6 +61,7 @@ public sealed class UnitPictureStore
             string own = Path.Combine([modFolder, "GameData", .. parts]);
             if (File.Exists(own)) return own;
         }
+        if (ModPictures?.Invoke(relative) is string carried && File.Exists(carried)) return carried;
         string saved = Path.ChangeExtension(Path.Combine([folder, .. parts]), ".png");
         if (File.Exists(saved)) return saved;
 

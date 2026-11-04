@@ -543,7 +543,21 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     {
         JsonNode rule = Rules[index]!;
         rule["Collapsed"] = rule["Collapsed"]?.GetValue<bool>() != true;
-        SaveRules();
+        FoldsChanged();
+    }
+
+    /// <summary>
+    /// A fold changed: the list shows it at once, and the mod keeps it from its next save, or as the app closes.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed: folding only changes what the list shows, so it is not saved, told to the other tabs or made an
+    /// Undo step there and then. Saving a large mod on each fold held the window for up to a second. Keep it that way
+    /// when tidying.
+    /// </remarks>
+    private void FoldsChanged()
+    {
+        Data.SaveLater(OpenMod);
+        Refresh();
     }
 
     /// <summary>Whether the open preset has a Group rule, so "Expand all" and "Collapse all" have something to do.</summary>
@@ -559,7 +573,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
             rule["Collapsed"] = collapsed;
             changed = true;
         }
-        if (changed) SaveRules();
+        if (changed) FoldsChanged();
     }
 
     /// <summary>A rule's ↑ or ↓: swaps it with the rule above or below.</summary>

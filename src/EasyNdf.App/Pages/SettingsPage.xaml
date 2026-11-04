@@ -303,6 +303,39 @@
                     <TextBlock x:Name="DataNote" Style="{StaticResource Note}" Margin="12,0,12,8" />
                 </StackPanel>
             </controls:Bevel>
+
+            <!-- Debug -->
+            <controls:Bevel Style="{StaticResource Card}" Margin="0,0,0,10" Tag="Debug">
+                <StackPanel>
+                    <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Debug}" /></controls:Bevel>
+                    <controls:SettingGrid Margin="6,4,6,6">
+                        <controls:SettingRow Label="{t:Text Settings.UsageReadout}" Note="{t:Text Settings.UsageReadout.Note}">
+                            <CheckBox x:Name="UsageSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="usageReadout" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.UsageEvery}" Note="{t:Text Settings.UsageEvery.Note}">
+                            <ComboBox x:Name="UsageEveryChoice" MinWidth="144" SelectionChanged="ChoiceChanged" Tag="usageEvery">
+                                <ComboBoxItem Content="{t:Text Settings.UsageEvery.Half}" Tag="0.5" />
+                                <ComboBoxItem Content="{t:Text Settings.UsageEvery.One}" Tag="1" />
+                                <ComboBoxItem Content="{t:Text Settings.UsageEvery.Two}" Tag="2" />
+                            </ComboBox>
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.KeepLog}" Note="{t:Text Settings.KeepLog.Note}">
+                            <CheckBox x:Name="LogSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="logOn" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.LogKeep}" Note="{t:Text Settings.LogKeep.Note}">
+                            <ComboBox x:Name="LogKeepChoice" MinWidth="144" SelectionChanged="ChoiceChanged" Tag="logKeep">
+                                <ComboBoxItem Content="5" Tag="5" />
+                                <ComboBoxItem Content="10" Tag="10" />
+                                <ComboBoxItem Content="20" Tag="20" />
+                                <ComboBoxItem Content="50" Tag="50" />
+                            </ComboBox>
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.LogFiles}" Note="{t:Text Settings.LogFiles.Note}">
+                            <Button Content="{t:Text Settings.OpenLogFolder}" ToolTip="{t:Text Settings.OpenLogFolder.Tip}" Click="OpenLogFolderClicked" HorizontalAlignment="Left" />
+                        </controls:SettingRow>
+                    </controls:SettingGrid>
+                </StackPanel>
+            </controls:Bevel>
         </StackPanel>
             </ScrollViewer>
             </controls:Bevel>

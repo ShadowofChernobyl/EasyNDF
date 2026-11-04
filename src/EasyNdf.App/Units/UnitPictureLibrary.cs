@@ -22,6 +22,9 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
     /// <summary>How much memory the pictures kept take now.</summary>
     private long bytesInUse;
 
+    /// <summary>How much memory the pictures kept take now, for the usage readout.</summary>
+    public long BytesInUse => Interlocked.Read(ref bytesInUse);
+
     /// <summary>The pictures of the source the Units tab shows; null until one is read.</summary>
     public static UnitPictureLibrary? Current { get; set; }
 
@@ -55,8 +58,34 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
     /// <summary>Whether the game's unit cards show their numbers in boxes (<see cref="Data.Game.GameTitle.CardMarksInBoxes"/>).</summary>
     public bool CardMarksInBoxes { get; init; }
 
-    /// <summary>A nation's flag's source in the game, such as "GameData:/.../Flags/US.png"; null when the game has none.</summary>
-    public string? FlagSourceOf(string nation) => flagSources.GetValueOrDefault(nation);
+    /// <summary>
+    /// A nation's flag's source, such as "GameData:/.../Flags/US.png": a mod's own for a nation it adds or gives a new
+    /// flag, else the game's; null when neither has one.
+    /// </summary>
+    public string? FlagSourceOf(string nation) => modFlags.GetValueOrDefault(nation) ?? flagSources.GetValueOrDefault(nation);
+
+    /// <summary>The flags the mods shown give their nations, by nation code.</summary>
+    private IReadOnlyDictionary<string, string> modFlags = new Dictionary<string, string>();
+
+    /// <summary>
+    /// The pictures and flags the mods shown bring (<see cref="ModPictureSources"/>). The pictures not found before
+    /// are looked for again, as a mod may have them. True when they differ from those used before.
+    /// </summary>
+    public bool UseModPictures(ModPictureSources mods)
+    {
+        if (mods.SameAs(modPictures)) return false;
+        modPictures = mods;
+        modFlags = mods.Flags;
+        store.ModPictures = mods.FileFor;
+        foreach (var key in kept.Where(pair => pair.Value is null).Select(pair => pair.Key).ToList())
+        {
+            kept.Remove(key);
+            lastUsed.Remove(key);
+        }
+        return true;
+    }
+
+    private ModPictureSources modPictures = ModPictureSources.None;
 
     /// <summary>A picture already in memory, so it can be drawn at once; false when it must be read first.</summary>
     public bool TryGetKept(string source, double width, out ImageSource? picture)

@@ -189,11 +189,15 @@ public sealed partial class DivisionChangeRules
     /// A pack's number for deck codes: one made from its name, so it stays the same from one export to the next, the
     /// next free one when another pack has it.
     /// </summary>
-    private int PackNumberFor(string pack)
+    private int PackNumberFor(string pack) => PackNumberFor(pack, packNumbersGiven);
+
+    /// <summary>A pack's number for deck codes (see <see cref="PackNumberFor(string)"/>), among the numbers given so far.</summary>
+    /// <param name="given">The numbers given so far, the one given now added.</param>
+    public static int PackNumberFor(string pack, HashSet<int> given)
     {
         string hex = StableGuid.From(pack).Replace("GUID:{", "", StringComparison.Ordinal)[..8];
         int number = FirstPackNumber + (int)(uint.Parse(hex, NumberStyles.HexNumber, CultureInfo.InvariantCulture) % PackNumberCount);
-        while (!packNumbersGiven.Add(number)) number = number + 1 < FirstPackNumber + PackNumberCount ? number + 1 : FirstPackNumber;
+        while (!given.Add(number)) number = number + 1 < FirstPackNumber + PackNumberCount ? number + 1 : FirstPackNumber;
         return number;
     }
 
