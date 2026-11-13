@@ -52,6 +52,28 @@ public static class DivisionNames
     public static int UnitsAt(int unitsPerCard, double share) =>
         share == 0 ? 0 : Math.Max(1, (int)Math.Round(unitsPerCard * share, MidpointRounding.AwayFromZero));
 
+    /// <summary>
+    /// Whether a WARNO card at a level with this share holds no unit although the level is offered: the units per card
+    /// times the share rounds to 0 (halves away from 0). From v210942 on, the game refuses to generate a mod with one.
+    /// </summary>
+    public static bool IsEmptyPack(int unitsPerCard, double share) =>
+        share != 0 && Math.Round(unitsPerCard * share, MidpointRounding.AwayFromZero) == 0;
+
+    /// <summary>The smallest share, to two decimals, at which a WARNO card still holds a unit: 0.13 for 4 units per card.</summary>
+    public static double LeastShare(int unitsPerCard)
+    {
+        if (unitsPerCard <= 0) return 0;
+        double least = Math.Ceiling(50.0 / unitsPerCard) / 100;
+        while (least < 1 && IsEmptyPack(unitsPerCard, least)) least = Math.Round(least + 0.01, 2);
+        return Math.Min(least, 1);
+    }
+
+    /// <summary>
+    /// A share a WARNO card can be given: one that would leave the card with no unit is raised to <see cref="LeastShare"/>;
+    /// 0 (the level not offered) and every other share are kept.
+    /// </summary>
+    public static double HoldingAUnit(int unitsPerCard, double share) => IsEmptyPack(unitsPerCard, share) ? LeastShare(unitsPerCard) : share;
+
     /// <summary>The units in one card: "4"; in Steel Division 2, by phase, "6 / 12 / 0".</summary>
     public static string UnitsPerCard(DivisionUnit unit) =>
         unit.UnitsPerCard is int perCard ? Texts.Number(perCard) : string.Join(" / ", unit.UnitsPerCardByPhase.Select(count => Texts.Number(count)));

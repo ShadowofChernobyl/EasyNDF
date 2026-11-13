@@ -37,7 +37,7 @@ public readonly record struct Token(TokenKind Kind, string Text, int Position);
 /// <code>
 ///   [ \t\r\n]+                                   spaces and line breaks
 ///   //[^\r\n]*    /\*[\s\S]*?\*/                 comments
-///   GUID:\{[0-9a-fA-F-]+\}                       Guid
+///   GUID:\{[0-9a-zA-Z-]+\}                       Guid (letters past f too: a mod's GUID:{fg25aaea-...} loads in the game)
 ///   ~(?:/[A-Za-z_]\w*)+                          RelativeReference
 ///   \$(?:/[A-Z_]\w*)*/[A-Za-z_]\w*               AbsoluteReference
 ///   [A-Z_]\w*(?:/[A-Z_]\w*)+   &lt;[A-Za-z_]\w*&gt;     Path
@@ -311,12 +311,12 @@ public static class Tokenizer
         return 1 + WordAt(text, at + 1);
     }
 
-    /// <summary>GUID:\{[0-9a-fA-F-]+\}</summary>
+    /// <summary>GUID:\{[0-9a-zA-Z-]+\}: any letter, as the game takes a mod's GUID that is not hexadecimal.</summary>
     private static int GuidAt(string text, int at)
     {
         if (string.CompareOrdinal(text, at, "GUID:{", 0, 6) != 0) return 0;
         int i = at + 6;
-        while (i < text.Length && (char.IsAsciiHexDigit(text[i]) || text[i] == '-')) i++;
+        while (i < text.Length && (char.IsAsciiLetterOrDigit(text[i]) || text[i] == '-')) i++;
         if (i == at + 6 || At(text, i) != '}') return 0;
         return i + 1 - at;
     }

@@ -46,9 +46,12 @@ public partial class MainView
     /// The parts of the app's memory: those it can count (the files on the Files tab, packed as they are kept; the rule
     /// sets, packed or about what their rules take while in use; the Armory's game data, and its units as the mods make
     /// them, about, from their units; the unit
-    /// pictures kept; the File Editor's text; the Undo history and the mods' Armory changes, about), then the rest split
+    /// pictures kept; the File Editor's text; the Undo history and the mods' Armory changes, about; the 3D model viewer
+    /// while it is open, about), then the rest split
     /// by what .NET says: its other data, what is no longer in use but not yet freed, what it holds ready unused, and what is outside it (drawing, the pictures as
-    /// drawn, Windows' share). The counted parts other than the pictures are .NET's data, so they are taken from it.
+    /// drawn, Windows' share). The counted parts other than the pictures are .NET's data, so they are taken from it; the
+    /// 3D model viewer's are partly .NET's and partly outside it (its pictures, and the software renderer's), each taken
+    /// from its own.
     /// </summary>
     private IReadOnlyList<MemoryPart> MemoryParts(UsageReading reading)
     {
@@ -61,11 +64,12 @@ public partial class MainView
         long editor = 2L * (EditorTab.Text.Document?.TextLength ?? 0);
         long undo = History.AboutBytes();
         long armoryChanges = AppData.Current.Mods.Sum(ArmoryChangeBytes);
-        long counted = files + ruleSets + armory + armoryModded + editor + undo + armoryChanges;
+        (long viewerDotNet, long viewerOutside) = ModelViewer.MemoryUse(reading.Memory - reading.DotNetHeld);
+        long counted = files + ruleSets + armory + armoryModded + editor + undo + armoryChanges + viewerDotNet;
         long waiting = Math.Min(reading.DotNetWaiting, Math.Max(0, reading.DotNet - counted));
         long otherDotNet = Math.Max(0, reading.DotNet - waiting - counted);
         long unused = Math.Max(0, reading.DotNetHeld - reading.DotNet);
-        long outside = Math.Max(0, reading.Memory - Math.Max(reading.DotNetHeld, counted) - pictures);
+        long outside = Math.Max(0, reading.Memory - Math.Max(reading.DotNetHeld, counted) - pictures - viewerOutside);
         return
         [
             new(Texts.Get("Main.Usage.Part.Files"), files),
@@ -76,6 +80,7 @@ public partial class MainView
             new(Texts.Get("Main.Usage.Part.Editor"), editor),
             new(Texts.Get("Main.Usage.Part.Undo"), undo, IsAbout: true),
             new(Texts.Get("Main.Usage.Part.ArmoryChanges"), armoryChanges, IsAbout: true),
+            new(Texts.Get("Main.Usage.Part.ModelViewer"), viewerDotNet + viewerOutside, IsAbout: true),
             new(Texts.Get("Main.Usage.Part.OtherDotNet"), otherDotNet),
             new(Texts.Get("Main.Usage.Part.Waiting"), waiting, IsAbout: true),
             new(Texts.Get("Main.Usage.Part.DotNetUnused"), unused),

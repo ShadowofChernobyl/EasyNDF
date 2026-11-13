@@ -254,7 +254,7 @@ public partial class UnitsPage : IDivisionEditing
         string question = units.Count == 1
             ? Texts.Get("Divisions.Remove.Ask", ("unit", units[0].Name), ("division", division.Name))
             : Texts.Get("Divisions.Remove.AskMany", ("count", Texts.Number(units.Count)), ("division", division.Name));
-        if (await MainView.Of(this).Messages.Confirm(question, Texts.Get("Divisions.Remove.Ok"))) RemoveFromDivision(division, units);
+        if (await MainView.Of(this).Messages.Confirm(question, Texts.Get("Divisions.Remove.Ok"), DialogIcon.Question)) RemoveFromDivision(division, units);
     }
 
     /// <summary>
@@ -336,7 +336,7 @@ public partial class UnitsPage : IDivisionEditing
         string question = isNew
             ? Texts.Get("Divisions.Delete.Ask", ("division", division.Name))
             : Texts.Get("Divisions.DeleteGame.Ask", ("division", division.Name), ("mod", OpenMod.Name));
-        if (!await MainView.Of(this).Messages.Confirm(question, Texts.Get("Common.Menu.Delete"))) return;
+        if (!await MainView.Of(this).Messages.Confirm(question, Texts.Get("Common.Menu.Delete"), DialogIcon.Warning)) return;
         ChangeDivisions(mod => DivisionChanges.Delete(mod, division.Descriptor));
     }
 
@@ -349,7 +349,7 @@ public partial class UnitsPage : IDivisionEditing
     /// <summary>Lets go of the mod's changes to a game division, once the user says so: the game's division is shown again.</summary>
     private async Task RevertDivision(Division division, ModDivision inMod)
     {
-        if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Divisions.Revert.Ask", ("division", division.Name), ("mod", OpenMod.Name)), Texts.Get("Divisions.Revert.Do"))) return;
+        if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Divisions.Revert.Ask", ("division", division.Name), ("mod", OpenMod.Name)), Texts.Get("Divisions.Revert.Do"), DialogIcon.Warning)) return;
         // by its descriptor, as the change is tried on a copy of the mod first
         ChangeDivisions(mod => mod.Divisions.RemoveAll(each => each.Descriptor == inMod.Descriptor));
     }
@@ -485,7 +485,7 @@ public partial class UnitsPage : IDivisionEditing
         string? kept = KeepPicture(dialog.FileName);
         if (kept is null)
         {
-            _ = MainView.Of(this).Messages.Tell(Texts.Get("Divisions.Pane.Emblem.Picture.NotKept", ("file", dialog.FileName)));
+            _ = MainView.Of(this).Messages.Tell(Texts.Get("Divisions.Pane.Emblem.Picture.NotKept", ("file", dialog.FileName)), DialogIcon.Error);
             return;
         }
         ChangeDetails(change => change.EmblemFile = kept);
@@ -547,7 +547,7 @@ public partial class UnitsPage : IDivisionEditing
         // costs that are not the division's own alone are never changed where the game can't take it (Steel Division 2)
         if (WhyDetailCannotChange(DivisionDetail.Costs) is string why)
         {
-            _ = MainView.Of(this).Messages.Tell(why);
+            _ = MainView.Of(this).Messages.Tell(why, DialogIcon.Error);
             return;
         }
         if (chosenDivision.CostsSharedWith > 0 && !sharedCostsAllowed)
@@ -570,7 +570,7 @@ public partial class UnitsPage : IDivisionEditing
     {
         DialogAnswer answer = await MainView.Of(this).Messages.Ask(
             Texts.Get("Divisions.Cost.Shared.Warn", ("count", Texts.Number(sharing))),
-            new DialogOptions { Ok = Texts.Get("Weapons.Risky.GoOn"), CheckText = Texts.Get("Weapons.Risky.HideForSession") });
+            new DialogOptions { Icon = DialogIcon.Warning, Ok = Texts.Get("Weapons.Risky.GoOn"), CheckText = Texts.Get("Weapons.Risky.HideForSession") });
         if (answer.Choice != DialogChoice.Ok) return;
         if (answer.IsChecked) sharedCostsAllowed = true;
         ChangeCostsNow(factory, change);

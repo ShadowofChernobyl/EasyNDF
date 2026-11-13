@@ -28,6 +28,8 @@ public partial class App : Application
         Controls.LongText.Register();
         Controls.TrimmedTip.Register();
         Controls.OffReason.Register();
+        // tooltips open 25% sooner than WPF's 1000 ms
+        System.Windows.Controls.ToolTipService.InitialShowDelayProperty.OverrideMetadata(typeof(DependencyObject), new FrameworkPropertyMetadata(750));
         // the lists' one-line texts, until the saved setting is read
         Controls.ListText.Apply(wrap: false);
 

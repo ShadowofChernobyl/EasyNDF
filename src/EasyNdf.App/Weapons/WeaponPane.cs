@@ -182,18 +182,21 @@ public static partial class WeaponPane
         return brush;
     }
 
-    /// <summary>Show in File Editor (dim while its file is not on the Files tab), New Rule…, Compare and Copy…, as the mock's.</summary>
+    /// <summary>Show in File Editor (dim while its file is not on the Files tab), Show Units (dim when no unit carries it), New Rule…, Compare and Copy…, as the mock's.</summary>
     private static WrapRow Buttons(Weapon weapon, IWeaponActions actions, Action<Weapon> compare, Action openCopy)
     {
         var showInEditor = new Button { Content = Texts.Get("Units.Pane.ShowInEditor"), IsEnabled = actions.CanShowInEditor(weapon) };
         showInEditor.ToolTip = showInEditor.IsEnabled ? Texts.Get("Weapons.Pane.ShowInEditor.Tip") : Texts.Get("Units.Menu.NotLoaded.Tip", ("file", weapon.File));
         ToolTipService.SetShowOnDisabled(showInEditor, true);
         showInEditor.Click += (_, _) => actions.ShowInEditor(weapon);
+        var showUnits = new Button { Content = Texts.Get("Weapons.Pane.ShowUnits"), ToolTip = Texts.Get("Weapons.Pane.ShowUnits.Tip"), IsEnabled = weapon.Users.Count > 0 };
+        OffReason.SetText(showUnits, weapon.Users.Count > 0 ? null : Texts.Get("Weapons.Pane.CarriedByNone"));
+        showUnits.Click += (_, _) => actions.ShowUnitsUsing(weapon);
         var newRule = new Button { Content = Texts.Get("Units.Pane.NewRule"), ToolTip = Texts.Get("Weapons.Pane.NewRule.Tip") };
         newRule.Click += (_, _) => actions.NewRuleFor(weapon);
         var compareButton = new Button { Content = Texts.Get("Units.Compare"), ToolTip = Texts.Get("Weapons.Pane.Compare.Tip") };
         compareButton.Click += (_, _) => compare(weapon);
-        var row = new WrapRow { Gap = 4, Margin = new Thickness(0, 8, 0, 0), Children = { showInEditor, newRule, compareButton } };
+        var row = new WrapRow { Gap = 4, Margin = new Thickness(0, 8, 0, 0), Children = { showInEditor, showUnits, newRule, compareButton } };
         if (actions.CanChangeWeapon(weapon))
         {
             var copy = new Button { Content = Texts.Get("Weapons.Pane.Copy"), ToolTip = Texts.Get("Weapons.Pane.Copy.Tip") };

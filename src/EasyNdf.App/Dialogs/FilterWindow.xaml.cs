@@ -489,7 +489,7 @@ public partial class FilterWindow : UserControl
         DialogAnswer reply = await messages.Ask(Texts.Get("Editor.Filter.NameAsk"), new DialogOptions { Input = Filter.Name, Ok = Texts.Get("Editor.Filter.Save") });
         string name = reply.Text.Trim();
         if (reply.Choice != DialogChoice.Ok || name == "" || owner is null) return;
-        if (saved.ContainsKey(name) && name != Filter.Name && !await messages.Confirm(Texts.Get("Editor.Filter.ReplaceAsk", ("name", name)), Texts.Get("Editor.Replace"))) return;
+        if (saved.ContainsKey(name) && name != Filter.Name && !await messages.Confirm(Texts.Get("Editor.Filter.ReplaceAsk", ("name", name)), Texts.Get("Editor.Replace"), DialogIcon.Warning)) return;
         saved[name] = Filter.Copy();
         Filter.Name = name;
         DescriptorFilterState.StoreSaved(saved);
@@ -501,7 +501,7 @@ public partial class FilterWindow : UserControl
     {
         if (owner is null || !saved.ContainsKey(Filter.Name)) return;
         string name = Filter.Name;
-        if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Editor.Filter.DeleteAsk", ("name", name)), Texts.Get("Editor.Filter.Delete"))) return;
+        if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Editor.Filter.DeleteAsk", ("name", name)), Texts.Get("Editor.Filter.Delete"), DialogIcon.Warning)) return;
         saved.Remove(name);
         Filter.Name = "";
         DescriptorFilterState.StoreSaved(saved);
@@ -519,7 +519,7 @@ public partial class FilterWindow : UserControl
         try { File.WriteAllText(dialog.FileName, DescriptorFilterState.FileText(filters)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.CouldNotSave", ("problem", error.Message)));
+            _ = MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.CouldNotSave", ("problem", error.Message)), DialogIcon.Error);
         }
     }
 
@@ -533,12 +533,12 @@ public partial class FilterWindow : UserControl
         try { text = await File.ReadAllTextAsync(dialog.FileName); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)));
+            await MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)), DialogIcon.Error);
             return;
         }
         if (DescriptorFilterState.FromFile(text) is not List<(string Name, DescriptorFilterState Filter)> filters)
         {
-            await MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.NotAFilterFile", ("file", Path.GetFileName(dialog.FileName))));
+            await MainView.Of(this).Messages.Tell(Texts.Get("Editor.Filter.NotAFilterFile", ("file", Path.GetFileName(dialog.FileName))), DialogIcon.Error);
             return;
         }
         foreach ((string name, DescriptorFilterState filter) in filters)

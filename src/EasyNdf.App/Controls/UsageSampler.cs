@@ -167,7 +167,7 @@ public sealed class UsageSampler : IDisposable
     }
 
     /// <summary>Task Manager's Memory column: what only the app uses of the computer's memory; what it holds when Windows is too old to say.</summary>
-    private static long PrivateWorkingSet()
+    internal static long PrivateWorkingSet()
     {
         var counters = new ProcessMemoryCounters { Size = (uint)Marshal.SizeOf<ProcessMemoryCounters>() };
         if (!GetProcessMemoryInfo(GetCurrentProcess(), ref counters, counters.Size)) return 0;

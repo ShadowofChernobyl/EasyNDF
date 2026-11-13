@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using EasyNdf.App.Controls;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
 using EasyNdf.App.Units;
 using EasyNdf.Data.FileList;
@@ -27,6 +28,7 @@ public partial class UnitsPage : IUnitActions
         [
             Menus.Heading(unit.Name),
             .. ShowInEditorChoices(unit),
+            ShowModelChoice(unit),
             Menus.Line,
             onCompare && compared.Contains(unit) && !ReferenceEquals(unit, pinned) ? new MenuChoice(Texts.Get("Units.Menu.Pin"), () => Pin(unit)) : null,
             new MenuChoice(Texts.Get("Units.Menu.Compare"), () => Compare(unit), IsEnabled: !compared.Contains(unit)),
@@ -178,7 +180,7 @@ public partial class UnitsPage : IUnitActions
     /// </summary>
     private async Task NewRuleForUnits(string name, IReadOnlyList<Unit> units)
     {
-        if (units.Count > 100 && !await MainView.Of(this).Messages.Confirm(Texts.Get("Units.Rule.ManyUnits", ("count", Texts.Number(units.Count))), Texts.Get("Units.Rule.MakeIt")))
+        if (units.Count > 100 && !await MainView.Of(this).Messages.Confirm(Texts.Get("Units.Rule.ManyUnits", ("count", Texts.Number(units.Count))), Texts.Get("Units.Rule.MakeIt"), DialogIcon.Question))
             return;
         NewRule(name, [.. units.Select(unit => unit.Descriptor)]);
     }

@@ -36,7 +36,29 @@
                 <TextBox x:Name="Input" TabIndex="1" DockPanel.Dock="Bottom" ToolTip="{t:Text Common.Message.Input.Tip}" Margin="0,0,0,10" TextChanged="InputChanged" />
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                     <StackPanel>
-                        <TextBlock x:Name="Message" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition />
+                            </Grid.ColumnDefinitions>
+                            <!-- what kind of message this is, left of its words: none for one that only asks for a name -->
+                            <Grid x:Name="IconBox" Width="32" Height="32" Margin="0,0,12,0" VerticalAlignment="Top" Visibility="Collapsed">
+                                <Canvas x:Name="ErrorIcon">
+                                    <Path Data="M10 2.5h12l7.5 7.5v12L22 29.5H10L2.5 22V10z" Fill="{DynamicResource warn}" />
+                                    <Path Data="M10.5 10.5l11 11M21.5 10.5l-11 11" Stroke="{DynamicResource panel}" StrokeThickness="3" StrokeStartLineCap="Square" StrokeEndLineCap="Square" />
+                                </Canvas>
+                                <Canvas x:Name="WarningIcon">
+                                    <Path Data="M16 3L30 28.5H2z" Fill="{DynamicResource caution}" />
+                                    <Path Data="M16 12v8" Stroke="{DynamicResource panel}" StrokeThickness="3" />
+                                    <Rectangle Canvas.Left="14.5" Canvas.Top="22.5" Width="3" Height="3" Fill="{DynamicResource panel}" />
+                                </Canvas>
+                                <Grid x:Name="QuestionIcon">
+                                    <Ellipse Width="27" Height="27" Fill="{DynamicResource accent}" />
+                                    <TextBlock Text="?" FontWeight="Bold" FontSize="19" Foreground="{DynamicResource panel}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                            </Grid>
+                            <TextBlock x:Name="Message" Grid.Column="1" TextWrapping="Wrap" />
+                        </Grid>
                         <ContentPresenter x:Name="Extra" />
                     </StackPanel>
                 </ScrollViewer>

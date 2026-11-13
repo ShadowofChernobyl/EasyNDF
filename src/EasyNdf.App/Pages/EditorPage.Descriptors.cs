@@ -6,6 +6,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Threading;
 using EasyNdf.App.Controls;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Editor;
 using EasyNdf.App.Files;
 using EasyNdf.Data.FileList;
@@ -195,7 +196,8 @@ public partial class EditorPage
     /// Whether, not found in the file, it is looked for in the file's export: a descriptor the Armory adds (a new unit,
     /// a unit's own loadout, a weapon of the mod's own) is only there.
     /// </param>
-    private sealed record Wanted(string Name, int Offset, int RowIndex, bool Quiet, bool InExport = false);
+    /// <param name="OnlyInExport">Whether it is looked for only once the export's own descriptors are listed, not in the file's, read first.</param>
+    private sealed record Wanted(string Name, int Offset, int RowIndex, bool Quiet, bool InExport = false, bool OnlyInExport = false);
     private Wanted? wanted;
 
     /// <summary>Whether Scan all is reading, and whether it was asked to stop.</summary>
@@ -241,7 +243,6 @@ public partial class EditorPage
             keysRested.Stop();
             if (treeShown.FirstOrDefault(n => n.Key == selectedKey) is TreeNode node && node.Kind != TreeNodeKind.File) _ = Pick(node, reveal: false);
         };
-        Text.TextChanged += DescriptorTextChanged;
         StartFilter();
         PrepareHalfButtons();
         DescriptorSplit.Moved += SplitMoved;
@@ -325,6 +326,7 @@ public partial class EditorPage
         OutlineEntry? oldDescriptor = selectedDescriptor >= 0 && selectedDescriptor < outline.Count ? outline[selectedDescriptor] : null;
         List<PropertyRow> oldRows = propertyRows;
         bool oldCut = propertiesCut;
+        ShownText? readFrom = shown;
         ITextSource text = WholeText();
         SayDescriptors(Texts.Get("Editor.Viewer.Reading"));
         List<OutlineEntry> list = [];
@@ -391,10 +393,10 @@ public partial class EditorPage
             ShowProperties();
         }
 
-        if (mine == outlineReading && wanted is Wanted want)
+        if (mine == outlineReading && wanted is Wanted want && (!want.OnlyInExport || readFrom is { IsExport: true }))
         {
             wanted = null;
-            int found = outline.FindIndex(d => d.Name == want.Name);
+            int found = IndexOfDescriptor(want.Name);
             if (found < 0)
             {
                 if (want.InExport && await LookInExport(want.Name)) return;
@@ -1067,10 +1069,9 @@ public partial class EditorPage
 
     // ---- the note ----
 
-    /// <summary>The note above the viewer (the HTML app's <c>dvSay</c>): how many descriptors, and how to use the viewer.</summary>
+    /// <summary>The note above the viewer (the HTML app's <c>dvSay</c>): how many descriptors.</summary>
     private void SayDescriptors()
     {
-        string how = " " + Texts.Get("Editor.Viewer.How");
         List<FileEntry> entries = [.. Files?.Entries ?? []];
         if (showsAllFiles)
         {
@@ -1081,7 +1082,7 @@ public partial class EditorPage
             if (Filter.IsOn)
             {
                 SayDescriptors(Texts.Get("Editor.Viewer.FilterOn",
-                    ("descriptors", Texts.CountWide("Editor.Viewer.Descriptors", treeRoots.Count)), ("files", Texts.CountWide("Editor.Viewer.ReadFiles", index.Files.Count))) + how);
+                    ("descriptors", Texts.CountWide("Editor.Viewer.Descriptors", treeRoots.Count)), ("files", Texts.CountWide("Editor.Viewer.ReadFiles", index.Files.Count))));
                 return;
             }
             string descriptors = Texts.CountWide("Editor.Viewer.Descriptors", index.Names.Count);
@@ -1090,7 +1091,7 @@ public partial class EditorPage
                 ? Texts.Get("Editor.Viewer.InReadFilesSomeUnread", ("descriptors", descriptors), ("files", readFiles), ("unread", Texts.CountWide("Editor.Search.Files", unread)))
                 : Texts.Get("Editor.Viewer.InReadFiles", ("descriptors", descriptors), ("files", readFiles));
             string chainsSaid = finding ? "" : chains.Count > 0 ? " " + Texts.CountWide("Editor.Viewer.ChainsStart", chains.Count) : " " + Texts.Get("Editor.Viewer.NoChains");
-            SayDescriptors(found + chainsSaid + how);
+            SayDescriptors(found + chainsSaid);
             return;
         }
         FileEntry? pin = pinnedFile is not null && !IsLocal(pinnedFile) ? pinnedFile : null;
@@ -1106,11 +1107,11 @@ public partial class EditorPage
         }
         int total = descriptorTotal, listed = treeRoots.Count;
         string count = listed == total
-            ? Texts.CountWide("Editor.Viewer.Descriptors", total)
+            ? Texts.CountWide("Editor.Viewer.DescriptorsShown", total)
             : Texts.CountWide("Editor.Viewer.ShowingOf", total, ("listed", Texts.Number(listed)));
         string said = pin is not null ? Texts.Get("Editor.Viewer.CountInFile", ("count", count), ("file", pin.Name)) : Texts.Get("Editor.Viewer.Count", ("count", count));
-        string change = pin is not null || shown is null ? "" : " " + (CanChangeValues ? Texts.Get("Editor.Viewer.TypeOver") : Texts.Get("Editor.Viewer.NoChangeInExport"));
-        SayDescriptors(said + how + change);
+        string change = pin is not null || shown is null || CanChangeValues ? "" : " " + Texts.Get("Editor.Viewer.NoChangeInExport");
+        SayDescriptors(said + change);
     }
 
     /// <summary>The note says something else, plain or as a warning.</summary>
@@ -1342,7 +1343,7 @@ public partial class EditorPage
         view.Tabs.SelectedItem = view.EditorTabItem;
         if (IsLocal(entry))
         {
-            int index = outline.FindIndex(descriptor => descriptor.Name == name);
+            int index = IndexOfDescriptor(name);
             if (index < 0)
             {
                 if (!await LookInExport(name)) await TellNotInFile(name, entry);
@@ -1357,6 +1358,43 @@ public partial class EditorPage
         wanted = new Wanted(name, 0, -1, Quiet: false, InExport: true);
         await Open(entry);
         if (shown?.Entry != entry) wanted = null;
+    }
+
+    /// <summary>
+    /// Shows a descriptor in the file as exported, for Details and Mod Conflicts, which are about what the rules did: the
+    /// Editor tab comes to the front with the export open and the descriptor shown. A file whose export cannot be
+    /// shown, as its rules no longer run on it, shows as it is.
+    /// </summary>
+    public async Task ShowDescriptorInExport(FileEntry entry, string name)
+    {
+        MainView view = MainView.Of(this);
+        view.Tabs.SelectedItem = view.EditorTabItem;
+        if (!IsLocal(entry))
+        {
+            await Open(entry);
+            if (shown?.Entry != entry) return;
+        }
+        if (shown is { IsExport: false } && FileRunner.RulesToRun(entry).Count > 0)
+        {
+            wanted = new Wanted(name, 0, -1, Quiet: false, OnlyInExport: true);
+            await ShowExportOrSource();
+            if (shown is { IsExport: true }) return;
+            wanted = null;
+        }
+        await ShowDescriptor(entry, name);
+    }
+
+    /// <summary>
+    /// A descriptor's place in the list, by its name; -1 for none. An unnamed one has only its type to go by, which is
+    /// what the edit log calls it, with the name of the object inside it after a space when it has one.
+    /// </summary>
+    private int IndexOfDescriptor(string name)
+    {
+        int index = outline.FindIndex(descriptor => descriptor.Name == name);
+        if (index >= 0) return index;
+        int space = name.IndexOf(' ');
+        string type = space < 0 ? name : name[..space];
+        return outline.FindIndex(descriptor => descriptor.Name == "" && descriptor.Type == type);
     }
 
     /// <summary>
@@ -1382,7 +1420,7 @@ public partial class EditorPage
     {
         MainView view = MainView.Of(this);
         string question = Texts.Get("Editor.NotInFile", ("name", name), ("file", entry.Name));
-        if (await view.Messages.Confirm(question, Texts.Get("Editor.NotInFile.ShowFiles")))
+        if (await view.Messages.Confirm(question, Texts.Get("Editor.NotInFile.ShowFiles"), DialogIcon.Error))
             view.Tabs.SelectedItem = view.FilesTabItem;
     }
 
@@ -1574,8 +1612,6 @@ public partial class EditorPage
             shown.PointedAt = document.CreateAnchor(document.GetLineByNumber(line + 1).Offset);
             shading.PointedAt = shown.PointedAt;
             Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
-            // the pointed line's outline is drawn above the selection, on the caret layer
-            Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Caret);
             if (selectedDescriptor == at)
             {
                 if (read.Rows.Count != propertyRows.Count) closedRows = [];

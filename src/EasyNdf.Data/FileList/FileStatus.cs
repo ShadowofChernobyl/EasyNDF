@@ -28,6 +28,12 @@ public static class FileStatus
     /// "Off"; then what the last action said, with the warnings and rules that changed nothing; then whether the file is
     /// loaded and has a preset.
     /// </summary>
+    /// <summary>
+    /// Whether the Status column's text is a link that opens Details: after a run with something to look at there, an
+    /// error, a warning or a rule that changed nothing.
+    /// </summary>
+    public static bool HasDetailsLink(FileEntry row) => row.LastRun is not null && Of(row).Kind is StatusKind.Error or StatusKind.Idle;
+
     public static (string Text, StatusKind Kind) Of(FileEntry row)
     {
         if (row.Message != "" && row.IsError) return (row.Message, StatusKind.Error);
@@ -52,8 +58,6 @@ public static class FileStatus
     public static string Holds(int descriptors, int constants, int unnamed)
     {
         var parts = new List<string>();
-        // in English "descriptors" and "constants" stay plural even for 1, as the HTML app writes them (both forms of
-        // the text are plural); other languages give their singular for 1
         if (descriptors != 0 || (constants == 0 && unnamed == 0)) parts.Add(DataTexts.Count("Files.Status.Descriptors", descriptors, ("count", Count(descriptors))));
         if (constants != 0) parts.Add(DataTexts.Count("Files.Status.Constants", constants, ("count", Count(constants))));
         if (unnamed != 0) parts.Add(DataTexts.Count("Files.Status.Unnamed", unnamed, ("count", Count(unnamed))));

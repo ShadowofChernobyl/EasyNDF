@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using EasyNdf.App.Controls;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
 using EasyNdf.App.Units;
 using EasyNdf.Data.Units;
@@ -23,12 +24,13 @@ public partial class UnitsPage
     private void OpenNewUnitWindow()
     {
         if (loaded is null) return;
-        if ((WhyUnitsCannotBeAdded() ?? WhyRulesCannotBeMade()) is string reason)
+        if ((WhyUnitsCannotBeAdded() ?? WhyChangesCannotBeMade()) is string reason)
         {
-            _ = MainView.Of(this).Messages.Tell(reason);
+            _ = MainView.Of(this).Messages.Tell(reason, DialogIcon.Error);
             return;
         }
-        MainView.Of(this).NewUnit.Open(ModelUnits(), Game, TakenUnitDescriptors(), ChooseUnitPicture, MakeUnit, gameUnits?.Catalog.ArmorLevels, this);
+        MainView.Of(this).NewUnit.Open(ModelUnits(), Game, TakenUnitDescriptors(), ChooseUnitPicture, MakeUnit, gameUnits?.Catalog.ArmorLevels, this,
+            Models.ModelViewer.CanShow(Game) ? ShowModel : null);
     }
 
     /// <summary>
@@ -54,7 +56,7 @@ public partial class UnitsPage
         var dialog = new Microsoft.Win32.OpenFileDialog { Title = Texts.Get("Units.New.Picture.Title"), Filter = Texts.Get("Divisions.Pane.Emblem.Picture.Filter") + "|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff" };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return null;
         string? kept = KeepPicture(dialog.FileName);
-        if (kept is null) _ = MainView.Of(this).Messages.Tell(Texts.Get("Divisions.Pane.Emblem.Picture.NotKept", ("file", dialog.FileName)));
+        if (kept is null) _ = MainView.Of(this).Messages.Tell(Texts.Get("Divisions.Pane.Emblem.Picture.NotKept", ("file", dialog.FileName)), DialogIcon.Error);
         return kept;
     }
 
@@ -102,9 +104,9 @@ public partial class UnitsPage
     /// </summary>
     private async Task DuplicateUnit(Unit unit)
     {
-        if ((WhyUnitsCannotBeAdded() ?? WhyRulesCannotBeMade()) is string reason)
+        if ((WhyUnitsCannotBeAdded() ?? WhyChangesCannotBeMade()) is string reason)
         {
-            await MainView.Of(this).Messages.Tell(reason);
+            await MainView.Of(this).Messages.Tell(reason, DialogIcon.Error);
             return;
         }
         ModUnit? added = OpenMod.Units.FirstOrDefault(each => each.Descriptor == unit.Descriptor);
@@ -138,7 +140,7 @@ public partial class UnitsPage
     /// </summary>
     private async Task DeleteUnit(Unit unit)
     {
-        if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Units.Delete.Ask", ("unit", unit.Name)), Texts.Get("Units.Menu.Delete"))) return;
+        if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Units.Delete.Ask", ("unit", unit.Name)), Texts.Get("Units.Menu.Delete"), DialogIcon.Warning)) return;
         ChangeDivisions(mod => ModUnit.RemoveFrom(mod, unit.Descriptor));
     }
 
@@ -154,7 +156,7 @@ public partial class UnitsPage
         List<Unit> changed = [.. units.Where(unit => !IsAddedUnit(unit) && UnitEdit.Of(OpenMod, unit.Descriptor) is not null)];
         if (added.Count == 0 && changed.Count == 0)
         {
-            await MainView.Of(this).Messages.Tell(Texts.Count("Units.Delete.GameUnit", units.Count, ("unit", units[0].Name)));
+            await MainView.Of(this).Messages.Tell(Texts.Count("Units.Delete.GameUnit", units.Count, ("unit", units[0].Name)), DialogIcon.Error);
             return;
         }
         var question = new List<string>();
@@ -162,7 +164,7 @@ public partial class UnitsPage
         if (changed.Count > 0) question.Add(Texts.Count("Units.Delete.AskChanged", changed.Count, ("unit", changed[0].Name)));
         int left = units.Count - added.Count - changed.Count;
         if (left > 0) question.Add(Texts.Count("Units.Delete.Kept", left));
-        if (!await MainView.Of(this).Messages.Confirm(string.Join("\n\n", question), Texts.Get("Units.Delete.Ok"))) return;
+        if (!await MainView.Of(this).Messages.Confirm(string.Join("\n\n", question), Texts.Get("Units.Delete.Ok"), DialogIcon.Warning)) return;
         ChangeDivisions(mod =>
         {
             foreach (Unit unit in added) ModUnit.RemoveFrom(mod, unit.Descriptor);

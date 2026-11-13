@@ -74,8 +74,9 @@ public sealed class DivisionUnitPopup
             parts.Children.Add(NumberRow(Texts.Get("Divisions.Column.PerCard"), unitsPerCard, least: 1, changed =>
             {
                 unitsPerCard = changed;
-                // the units each level makes follow the units per card
-                foreach (LevelRow level in levels) level.Show();
+                // the units each level makes follow the units per card; a level they would leave with no unit is
+                // raised to the least that holds one
+                foreach (LevelRow level in levels) level.Show(raise: true);
             }, DivisionMarks.UnitChanges(unitName, "UnitsPerCard"), division => DivisionMarks.UnitIn(division, unitName)?.UnitsPerCard?.ToString(Texts.Catalog.Culture) ?? ""));
         else
         {
@@ -270,7 +271,7 @@ public sealed class DivisionUnitPopup
             units.SetResourceReference(TextBlock.ForegroundProperty, "muted");
             // a value typed is taken when the box is left
             box.LostKeyboardFocus += (_, _) => TakeTyped();
-            Button less = StepButton("−", () => Set(owner.multipliers[level] - MultiplierStep));
+            Button less = StepButton("−", () => Set(owner.multipliers[level] - MultiplierStep, down: true));
             Button more = StepButton("+", () => Set(owner.multipliers[level] + MultiplierStep));
             // the level's multiplier marked when the open mod changed it, its * after +
             string unit = owner.rule.Unit;
@@ -287,10 +288,19 @@ public sealed class DivisionUnitPopup
             Show();
         }
 
-        /// <summary>The multiplier set by − or +: kept from 0 to 1, to two decimals, as the game writes them.</summary>
-        private void Set(double value)
+        /// <summary>
+        /// The multiplier set by − or +: kept from 0 to 1, to two decimals, as the game writes them. In WARNO, never one
+        /// that leaves the card with no unit: − goes to the least that holds one, then to 0; + and a value typed go to that least.
+        /// </summary>
+        private void Set(double value, bool down = false)
         {
-            owner.multipliers[level] = Math.Round(Math.Clamp(value, 0, 1), 2);
+            double share = Math.Round(Math.Clamp(value, 0, 1), 2);
+            if (owner.unitsByPhase.Length == 0 && DivisionNames.IsEmptyPack(owner.unitsPerCard, share))
+            {
+                double least = DivisionNames.LeastShare(owner.unitsPerCard);
+                share = down && owner.multipliers[level] <= least ? 0 : least;
+            }
+            owner.multipliers[level] = share;
             Show();
         }
 
@@ -303,14 +313,22 @@ public sealed class DivisionUnitPopup
         }
 
         /// <summary>The row as its multiplier is now: the box, the units it makes, dimmed when the level is not offered.</summary>
-        public void Show()
+        /// <param name="raise">Whether a multiplier that leaves a WARNO card with no unit is first raised to the least that holds one.</param>
+        public void Show(bool raise = false)
         {
+            if (raise && owner.unitsByPhase.Length == 0)
+                owner.multipliers[level] = DivisionNames.HoldingAUnit(owner.unitsPerCard, owner.multipliers[level]);
             double multiplier = owner.multipliers[level];
             box.Text = multiplier.ToString("0.##", Texts.Catalog.Culture);
-            // the units it makes; in Steel Division 2, in each phase
+            // the units it makes; in Steel Division 2, in each phase; in WARNO, a card left with no unit stops the game generating the mod
+            bool empty = owner.unitsByPhase.Length == 0 && DivisionNames.IsEmptyPack(owner.unitsPerCard, multiplier);
             units.Text = multiplier == 0 ? Texts.Get("Divisions.Veterancy.NotOffered")
                 : owner.unitsByPhase.Length > 0 ? Texts.Get("Divisions.Veterancy.UnitsByPhase", ("units", DivisionNames.UnitsAtByPhase(owner.unitsByPhase, multiplier)))
+                : empty ? Texts.Get("Divisions.Veterancy.EmptyPack")
                 : Texts.Count("Divisions.Veterancy.Units", DivisionNames.UnitsAt(owner.unitsPerCard, multiplier));
+            if (empty) units.SetResourceReference(TextBlock.ForegroundProperty, "warn");
+            else units.ClearValue(TextBlock.ForegroundProperty);
+            units.ToolTip = empty ? Texts.Get("Divisions.Veterancy.EmptyPack.Why") : null;
             Row.Opacity = multiplier == 0 ? 0.55 : 1;
         }
     }

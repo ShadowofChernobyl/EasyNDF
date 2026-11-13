@@ -79,6 +79,13 @@ public static partial class NdfChecker
         return new NdfProblem(position, length, line, "Line " + line + ": " + what);
     }
 
+    /// <summary>Each declaration's stretch of a text: from the line that starts it to the line that starts the next.</summary>
+    public static IEnumerable<(int Start, int End)> DeclarationStretches(string text)
+    {
+        List<int> starts = DeclarationStarts(text);
+        for (int k = 0; k < starts.Count; k++) yield return (starts[k], k + 1 < starts.Count ? starts[k + 1] : text.Length);
+    }
+
     /// <summary>Where each declaration starts: the start of the text, then each line that starts one.</summary>
     private static List<int> DeclarationStarts(string text)
     {

@@ -115,8 +115,9 @@ public partial class NewUnitWindow : UserControl
     /// <param name="levels">How many armour levels each armour family has, for the armour boxes (<see cref="UnitCatalog.ArmorLevels"/>).</param>
     /// <param name="weapons">The model unit's loadout and the weapons editor, for the Weapons step.</param>
     public void Open(IReadOnlyList<Unit> models, GameTitle fromGame, IReadOnlyCollection<string> taken, Func<string?> pickPicture,
-        Func<ModUnit, IReadOnlyList<ModWeapon>, bool> createUnit, IReadOnlyDictionary<string, int>? levels, INewUnitWeapons weapons)
+        Func<ModUnit, IReadOnlyList<ModWeapon>, bool> createUnit, IReadOnlyDictionary<string, int>? levels, INewUnitWeapons weapons, Action<Unit>? showModel = null)
     {
+        this.showModel = showModel;
         weaponsSource = weapons;
         pendingWeapons.Clear();
         weaponsFor = null;
@@ -475,7 +476,7 @@ public partial class NewUnitWindow : UserControl
         {
             Children =
             {
-                new UnitPicture { Source = modelUnit.PictureSource, Factory = modelUnit.Factory, EnlargesSharply = true },
+                PictureWithModelButton(modelUnit),
                 name,
                 nationLine,
                 ListHeading(Texts.Get("Units.New.ComesWith")),
@@ -488,6 +489,23 @@ public partial class NewUnitWindow : UserControl
         details.Children.Add(ListHeading(Texts.Get("Units.New.NotCopied")));
         details.Children.Add(ListLine("–", Texts.Get("Units.New.NotCopied.Divisions"), "muted"));
         ModelDetails.Content = details;
+    }
+
+    /// <summary>Opens the 3D model viewer on a model unit; null when the viewer cannot show this game's models.</summary>
+    private Action<Unit>? showModel;
+
+    /// <summary>
+    /// The model unit's picture, larger, with "Show 3D Model…" over its bottom right corner, to see the model the new unit
+    /// takes. The button is left out when the viewer cannot show the unit's model.
+    /// </summary>
+    private FrameworkElement PictureWithModelButton(Unit unit)
+    {
+        var picture = new UnitPicture { Source = unit.PictureSource, Factory = unit.Factory, EnlargesSharply = true };
+        if (showModel is null || unit.Look is null) return picture;
+        var button = new Button { Content = Texts.Get("Units.Model.Menu.Show"), ToolTip = Texts.Get("Units.Model.Menu.Show.Tip"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 6, 6) };
+        Action<Unit> open = showModel;
+        button.Click += (_, _) => open(unit);
+        return new Grid { Children = { picture, button } };
     }
 
     /// <summary>What a new unit takes from its model unit: its model, showroom view, card picture, type, and its row in the deck builder when it has one.</summary>

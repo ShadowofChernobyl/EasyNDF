@@ -46,6 +46,25 @@ public class Bevel : Decorator
     /// <inheritdoc cref="EdgesProperty"/>
     public Thickness Edges { get => (Thickness)GetValue(EdgesProperty); set => SetValue(EdgesProperty, value); }
 
+    /// <summary>
+    /// Whether a line of text in the box stays still while the box changes width, as <see cref="StillLine"/> says. For
+    /// the Armory's panes, whose tables change width at each step of a drag. Tuned for speed: Keep it that way when tidying.
+    /// </summary>
+    public bool KeepsTextStill { get; set; }
+
+    private StillLine? stillLine;
+
+    private bool TextIsStill => KeepsTextStill && Child is TextBlock { TextWrapping: TextWrapping.NoWrap };
+
+    protected override void OnChildDesiredSizeChanged(UIElement child)
+    {
+        stillLine?.Forget();
+        base.OnChildDesiredSizeChanged(child);
+    }
+
+    protected override HitTestResult HitTestCore(PointHitTestParameters hitTestParameters) =>
+        TextIsStill ? StillLine.HitTest(this, Child!, hitTestParameters.HitPoint) : base.HitTestCore(hitTestParameters);
+
     /// <summary>The edges and padding together: the space around the content.</summary>
     private Thickness Around => new(
         Edges.Left + Padding.Left, Edges.Top + Padding.Top, Edges.Right + Padding.Right, Edges.Bottom + Padding.Bottom);
@@ -55,7 +74,8 @@ public class Bevel : Decorator
         Thickness around = Around;
         double width = around.Left + around.Right, height = around.Top + around.Bottom;
         if (Child is null) return new Size(width, height);
-        Child.Measure(new Size(Math.Max(0, constraint.Width - width), Math.Max(0, constraint.Height - height)));
+        if (TextIsStill) (stillLine ??= new StillLine(this)).Measure(Child, Math.Max(0, constraint.Width - width));
+        else Child.Measure(new Size(Math.Max(0, constraint.Width - width), Math.Max(0, constraint.Height - height)));
         // Never wider than offered: a row of whole-pixel slots (SnappedRow) can offer a fraction less than the content
         // wants, and then, as in a browser, the box takes the slot and its content overhangs into the padding.
         return new Size(Math.Min(Child.DesiredSize.Width + width, constraint.Width), Child.DesiredSize.Height + height);
@@ -64,6 +84,12 @@ public class Bevel : Decorator
     protected override Size ArrangeOverride(Size arrangeSize)
     {
         Thickness around = Around;
+        if (TextIsStill)
+        {
+            double room = Math.Max(0, arrangeSize.Width - around.Left - around.Right);
+            Child!.Arrange(new Rect(around.Left, around.Top, Math.Min(stillLine?.Width ?? room, room), Math.Max(0, arrangeSize.Height - around.Top - around.Bottom)));
+            return arrangeSize;
+        }
         // The content gets at least its own width, so a box a fraction narrower than it never cuts it off.
         double contentWidth = Math.Max(arrangeSize.Width - around.Left - around.Right, Child?.DesiredSize.Width ?? 0);
         Child?.Arrange(new Rect(around.Left, around.Top, Math.Max(0, contentWidth), Math.Max(0, arrangeSize.Height - around.Top - around.Bottom)));

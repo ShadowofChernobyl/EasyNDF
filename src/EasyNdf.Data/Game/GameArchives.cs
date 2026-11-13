@@ -36,7 +36,13 @@ public sealed class GameArchives
     public IReadOnlyDictionary<string, ArchiveFile> Files => files;
 
     /// <summary>Reads the file lists of all of a game's archives; the files themselves are read when they are needed.</summary>
-    public static GameArchives Open(string gameFolder)
+    public static GameArchives Open(string gameFolder) => Open(gameFolder, IsUsed);
+
+    /// <summary>
+    /// Reads the file lists of all of a game's archives, keeping only the files <paramref name="wanted"/> picks: the 3D
+    /// model viewer lists the models, their textures and the sounds, which the rest of the app never reads.
+    /// </summary>
+    public static GameArchives Open(string gameFolder, Func<ArchiveFile, bool> wanted)
     {
         string dataFolder = Path.Combine(gameFolder, "Data", "PC");
         List<string> archives = ArchivesOldestFirst(dataFolder);
@@ -47,15 +53,38 @@ public sealed class GameArchives
         {
             try
             {
-                foreach (ArchiveFile file in EdatArchive.ListFiles(archive, out _, out _).Where(IsUsed)) opened.files[file.Name] = file;
+                foreach (ArchiveFile file in EdatArchive.ListFiles(archive, out _, out _).Where(wanted)) opened.files[file.Name] = file;
             }
             catch (Exception problem) when (problem is InvalidDataException or IOException or UnauthorizedAccessException)
             {
                 opened.Problems.Add(Path.GetRelativePath(gameFolder, archive) + ": " + problem.Message);
             }
         }
-        opened.AddTexturePacks();
+        opened.AddTexturePacks(wanted);
         return opened;
+    }
+
+    /// <summary>
+    /// Adds the files of a folder laid out as the archives are, in front of theirs: a game mod's Gen folder, where the
+    /// game's mod tools put the mod's own models (MeshPack/...spk) and textures (PC/Atlas/..., PC/Texture/...).
+    /// </summary>
+    /// <param name="folder">The folder.</param>
+    /// <param name="wanted">Which of its files to keep, as for the archives.</param>
+    public void AddLooseFiles(string folder, Func<ArchiveFile, bool> wanted)
+    {
+        if (!Directory.Exists(folder)) return;
+        try
+        {
+            foreach (string path in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+            {
+                var file = new ArchiveFile(path, Path.GetRelativePath(folder, path).Replace(Path.DirectorySeparatorChar, '/'), 0, new FileInfo(path).Length);
+                if (wanted(file)) files[file.Name] = file;
+            }
+        }
+        catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
+        {
+            Problems.Add(folder + ": " + problem.Message);
+        }
     }
 
     /// <summary>A file by its path inside the archives, in any capitals; null when there is none.</summary>
@@ -65,7 +94,7 @@ public sealed class GameArchives
     /// The files inside the texture packs (pc/texture/pack/*.ppk) of Steel Division 2: archives of the same kind,
     /// kept inside the game's archives. The packs under pc/textureproxy hold only 3D textures.
     /// </summary>
-    private void AddTexturePacks()
+    private void AddTexturePacks(Func<ArchiveFile, bool> wanted)
     {
         List<ArchiveFile> packs = files.Values
             .Where(file => file.Name.StartsWith("pc/texture/pack/", StringComparison.OrdinalIgnoreCase) && file.Name.EndsWith(".ppk", StringComparison.OrdinalIgnoreCase))
@@ -74,7 +103,7 @@ public sealed class GameArchives
         {
             try
             {
-                foreach (ArchiveFile file in EdatArchive.ListFiles(pack.Archive, pack.Offset, out _, out _).Where(IsUsed)) files[file.Name] = file;
+                foreach (ArchiveFile file in EdatArchive.ListFiles(pack.Archive, pack.Offset, out _, out _).Where(wanted)) files[file.Name] = file;
             }
             catch (Exception problem) when (problem is InvalidDataException or IOException or UnauthorizedAccessException)
             {

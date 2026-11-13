@@ -11,14 +11,14 @@ namespace EasyNdf.App.Pages;
 /// </summary>
 public partial class RulesPage
 {
-    /// <summary>The Mods column's first width, as the HTML app's, at the first window size.</summary>
-    private const double ModsFirstWidth = 270;
+    /// <summary>The Mods column's first width: a long mod's name shows whole beside its letters, and its buttons fit on one line.</summary>
+    private const double ModsFirstWidth = 340;
 
-    /// <summary>The Rule Sets column's first width, as the HTML app's, at the first window size.</summary>
-    private const double RuleSetsFirstWidth = 310;
+    /// <summary>The Rule Sets column's first width.</summary>
+    private const double RuleSetsFirstWidth = 300;
 
     /// <summary>The rules' first width beside those two, at the first window size.</summary>
-    private const double RulesFirstWidth = 620;
+    private const double RulesFirstWidth = 576;
 
     /// <summary>
     /// The narrowest the Mods column can be: a mod's name still has room beside its switch, its Armory letters and its

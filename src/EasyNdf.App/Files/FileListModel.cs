@@ -301,6 +301,9 @@ public sealed class FileListModel : INotifyPropertyChanged
         ? Texts.Get("Files.List.Empty")
         : Texts.Get("Files.List.NoMatch");
 
+    /// <summary>Whether no files are on the list at all: then the middle of the list says so, with the buttons that add some.</summary>
+    public bool HasNoFiles => entries.Count == 0;
+
     /// <summary>Whether the list has no rows to show: then it says <see cref="EmptyText"/>.</summary>
     public bool ShowsEmptyText => ListItems.Count == 1 && ListItems[0] is EmptyListItem;
 
@@ -363,32 +366,18 @@ public sealed class FileListModel : INotifyPropertyChanged
     public int SelectedCount => matching.Count(r => r.IsSelected);
 
     /// <summary>
-    /// The note above the list (the HTML app's <c>#jobNote</c>): what the last action did, and how to select several rows
-    /// or how many are selected.
+    /// The note above the list (the HTML app's <c>#jobNote</c>): how to select several rows, or how many are selected.
     /// </summary>
     public string Note
     {
         get
         {
-            if (caution != "") return caution;
-            string selection = entries.Count == 0 ? "" : SelectedCount == 0 ? Texts.Get("Files.List.SelectHint") : Texts.Get("Files.List.Selected", ("count", SelectedCount));
-            return string.Join(" ", new[] { flash, selection }.Where(t => t != ""));
+            return entries.Count == 0 ? "" : SelectedCount == 0 ? Texts.Get("Files.List.SelectHint") : Texts.Get("Files.List.Selected", ("count", SelectedCount));
         }
     }
-    private string flash = "";
 
-    /// <summary>A warning shown in place of the note, in the caution colour, until the list next changes.</summary>
-    private string caution = "";
-
-    /// <summary>Whether the note is a warning (drawn in the caution colour).</summary>
-    public bool NoteIsCaution => caution != "";
-
-    /// <summary>Shows a warning in place of the note, such as "Nothing to run.", until the list next changes.</summary>
-    public void Warn(string message)
-    {
-        caution = message;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
-    }
+    /// <summary>Gives a warning as a notification, such as "Nothing to run."</summary>
+    public void Warn(string message) => Notices.Say(message, NoticeKind.Caution);
 
     /// <summary>Whether Preview or Run export is running: most buttons wait until it is done.</summary>
     public bool IsBusy
@@ -567,7 +556,6 @@ public sealed class FileListModel : INotifyPropertyChanged
         var fresh = new List<FileEntry>();
         int added = 0, replaced = 0, skipped = 0;
         DuplicateChoice? choiceForAll = null;
-        flash = "";
 
         // The first row of each key: a new file is compared with that one.
         var listed = new Dictionary<string, FileEntry>();
@@ -621,7 +609,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         if (replaced > 0) said.Add(Texts.Count("Files.Added.Replaced", replaced));
         if (skipped > 0) said.Add(Texts.Count("Files.Added.Skipped", skipped));
         if (said.Count > 0)
-            flash = string.Join(", ", said) + "." + (waiting > 0 ? " " + Texts.Get("Files.Added.Waiting", ("count", FileStatus.Count(waiting))) : "");
+            Say(string.Join(", ", said) + "." + (waiting > 0 ? " " + Texts.Get("Files.Added.Waiting", ("count", FileStatus.Count(waiting))) : ""));
         Refilter();
         if (added > 0 || replaced > 0) FilesChanged?.Invoke();
         return fromFolder ? fresh.Where(e => e.HasRules).ToList() : fresh;
@@ -664,15 +652,8 @@ public sealed class FileListModel : INotifyPropertyChanged
         entry.Scanned = false;
     }
 
-    /// <summary>Shows a message in the note above the list, such as "No .ndf files were found in that folder."</summary>
-    public void Say(string message)
-    {
-        flash = message;
-        Changed();
-    }
-
-    /// <summary>Adds a sentence to the note, after what it says already, so one step of an export does not hide another's.</summary>
-    public void SayAlso(string message) => Say(flash == "" ? message : flash + " " + message);
+    /// <summary>Gives a notification, such as "No .ndf files were found in that folder.", with a button for what to do next when given.</summary>
+    public void Say(string message, NoticeKind kind = NoticeKind.Done, NoticeAction? action = null) => Notices.Say(message, kind, action);
 
     /// <summary>
     /// Reads a file to learn what it holds (the HTML app's <c>scanJob</c>), for its Status column and the Lines column.
@@ -835,7 +816,7 @@ public sealed class FileListModel : INotifyPropertyChanged
         var selected = SelectedEntries.ToHashSet();
         if (selected.Count == 0) return;
         entries.RemoveAll(selected.Contains);
-        flash = Texts.Get("Files.Removed", ("files", Files(selected.Count)));
+        Say(Texts.Get("Files.Removed", ("files", Files(selected.Count))));
         Refilter();
         FilesChanged?.Invoke();
     }
@@ -844,7 +825,7 @@ public sealed class FileListModel : INotifyPropertyChanged
     public void RemoveAll()
     {
         if (entries.Count == 0) return;
-        flash = Texts.Get("Files.Removed", ("files", Files(entries.Count)));
+        Say(Texts.Get("Files.Removed", ("files", Files(entries.Count))));
         entries.Clear();
         lastClicked = null;
         Refilter();
@@ -1075,7 +1056,6 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// </summary>
     private void Changed()
     {
-        caution = "";
         foreach (FolderRow folder in ListItems.OfType<FolderRow>()) folder.Refresh();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
     }

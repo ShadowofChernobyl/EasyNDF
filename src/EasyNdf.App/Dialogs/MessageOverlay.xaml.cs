@@ -44,6 +44,10 @@ public partial class MessageOverlay : UserControl
     public Task<DialogAnswer> Ask(string message, DialogOptions options)
     {
         Message.Text = message;
+        IconBox.Visibility = options.Icon == DialogIcon.None ? Visibility.Collapsed : Visibility.Visible;
+        ErrorIcon.Visibility = options.Icon == DialogIcon.Error ? Visibility.Visible : Visibility.Collapsed;
+        WarningIcon.Visibility = options.Icon == DialogIcon.Warning ? Visibility.Visible : Visibility.Collapsed;
+        QuestionIcon.Visibility = options.Icon == DialogIcon.Question ? Visibility.Visible : Visibility.Collapsed;
         Extra.Content = options.Extra;
         Extra.Visibility = options.Extra is null ? Visibility.Collapsed : Visibility.Visible;
         UnderInput.Content = options.UnderInput;
@@ -70,13 +74,14 @@ public partial class MessageOverlay : UserControl
 
         answer = new TaskCompletionSource<DialogAnswer>();
         Visibility = Visibility.Visible;
-        // the text box has the focus, its text selected, when there is one; else the first button
+        // the text box has the focus, its text selected, when there is one; else the first button. Only once the box is laid
+        // out: the first time it shows, its controls can't take the focus before that, and the keys would reach the app behind
         Dispatcher.BeginInvoke(() =>
         {
             if (options.Input is null) { OkButton.Focus(); return; }
             Input.Focus();
             Input.SelectAll();
-        });
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
         return answer.Task;
     }
 
@@ -89,9 +94,9 @@ public partial class MessageOverlay : UserControl
     private void ShowOkButtonState() => OkButton.IsEnabled = !needsInput || Input.Text.Trim() != "";
 
     /// <summary>Asks a yes-or-no question: whether the first button was pressed.</summary>
-    public async Task<bool> Confirm(string message, string okText)
+    public async Task<bool> Confirm(string message, string okText, DialogIcon icon)
     {
-        DialogAnswer reply = await Ask(message, new DialogOptions { Ok = okText });
+        DialogAnswer reply = await Ask(message, new DialogOptions { Ok = okText, Icon = icon });
         return reply.Choice == DialogChoice.Ok;
     }
 
@@ -109,7 +114,7 @@ public partial class MessageOverlay : UserControl
     }
 
     /// <summary>Tells something, with an OK button alone, and waits until it is closed.</summary>
-    public Task Tell(string message) => Ask(message, new DialogOptions { InfoOnly = true });
+    public Task Tell(string message, DialogIcon icon) => Ask(message, new DialogOptions { InfoOnly = true, Icon = icon });
 
     /// <summary>Closes the window with the given answer.</summary>
     public void Close(DialogChoice choice)

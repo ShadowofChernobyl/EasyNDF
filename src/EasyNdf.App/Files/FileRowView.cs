@@ -27,7 +27,7 @@ public sealed class FileRowView : Decorator
         new PropertyMetadata(null, (view, _) => ((FileRowView)view).Build()));
 
     /// <summary>What the Remove button, Save anyway and the export folder's Browse button say they do, in their Tag.</summary>
-    public const string RemoveAction = "remove", SaveAnywayAction = "save", ChooseFolderAction = "dir";
+    public const string RemoveAction = "remove", SaveAnywayAction = "save", ChooseFolderAction = "dir", DetailsAction = "details";
 
     /// <summary>What an Armory column letter's Tag starts with, before the part it opens: "armory:Units".</summary>
     public const string ArmoryAction = "armory:";
@@ -235,11 +235,16 @@ public sealed class FileRowView : Decorator
         return cell;
     }
 
+    /// <summary>
+    /// The Status column: its text; where the run left something to look at (its caution or warning text), the text is
+    /// a link that opens Details on the row.
+    /// </summary>
     private UIElement StatusCell()
     {
-        var status = new TextBlock { Style = (Style)FindResource("FileStatus") };
+        var status = new TextBlock { Style = (Style)FindResource("FileStatusPlain") };
         status.SetBinding(TextBlock.TextProperty, nameof(FileRow.StatusText));
-        return status;
+        var link = new Button { Style = (Style)FindResource("FileStatusLink"), Tag = DetailsAction, ToolTip = Texts.Get("Files.Row.Details.Tip") };
+        return new Grid { Children = { status, link } };
     }
 
     /// <summary>td.acts: "Save anyway" when the result was held back, then the × that removes the row, on the well colour.</summary>

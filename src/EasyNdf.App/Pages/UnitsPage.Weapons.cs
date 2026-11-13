@@ -148,7 +148,7 @@ public partial class UnitsPage : IWeaponActions
         if (cannotDeploy.Count > Named) units += " " + Texts.Get("Weapons.Risky.More", ("count", cannotDeploy.Count - Named));
         DialogAnswer answer = await MainView.Of(this).Messages.Ask(
             Texts.Get("Weapons.Risky.MustDeploy", ("weapon", weapon.Name), ("count", Texts.Number(cannotDeploy.Count)), ("units", units)),
-            new DialogOptions { Ok = Texts.Get("Weapons.Risky.GoOn"), CheckText = Texts.Get("Weapons.Risky.HideForSession") });
+            new DialogOptions { Icon = DialogIcon.Warning, Ok = Texts.Get("Weapons.Risky.GoOn"), CheckText = Texts.Get("Weapons.Risky.HideForSession") });
         if (answer.Choice != DialogChoice.Ok) return;
         if (answer.IsChecked) riskyChoicesAllowed = true;
         ChooseNow(weapon, choice, written);
@@ -185,7 +185,7 @@ public partial class UnitsPage : IWeaponActions
     {
         if (WhyWeaponsCannotBeAdded is string reason)
         {
-            _ = MainView.Of(this).Messages.Tell(reason);
+            _ = MainView.Of(this).Messages.Tell(reason, DialogIcon.Error);
             return;
         }
         Dictionary<string, Weapon> weapons = ShownWeapons();
@@ -261,7 +261,7 @@ public partial class UnitsPage : IWeaponActions
     {
         if (WhyWeaponsCannotBeAdded is string reason)
         {
-            _ = MainView.Of(this).Messages.Tell(reason);
+            _ = MainView.Of(this).Messages.Tell(reason, DialogIcon.Error);
             return;
         }
         IEnumerable<string> taken = (loaded?.Catalog.Weapons ?? []).Select(each => each.Descriptor).Concat(OpenMod.Weapons.Select(copy => copy.Descriptor));
@@ -305,16 +305,16 @@ public partial class UnitsPage : IWeaponActions
         string descriptor = weapon.Descriptor;
         if (IsCopy(weapon))
         {
-            if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Weapons.Delete.AskCopy", ("weapon", weapon.Name)), Texts.Get("Units.Delete.Ok"))) return;
+            if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Weapons.Delete.AskCopy", ("weapon", weapon.Name)), Texts.Get("Units.Delete.Ok"), DialogIcon.Warning)) return;
             ChangeDivisions(mod => ModWeapon.RemoveFrom(mod, descriptor));
             return;
         }
         if (WeaponEdit.Of(OpenMod, descriptor) is not null)
         {
-            if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Weapons.Delete.AskChanged", ("weapon", weapon.Name)), Texts.Get("Units.Delete.Ok"))) return;
+            if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Weapons.Delete.AskChanged", ("weapon", weapon.Name)), Texts.Get("Units.Delete.Ok"), DialogIcon.Warning)) return;
             ChangeDivisions(mod => mod.WeaponEdits.RemoveAll(edit => edit.Descriptor == descriptor));
             return;
         }
-        await MainView.Of(this).Messages.Tell(Texts.Get("Weapons.Delete.GameWeapon", ("weapon", weapon.Name)));
+        await MainView.Of(this).Messages.Tell(Texts.Get("Weapons.Delete.GameWeapon", ("weapon", weapon.Name)), DialogIcon.Error);
     }
 }

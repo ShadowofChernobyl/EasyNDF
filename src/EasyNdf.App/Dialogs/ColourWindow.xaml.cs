@@ -121,7 +121,8 @@ public partial class ColourWindow : UserControl
     /// <summary>Whether a click was on a button (the ×), which is not a drag.</summary>
     private static bool FindButton(DependencyObject source)
     {
-        for (DependencyObject? at = source; at is not null; at = VisualTreeHelper.GetParent(at))
+        // what was clicked can be a piece of a text, which is not a Visual
+        for (DependencyObject? at = source; at is not null; at = at is Visual ? VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
             if (at is System.Windows.Controls.Primitives.ButtonBase) return true;
         return false;
     }

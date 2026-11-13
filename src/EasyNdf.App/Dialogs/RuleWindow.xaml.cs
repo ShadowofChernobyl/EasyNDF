@@ -71,15 +71,13 @@ public partial class RuleWindow : UserControl
         if (rules.OpenRule is null) return;
         if (!ReferenceEquals(model, rules))
         {
-            if (model is not null) { model.PropertyChanged -= ModelChanged; model.Said -= ShowMessage; }
+            if (model is not null) model.PropertyChanged -= ModelChanged;
             model = rules;
             model.PropertyChanged += ModelChanged;
-            model.Said += ShowMessage;
         }
         history = undo;
         Rows?.Close();
         model.ActiveRowList = null;
-        ShowMessage("");
         Build();
         // the changes are kept until Done, and nothing is filed for Undo meanwhile: Cancel is the window's undo
         model.StartEditingRule();
@@ -99,7 +97,6 @@ public partial class RuleWindow : UserControl
         if (!IsOpen) return;
         Rows?.Close();
         Visibility = Visibility.Collapsed;
-        ShowMessage("");
         shownRule = null;
         if (history is not null) history.IsPaused = false;
         model?.FinishEditingRule();
@@ -110,7 +107,7 @@ public partial class RuleWindow : UserControl
     public async Task Cancel()
     {
         if (!IsOpen || model is null) return;
-        if (model.HasUnsavedRuleChanges && !await MainView.Of(this).Messages.Confirm(Texts.Get("Rules.DiscardChanges"), Texts.Get("Rules.Discard")))
+        if (model.HasUnsavedRuleChanges && !await MainView.Of(this).Messages.Confirm(Texts.Get("Rules.DiscardChanges"), Texts.Get("Rules.Discard"), DialogIcon.Warning))
             return;
         model.CancelEditingRule();
         Close();
@@ -194,10 +191,10 @@ public partial class RuleWindow : UserControl
     private async Task MakeEditable(JsonObject rule)
     {
         MainView view = MainView.Of(this);
-        if (!await view.Messages.Confirm(Texts.Get("Rules.Locked.MakeEditable.Ask"), Texts.Get("Rules.Locked.MakeEditable"))) return;
+        if (!await view.Messages.Confirm(Texts.Get("Rules.Locked.MakeEditable.Ask"), Texts.Get("Rules.Locked.MakeEditable"), DialogIcon.Warning)) return;
         if (!view.UnitsTab.CanMakeEditable)
         {
-            await view.Messages.Tell(view.UnitsTab.ArmoryRulesBlockedReason ?? Texts.Get("Rules.Locked.ArmoryNotRead"));
+            await view.Messages.Tell(view.UnitsTab.ArmoryRulesBlockedReason ?? Texts.Get("Rules.Locked.ArmoryNotRead"), DialogIcon.Error);
             return;
         }
         JsonNode? armory = rule[DivisionChangeRules.ArmoryKey]?.DeepClone();
@@ -244,13 +241,6 @@ public partial class RuleWindow : UserControl
         if (model.OpenRule is not JsonObject rule) { Close(); return; }
         if (!ReferenceEquals(rule, shownRule)) { Build(); return; }
         foreach (RowListView list in editor?.Lists ?? []) list.Refresh();
-    }
-
-    /// <summary>#ruleMsg: what the last action did, while the window is open.</summary>
-    private void ShowMessage(string message)
-    {
-        RuleMessage.Text = message;
-        RuleMessage.Visibility = message == "" ? Visibility.Collapsed : Visibility.Visible;
     }
 
     // ---- the property scan (the HTML app's renderScan): which scanned file fills the dropdowns ----
@@ -390,7 +380,7 @@ public partial class RuleWindow : UserControl
             if (!AppData.Current.Scans.Scans.ContainsKey(file))
             {
                 ShowScan();
-                await MainView.Of(this).Messages.Tell(Texts.Get("Rules.Scan.CouldNotRead", ("file", entry.Name), ("reason", entry.Message)));
+                await MainView.Of(this).Messages.Tell(Texts.Get("Rules.Scan.CouldNotRead", ("file", entry.Name), ("reason", entry.Message)), DialogIcon.Error);
                 return;
             }
         }
@@ -415,7 +405,7 @@ public partial class RuleWindow : UserControl
         catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or EasyNdf.Engine.Ndf.NdfParseException)
         {
             ShowScan();
-            await MainView.Of(this).Messages.Tell(Texts.Get("Rules.Scan.Failed", ("file", name), ("reason", error.Message)));
+            await MainView.Of(this).Messages.Tell(Texts.Get("Rules.Scan.Failed", ("file", name), ("reason", error.Message)), DialogIcon.Error);
         }
     }
 
@@ -551,7 +541,7 @@ public partial class RuleWindow : UserControl
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            model?.Say(Texts.Get("Rules.ClipboardBusy"));
+            model?.Say(Texts.Get("Rules.ClipboardBusy"), NoticeKind.Caution);
             return false;
         }
     }

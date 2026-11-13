@@ -1,0 +1,113 @@
+<!--
+  The 3D model viewer: a unit's or a missile's model from the game's files, drawn live, over the dimmed window as the
+  other windows are. Drag to turn and tilt it, right-drag to move it, scroll to zoom, or use the keys. A unit's turrets
+  are listed at the right, with their firing points and centres marked on the model; the turrets that move can be aimed
+  within the open mod's limits, and each can fire with the game's sounds. A vehicle can drive, a helicopter's rotors
+  turn, an aircraft's engines run. Under them, how the model is shown: turning by itself, the ground grid, the floor,
+  its triangles. An infantry squad's soldiers are shown one at a time. The viewer can fill the window.
+-->
+<UserControl x:Class="EasyNdf.App.Models.ModelViewer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             Visibility="Collapsed" KeyDown="KeyPressed" Foreground="{DynamicResource ink}">
+    <!-- the dimmed backdrop; a click on it closes the viewer -->
+    <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed" SizeChanged="BackdropResized">
+        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
+            <DockPanel>
+                <!-- the title: the model's name and file, with a line under it; Fill the Window beside the close button -->
+                <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource line}" Edges="0,0,0,1" Padding="14,10,12,8">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}"
+                                AutomationProperties.Name="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CloseClicked" />
+                        <!-- a window's outline to fill the window; two, one behind the other, to go back -->
+                        <Button x:Name="FillButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" Margin="0,0,6,0" ToolTip="{t:Text Units.Model.Fill.Tip}"
+                                AutomationProperties.Name="{t:Text Units.Model.Fill.Tip}" Click="FillClicked">
+                            <Grid Width="10" Height="10">
+                                <Border x:Name="FillIcon" Width="10" Height="9" VerticalAlignment="Bottom" BorderThickness="1,2,1,1"
+                                        BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                <Grid x:Name="BackIcon" Visibility="Collapsed">
+                                    <Border Width="8" Height="7" HorizontalAlignment="Right" VerticalAlignment="Top" BorderThickness="0,2,1,0"
+                                            BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                    <Border Width="8" Height="7" HorizontalAlignment="Left" VerticalAlignment="Bottom" BorderThickness="1,2,1,1"
+                                            BorderBrush="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                </Grid>
+                            </Grid>
+                        </Button>
+                        <TextBlock x:Name="TitleText" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="FileText" FontFamily="Consolas, Cascadia Mono" FontSize="12" Foreground="{DynamicResource muted}"
+                                   VerticalAlignment="Center" Margin="10,1,0,0" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                </controls:Bevel>
+
+                <!--
+                  the foot: Reset View, the straight views, the model's size and triangles, a squad's soldiers; then Copy
+                  Picture, the Sound switch with its volume, and Close
+                -->
+                <DockPanel DockPanel.Dock="Bottom" Margin="14,0,14,12">
+                    <Button DockPanel.Dock="Right" Content="{t:Text Units.Model.Close}" Margin="8,0,0,0" Click="CloseClicked" />
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{t:Text Units.Model.Volume.Tip}">
+                        <Slider x:Name="VolumeSlider" Style="{StaticResource WeightSlider}" Width="90" Minimum="0" Maximum="100" SmallChange="1" LargeChange="10"
+                                IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" AutomationProperties.Name="{t:Text Units.Model.Volume}"
+                                ValueChanged="VolumeChanged" />
+                        <TextBlock x:Name="VolumeText" Width="34" TextAlignment="Right" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                    <CheckBox x:Name="SoundSwitch" DockPanel.Dock="Right" Style="{StaticResource Toggle}" Content="{t:Text Units.Model.Sound}" ToolTip="{t:Text Units.Model.Sound.Tip}"
+                              IsChecked="True" VerticalAlignment="Center" Margin="8,0,6,0" Click="SoundClicked" />
+                    <Button DockPanel.Dock="Right" Content="{t:Text Units.Model.CopyPicture}" ToolTip="{t:Text Units.Model.CopyPicture.Tip}" Margin="8,0,0,0" Click="CopyClicked" />
+                    <TextBlock x:Name="CopiedText" DockPanel.Dock="Right" FontSize="12" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <Button x:Name="ResetButton" DockPanel.Dock="Left" Content="{t:Text Units.Model.ResetView}" Click="ResetClicked" />
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="8,0,0,0">
+                        <Button Content="{t:Text Units.Model.Front}" Tag="front" Padding="8,0" Click="LookClicked" />
+                        <Button Content="{t:Text Units.Model.Side}" Tag="side" Padding="8,0" Margin="-1,0,0,0" Click="LookClicked" />
+                        <Button Content="{t:Text Units.Model.Top}" Tag="top" Padding="8,0" Margin="-1,0,0,0" Click="LookClicked" />
+                        <Button Content="{t:Text Units.Model.Rear}" Tag="rear" Padding="8,0" Margin="-1,0,0,0" Click="LookClicked" />
+                    </StackPanel>
+                    <TextBlock x:Name="SizeText" DockPanel.Dock="Left" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="14,0,0,0"
+                               ToolTip="{t:Text Units.Model.Size.Tip}" />
+                    <TextBlock x:Name="TriangleText" DockPanel.Dock="Left" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    <StackPanel x:Name="SoldierChoice" DockPanel.Dock="Left" Orientation="Horizontal" Margin="18,0,0,0" Visibility="Collapsed">
+                        <Button x:Name="PreviousSoldierButton" Content="&#x2039;" Padding="8,0" ToolTip="{t:Text Units.Model.PreviousSoldier}"
+                                AutomationProperties.Name="{t:Text Units.Model.PreviousSoldier}" Click="PreviousSoldierClicked" />
+                        <TextBlock x:Name="SoldierText" VerticalAlignment="Center" Margin="8,0" />
+                        <Button x:Name="NextSoldierButton" Content="&#x203A;" Padding="8,0" ToolTip="{t:Text Units.Model.NextSoldier}"
+                                AutomationProperties.Name="{t:Text Units.Model.NextSoldier}" Click="NextSoldierClicked" />
+                    </StackPanel>
+                    <Border />
+                </DockPanel>
+
+                <Grid Margin="14,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition x:Name="ViewColumn" Width="Auto" />
+                        <ColumnDefinition x:Name="SideGap" Width="12" />
+                        <ColumnDefinition x:Name="SideColumn" Width="252" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- the model, sunken; the marks of the turrets over it; a click gives it the keys -->
+                    <controls:Bevel x:Name="ViewFrame" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="#0b0e0c"
+                                    Width="880" Height="540" ClipToBounds="True" Cursor="Hand" ToolTip="{t:Text Units.Model.View.Tip}"
+                                    Focusable="True" FocusVisualStyle="{x:Null}"
+                                    MouseDown="ViewPressed" MouseMove="ViewDragged" MouseUp="ViewReleased" LostMouseCapture="ViewCaptureLost"
+                                    MouseWheel="ViewScrolled" SizeChanged="ViewResized">
+                        <Grid>
+                            <Image x:Name="Picture" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
+                            <Canvas x:Name="Marks" IsHitTestVisible="False" />
+                            <TextBlock x:Name="GridScale" Text="{t:Text Units.Model.GridScale}" FontSize="11.5" Foreground="{DynamicResource muted}" IsHitTestVisible="False"
+                                       HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,6" Visibility="Collapsed" />
+                            <TextBlock x:Name="StatusText" Foreground="{DynamicResource muted}" TextWrapping="Wrap" TextAlignment="Center"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40,0" />
+                        </Grid>
+                    </controls:Bevel>
+
+                    <!-- the turrets, their marks, aiming, moving parts and how the model is shown; it scrolls when the window is too short for it -->
+                    <ScrollViewer x:Name="SideScroller" Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False"
+                                  Height="{Binding ActualHeight, ElementName=ViewFrame}">
+                        <StackPanel x:Name="SidePanel" />
+                    </ScrollViewer>
+                </Grid>
+            </DockPanel>
+        </controls:Bevel>
+    </Grid>
+</UserControl>

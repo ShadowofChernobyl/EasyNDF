@@ -678,7 +678,7 @@ public partial class ModConflictsWindow : UserControl
         if (picked is not { } value || EntryOf(value.FileKey) is not FileEntry entry) return;
         MainView view = MainView.Of(this);
         Close();
-        _ = view.EditorTab.ShowDescriptor(entry, value.Value.Descriptor);
+        _ = view.EditorTab.ShowDescriptorInExport(entry, value.Value.Descriptor);
     }
 
     /// <summary>Find again: a Preview of the files, which finds the conflicts again without saving anything; the window follows.</summary>

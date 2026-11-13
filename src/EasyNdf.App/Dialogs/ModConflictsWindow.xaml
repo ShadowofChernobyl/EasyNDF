@@ -127,7 +127,7 @@
                         </DockPanel>
                         <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
                             <Grid>
-                                <ListBox x:Name="List" Style="{StaticResource LongTableLines}" PreviewMouseLeftButtonUp="ListClicked" Focusable="True" FocusVisualStyle="{x:Null}"
+                                <ListBox x:Name="List" Style="{StaticResource LongListLines}" PreviewMouseLeftButtonUp="ListClicked" Focusable="True" FocusVisualStyle="{x:Null}"
                                          GotKeyboardFocus="ListFocusChanged" LostKeyboardFocus="ListFocusChanged">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type dialogs:ConflictRow}">

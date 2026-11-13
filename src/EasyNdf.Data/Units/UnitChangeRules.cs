@@ -21,8 +21,19 @@ public sealed class UnitChangeRules
     /// <summary>The key, under <see cref="DivisionChangeRules.ArmoryKey"/>, of the unit a rule is for, by its descriptor.</summary>
     public const string UnitKey = "Unit";
 
-    /// <summary>The files a unit the mod adds is written into, by what they hold.</summary>
+    /// <summary>
+    /// The files a unit the mod adds is written into, by what they hold. The units file is TacticalUnits.ndf from WARNO
+    /// v210942 on (<see cref="UnitsFileOf"/>).
+    /// </summary>
     public const string UnitsFile = "UniteDescriptor.ndf", PicturesFile = "ButtonTexturesUnites.ndf", LoadoutsFile = "WeaponDescriptor.ndf";
+
+    /// <summary>
+    /// The file a game's units are in, and a unit the mod adds is written into: TacticalUnits.ndf when the game's units
+    /// were read from it (WARNO v210942 on), else <see cref="UnitsFile"/>.
+    /// </summary>
+    /// <param name="game">The game's units.</param>
+    public static string UnitsFileOf(IEnumerable<Unit> game) =>
+        game.Any(unit => unit.File == UnitReader.TacticalUnitsFile) ? UnitReader.TacticalUnitsFile : UnitsFile;
 
     /// <summary>Where the game keeps its units' card pictures, under GameData; a picture of the user's own goes in its side's folder there.</summary>
     public const string PictureFolder = "Assets/2D/Interface/Common/UnitsIcons/";
@@ -85,6 +96,12 @@ public sealed class UnitChangeRules
     private readonly GameTitle game;
     private readonly JsonArray rules = [];
 
+    /// <summary>The file the units the mod adds are written into (<see cref="UnitsFileOf"/>).</summary>
+    private string unitsFile = UnitsFile;
+
+    /// <summary>What a mounted weapon of each weapon is given besides its ammunition (<see cref="Weapons.WeaponChangeRules.MountValuesFor"/>); null for nothing.</summary>
+    private Func<string, IReadOnlyList<(string Property, string Value)>>? mountValues;
+
     private UnitChangeRules(TextCatalog texts, IReadOnlyDictionary<string, Weapons.Loadout>? loadouts, GameTitle? game = null)
     {
         this.texts = texts;
@@ -104,12 +121,19 @@ public sealed class UnitChangeRules
     /// <param name="texts">The language the rules are named in.</param>
     /// <param name="loadouts">The game's loadouts by descriptor, for the units whose weapons the mod changes.</param>
     /// <param name="unitName">A unit's name as the Armory shows it, by its descriptor, for the units the mod's rules add; their descriptor when not given.</param>
+    /// <param name="weapons">
+    /// The game's weapons, before the mod's changes: from WARNO v210942 on, a weapon put in a loadout is given its name,
+    /// picture and traits there (<see cref="Weapons.WeaponChangeRules.MountValuesFor"/>). None when not given.
+    /// </param>
     public static JsonArray For(Mod mod, IReadOnlyList<Unit> game, TextCatalog texts, IReadOnlyDictionary<string, Weapons.Loadout>? loadouts = null,
-        Func<string, string>? unitName = null)
+        Func<string, string>? unitName = null, IReadOnlyList<Weapons.Weapon>? weapons = null)
     {
         var byDescriptor = new Dictionary<string, Unit>(StringComparer.Ordinal);
         foreach (Unit unit in game) byDescriptor.TryAdd(unit.Descriptor, unit);
-        var writer = new UnitChangeRules(texts, loadouts, mod.Game);
+        var writer = new UnitChangeRules(texts, loadouts, mod.Game)
+        {
+            unitsFile = UnitsFileOf(game), mountValues = weapons is null ? null : Weapons.WeaponChangeRules.MountValuesFor(mod, weapons),
+        };
         foreach (UnitEdit given in mod.UnitEdits)
         {
             // what the Armory cannot write for the mod's game is left out, never written WARNO's way
@@ -137,7 +161,7 @@ public sealed class UnitChangeRules
             if (mod.Game == GameTitle.SteelDivision2) writer.SteelDivisionNewUnitRules(unit, madeFrom);
             if (unit.PictureFile is string pictureFile)
                 writer.PictureRule(unit.Descriptor, unit.Name, pictureFile, NewChange, PictureTexture(unit.Descriptor), PicturePath(unit, madeFrom), unit.Side ?? madeFrom.Side);
-            writer.LoadoutRules(unit, unit.Descriptor, unit.Name, madeFrom.WeaponSet, UnitsFile, NewChange);
+            writer.LoadoutRules(unit, unit.Descriptor, unit.Name, madeFrom.WeaponSet, writer.unitsFile, NewChange);
         }
         foreach ((string descriptor, int number) in mod.UnitDeckNumbers)
         {
@@ -184,7 +208,7 @@ public sealed class UnitChangeRules
             ["Kind"] = "Clone",
             ["Params"] = new JsonObject { ["Source"] = unit.MadeFrom, ["NewName"] = unit.Descriptor },
             ["Actions"] = actions,
-        }, UnitsFile, unit.Descriptor, "Clone", NewChange);
+        }, unitsFile, unit.Descriptor, "Clone", NewChange);
         // its name, for the export's UNITS.csv
         ((JsonObject)clone[ArmoryKey]!)[TextsKey] = new JsonObject { [token] = unit.Name };
     }
@@ -415,7 +439,7 @@ public sealed class UnitChangeRules
             ["Params"] = new JsonObject { ["Find"] = Weapons.LoadoutRules.LoadoutReference(loadout, game), ["Replace"] = Weapons.LoadoutRules.LoadoutReference(own, game) },
         }, unitFile, descriptor, "Loadout", change);
         var actions = new JsonArray();
-        foreach (Weapons.LoadoutRules.LoadoutAction action in Weapons.LoadoutRules.ActionsFor(original, values.LoadoutChanges, game))
+        foreach (Weapons.LoadoutRules.LoadoutAction action in Weapons.LoadoutRules.ActionsFor(original, values.LoadoutChanges, game, mountValues))
             actions.Add(Action(action.Target, action.Operator, action.Value));
         Rule(new JsonObject
         {

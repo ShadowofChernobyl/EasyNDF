@@ -1,226 +1,331 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using System.Windows.Media;
 using EasyNdf.App.Controls;
+using EasyNdf.App.Dialogs;
+using EasyNdf.App.Text;
 using EasyNdf.Data.FileList;
 using EasyNdf.Engine.Rules;
-using EasyNdf.App.Text;
 
 namespace EasyNdf.App.Files;
 
 /// <summary>
-/// The Files tab's Details section (the HTML app's <c>renderResults</c>): what the chosen file's last run did. A summary,
-/// any problems, a table of the preset's rules with their counts, and the edits of the rule picked in that table.
+/// The rules and edits of Details, side by side when the pane is wide and one above the other when it is not, with a
+/// bar between them.
 /// </summary>
-public sealed class DetailsPanel : StackPanel
+internal sealed class DetailsColumns(UIElement rules, SplitBar bar, UIElement edits) : Panel
 {
-    private readonly Action<string> showTitle;
-    private double? chosenEditListHeight = (double?)AppData.Current.State["sizes"]?["detBox"];
+    /// <summary>From this wide, the two go side by side.</summary>
+    private const double SideBySideFrom = 900;
 
-    /// <summary>The space each block wants above and below it, before <see cref="SetGaps"/> merges them.</summary>
-    private readonly Dictionary<FrameworkElement, (double Above, double Below)> wantedSpace = [];
+    /// <summary>The rules' part of the room at first: at the first window size, four filters and Find fit on one line.</summary>
+    public const double FirstShare = 0.46;
 
-    /// <summary>Makes the panel, showing nothing until <see cref="Show"/>.</summary>
-    /// <param name="showTitle">Shows the section's heading, which names the file and its preset.</param>
-    public DetailsPanel(Action<string> showTitle) => this.showTitle = showTitle;
+    /// <summary>The narrowest the rules and the edits are, side by side.</summary>
+    private const double LeastRules = 270, LeastEdits = 320;
 
-    /// <summary>Shows a file's last run; with no file, says to click one.</summary>
-    public void Show(FileEntry? row)
+    /// <summary>The lowest the rules and the edits are, one above the other, when there is room.</summary>
+    private const double LeastHeight = 90;
+
+    /// <summary>The rules' part of the room.</summary>
+    public double Share
     {
-        Children.Clear();
-        wantedSpace.Clear();
-        ShowRun(row);
-        SetGaps();
+        get;
+        set
+        {
+            field = value;
+            InvalidateMeasure();
+        }
+    } = FirstShare;
+
+    /// <summary>Whether the two are side by side.</summary>
+    public bool IsSideBySide { get; private set; }
+
+    /// <summary>Adds the three parts, once the panel exists.</summary>
+    public void AddParts()
+    {
+        Children.Add(rules);
+        Children.Add(bar);
+        Children.Add(edits);
     }
 
-    /// <summary>How many of a run's warnings are listed before the rest are counted.</summary>
-    private const int ShownWarnings = 20;
+    private double RulesSize(double room) => IsSideBySide
+        ? Math.Round(Math.Clamp(room * Share, LeastRules, Math.Max(LeastRules, room - LeastEdits)))
+        : Math.Round(Math.Clamp(room * Share, Math.Min(LeastHeight, room / 2), Math.Max(Math.Min(LeastHeight, room / 2), room - Math.Min(LeastHeight, room / 2))));
 
-    private void ShowRun(FileEntry? row)
+    protected override Size MeasureOverride(Size availableSize)
     {
-        if (row?.LastRun is not RunRecord run)
+        double width = double.IsInfinity(availableSize.Width) ? 900 : availableSize.Width;
+        double height = double.IsInfinity(availableSize.Height) ? 400 : availableSize.Height;
+        bool side = width >= SideBySideFrom;
+        if (side != IsSideBySide || bar.LiesFlat == side)
         {
-            showTitle(Texts.Get("Files.Details"));
-            AddEmpty(row is null ? Texts.Get("Files.Details.ClickARow") : Texts.Get("Files.Details.NoRunYet", ("file", row.Name)));
-            return;
+            IsSideBySide = side;
+            bar.LiesFlat = !side;
         }
-        RunResult result = run.Result;
-        showTitle(Texts.Get("Files.Details.Title", ("file", row.Name), ("preset", run.RuleSets)));
-        List<List<EditLogEntry>> logs = result.Logs;
-        if (run.ShownRule is not int shown || shown >= result.Stats.Count)
+        if (side)
         {
-            int first = logs.FindIndex(log => log.Count > 0);
-            run.ShownRule = first < 0 ? 0 : first;
-        }
-
-        string what = run.Held ? Texts.Get("Files.Details.NotExported")
-            : run.Wrote ? (run.Unchanged ? Texts.Get("Files.Details.ExportedUnchanged") : Texts.Get("Files.Details.Exported"))
-            : run.Unchanged ? Texts.Get("Files.Details.NothingChanged")
-            : Texts.Get("Files.Details.PreviewOnly");
-        // "1 edits" in English, as the HTML app writes it (both forms are plural); other languages give their singular
-        string edits = Texts.Count("Files.Details.EditCount", result.Edits, ("count", FileStatus.Count(result.Edits)));
-        AddParagraph(Texts.Get("Files.Details.Summary", ("edits", edits),
-            ("holds", FileStatus.Holds(run.Info.Descriptors, run.Info.Constants, run.Info.Unnamed)), ("milliseconds", Texts.Number(run.Milliseconds)), ("what", what)), "muted", 0, 8);
-
-        if (result.ParseError != "")
-            AddParagraph((run.Held ? Texts.Get("Files.Details.InvalidHeld") : Texts.Get("Files.Details.InvalidWouldBeHeld"))
-                + "\n" + Texts.Get("Files.Details.InvalidProblem", ("problem", result.ParseError)) + "\n" + Texts.Get("Files.Details.InvalidCause"),
-                "warn", 12.5, 12.5);
-        if (result.Warnings.Count > 0)
-        {
-            // the first ones, then how many more: a rule that warns on every descriptor made a wall of text
-            IEnumerable<string> warnings = result.Warnings.Take(ShownWarnings)
-                .Select(w => (w.Type == "number" ? Texts.Get("Files.Details.RuleWarning", ("rule", w.Rule)) : Texts.Get("Files.Details.CheckFailed", ("rule", w.Rule))) + " " + w.Message);
-            if (result.Warnings.Count > ShownWarnings)
-                warnings = warnings.Append(Texts.Get("Files.Details.MoreWarnings", ("count", Texts.Number(result.Warnings.Count - ShownWarnings))));
-            AddParagraph(string.Join("\n", warnings), "caution", 12.5, 12.5);
-        }
-        List<RuleStats> idle = result.Stats.Where(RunRecord.IsIdle).ToList();
-        if (idle.Count > 0 && result.Edits > 0)
-        {
-            string names = string.Join(", ", idle.Take(8).Select(s => "\"" + s.Name + "\""));
-            if (idle.Count > 8) names = Texts.Get("Files.NotNdf.AndMore", ("files", names), ("more", Texts.Number(idle.Count - 8)));
-            AddParagraph(Texts.Get("Files.Details.IdleRules", ("idle", FileStatus.IdleText(idle.Count)), ("rules", names)), "caution", 0, 8);
-        }
-
-        AddRuleTable(row, run);
-        if (result.Stats.Any(s => s.Skipped > 0))
-            AddParagraph(Texts.Get("Files.Details.SkippedMeans"), "muted", 0, 8);
-        AddEditList(row, run);
-    }
-
-    /// <summary>The table of the preset's rules: click one to list its edits below.</summary>
-    private void AddRuleTable(FileEntry row, RunRecord run)
-    {
-        var table = new WebTable([Texts.Get("Files.Details.Rule"), Texts.Get("Files.Details.Type"), Texts.Get("Files.Details.Matched"), Texts.Get("Files.Details.Edits"), Texts.Get("Files.Details.Skipped")], [false, false, false, false, false]);
-        List<RuleStats> stats = run.Result.Stats;
-        for (int index = 0; index < stats.Count; index++)
-        {
-            RuleStats rule = stats[index];
-            bool isIdle = RunRecord.IsIdle(rule);
-            WebTableRow tableRow = table.AddRow([
-                rule.Enabled && !rule.OffByGroup ? rule.Name : Texts.Get("Files.Details.RuleOff", ("rule", rule.Name)),
-                Rules.RuleKindNames.Short(rule.Kind),
-                FileStatus.Count(rule.Matched), FileStatus.Count(rule.Edits), FileStatus.Count(rule.Skipped),
-            ]);
-            tableRow.IsSelected = index == run.ShownRule;
-            tableRow.AccentUnderMouse = true;
-            tableRow.Cursor = Cursors.Hand;
-            if (isIdle)
-            {
-                // a rule that changed nothing: dim, with its edit count in the caution colour
-                for (int column = 0; column < 5; column++) tableRow.SetColour(column, "muted");
-                tableRow.SetColour(3, "caution");
-                tableRow.ToolTip = Texts.Get("Files.Details.ChangedNothing");
-            }
-            int picked = index;
-            tableRow.Clicked += (_, _) =>
-            {
-                run.ShownRule = picked;
-                Show(row);
-            };
-        }
-        Add(table, 0, 0);
-    }
-
-    /// <summary>
-    /// The edits of the rule picked in the table, in a list box of their own. A double-click on one shows its descriptor
-    /// in the File Editor, in the file as exported.
-    /// </summary>
-    private void AddEditList(FileEntry row, RunRecord run)
-    {
-        int shown = run.ShownRule ?? 0;
-        if (shown >= run.Result.Stats.Count) return;
-        RuleStats rule = run.Result.Stats[shown];
-        List<EditLogEntry> log = shown < run.Result.Logs.Count ? run.Result.Logs[shown] : [];
-        // h3: dim, 12 pixels above, 5 below
-        AddParagraph(log.Count > 0 ? Texts.Get("Files.Details.EditsBy", ("rule", rule.Name)) : Texts.Get("Files.Details.NoEditsListed", ("rule", rule.Name)), "muted", 12, 5);
-        if (log.Count == 0)
-        {
-            AddParagraph(rule.Edits > 0 ? Texts.Get("Files.Details.ListSwitchedOff") : Texts.Get("Files.Details.ChangedNothing"), "muted", 0, 8);
-            return;
-        }
-
-        // only the edits in sight are made: up to 500 rows made at once froze the app while the panes were resized
-        var table = new LongTable([Texts.Get("Files.Details.Descriptor"), Texts.Get("Files.Details.Target"), Texts.Get("Files.Details.Before"), Texts.Get("Files.Details.After")], [true, true, true, true],
-            [.. log.Select(edit => (IReadOnlyList<string>)[edit.Descriptor, edit.Target, edit.Old, edit.New])]);
-        table.RowDoubleClicked += index =>
-        {
-            if (index < log.Count && log[index].Descriptor != "") _ = MainView.Of(this).EditorTab.ShowDescriptor(row, log[index].Descriptor);
-        };
-        // #detBox: a sunken list, at most max(14rem, 46% of the window's height less 40 pixels) tall, with a grip under it
-        var box = new Bevel { Child = table };
-        box.SetResourceReference(Bevel.TopLeftProperty, "lo");
-        box.SetResourceReference(Bevel.BottomRightProperty, "hi");
-        box.SetResourceReference(Bevel.BackgroundProperty, "well");
-        FitEditListHeight(box);
-        Add(box, 0, 0);
-        var grip = new ResizeGrip { Target = box, ToolTip = Texts.Get("Common.ResizeGrip.Tip") };
-        grip.HeightChosen += height =>
-        {
-            chosenEditListHeight = height is double chosen ? Math.Clamp(chosen, 96, EditListCap()) : null;
-            FitEditListHeight(box);
-        };
-        grip.HeightSettled += () => Pages.FilesPage.RememberSize("detBox", chosenEditListHeight);
-        Add(grip, 1, 9);
-        if (rule.Edits > log.Count)
-            AddParagraph(Texts.Get("Files.Details.ShowingFirst", ("shown", FileStatus.Count(log.Count)), ("edits", FileStatus.Count(rule.Edits))), "muted", 0, 8);
-    }
-
-    private void FitEditListHeight(Bevel box)
-    {
-        double windowHeight = Window.GetWindow(this)?.ActualHeight ?? 800;
-        if (chosenEditListHeight is double chosen)
-        {
-            box.Height = Math.Min(chosen, EditListCap());
-            box.MaxHeight = double.PositiveInfinity;
+            double room = Math.Max(0, width - 9), first = RulesSize(room);
+            rules.Measure(new Size(first, height));
+            bar.Measure(new Size(9, height));
+            edits.Measure(new Size(Math.Max(0, room - first), height));
         }
         else
         {
-            box.Height = double.NaN;
-            box.MaxHeight = Math.Max(224, windowHeight * 0.46 - 40);
+            double room = Math.Max(0, height - 9), first = RulesSize(room);
+            rules.Measure(new Size(width, first));
+            bar.Measure(new Size(width, 9));
+            edits.Measure(new Size(width, Math.Max(0, room - first)));
         }
+        return new Size(width, height);
     }
 
-    private double EditListCap() => Math.Max(240, Math.Round((Window.GetWindow(this)?.ActualHeight ?? 800) * 0.85, MidpointRounding.AwayFromZero));
-
-    /// <summary>.empty: a dim line with 10 pixels of padding around it.</summary>
-    private void AddEmpty(string text)
+    protected override Size ArrangeOverride(Size finalSize)
     {
-        var empty = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Padding = new Thickness(10) };
-        empty.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        Add(empty, 0, 0);
+        if (IsSideBySide)
+        {
+            double room = Math.Max(0, finalSize.Width - 9), first = RulesSize(room);
+            rules.Arrange(new Rect(0, 0, first, finalSize.Height));
+            bar.Arrange(new Rect(first, 0, 9, finalSize.Height));
+            edits.Arrange(new Rect(first + 9, 0, Math.Max(0, room - first), finalSize.Height));
+        }
+        else
+        {
+            double room = Math.Max(0, finalSize.Height - 9), first = RulesSize(room);
+            rules.Arrange(new Rect(0, 0, finalSize.Width, first));
+            bar.Arrange(new Rect(0, first, finalSize.Width, 9));
+            edits.Arrange(new Rect(0, first + 9, finalSize.Width, Math.Max(0, room - first)));
+        }
+        return finalSize;
+    }
+}
+
+/// <summary>
+/// The Files tab's Details pane: what the chosen file's last run did. A line says how the run went; below it are the
+/// rules that ran, and the edits of the rule chosen among them.
+/// </summary>
+public sealed class DetailsPanel : DockPanel
+{
+    /// <summary>The name the rules' part of the room is remembered under.</summary>
+    private const string ShareKey = "detailsRulesShare";
+
+    /// <summary>How many warnings of no rule are listed before the rest are counted.</summary>
+    private const int ShownWarnings = 20;
+
+    private readonly FlexRow runLine = new() { Gap = 10, LineGap = 0, Margin = new Thickness(0, 0, 0, 5) };
+    private readonly StackPanel banners = new();
+    private readonly ScrollViewer bannersScroller = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Focusable = false };
+    private readonly DetailsRuleList rules = new();
+    private readonly DetailsEditList edits = new();
+    private readonly SplitBar bar = new();
+    private readonly DetailsColumns columns;
+    private readonly Bevel nothing = Sunken();
+
+    private FileEntry? shownRow;
+    private RunDetails? shown;
+
+    /// <summary>Makes the pane, showing nothing until <see cref="Show"/>.</summary>
+    public DetailsPanel()
+    {
+        LastChildFill = true;
+        columns = new DetailsColumns(rules, bar, edits);
+        columns.AddParts();
+        if ((double?)AppData.Current.State["sizes"]?[ShareKey] is double share) columns.Share = share;
+        bar.Moved += at =>
+        {
+            double room = (columns.IsSideBySide ? columns.ActualWidth : columns.ActualHeight) - 9;
+            if (room > 0) columns.Share = Math.Clamp(at / room, 0.22, 0.78);
+        };
+        bar.Reset += () => columns.Share = DetailsColumns.FirstShare;
+        bar.Settled += () => Pages.FilesPage.RememberSize(ShareKey, columns.Share);
+        rules.ChosenChanged += ShowChosenRule;
+        edits.OpenRuleClicked += OpenChosenRule;
+
+        SetDock(runLine, Dock.Top);
+        bannersScroller.Content = banners;
+        SetDock(bannersScroller, Dock.Top);
+        Children.Add(runLine);
+        Children.Add(bannersScroller);
+        Children.Add(columns);
+        Children.Add(nothing);
+        // the banners never take the room of the rules
+        SizeChanged += (_, e) =>
+        {
+            if (e.HeightChanged) bannersScroller.MaxHeight = Math.Max(48, e.NewSize.Height * 0.4);
+        };
     }
 
-    /// <summary>A paragraph in a theme colour, wanting space above and below it.</summary>
-    private void AddParagraph(string text, string colour, double above, double below)
+    private static Bevel Sunken()
     {
-        var paragraph = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap };
-        paragraph.SetResourceReference(TextBlock.ForegroundProperty, colour);
-        Add(paragraph, above, below);
+        var box = new Bevel();
+        box.SetResourceReference(Bevel.TopLeftProperty, "lo");
+        box.SetResourceReference(Bevel.BottomRightProperty, "hi");
+        box.SetResourceReference(Bevel.BackgroundProperty, "well");
+        return box;
     }
 
-    private void Add(FrameworkElement block, double above, double below)
+    /// <summary>Shows a file's last run; with no file or no run, says what to do.</summary>
+    public void Show(FileEntry? row)
     {
-        wantedSpace[block] = (above, below);
-        Children.Add(block);
+        if (row?.LastRun is not RunRecord run)
+        {
+            shown = null;
+            shownRow = row;
+            ShowNothing(row);
+            return;
+        }
+        bool newFile = !ReferenceEquals(row, shownRow);
+        // a new run of the file stays on the rule it was on
+        if (!newFile && shown is { Record: var before } && !ReferenceEquals(before, run)) KeepPlace(before, run);
+        shownRow = row;
+        shown = new RunDetails(run);
+        nothing.Visibility = Visibility.Collapsed;
+        runLine.Visibility = Visibility.Visible;
+        columns.Visibility = Visibility.Visible;
+        ShowRunLine(row, run);
+        ShowBanners(run);
+        rules.Show(shown, newFile);
+        ShowChosenRule();
+    }
+
+    /// <summary>Lists the rules the file's status points at (its errors, warnings or rules that changed nothing) and shows the first.</summary>
+    public void ShowWhatStatusSays() => rules.ShowWhatStatusSays();
+
+    private static void KeepPlace(RunRecord before, RunRecord run)
+    {
+        List<RuleStats> was = before.Result.Stats, now = run.Result.Stats;
+        if (was.Count != now.Count || !was.Select(rule => rule.Name).SequenceEqual(now.Select(rule => rule.Name))) return;
+        run.ShownRule = before.ShownRule;
+        run.FoldedGroups = before.FoldedGroups;
+    }
+
+    /// <summary>In place of the rules: a file with no run yet can be given one, here and now.</summary>
+    private void ShowNothing(FileEntry? row)
+    {
+        runLine.Visibility = Visibility.Collapsed;
+        bannersScroller.Visibility = Visibility.Collapsed;
+        columns.Visibility = Visibility.Collapsed;
+        nothing.Visibility = Visibility.Visible;
+        TextBlock words = DetailsText.Line("muted");
+        words.TextAlignment = TextAlignment.Center;
+        words.Text = row is null ? Texts.Get("Files.Details.ClickARow") : Texts.Get("Files.Details.NoRunYet", ("file", row.Name));
+        var middle = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12), Children = { words } };
+        if (row is not null)
+        {
+            var preview = new Button { Content = Texts.Get("Files.Preview"), ToolTip = Texts.Get("Files.Details.PreviewThis.Tip"), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 10, 0, 0) };
+            preview.Click += (_, _) => _ = MainView.Of(this).FilesTab.PreviewOnly(row);
+            middle.Children.Add(preview);
+        }
+        nothing.Child = middle;
+    }
+
+    /// <summary>The file, the rule sets it ran with, how it ended, and what it came to.</summary>
+    private void ShowRunLine(FileEntry row, RunRecord run)
+    {
+        runLine.Children.Clear();
+        TextBlock named = DetailsText.Line();
+        System.Windows.Documents.Run file = DetailsText.Piece(DetailsText.Soft(row.Name), null);
+        file.SetResourceReference(System.Windows.Documents.TextElement.FontFamilyProperty, "mono");
+        file.FontSize = 12;
+        named.Inlines.Add(file);
+        if (run.RuleSets != "")
+        {
+            named.Inlines.Add(DetailsText.Piece(" " + Texts.Get("Files.Details.With") + " ", "muted"));
+            named.Inlines.Add(DetailsText.Piece(run.RuleSets, null));
+        }
+        runLine.Children.Add(named);
+
+        int errors = run.ValueErrors.Count;
+        string what = run.Held && errors > 0 ? Texts.Get("Files.Details.ValueErrors.Held", ("errors", DetailsCounts.Errors(errors)))
+            : run.Held ? Texts.Get("Files.Details.NotExported")
+            : run.Wrote ? (run.Unchanged ? Texts.Get("Files.Details.ExportedUnchanged") : Texts.Get("Files.Details.Exported"))
+            : run.Unchanged ? Texts.Get("Files.Details.NothingChanged")
+            : Texts.Get("Files.Details.PreviewOnly");
+        TextBlock ended = DetailsText.Line(run.Held ? "warn" : null);
+        ended.Text = what;
+        // a Preview says what an export would hold back, after saying it saved nothing
+        if (!run.Held && errors > 0)
+            ended.Inlines.Add(DetailsText.Piece(" " + DetailsCounts.WouldStopGeneration(errors), "warn"));
+        if (run.Wrote && !run.Held)
+        {
+            FrameworkElement done = NoticeLayer.Icon(NoticeKind.Done, 14);
+            done.Margin = new Thickness(0, 0, 5, 0);
+            done.VerticalAlignment = VerticalAlignment.Center;
+            DockPanel.SetDock(done, Dock.Left);
+            runLine.Children.Add(new DockPanel { Children = { done, ended } });
+        }
+        else runLine.Children.Add(ended);
+
+        TextBlock counts = DetailsText.Line("muted");
+        counts.Text = Texts.Get("Files.Details.RunCounts", ("edits", DetailsCounts.Edits(run.Result.Edits)),
+            ("holds", FileStatus.Holds(run.Info.Descriptors, run.Info.Constants, run.Info.Unnamed)), ("milliseconds", Texts.Number(run.Milliseconds)));
+        runLine.Children.Add(counts);
     }
 
     /// <summary>
-    /// Sets the gaps between the blocks as a web page does: where two blocks meet, the larger of the spaces they want is
-    /// used, not both. The first block's space merges with the 6 pixels under the heading above it in the same way.
+    /// What goes above the rules: that the file is not valid NDF, values that would stop mod generation where no rule
+    /// shows an edit, and any warnings that are not about a rule.
     /// </summary>
-    private void SetGaps()
+    private void ShowBanners(RunRecord run)
     {
-        double spaceAbove = 6; // what the heading already leaves (see FilesPage.xaml)
-        for (int index = 0; index < Children.Count; index++)
+        banners.Children.Clear();
+        if (run.Result.ParseError != "")
+            banners.Children.Add(Banner(NoticeKind.Problem, "warn",
+                (run.Held ? Texts.Get("Files.Details.InvalidHeld") : Texts.Get("Files.Details.InvalidWouldBeHeld"))
+                + "\n" + Texts.Get("Files.Details.InvalidProblem", ("problem", run.Result.ParseError)) + "\n" + Texts.Get("Files.Details.InvalidCause")));
+        IReadOnlyList<RunValueError> otherErrors = shown!.OtherErrors;
+        if (otherErrors.Count > 0)
         {
-            var block = (FrameworkElement)Children[index];
-            (double above, double below) = wantedSpace[block];
-            double gap = Math.Max(spaceAbove, above) - (index == 0 ? 6 : 0);
-            bool isLast = index == Children.Count - 1;
-            block.Margin = new Thickness(0, gap, 0, isLast ? below : 0);
-            spaceAbove = below;
+            IEnumerable<string> lines = otherErrors.Take(ShownWarnings).Select(DetailsCounts.ErrorLine);
+            if (otherErrors.Count > ShownWarnings) lines = lines.Append(Texts.Get("Files.Details.MoreWarnings", ("count", Texts.Number(otherErrors.Count - ShownWarnings))));
+            banners.Children.Add(Banner(NoticeKind.Problem, "warn", Texts.Get("Files.Details.ValueErrors.Other") + "\n" + string.Join("\n", lines)));
         }
+        IReadOnlyList<RunWarning> others = shown.OtherWarnings;
+        if (others.Count > 0)
+        {
+            // the first ones, then how many more: a rule that warns on every descriptor made a wall of text
+            IEnumerable<string> lines = others.Take(ShownWarnings).Select(warning =>
+                (warning.Type == "number" ? Texts.Get("Files.Details.RuleWarning", ("rule", warning.Rule)) : Texts.Get("Files.Details.CheckFailed", ("rule", warning.Rule))) + " " + warning.Message);
+            if (others.Count > ShownWarnings) lines = lines.Append(Texts.Get("Files.Details.MoreWarnings", ("count", Texts.Number(others.Count - ShownWarnings))));
+            banners.Children.Add(Banner(NoticeKind.Caution, "caution", string.Join("\n", lines)));
+        }
+        bannersScroller.Visibility = banners.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    private static Bevel Banner(NoticeKind kind, string colour, string text)
+    {
+        FrameworkElement icon = NoticeLayer.Icon(kind, 18);
+        icon.Margin = new Thickness(0, 0, 9, 0);
+        SetDock(icon, Dock.Left);
+        TextBlock words = DetailsText.Line(colour);
+        words.Text = DetailsText.Soft(text);
+        Bevel box = Sunken();
+        box.Padding = new Thickness(8, 6, 8, 6);
+        box.Margin = new Thickness(0, 0, 0, 5);
+        box.Child = new DockPanel { Children = { icon, words } };
+        return box;
+    }
+
+    /// <summary>Lists the edits of the rule chosen.</summary>
+    private void ShowChosenRule()
+    {
+        if (shown is null || shownRow is null) return;
+        edits.Show(shown, shown.ChosenRule, rules.Find, shownRow);
+    }
+
+    /// <summary>Open Rule: the Mods tab, with the rule's mod and rule set open, and the rule's window.</summary>
+    private void OpenChosenRule()
+    {
+        if (shown is null || shownRow is null || shown.ChosenRule < 0) return;
+        MainView.Of(this).RulesTab.OpenRuleOfRun(shown.Record, shown.ChosenRule, shownRow);
+    }
+
+    /// <summary>
+    /// A key while the keyboard is in the pane: the pane takes it, so that what would act on the file list above, such
+    /// as Delete, cannot remove a file by surprise.
+    /// </summary>
+    public void HandleShortcut(System.Windows.Input.KeyEventArgs e) => rules.HandleFoldKey(e);
+
+    /// <summary>Settings › Wrap text in lists changed: the edits wrap, or keep to one line each.</summary>
+    public void ApplyListWrap() => edits.ApplyListWrap();
 }

@@ -34,7 +34,8 @@ public sealed class ModUnit : UnitValues
     /// gives it. Kept the same as what the rules write (<see cref="UnitChangeRules"/>).
     /// </summary>
     /// <param name="madeFrom">The unit it is made from, as the game has it.</param>
-    public Unit Apply(Unit madeFrom) => Over(madeFrom, Descriptor, Name, UnitChangeRules.UnitsFile, DeckNumber, divisions: []);
+    public Unit Apply(Unit madeFrom) =>
+        Over(madeFrom, Descriptor, Name, UnitReader.IsUnitsFile(madeFrom.File) ? madeFrom.File : UnitChangeRules.UnitsFile, DeckNumber, divisions: []);
 
     /// <summary>
     /// A descriptor for a unit named <paramref name="name"/>: its letters and digits, with "_" between words, then its

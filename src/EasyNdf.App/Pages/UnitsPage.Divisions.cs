@@ -58,6 +58,7 @@ public partial class UnitsPage
     /// changes are made to the source's units, divisions and weapons; null when it is for the source's game.
     /// </summary>
     private string? OtherGameReason => OpenMod.Game == Game ? null
+        : !AppData.Current.Mods.Any(mod => mod.Game == Game && ModStack.IsOn(mod)) ? Texts.Get("Units.NoModOfGame", ("game", Game.Name))
         : Texts.Get("Units.OtherGame", ("mod", OpenMod.Name), ("modGame", OpenMod.Game.Name), ("game", Game.Name));
 
     /// <summary>"Show mods' changes", under the Source: on, the Armory shows the values as the mods that are on make them; off, as the source has them.</summary>
@@ -661,8 +662,8 @@ public partial class UnitsPage
         else Panes.SecondPart = (whole - UnitPaneWidthIn(whole) - 9) / whole;
     }
 
-    /// <summary>The Unit pane's width when it shows alone: as dragged, or half the panes' whole width; never narrower than its least.</summary>
-    private double UnitPaneAloneIn(double whole) => Math.Max(UnitPaneLeast, unitPaneWidth ?? (whole - 9) / 2);
+    /// <summary>The Unit pane's width when it shows alone: as dragged, or half the panes' whole width, at least 300 until it is dragged; never narrower than its least.</summary>
+    private double UnitPaneAloneIn(double whole) => Math.Max(UnitPaneLeast, unitPaneWidth ?? Math.Max(300, (whole - 9) / 2));
 
     /// <summary>With both panes showing, the Division pane's width is kept, for when it comes back after being hidden.</summary>
     private void KeepDivisionPaneWidth()

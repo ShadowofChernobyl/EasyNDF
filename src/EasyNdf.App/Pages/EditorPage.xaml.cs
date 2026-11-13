@@ -26,26 +26,12 @@ namespace EasyNdf.App.Pages;
 /// </summary>
 public partial class EditorPage : UserControl
 {
-    /// <summary>What the editor shows: the file, its export, or the export's changed lines; null while there is no file.</summary>
-    private ShownText? shown;
-
-    /// <summary>The text size; the line height goes with it, 17 pixels for 12, as in the HTML app.</summary>
+    /// <summary>The text size of every open file; the line height goes with it, 17 pixels for 12, as in the HTML app.</summary>
     private double textSize = TextZoom.UsualSize;
 
-    /// <summary>The status strip under the text.</summary>
-    private StatusStrip? strip;
-    private readonly LineHeight lineHeight = new();
-    private readonly LineNumbers lineNumbers = new();
-    private readonly MarkColumn markColumn = new();
-    private readonly Border textGap = new() { Width = 4 };
-    private readonly LineShading shading = new();
     private bool showingPick;
 
-    /// <summary>The syntax check of the file shown, and its problems in the status strip.</summary>
-    private readonly SyntaxProblems syntaxProblems;
-    private readonly ProblemList problemList;
-
-    /// <summary>The syntax check, for the checks.</summary>
+    /// <summary>The syntax check of the file in use, for the checks.</summary>
     internal SyntaxProblems SyntaxCheck => syntaxProblems;
 
     /// <summary>The problems in the status strip, for the checks.</summary>
@@ -162,44 +148,15 @@ public partial class EditorPage : UserControl
         {
             if (IsVisible) RefreshTreeOnFirstOpen();
         };
-        Text.Options.ConvertTabsToSpaces = true; // Tab types four spaces, as the Sublime settings file asks
-        Text.Options.IndentationSize = 4;
-        Text.Options.EnableHyperlinks = false;
-        Text.Options.EnableEmailHyperlinks = false;
-        Text.Options.AllowScrollBelowDocument = false;
-        Text.TextArea.SetResourceReference(ICSharpCode.AvalonEdit.Editing.TextArea.SelectionBrushProperty, "sel");
-        Text.TextArea.SelectionForeground = null;
-        Text.TextArea.SelectionBorder = null;
-        Text.TextArea.SelectionCornerRadius = 0;
-        Text.TextArea.SetResourceReference(ICSharpCode.AvalonEdit.Editing.TextArea.ForegroundProperty, "ink");
-        Text.TextArea.Caret.CaretBrush = (System.Windows.Media.Brush)FindResource("ink");
         Theming.ThemeManager.Applied += RedrawInTheme;
-        // the line numbers, then the column for marks (and later the folding arrows), then 4 pixels before the text
-        Text.TextArea.LeftMargins.Insert(0, lineNumbers);
-        Text.TextArea.LeftMargins.Insert(1, markColumn);
-        Text.TextArea.LeftMargins.Insert(2, textGap);
-        Text.TextArea.TextView.ElementGenerators.Add(lineHeight);
-        lineHeight.KeepGuessesRight(Text.TextArea.TextView);
-        Text.TextArea.TextView.BackgroundRenderers.Add(shading);
-        Text.TextArea.TextView.BackgroundRenderers.Add(shading.Outline);
-        Text.TextArea.TextView.BackgroundRenderers.Add(new IndentGuides());
-        _ = new AutoPairs(Text.TextArea);
-        StartFolding();
+        textSize = TextZoom.Fit(TextZoom.Saved);
+        // the text box the first file opened takes (EditorPage.Tabs.cs)
+        view = MakeView();
         StartDescriptors();
-        Text.PreviewMouseWheel += WheelTurned;
-        Text.PreviewKeyDown += KeyPressed;
         PreviewKeyDown += FindBarKeys;
         foreach (TextBox box in new[] { FindBox, GoBox, SearchAllBox }) box.TextChanged += FindBoxChanged;
-        Text.TextChanged += TextEdited;
         // the results of Search all files take at most 40% of the tab, so the panes under them keep their room
         SizeChanged += (_, _) => ResultsBox.MaxHeight = Math.Max(ResultsBox.MinHeight, 0.4 * ActualHeight);
-        StripHolder.Content = strip = new StatusStrip(Text);
-        strip.AddTools(FoldButtons());
-        syntaxProblems = new SyntaxProblems(Text);
-        problemList = new ProblemList(syntaxProblems);
-        strip.AddAfterCaretPlace(problemList.StripText);
-        // the list of problems lies over the bottom of the text, above the strip
-        ((Grid)Text.Parent).Children.Add(problemList.Panel);
         SetTextSize(TextZoom.Saved, remember: false);
         TextZoom.Changed += size => SetTextSize(size, remember: false);
         ApplyViewSettings();
@@ -209,44 +166,27 @@ public partial class EditorPage : UserControl
     /// <summary>The "Text size" setting: the text takes a size, which is kept for next time.</summary>
     public void ChangeTextSize(double size) => SetTextSize(size, remember: true);
 
-    /// <summary>The "Line numbers" and "Word wrap" settings, applied to the text.</summary>
+    /// <summary>The "Line numbers" and "Word wrap" settings, applied to every open file.</summary>
     public void ApplyViewSettings()
     {
+        foreach (FileView v in AllViews) ApplyViewSettings(v);
+    }
+
+    private static void ApplyViewSettings(FileView v)
+    {
         bool numbers = AppData.Current.Settings["lineNumbers"]?.GetValue<bool>() != false;
-        lineNumbers.Visibility = numbers ? Visibility.Visible : Visibility.Collapsed;
-        Text.WordWrap = AppData.Current.Settings["wordWrap"]?.GetValue<bool>() == true;
+        v.LineNumbers.Visibility = numbers ? Visibility.Visible : Visibility.Collapsed;
+        v.Editor.WordWrap = AppData.Current.Settings["wordWrap"]?.GetValue<bool>() == true;
     }
 
-    /// <summary>The name of the file open here when it has edits not yet saved, which closing the app would lose; otherwise null.</summary>
-    public string? EditedFileName => shown?.File is { IsEdited: true } edited ? edited.Name : null;
-
-    /// <summary>Keeps which file of the Files tab is open, and its top line, for "Reopen the last file".</summary>
-    public void KeepOpenFile()
+    /// <summary>The "Scope lines" setting: the lines behind the text are drawn again in every open file.</summary>
+    public void RedrawIndentGuides()
     {
-        if (OpenFilePlace is not (FileEntry entry, int line)) { AppData.Current.State.Remove("editorFile"); return; }
-        AppData.Current.State["editorFile"] = new System.Text.Json.Nodes.JsonObject
-        {
-            ["name"] = entry.Name,
-            ["folder"] = entry.Folder,
-            ["line"] = line,
-        };
+        foreach (FileView v in AllViews) v.Editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
     }
 
-    /// <summary>
-    /// "Reopen the last file": as the app starts, the file last open opens again at the line it was left at, when it is
-    /// still on the Files tab. The Files tab stays in front.
-    /// </summary>
-    public async Task ReopenLastFile()
-    {
-        if (AppData.Current.Settings["reopenFile"]?.GetValue<bool>() == false) return;
-        if (AppData.Current.State["editorFile"] is not System.Text.Json.Nodes.JsonObject kept || Files is null) return;
-        string name = (string?)kept["name"] ?? "", folder = (string?)kept["folder"] ?? "";
-        FileEntry? entry = Files.Entries.FirstOrDefault(e => e.Name == name && e.Folder == folder);
-        if (entry is null) return;
-        await Open(entry, showTab: false);
-        int line = (int?)kept["line"] ?? 1;
-        if (shown?.Entry == entry && line > 1) Text.ScrollToLine(line);
-    }
+    /// <summary>The names of the files open here with edits not yet saved, which closing the app would lose; otherwise null.</summary>
+    public string? EditedFileName => openViews.Where(v => v.IsEdited).Select(v => v.Name).ToList() is { Count: > 0 } names ? string.Join(", ", names) : null;
 
     /// <summary>The line height for the text size: 17 pixels for 12, rounded.</summary>
     private double LineHeightForSize => Math.Round(textSize * 17 / 12, MidpointRounding.AwayFromZero);
@@ -256,17 +196,26 @@ public partial class EditorPage : UserControl
     // ---- opening a file ----
 
     /// <summary>
-    /// "Open in editor" and a double-click on the Files tab (the HTML app's <c>edOpenJob</c>): the row's file opens here.
-    /// Edits not saved in the file open now are asked about first.
+    /// "Open in editor" and a double-click on the Files tab (the HTML app's <c>edOpenJob</c>): the row's file opens in a
+    /// tab of its own, or its tab is shown when it is open already.
     /// </summary>
     public async Task Open(FileEntry entry) => await Open(entry, showTab: true);
 
-    /// <summary>Opens a file of the Files tab; with <paramref name="showTab"/>, the Editor tab comes to the front.</summary>
+    /// <summary>
+    /// Opens a file of the Files tab, in a new tab after the one in use and in its place, or shows its tab when it is open
+    /// already (see <see cref="Bring"/>); with <paramref name="showTab"/>, the Editor tab comes to the front.
+    /// </summary>
     private async Task Open(FileEntry entry, bool showTab)
     {
-        if (entry.Source is null || !await MayLeave()) return;
-        using Work.Job job = Work.Start(Texts.Get("Main.Usage.Job.Opening", ("file", entry.Name)));
+        if (entry.Source is null) return;
         if (showTab) MainView.Of(this).Tabs.SelectedItem = MainView.Of(this).EditorTabItem;
+        if (TabOf(entry) is FileView open)
+        {
+            Bring(open);
+            return;
+        }
+        using Work.Job job = Work.Start(Texts.Get("Main.Usage.Job.Opening", ("file", entry.Name)));
+        FileView into = NewTab();
         Note.Text = Texts.Get("Editor.Viewer.ReadingFile", ("file", entry.Name));
         int loading = StartLoading(Texts.Get("Editor.Loading.Opening", ("file", entry.Name)), entry.Folder,
             Texts.Get("Editor.Loading.Reading"), Texts.Get("Editor.Loading.Colouring"), Texts.Get("Editor.Loading.Showing"));
@@ -274,14 +223,13 @@ public partial class EditorPage : UserControl
         {
             string text = await Task.Run(() => FileContent.Text(entry));
             ShowLoadingStep(loading, 1);
-            await LoadAside(entry.Name, text, entry, loading: loading);
+            await LoadAside(into, entry.Name, text, entry, loading: loading);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             EndLoading(loading);
-            shown = null;
-            ShowText();
-            await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", entry.Name), ("problem", error.Message)));
+            CloseNow(into);
+            await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", entry.Name), ("problem", error.Message)), DialogIcon.Error);
         }
         finally
         {
@@ -289,40 +237,43 @@ public partial class EditorPage : UserControl
         }
     }
 
-    /// <summary>Puts a file's text into the editor (the HTML app's <c>edLoad</c>). Line ends are kept to be put back on saving.</summary>
+    /// <summary>
+    /// Puts a file's text into the file in use, or a new tab when none is open (the HTML app's <c>edLoad</c>). Line ends
+    /// are kept to be put back on saving.
+    /// </summary>
     public void Load(string name, string text, FileEntry? entry)
     {
-        loads++;
+        if (!openViews.Contains(view)) NewTab();
+        view.Loads++;
+        view.LetGo = null;
         shown = Prepared(name, text, entry, Thread.CurrentThread);
         ShowText();
     }
 
     /// <summary>
-    /// <see cref="Load"/>, with the text's lines and colours worked out off the screen's thread: for Steel Division 2's
-    /// 117 MB UniteDescriptor.ndf they take two seconds. A file opened meanwhile is the one shown.
+    /// <see cref="Load"/> into a file's text box, with the text's lines and colours worked out off the screen's thread:
+    /// for Steel Division 2's 117 MB UniteDescriptor.ndf they take two seconds. A text put in that box meanwhile is the one
+    /// shown; nothing is put in a box closed meanwhile.
     /// </summary>
-    /// <param name="folds">The blocks to fold, where a file let go of had them (see <see cref="BringBackLetGo"/>); null for none.</param>
+    /// <param name="folds">The blocks to fold, where a file let go of had them (see <see cref="BringBack"/>); null for none.</param>
     /// <param name="loading">The load the loading card shows (see <see cref="StartLoading"/>), or 0 for none.</param>
-    private async Task LoadAside(string name, string text, FileEntry? entry, List<(int Start, int End)>? folds = null, int loading = 0)
+    private async Task LoadAside(FileView into, string name, string text, FileEntry? entry, List<(int Start, int End)>? folds = null, int loading = 0)
     {
-        int load = ++loads;
+        int load = ++into.Loads;
         // a file opened now takes the place of one let go of
-        letGo = null;
+        into.LetGo = null;
         Thread screen = Thread.CurrentThread;
         ShownText prepared = await Task.Run(() => Prepared(name, text, entry, screen));
-        if (load != loads) return;
+        if (load != into.Loads) return;
         if (loading != 0)
         {
             await ShowStepThatHolds(loading, 2, text.Length);
-            if (load != loads) return;
+            if (load != into.Loads) return;
         }
         if (folds is not null) prepared.Folds = folds;
-        shown = prepared;
-        ShowText();
+        into.Shown = prepared;
+        ShowText(into);
     }
-
-    /// <summary>How many texts were put in the editor, so a slow one does not replace one opened after it.</summary>
-    private int loads;
 
     /// <summary>A text to show, its line ends made "\n", its document handed to <paramref name="owner"/> once made.</summary>
     private static ShownText Prepared(string name, string text, FileEntry? entry, Thread owner)
@@ -340,13 +291,6 @@ public partial class EditorPage : UserControl
         };
     }
 
-    /// <summary>
-    /// Whether the file open now may be put away (the HTML app's <c>edLeave</c>): yes when it has no edits, or when the
-    /// user says to discard them.
-    /// </summary>
-    private async Task<bool> MayLeave() =>
-        shown?.File is not { IsEdited: true } edited || await Messages.Confirm(Texts.Get("Editor.DiscardUnsaved", ("file", edited.Name)), Texts.Get("Editor.Discard"));
-
     private async void FilePicked(object sender, SelectionChangedEventArgs e)
     {
         if (showingPick || FilePick.SelectedItem is not ChoiceOption { Value: { Length: > 0 } id }) return;
@@ -357,16 +301,19 @@ public partial class EditorPage : UserControl
 
     private async void OpenFileClicked(object sender, RoutedEventArgs e) => await OpenFileOnItsOwn();
 
-    /// <summary>"Open file...": a file that is not on the Files tab.</summary>
+    /// <summary>"Open file...": a file that is not on the Files tab, in a new tab.</summary>
     private async Task OpenFileOnItsOwn()
     {
         var dialog = new OpenFileDialog { Title = Texts.Get("Editor.OpenFile.Title"), Filter = Texts.Get("Files.NdfFiles") };
-        if (dialog.ShowDialog(Window.GetWindow(this)) != true || !await MayLeave()) return;
-        try { await LoadAside(Path.GetFileName(dialog.FileName), await File.ReadAllTextAsync(dialog.FileName), null); }
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        string text;
+        try { text = await File.ReadAllTextAsync(dialog.FileName); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)));
+            await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)), DialogIcon.Error);
+            return;
         }
+        await LoadAside(NewTab(), Path.GetFileName(dialog.FileName), text, null);
     }
 
     /// <summary>The dropdown's right-click menu.</summary>
@@ -386,19 +333,23 @@ public partial class EditorPage : UserControl
     private async void DiscardClicked(object sender, RoutedEventArgs e)
     {
         if (shown is not { IsFile: true, IsEdited: true } open) return;
-        if (!await Messages.Confirm(Texts.Get("Editor.DiscardAll", ("file", open.Name)), Texts.Get("Editor.Discard"))) return;
-        await LoadAside(open.Name, open.Original, open.Entry);
-        // another file opened while it was read keeps its own line ends
-        if (shown is null || shown.Name != open.Name || shown.Entry != open.Entry) return;
-        shown.HasWindowsLineEnds = open.HasWindowsLineEnds;
+        FileView of = view;
+        if (!await Messages.Confirm(Texts.Get("Editor.DiscardAll", ("file", open.Name)), Texts.Get("Editor.Discard"), DialogIcon.Warning)) return;
+        if (of.Shown != open) return;
+        await LoadAside(of, open.Name, open.Original, open.Entry);
+        // another file put in that box while it was read keeps its own line ends
+        if (of.Shown is not ShownText again || again.Name != open.Name || again.Entry != open.Entry) return;
+        again.HasWindowsLineEnds = open.HasWindowsLineEnds;
     }
 
     /// <summary>
     /// The text to save, with the file's own line endings put back. With "Changes only" shown, it is the whole export.
     /// </summary>
-    private string TextToSave()
+    private string TextToSave() => TextToSave(shown!);
+
+    private static string TextToSave(ShownText text)
     {
-        ShownText whole = shown!.Parent ?? shown;
+        ShownText whole = text.Parent ?? text;
         return whole.HasWindowsLineEnds ? whole.Document.Text.Replace("\n", "\r\n", StringComparison.Ordinal) : whole.Document.Text;
     }
 
@@ -411,7 +362,7 @@ public partial class EditorPage : UserControl
         try { File.WriteAllText(dialog.FileName, TextToSave(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = Messages.Tell(Texts.Get("Editor.CouldNotSave", ("problem", error.Message)));
+            _ = Messages.Tell(Texts.Get("Editor.CouldNotSave", ("problem", error.Message)), DialogIcon.Error);
         }
     }
 
@@ -419,11 +370,14 @@ public partial class EditorPage : UserControl
     /// "Use in file list": the file list uses the edited text from now on, so Preview and Run export apply the rules to it.
     /// A file opened on its own is added to the list.
     /// </summary>
-    private async void UseClicked(object sender, RoutedEventArgs e)
+    private async void UseClicked(object sender, RoutedEventArgs e) => await UseInFileList(view);
+
+    /// <summary>"Use in file list" for a file's text box, also when its tab is closed with edits.</summary>
+    private async Task UseInFileList(FileView of)
     {
-        if (shown is not { IsFile: true } open || Files is null) return;
-        byte[] edited = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(TextToSave());
-        open.Original = Text.Text;
+        if (of.Shown is not { IsFile: true } open || Files is null) return;
+        byte[] edited = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(TextToSave(open));
+        open.Original = open.Document.Text;
         open.IsEdited = false;
         if (open.Entry is FileEntry entry && Files.Entries.Contains(entry))
         {
@@ -438,18 +392,18 @@ public partial class EditorPage : UserControl
         }
         else open.Entry = await AddFile(new FileToAdd(open.Name, "", open.Name, PackedBytes.Pack(edited), DateTime.Now));
         Show();
-        Note.Text = Texts.Get("Editor.Note.UsedInFileList", ("file", open.Name));
+        if (of == view) Note.Text = Texts.Get("Editor.Note.UsedInFileList", ("file", open.Name));
     }
 
     /// <summary>Whether a text is being put in the editor, which is no edit: comparing a large one with its original takes a quarter second.</summary>
     private bool puttingIn;
 
-    /// <summary>The first edit of a file marks it as edited: Discard changes and Use in file list can be used.</summary>
-    private void TextEdited(object? sender, EventArgs e)
+    /// <summary>The first edit of a file marks it as edited: Discard changes and Use in file list can be used, and its tab has a dot.</summary>
+    private void TextEdited(FileView of)
     {
-        if (puttingIn || shown is not { IsFile: true, IsEdited: false } open) return;
+        if (puttingIn || of.Shown is not { IsFile: true, IsEdited: false } open) return;
         // a text of another length differs: only one as long as the original is compared with it, character for character
-        if (Text.Document.TextLength == open.OriginalLength && Text.Text == open.Original) return;
+        if (open.Document.TextLength == open.OriginalLength && open.Document.Text == open.Original) return;
         open.IsEdited = true;
         Show();
     }
@@ -460,48 +414,67 @@ public partial class EditorPage : UserControl
     /// Puts the shown text into the editor (the HTML app's <c>edShow</c>): its text and colours, read-only for an export,
     /// with its own line numbers and marks for "Changes only". Then the buttons and the note.
     /// </summary>
-    private void ShowText()
+    private void ShowText() => ShowText(view);
+
+    /// <summary><see cref="ShowText()"/> for a file's text box, which need not be the one in use.</summary>
+    private void ShowText(FileView of)
     {
-        TextView view = Text.TextArea.TextView;
-        PutFoldingAway();
-        foreach (IVisualLineTransformer transformer in view.LineTransformers.Where(t => t is NdfColourizer or MutedLines).ToList())
-            view.LineTransformers.Remove(transformer);
+        ShownText? text = of.Shown;
+        TextView lines = of.Editor.TextArea.TextView;
+        PutFoldingAway(of);
+        foreach (IVisualLineTransformer transformer in lines.LineTransformers.Where(t => t is NdfColourizer or MutedLines).ToList())
+            lines.LineTransformers.Remove(transformer);
         // only the file itself is checked: an export cannot be edited; a dictionary file such as UNITS.csv is not NDF
-        bool isNdf = shown is not null && !Data.Divisions.FileAndTextRules.IsDictionaryFile(shown.Name);
-        syntaxProblems.Watch(shown is { IsFile: true } && isNdf ? shown.Document : null);
-        if (shown is null)
+        bool isNdf = text is not null && !Data.Divisions.FileAndTextRules.IsDictionaryFile(text.Name);
+        UseGuideFor(of, text, isNdf);
+        of.SyntaxProblems.Watch(text is { IsFile: true } && isNdf ? text.Document : null, text is { IsFile: true } ? of.Guide : null);
+        if (text is null)
         {
-            Show();
+            ShowWhatFollowsText(of);
             return;
         }
         puttingIn = true;
-        try { Text.Document = shown.Document; }
+        try { of.Editor.Document = text.Document; }
         finally { puttingIn = false; }
-        Text.IsReadOnly = shown.IsExport;
-        view.LineTransformers.Add(shown.Colourizer!);
-        ChangedLines? changes = shown.Changes;
-        if (changes is not null) view.LineTransformers.Add(new MutedLines(changes.Marks));
+        of.Editor.IsReadOnly = text.IsExport;
+        lines.LineTransformers.Add(text.Colourizer!);
+        ChangedLines? changes = text.Changes;
+        if (changes is not null) lines.LineTransformers.Add(new MutedLines(changes.Marks));
 
         // a read-only view's numbers are as wide as the whole export's, and its text follows the marks with no gap
-        lineNumbers.NumberOf = changes is null ? null : number => changes.Numbers[number - 1];
-        int wholeLength = (shown.Parent ?? shown).Document.LineCount;
-        lineNumbers.Digits = shown.IsExport ? wholeLength.ToString(System.Globalization.CultureInfo.InvariantCulture).Length : null;
-        lineNumbers.InvalidateMeasure();
-        markColumn.Marks = changes?.Marks;
-        textGap.Width = shown.IsExport ? 0 : 4;
-        shading.Marks = changes?.Marks;
-        shading.PointedAt = shown.PointedAt;
-        BringFoldingBack();
+        of.LineNumbers.NumberOf = changes is null ? null : number => changes.Numbers[number - 1];
+        int wholeLength = (text.Parent ?? text).Document.LineCount;
+        of.LineNumbers.Digits = text.IsExport ? wholeLength.ToString(System.Globalization.CultureInfo.InvariantCulture).Length : null;
+        of.LineNumbers.InvalidateMeasure();
+        of.MarkColumn.Marks = changes?.Marks;
+        of.TextGap.Width = text.IsExport ? 0 : 4;
+        of.Shading.Marks = changes?.Marks;
+        of.Shading.PointedAt = text.PointedAt;
+        BringFoldingBack(of);
+        ShowWhatFollowsText(of);
+    }
+
+    /// <summary>After a text is put in a box: the buttons, the note and the descriptors when it is the file in use, else only the tabs and names.</summary>
+    private void ShowWhatFollowsText(FileView of)
+    {
+        if (of != view)
+        {
+            ShowTabs();
+            ShowCaptions();
+            return;
+        }
         Show();
-        KickDescriptors(0);
+        if (of.Shown is not null) KickDescriptors(0);
     }
 
     /// <summary>Shows the buttons that can be used, and the note (the HTML app's <c>edBar</c>).</summary>
     private void Show()
     {
-        bool has = shown is not null, isFile = shown is { IsFile: true };
-        EmptyText.Visibility = has ? Visibility.Collapsed : Visibility.Visible;
-        Text.Visibility = has ? Visibility.Visible : Visibility.Collapsed;
+        bool has = shown is not null, isFile = shown is { IsFile: true }, anyOpen = openViews.Count > 0;
+        EmptyBox.Visibility = anyOpen ? Visibility.Collapsed : Visibility.Visible;
+        SideBySide.Visibility = anyOpen ? Visibility.Visible : Visibility.Collapsed;
+        ShowTabs();
+        ShowCaptions();
         SaveButton.IsEnabled = FindBox.IsEnabled = PreviousButton.IsEnabled = NextButton.IsEnabled = GoBox.IsEnabled = has;
         // replacing needs the text to be editable
         ReplaceBox.IsEnabled = ReplaceButton.IsEnabled = ReplaceAllButton.IsEnabled = isFile;
@@ -625,12 +598,8 @@ public partial class EditorPage : UserControl
     /// <summary>The line at the top of the editor, counting from 1.</summary>
     internal int TopLine => Text.TextArea.TextView.GetDocumentLineByVisualTop(Text.VerticalOffset)?.LineNumber ?? 0;
 
-    /// <summary>The note says something else, in the plain colour or in "caution" or "warn".</summary>
-    private void Say(string text, string? colour = null)
-    {
-        Note.Inlines.Clear();
-        Note.Inlines.Add(colour is null ? new Run(text) : Coloured(text, colour));
-    }
+    /// <summary>Gives a notification of what the last action did.</summary>
+    private static void Say(string text, NoticeKind kind = NoticeKind.Done) => Notices.Say(text, kind);
 
     /// <summary>Ctrl and the wheel change the text size, only of the editor (the HTML app's <c>edZoom</c>).</summary>
     private void WheelTurned(object sender, MouseWheelEventArgs e)
@@ -711,14 +680,24 @@ public partial class EditorPage : UserControl
     }
 
     /// <summary>Unmarks the line that Find, Go to line, a search result or a descriptor marked.</summary>
-    private void ClearPointedLine()
+    private void ClearPointedLine() => ClearPointedLine(view);
+
+    private static void ClearPointedLine(FileView of)
     {
-        if (shown is null || shown.PointedAt is null) return;
-        shown.PointedAt = null;
-        shading.PointedAt = null;
-        Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
-        // the pointed line's outline is drawn above the selection, on the caret layer
-        Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Caret);
+        if (of.Shown is null || of.Shown.PointedAt is null) return;
+        of.Shown.PointedAt = null;
+        of.Shading.PointedAt = null;
+        of.Editor.TextArea.TextView.InvalidateLayer(KnownLayer.Background);
+    }
+
+    /// <summary>
+    /// A file's caret moved: when it leaves the marked line (a click elsewhere in the text, the arrow keys), the line's
+    /// tint goes, as a problem's does. Not while a text is put in, which moves the caret by itself.
+    /// </summary>
+    private void ClearPointedLineWhenLeft(FileView of)
+    {
+        if (puttingIn || of.Shown?.PointedAt is not { IsDeleted: false } anchor || of.Editor.TextArea.Caret.Line == anchor.Line) return;
+        ClearPointedLine(of);
     }
 
     /// <summary>
@@ -789,17 +768,20 @@ public partial class EditorPage : UserControl
     /// <summary>A new theme: the text's colours, the line numbers and the marks are drawn again in it.</summary>
     private void RedrawInTheme()
     {
-        Text.TextArea.Caret.CaretBrush = (System.Windows.Media.Brush)FindResource("ink");
-        Text.TextArea.TextView.Redraw();
-        lineNumbers.InvalidateVisual();
-        markColumn.InvalidateVisual();
+        foreach (FileView v in AllViews)
+        {
+            v.Editor.TextArea.Caret.CaretBrush = (System.Windows.Media.Brush)FindResource("ink");
+            v.Editor.TextArea.TextView.Redraw();
+            v.LineNumbers.InvalidateVisual();
+            v.MarkColumn.InvalidateVisual();
+        }
         // the descriptor's state is in two theme colours mixed, which cannot follow the theme by itself
         ShowState();
     }
 
     /// <summary>
-    /// Sets the text size, from 7 to 36 pixels; the line that was at the top stays at the top. A size to remember is
-    /// saved and given to the Add Descriptor rule's text box and the status strip too.
+    /// Sets the text size of every open file, from 7 to 36 pixels; the line that was at the top of each stays at the top.
+    /// A size to remember is saved and given to the Add Descriptor rule's text box and the status strips too.
     /// </summary>
     private void SetTextSize(double size, bool remember)
     {
@@ -808,12 +790,19 @@ public partial class EditorPage : UserControl
             TextZoom.Set(size); // comes back here through TextZoom.Changed
             return;
         }
-        int topLine = Text.TextArea.TextView.GetDocumentLineByVisualTop(Text.TextArea.TextView.ScrollOffset.Y)?.LineNumber ?? 1;
         textSize = TextZoom.Fit(size);
-        Text.FontSize = textSize;
-        lineHeight.Height = markColumn.LineHeight = LineHeightForSize;
-        Text.TextArea.TextView.Redraw();
-        Text.ScrollToLine(topLine);
-        strip?.ShowSize(textSize);
+        foreach (FileView v in AllViews) SetTextSize(v);
+    }
+
+    /// <summary>Gives a file's text box the text size.</summary>
+    private void SetTextSize(FileView v)
+    {
+        TextView lines = v.Editor.TextArea.TextView;
+        int topLine = lines.GetDocumentLineByVisualTop(lines.ScrollOffset.Y)?.LineNumber ?? 1;
+        v.Editor.FontSize = textSize;
+        v.LineHeight.Height = v.MarkColumn.LineHeight = LineHeightForSize;
+        lines.Redraw();
+        if (v.Shown is not null) v.Editor.ScrollToLine(topLine);
+        v.Strip.ShowSize(textSize);
     }
 }

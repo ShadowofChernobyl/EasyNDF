@@ -90,7 +90,6 @@ public partial class RulesPage : UserControl
             : Texts.Get("Rules.RenamePreset.Off.Armory"));
         OffReason.SetText(DuplicatePresetButton, noRuleSet);
         OffReason.SetText(DeletePresetButton, noRuleSet);
-        ClipNote.Visibility = Model.Note == "" ? Visibility.Collapsed : Visibility.Visible;
     }
 
     /// <summary>
@@ -284,38 +283,6 @@ public partial class RulesPage : UserControl
                 fileGames.Count > 0 && !fileGames.Contains(mod.Game))).ToList();
         ModsLine.Text = Texts.Get("Rules.ModsOn", ("on", Texts.Number(mods.Count(ModStack.IsOn))), ("all", Texts.Number(mods.Count)));
         RuleSetsModName.Text = Model.OpenMod.Name;
-        ShowModOffLine();
-    }
-
-    /// <summary>The mod whose "is off" line was hidden with OK: it stays hidden until another mod is opened or the mod is switched on.</summary>
-    private Mod? modOffLineHiddenFor;
-
-    /// <summary>
-    /// The line under the Mods list while the open mod is off: "⚠ My mod is off and won't run." with Switch On, as its
-    /// rules can be edited but Preview and Run export skip it, which is easy to miss.
-    /// </summary>
-    private void ShowModOffLine()
-    {
-        Mod open = Model.OpenMod;
-        bool isOff = !ModStack.IsOn(open);
-        // OK hides the line for this mod only, while it stays off
-        if (!isOff || !ReferenceEquals(modOffLineHiddenFor, open)) modOffLineHiddenFor = null;
-        ModOffText.Text = Texts.Get("Rules.ModOff", ("mod", open.Name));
-        ModOffLine.Visibility = isOff && modOffLineHiddenFor is null ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    /// <summary>Switch On: the open mod is switched on, as its switch in the list does; Undo takes it back.</summary>
-    private void ModOffSwitchOnClicked(object sender, RoutedEventArgs e)
-    {
-        ModStack.SetOn(Model.OpenMod, true);
-        ShowMods();
-    }
-
-    /// <summary>OK: the line goes until another mod is opened, or this one is switched on and off again.</summary>
-    private void ModOffOkClicked(object sender, RoutedEventArgs e)
-    {
-        modOffLineHiddenFor = Model.OpenMod;
-        ShowModOffLine();
     }
 
     // ---- which files the open rule set applies to ----
@@ -459,7 +426,7 @@ public partial class RulesPage : UserControl
         string name = await Messages.AskName(Texts.Get("Rules.Mod.NewName"),
             new DialogOptions { UnderInput = game.Labelled(GameChoice.Label, Texts.Get("Rules.Mod.Game.Tip")) });
         if (name == "") return;
-        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists")); return; }
+        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists"), DialogIcon.Error); return; }
         Model.NewMod(name, game.Chosen);
     }
 
@@ -467,7 +434,7 @@ public partial class RulesPage : UserControl
     {
         string old = Model.OpenMod.Name, name = await Messages.AskName(Texts.Get("Rules.Mod.Rename"), old);
         if (name == "" || name == old) return;
-        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists")); return; }
+        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists"), DialogIcon.Error); return; }
         Model.RenameMod(name);
     }
 
@@ -483,7 +450,7 @@ public partial class RulesPage : UserControl
             ? Texts.Get("Rules.Mod.DeleteAskWithPresets", ("mod", Model.OpenMod.Name), ("presets", RulesModel.Count(presets)))
             : Texts.Get("Rules.Mod.DeleteAsk", ("mod", Model.OpenMod.Name));
         // the button names what it does, so a quick Enter is not taken for "OK, read that"
-        if (await Messages.Confirm(question, Texts.Get("Rules.Delete"))) Model.DeleteMod();
+        if (await Messages.Confirm(question, Texts.Get("Rules.Delete"), DialogIcon.Warning)) Model.DeleteMod();
     }
 
     /// <summary>"Import mod...": adds the mods in mod files or backups; a mod of a name already here asks what to do.</summary>
@@ -530,7 +497,7 @@ public partial class RulesPage : UserControl
         if (added > 0) parts.Add(Texts.Get("Rules.Mod.ImportAdded", ("count", added)));
         if (skipped > 0) parts.Add(Texts.Get("Rules.Mod.ImportSkipped", ("count", skipped)));
         if (parts.Count > 0) Model.Say(Texts.Get("Rules.Mod.Imported", ("parts", string.Join(", ", parts))));
-        if (problems.Count > 0) await Messages.Tell(Texts.Get("Rules.Mod.ImportFailed", ("problems", string.Join(", ", problems))));
+        if (problems.Count > 0) await Messages.Tell(Texts.Get("Rules.Mod.ImportFailed", ("problems", string.Join(", ", problems))), DialogIcon.Error);
     }
 
     /// <summary>
@@ -557,7 +524,7 @@ public partial class RulesPage : UserControl
                 Loading.Hide(loading);
                 DialogAnswer answer = await Messages.Ask(
                     Texts.Get("Rules.Mod.ImportExists", ("mod", mod.Name), ("existing", RulesModel.Count(existing.Presets.Count)), ("count", mod.Presets.Count)),
-                    new DialogOptions { Ok = Texts.Get("Files.Duplicate.Replace"), Alternative = Texts.Get("Files.Duplicate.KeepBoth"), Cancel = Texts.Get("Files.Duplicate.Skip") });
+                    new DialogOptions { Icon = DialogIcon.Warning, Ok = Texts.Get("Files.Duplicate.Replace"), Alternative = Texts.Get("Files.Duplicate.KeepBoth"), Cancel = Texts.Get("Files.Duplicate.Skip") });
                 choices[mod] = answer.Choice switch { DialogChoice.Ok => ImportChoice.Replace, DialogChoice.Alternative => ImportChoice.KeepBoth, _ => ImportChoice.Skip };
             }
             await Loading.StepThatHolds(loading, 1, showNow: false);
@@ -594,7 +561,7 @@ public partial class RulesPage : UserControl
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             Loading.End(loading);
-            _ = Messages.Tell(Texts.Get("Rules.Mod.NotSaved", ("reason", error.Message)));
+            _ = Messages.Tell(Texts.Get("Rules.Mod.NotSaved", ("reason", error.Message)), DialogIcon.Error);
         }
         finally
         {
@@ -626,7 +593,7 @@ public partial class RulesPage : UserControl
     {
         string name = await Messages.AskName(Texts.Get("Rules.Preset.NewName"));
         if (name == "") return;
-        if (Model.PresetExists(name)) { await Messages.Tell(Texts.Get("Rules.Preset.Exists")); return; }
+        if (Model.PresetExists(name)) { await Messages.Tell(Texts.Get("Rules.Preset.Exists"), DialogIcon.Error); return; }
         Model.NewPreset(name);
     }
 
@@ -636,7 +603,7 @@ public partial class RulesPage : UserControl
         if (Model.OpenPreset is not ModPreset preset || preset.IsArmoryPreset) return;
         string name = await Messages.AskName(Texts.Get("Rules.Preset.Rename"), preset.Name);
         if (name == "" || name == preset.Name) return;
-        if (Model.PresetExists(name)) { await Messages.Tell(Texts.Get("Rules.Preset.Exists")); return; }
+        if (Model.PresetExists(name)) { await Messages.Tell(Texts.Get("Rules.Preset.Exists"), DialogIcon.Error); return; }
         Model.RenamePreset(name);
     }
 
@@ -653,21 +620,21 @@ public partial class RulesPage : UserControl
         string question = picked.Count == 1
             ? Texts.Get("Rules.Preset.DeleteAsk", ("preset", picked[0].Name))
             : Texts.Get("Rules.Preset.DeleteAskSeveral", ("count", picked.Count));
-        if (used > 0) question += " " + Texts.Count("Rules.Preset.FilesUseIt", used);
+        if (used > 0) question += " " + Texts.Count(picked.Count == 1 ? "Rules.Preset.FilesUseIt" : "Rules.Preset.FilesUseThem", used);
         // an Armory preset holds the Armory's changes: deleting it takes them all back
         List<ModPreset> armory = [.. picked.Where(preset => preset.IsArmoryPreset && preset.Rules.Any(ArmoryPresets.IsLocked))];
         if (armory.Count > 0)
         {
             if (!MainView.Of(this).UnitsTab.CanMakeEditable)
             {
-                await Messages.Tell(MainView.Of(this).UnitsTab.ArmoryRulesBlockedReason ?? Texts.Get("Rules.Locked.ArmoryNotRead"));
+                await Messages.Tell(MainView.Of(this).UnitsTab.ArmoryRulesBlockedReason ?? Texts.Get("Rules.Locked.ArmoryNotRead"), DialogIcon.Error);
                 return false;
             }
             // deleting only the Battlegroups preset empties battlegroups; the divisions stay
             bool onlyBattlegroups = armory.All(preset => preset.ArmoryPart == ArmoryPart.Battlegroups);
             question += " " + Texts.Get(onlyBattlegroups ? "Rules.Locked.BattlegroupsDeleteAsk" : "Rules.Locked.PresetDeleteAsk");
         }
-        if (!await Messages.Confirm(question, Texts.Get("Rules.Delete"))) return false;
+        if (!await Messages.Confirm(question, Texts.Get("Rules.Delete"), DialogIcon.Warning)) return false;
         if (armory.Count > 0) MainView.Of(this).UnitsTab.TakeBack([.. armory.SelectMany(preset => preset.Rules)]);
         Model.DeletePresets(picked);
         return true;
@@ -680,7 +647,7 @@ public partial class RulesPage : UserControl
     private bool CopyPresets()
     {
         IReadOnlyList<ModPreset> picked = Model.SelectedPresets;
-        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Preset.SelectToCopy")); return false; }
+        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Preset.SelectToCopy"), NoticeKind.Caution); return false; }
         // the presets as a mod file writes them, with every condition and action named, each marked as a preset
         var asMod = new Mod { Name = Model.OpenMod.Name, Presets = [.. picked] };
         var presets = (JsonArray)JsonNode.Parse(ModFiles.ExportText(asMod))!["Presets"]!;
@@ -709,7 +676,7 @@ public partial class RulesPage : UserControl
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            Model.Say(Texts.Get("Rules.ClipboardBusy"));
+            Model.Say(Texts.Get("Rules.ClipboardBusy"), NoticeKind.Caution);
             return false;
         }
     }
@@ -723,7 +690,7 @@ public partial class RulesPage : UserControl
         }
         catch (System.Runtime.InteropServices.COMException)
         {
-            Model.Say(Texts.Get("Rules.ClipboardBusy"));
+            Model.Say(Texts.Get("Rules.ClipboardBusy"), NoticeKind.Caution);
             return "";
         }
     }
@@ -788,6 +755,57 @@ public partial class RulesPage : UserControl
     }
 
 
+    /// <summary>
+    /// Open Rule in Details: this tab, with the mod and rule set a rule of a file's last run came from open, the rule
+    /// picked, and its window open. The mod's rules may have changed since the run: then the rule is looked for by its
+    /// name, and if it has gone the rule set stays open, with a word about it.
+    /// </summary>
+    public void OpenRuleOfRun(RunRecord run, int ruleIndex, FileEntry entry)
+    {
+        RuleSource? source = run.RuleSources.FirstOrDefault(each => ruleIndex >= each.First && ruleIndex < each.First + each.Count);
+        if (source is null) return;
+        MainView view = MainView.Of(this);
+        view.Tabs.SelectedItem = view.RulesTabItem;
+        Model.OpenModNamed(source.Mod);
+        if (Model.OpenMod.Name != source.Mod) return;
+        string name = run.Result.Stats[ruleIndex].Name;
+        int place = ruleIndex - source.First;
+        (ModPreset? preset, int index) = source.RuleSet is string ruleSet
+            ? (Model.OpenMod.Presets.FirstOrDefault(each => each.Name == ruleSet), place)
+            : DivisionChangeRules.SourceOf(Model.OpenMod, entry, place);
+        if (preset is null)
+        {
+            Notices.Say(Texts.Get("Files.Details.RuleGone"), NoticeKind.Caution);
+            return;
+        }
+        if (preset.IsArmoryPreset) Model.OpenArmoryPart(preset.ArmoryPart!.Value);
+        else Model.ClickPreset(preset, control: false, shift: false);
+        if (index >= preset.Rules.Count || !IsNamed(preset.Rules[index], name))
+        {
+            index = -1;
+            for (int each = 0; each < preset.Rules.Count && index < 0; each++)
+                if (IsNamed(preset.Rules[each], name)) index = each;
+        }
+        if (index < 0)
+        {
+            Notices.Say(Texts.Get("Files.Details.RuleGone"), NoticeKind.Caution);
+            return;
+        }
+        Model.GoToRule(index);
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            int line = Model.RuleRows.ToList().FindIndex(row => row.Index == index);
+            if (line >= 0) BringLineIntoView(RuleLines, line);
+        });
+        OpenRuleWindow();
+    }
+
+    private static bool IsNamed(System.Text.Json.Nodes.JsonNode? rule, string name)
+    {
+        string? own = (string?)rule?["Name"];
+        return (string.IsNullOrEmpty(own) ? "(unnamed)" : own) == name;
+    }
+
     /// <summary>Opens the rule window on the selected rule (the HTML app's <c>ruleOpen</c>).</summary>
     public void OpenRuleWindow()
     {
@@ -808,27 +826,10 @@ public partial class RulesPage : UserControl
         if (sender is CheckBox { DataContext: RuleRow row } box) Model.SetRuleOn(row.Index, box.IsChecked == true);
     }
 
-    /// <summary>A rule's buttons, which say what they do in their Tag: fold, up, down, dup, del.</summary>
-    private async void RuleButtonClicked(object sender, RoutedEventArgs e)
+    /// <summary>A group heading's button folds or unfolds its rules.</summary>
+    private void RuleButtonClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: RuleRow row, Tag: string action }) return;
-        switch (action)
-        {
-            case "fold": Model.ToggleFold(row.Index); break;
-            case "up" or "down" when row.IsGroup:
-                // the whole group moves, with its rules
-                Model.SelectOnly(row.Index);
-                Model.MoveSelectedGroups(action == "up" ? -1 : +1);
-                break;
-            case "up": Model.MoveRule(row.Index, -1); break;
-            case "down": Model.MoveRule(row.Index, +1); break;
-            case "dup": Model.DuplicateRule(row.Index); break;
-            case "del":
-                Model.SelectOnly(row.Index);
-                Model.Refresh();
-                await DeleteSelectedRules();
-                break;
-        }
+        if (sender is FrameworkElement { DataContext: RuleRow row }) Model.ToggleFold(row.Index);
     }
 
     /// <summary>"New rule ▾": the menu of rule types opens above the button.</summary>
@@ -887,7 +888,7 @@ public partial class RulesPage : UserControl
     private bool CopyRules()
     {
         IReadOnlyList<int> picked = Model.SelectedRules;
-        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Rule.SelectToCopy")); return false; }
+        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Rule.SelectToCopy"), NoticeKind.Caution); return false; }
         var rules = new JsonArray();
         foreach (int place in picked)
         {

@@ -704,7 +704,7 @@ public sealed partial class RuleRunner
                     : (v is ScalarValue { Kind: ScalarKind.String } && old != find ? old[0] + replacement + old[0] : replacement);
                 if (changed == old) return v;
                 replaced++;
-                if (log.Count < options.LogLimit) log.Add(new EditLogEntry(d.LogName, "Replace", Shorten(old), Shorten(changed)));
+                if (log.Count < options.LogLimit) log.Add(EditLogEntry.OfChange(d.LogName, "Replace", old, changed));
 
                 var (text, trailing) = CommentText.SplitTrailingComment(changed);
                 var kind = IsQuoted(text) ? ScalarKind.String : NumberText.IsPlainNumber(text) ? ScalarKind.Number : ScalarKind.Raw;
@@ -944,7 +944,7 @@ public sealed partial class RuleRunner
         if (file == "" || !options.OtherFiles.TryGetValue(key, out string? otherText))
         {
             current.Skipped++;
-            FileNote(current.Name, "Lookup", "Not run. " + (file != "" ? "\"" + file + "\" is not loaded on the Files page." : "The rule needs a source file."));
+            FileNote(current.Name, "Lookup", "Not run. " + (file != "" ? "\"" + file + "\" is not on the Files tab." : "The rule needs a source file."));
             return;
         }
         if (!otherFilesRead.TryGetValue(key, out var other))
@@ -1025,9 +1025,9 @@ public sealed partial class RuleRunner
             Tally(c);
         });
 
-        static string Count(int n) => n.ToString("N0", CultureInfo.InvariantCulture);
-        FileNote(current.Name, "Lookup", Count(valueCount) + " value(s) collected from " + Count(sourceCount) + " descriptor(s) in \"" + file + "\"; " +
-            Count(current.Matched) + " descriptor(s) matched here.");
+        static string Count(int n, string one, string many) => n.ToString("N0", CultureInfo.InvariantCulture) + " " + (n == 1 ? one : many);
+        FileNote(current.Name, "Lookup", Count(valueCount, "value", "values") + " collected from " + Count(sourceCount, "descriptor", "descriptors") + " in \"" + file + "\"; " +
+            Count(current.Matched, "descriptor", "descriptors") + " matched here.");
     }
 
     /// <summary>Check: changes nothing; warns when the number of matching descriptors is not as expected.</summary>

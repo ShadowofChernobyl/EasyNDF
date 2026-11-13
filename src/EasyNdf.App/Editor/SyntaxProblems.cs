@@ -10,21 +10,31 @@ using ICSharpCode.AvalonEdit.Rendering;
 
 namespace EasyNdf.App.Editor;
 
-/// <summary>A place in the text that cannot be read, which moves with the edits made around it until the next check.</summary>
+/// <summary>
+/// A place in the text that cannot be read, or a value the value check marks, which moves with the edits made around
+/// it until the next check.
+/// </summary>
 public sealed class ProblemMark : TextSegment
 {
     /// <summary>What is wrong, without its line: "expected \")\" (found \"export\")".</summary>
     public required string Message { get; init; }
+
+    /// <summary>What it does to mod generation, for a value the value check marks; empty for a syntax problem.</summary>
+    public string Why { get; init; } = "";
+
+    /// <summary>Whether it is a warning (mod generation works) rather than an error.</summary>
+    public bool IsWarning { get; init; }
 
     /// <summary>The line it is on, from 1, as the text is now.</summary>
     public int Line(TextDocument document) => document.GetLineByOffset(Math.Min(StartOffset, document.TextLength)).LineNumber;
 }
 
 /// <summary>
-/// The File Editor's syntax check: half a second after typing stops, the text is checked away from the screen's thread
-/// (<see cref="NdfChecker"/>), so typing never waits for it. Each problem gets a wavy line under it, in the theme's
-/// warning colour, and pointing at the line shows what is wrong. <see cref="Reveal"/> goes to a problem and tints its
-/// line until the caret leaves it.
+/// The File Editor's check: half a second after typing stops, the text is checked away from the screen's thread, so
+/// typing never waits for it: its syntax (<see cref="NdfChecker"/>), and, with a <see cref="Guide"/>, its values
+/// (<see cref="ValueChecker"/>). Each problem gets a wavy line under it, in the theme's error colour (its warning
+/// colour for a warning), and pointing at the line shows what is wrong. <see cref="Reveal"/> goes to a problem and
+/// tints its line until the caret leaves it.
 /// </summary>
 public sealed class SyntaxProblems : IBackgroundRenderer
 {
@@ -64,6 +74,34 @@ public sealed class SyntaxProblems : IBackgroundRenderer
     /// <summary>The text being checked; null when none is (an export, which cannot be edited).</summary>
     public TextDocument? Document => document;
 
+    /// <summary>
+    /// What each type's names take, to check the values too; null checks only the syntax (Steel Division 2's files, or
+    /// before the guide is read). Setting it checks the text again.
+    /// </summary>
+    public ValueGuide? Guide
+    {
+        get => guide;
+        set
+        {
+            if (ReferenceEquals(value, guide)) return;
+            guide = value;
+            if (document is null) return;
+            marks = null; // checked whole again, for the values everywhere
+            _ = CheckNow();
+        }
+    }
+
+    private ValueGuide? guide;
+
+    /// <summary>
+    /// What the tip at a place shows, given the problem there (null for none); null shows only the problem's message.
+    /// The File Editor gives the names' tips with it.
+    /// </summary>
+    public Func<int, ProblemMark?, object?>? TipAt { get; set; }
+
+    /// <summary>Whether tips wait for now: while the suggestions' list is open, beside its own tip.</summary>
+    public Func<bool> TipsWait { get; set; } = () => false;
+
     /// <summary>Checks this text from now on, starting at once; null checks nothing and clears the marks.</summary>
     public void Watch(TextDocument? text)
     {
@@ -82,6 +120,17 @@ public sealed class SyntaxProblems : IBackgroundRenderer
         }
         Redraw();
         Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Checks this text from now on with a guide to its values (null for the syntax only): a new text is checked with
+    /// it from the start; the same text is checked again only when the guide changed.
+    /// </summary>
+    public void Watch(TextDocument? text, ValueGuide? valueGuide)
+    {
+        if (!ReferenceEquals(text, document)) guide = valueGuide;
+        Watch(text);
+        Guide = valueGuide;
     }
 
     /// <summary>Gives the text the keys.</summary>
@@ -145,32 +194,40 @@ public sealed class SyntaxProblems : IBackgroundRenderer
         {
             int mine = ++checkNumber;
             TextDocument checkedText = document;
+            ValueGuide? valueGuide = guide;
             // a large text checked before: only the declarations typed in since are checked again; the marks of the
             // others moved with the text as it changed
             if (marks is not null && checkedText.TextLength >= EditedDeclarations.LargeText && edited.Take() is { } stretches)
             {
                 int taken = edited.Count;
                 List<(int Start, string Text)> parts = [.. stretches.Select(stretch => (stretch.Start, checkedText.GetText(stretch.Start, stretch.End - stretch.Start)))];
-                List<(int Start, List<NdfProblem> Found)> checkedParts = await Task.Run(() => parts.Select(part => (part.Start, NdfChecker.Check(part.Text))).ToList());
+                List<(int Start, List<NdfProblem> Found, List<ValueProblem> Values)> checkedParts = await Task.Run(() =>
+                    parts.Select(part => (part.Start, NdfChecker.Check(part.Text), ValuesIn(part.Text, valueGuide, part.Start))).ToList());
                 if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
                 foreach ((int start, int end) in stretches)
                     foreach (ProblemMark old in marks.FindOverlappingSegments(start, end - start).ToList()) marks.Remove(old);
-                foreach ((int start, List<NdfProblem> foundIn) in checkedParts)
-                    foreach (NdfProblem problem in foundIn)
-                        marks.Add(new ProblemMark { StartOffset = start + problem.Position, Length = problem.Length, Message = WithoutLine(problem.Message) });
+                foreach ((int start, List<NdfProblem> foundIn, List<ValueProblem> values) in checkedParts)
+                {
+                    foreach (NdfProblem problem in foundIn) marks.Add(SyntaxMark(problem, start));
+                    foreach (ValueProblem problem in values) marks.Add(ValueMark(problem, checkedText));
+                }
                 edited.Done(taken);
                 Redraw();
                 Changed?.Invoke();
                 return;
             }
             ITextSource snapshot = checkedText.CreateSnapshot();
-            List<NdfProblem> found = await Task.Run(() => NdfChecker.Check(snapshot.Text));
+            (List<NdfProblem> found, List<ValueProblem> foundValues) = await Task.Run(() =>
+            {
+                string text = snapshot.Text;
+                return (NdfChecker.Check(text), ValuesIn(text, valueGuide, 0));
+            });
             // the text changed since, or another text is shown: the next check marks it
             if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
 
             var newMarks = new TextSegmentCollection<ProblemMark>(checkedText);
-            foreach (NdfProblem problem in found)
-                newMarks.Add(new ProblemMark { StartOffset = problem.Position, Length = problem.Length, Message = WithoutLine(problem.Message) });
+            foreach (NdfProblem problem in found) newMarks.Add(SyntaxMark(problem, 0));
+            foreach (ValueProblem problem in foundValues) newMarks.Add(ValueMark(problem, checkedText));
             marks = newMarks;
             edited.ReadWhole();
             Redraw();
@@ -187,6 +244,21 @@ public sealed class SyntaxProblems : IBackgroundRenderer
         }
     }
 
+    /// <summary>The values marked in a text (or a stretch of one, starting at <paramref name="shift"/>); none without a guide.</summary>
+    private static List<ValueProblem> ValuesIn(string text, ValueGuide? guide, int shift) =>
+        guide is null ? [] : ValueChecker.Check(text, guide, shift);
+
+    /// <summary>A syntax problem's mark, in a stretch of the text that starts at <paramref name="start"/>.</summary>
+    private static ProblemMark SyntaxMark(NdfProblem problem, int start) =>
+        new() { StartOffset = start + problem.Position, Length = problem.Length, Message = WithoutLine(problem.Message) };
+
+    /// <summary>A marked value's mark, with what is wrong and what it does.</summary>
+    private static ProblemMark ValueMark(ValueProblem problem, TextDocument text) => new()
+    {
+        StartOffset = problem.Position, Length = problem.Length,
+        Message = ValueMessages.MessageOf(problem, text), Why = ValueMessages.WhyOf(problem), IsWarning = problem.IsWarning,
+    };
+
     /// <summary>A problem's message without its "Line N: ", which the editor shows on its own.</summary>
     private static string WithoutLine(string message)
     {
@@ -199,7 +271,7 @@ public sealed class SyntaxProblems : IBackgroundRenderer
     /// <summary>Drawn with the selection, under the text.</summary>
     public KnownLayer Layer => KnownLayer.Selection;
 
-    /// <summary>Draws the picked line's tint, then a wavy line under each problem in sight.</summary>
+    /// <summary>Draws the picked line's tint, then a wavy line under each problem in sight: errors in the error colour, warnings in the warning colour.</summary>
     public void Draw(TextView textView, DrawingContext drawingContext)
     {
         if (!textView.VisualLinesValid || document is null) return;
@@ -208,11 +280,13 @@ public sealed class SyntaxProblems : IBackgroundRenderer
         if (marks is null || marks.Count == 0) return;
         int viewStart = textView.VisualLines[0].FirstDocumentLine.Offset;
         int viewEnd = textView.VisualLines[^1].LastDocumentLine.EndOffset;
-        var pen = new Pen(warn, 1);
-        pen.Freeze();
+        var errorPen = new Pen(warn, 1);
+        errorPen.Freeze();
+        var warningPen = Application.Current.Resources["caution"] is SolidColorBrush caution ? new Pen(caution, 1) : errorPen;
+        warningPen.Freeze();
         foreach (ProblemMark mark in marks.FindOverlappingSegments(viewStart, viewEnd - viewStart))
             foreach (Rect place in PlacesOf(textView, mark))
-                drawingContext.DrawGeometry(null, pen, WavyLine(place.Left, place.Right, place.Bottom - 1));
+                drawingContext.DrawGeometry(null, mark.IsWarning ? warningPen : errorPen, WavyLine(place.Left, place.Right, place.Bottom - 1));
     }
 
     /// <summary>The picked line, tinted in the warning colour at 16%, across the whole width.</summary>
@@ -240,7 +314,7 @@ public sealed class SyntaxProblems : IBackgroundRenderer
     }
 
     /// <summary>A zigzag 2 pixels high, with a peak every 4 pixels, from one side to the other.</summary>
-    private static StreamGeometry WavyLine(double left, double right, double bottom)
+    internal static StreamGeometry WavyLine(double left, double right, double bottom)
     {
         var line = new StreamGeometry();
         using (StreamGeometryContext context = line.Open())
@@ -267,24 +341,35 @@ public sealed class SyntaxProblems : IBackgroundRenderer
 
     // ---- what is wrong, under the mouse ----
 
-    /// <summary>The mouse rests on a wavy line: a tooltip says what is wrong there.</summary>
+    /// <summary>
+    /// The mouse rests on the text: a tooltip says what is wrong there (on a wavy line), and what the name or value
+    /// there is (through <see cref="TipAt"/>). It closes when the mouse moves on.
+    /// </summary>
     private void ShowTipAtMouse(object sender, MouseEventArgs e)
     {
-        if (marks is null || document is null) return;
         TextView view = editor.TextArea.TextView;
-        TextViewPosition? place = view.GetPosition(e.GetPosition(view) + view.ScrollOffset);
-        if (place is null) return;
-        int offset = document.GetOffset(place.Value.Location);
-        // a problem with no length is pointed at on the character's room after it
-        ProblemMark? problem = marks.FindSegmentsContaining(offset).FirstOrDefault()
-            ?? marks.FindSegmentsContaining(Math.Max(0, offset - 1)).FirstOrDefault(m => m.Length == 0);
-        if (problem is null) return;
-        hoverTip.Content = Capitalised(problem.Message);
+        if (TipsWait() || TipContentAt(e.GetPosition(view)) is not { } content) return;
+        hoverTip.Content = content;
         hoverTip.PlacementTarget = view;
         hoverTip.IsOpen = true;
         e.Handled = true;
     }
 
+    /// <summary>What the tip at a point of the text (from the text view's top left) shows; null for nothing.</summary>
+    private object? TipContentAt(Point point)
+    {
+        TextView view = editor.TextArea.TextView;
+        TextDocument? shownText = editor.Document;
+        if (shownText is null || !view.VisualLinesValid) return null;
+        TextViewPosition? place = view.GetPosition(point + view.ScrollOffset);
+        if (place is null) return null;
+        int offset = shownText.GetOffset(place.Value.Location);
+        // a problem with no length is pointed at on the character's room after it
+        ProblemMark? problem = marks is null || !ReferenceEquals(shownText, document) ? null
+            : marks.FindSegmentsContaining(offset).FirstOrDefault() ?? marks.FindSegmentsContaining(Math.Max(0, offset - 1)).FirstOrDefault(m => m.Length == 0);
+        return TipAt?.Invoke(offset, problem) ?? (problem is null ? null : Capitalised(problem.Message));
+    }
+
     /// <summary>A message with its first letter in capitals, as a sentence on its own.</summary>
-    private static string Capitalised(string message) => message.Length == 0 ? message : char.ToUpperInvariant(message[0]) + message[1..];
+    internal static string Capitalised(string message) => message.Length == 0 ? message : char.ToUpperInvariant(message[0]) + message[1..];
 }

@@ -178,7 +178,7 @@ public sealed class PaneHalfButtons
     {
         var parts = (StackPanel)button.Content;
         ((TextBlock)parts.Children[1]).Text = name;
-        bool foldedBeside = panes.IsFolded && PaneArrangement.IsBeside;
+        bool foldedBeside = panes.IsFolded && panes.Beside;
         bool open = shows && !panes.IsFolded;
         // folded beside, the buttons sit in the main pane's heading as high as its other buttons, with no arrow
         parts.Children[2].Visibility = foldedBeside ? Visibility.Collapsed : Visibility.Visible;
@@ -197,7 +197,7 @@ public sealed class PaneHalfButtons
         bool overItsHalf = !panes.IsFolded && LeftShows && RightShows;
         buttons.ColumnDefinitions[0].MinWidth = overItsHalf ? leftWidth() : 0;
         bool afterLeftButton = left.IsAvailable();
-        double gap = panes.IsFolded && PaneArrangement.IsBeside ? -1 : 6;
+        double gap = panes.IsFolded && panes.Beside ? -1 : 6;
         rightButton.Margin = new Thickness(!overItsHalf && afterLeftButton ? gap : 0, 0, 0, 0);
     }
 }

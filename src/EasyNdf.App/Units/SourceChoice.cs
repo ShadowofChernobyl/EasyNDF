@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
 using EasyNdf.Data.Units;
 
@@ -66,12 +67,12 @@ public sealed class SourceChoice : ComboBox
         foreach (TextBlock name in modNames) name.MaxWidth = room;
     }
 
-    /// <summary>The box's tooltip: the source chosen, whole, then what the list is for.</summary>
+    /// <summary>The box's tooltip: the source chosen, whole, its folder, then what the list is for.</summary>
     private void ShowTip()
     {
         UnitSource? chosen = selection?.Chosen;
         string what = Texts.Get("Units.SourceChoice.Tip");
-        ToolTip = chosen is null ? what : (chosen.Mod is null ? chosen.Name : chosen.Name + "  " + chosen.Game.Name) + "\n" + what;
+        ToolTip = chosen is null ? what : (chosen.Mod is null ? chosen.Name : chosen.Name + "  " + chosen.Game.Name) + "\n" + chosen.Folder + "\n" + what;
     }
 
     /// <summary>The sources the list shows and chooses from.</summary>
@@ -150,7 +151,7 @@ public sealed class SourceChoice : ComboBox
         var dialog = new Microsoft.Win32.OpenFolderDialog { Title = Texts.Get("Units.ChooseGameFolder.Title") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true || selection is null) return;
         if (!await selection.AddFolder(dialog.FolderName))
-            await MainView.Of(this).Messages.Tell(Texts.Get("Units.NotAGameFolder", ("folder", dialog.FolderName)));
+            await MainView.Of(this).Messages.Tell(Texts.Get("Units.NotAGameFolder", ("folder", dialog.FolderName)), DialogIcon.Error);
     }
 
     /// <summary>

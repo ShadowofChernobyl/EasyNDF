@@ -57,6 +57,33 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <!-- the status as plain text, where it is not a link (FileStatusLink) -->
+        <Style x:Key="FileStatusPlain" TargetType="TextBlock" BasedOn="{StaticResource FileStatus}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasDetailsLink}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- the caution or warning status as a link, underlined, that opens Details on the row; only where the run left something to look at -->
+        <Style x:Key="FileStatusLink" TargetType="Button">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <TextBlock Style="{StaticResource FileStatus}" Text="{Binding StatusText}" TextDecorations="Underline" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasDetailsLink}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <!-- td.acts: the row's buttons, on the well colour (the selection colour when selected), 2 pixels in on the left -->
         <Style x:Key="FileButtonsCell" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource well}" />
@@ -143,17 +170,13 @@
                 <TextBlock x:Name="ShownCount" Style="{StaticResource Note}" Text="{Binding ShownCount}" VerticalAlignment="Center" />
             </controls:FlexRow>
 
-            <!-- #jobNote: what the last action did, and how to select rows; it takes no room while it has nothing to say -->
+            <!-- #jobNote: how to select rows; it takes no room while it has nothing to say -->
             <TextBlock x:Name="Note" Text="{Binding Note}" Margin="0,0,0,8">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource Note}">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding HasNote}" Value="False">
                                 <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                            <!-- span.caut: a warning, such as "Nothing to run." -->
-                            <DataTrigger Binding="{Binding NoteIsCaution}" Value="True">
-                                <Setter Property="Foreground" Value="{DynamicResource caution}" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -203,6 +226,15 @@
                                     <!-- td.empty: what the list says while it has nothing to show -->
                                     <DataTemplate DataType="{x:Type files:EmptyListItem}">
                                         <controls:Bevel BottomRight="{DynamicResource line}" Edges="0,0,0,1" Padding="10">
+                                            <controls:Bevel.Style>
+                                                <Style TargetType="controls:Bevel">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DataContext.HasNoFiles, ElementName=Rows}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </controls:Bevel.Style>
                                             <TextBlock Foreground="{DynamicResource muted}" Text="{Binding Text}" />
                                         </controls:Bevel>
                                     </DataTemplate>
@@ -238,6 +270,24 @@
                             </ItemsControl>
                         </controls:Bevel>
 
+                        <!-- no files yet: what to do, in the middle of the list -->
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasNoFiles}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Foreground="{DynamicResource muted}" Text="{Binding EmptyText}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,10" />
+                            <controls:SnappedRow Gap="6" HorizontalAlignment="Center">
+                                <Button ToolTip="{t:Text Files.AddFiles.Tip}" Click="AddFilesClicked" Content="{t:Text Files.AddFiles}" Style="{StaticResource GoButton}" IsEnabled="{Binding IsIdle}" />
+                                <Button ToolTip="{t:Text Files.AddFolder.Tip}" Click="AddFolderClicked" Content="{t:Text Files.AddFolder}" IsEnabled="{Binding IsIdle}" />
+                            </controls:SnappedRow>
+                        </StackPanel>
                         <Rectangle x:Name="DropHint" Stroke="{DynamicResource accent}" StrokeThickness="2" StrokeDashArray="3 3"
                                    IsHitTestVisible="False" Visibility="Collapsed" />
                         <!--
@@ -293,15 +343,12 @@
                 </DockPanel>
             </controls:PanePair.Main>
             <controls:PanePair.Second>
-                <!-- #details: what the selected file's last run did; it scrolls in a sunken box, so its edge shows where it is cut off -->
-                <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource panel}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                    <!-- what Details says until a row is clicked or run; then Files/DetailsPanel.cs takes over -->
-                    <ContentControl x:Name="DetailsArea" Focusable="False" Margin="8,6,8,8">
-                        <TextBlock Foreground="{DynamicResource muted}" Margin="2" Text="{t:Text Files.SelectAFileTo}" />
-                    </ContentControl>
-                </ScrollViewer>
-                </controls:Bevel>
+                <!-- #details: what the selected file's last run did; what Details says until a row is clicked or run; then Files/DetailsPanel.cs takes over -->
+                <ContentControl x:Name="DetailsArea" Focusable="False">
+                    <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                        <TextBlock Foreground="{DynamicResource muted}" Margin="12" TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{t:Text Files.SelectAFileTo}" />
+                    </controls:Bevel>
+                </ContentControl>
             </controls:PanePair.Second>
         </controls:PanePair>
     </DockPanel>

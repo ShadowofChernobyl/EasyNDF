@@ -18,6 +18,9 @@ namespace EasyNdf.App.Weapons;
 /// </summary>
 public interface ILoadoutActions
 {
+    /// <summary>The ammunition of a weapon to mark, in the selection colour; null for none.</summary>
+    string? MarkedWeapon => null;
+
     /// <summary>Opens the Swap window for the weapon mounted somewhere (a place in the loadout as the game has it).</summary>
     void Swap(LoadoutMount mount);
 
@@ -273,6 +276,8 @@ public static class LoadoutEditor
     /// </summary>
     private static FrameworkElement WithMenu(FrameworkElement row, string ammunition, ILoadoutActions actions)
     {
+        // the selection colour: a row's bar means changed
+        if (ammunition == actions.MarkedWeapon) row.SetResourceReference(Bevel.BackgroundProperty, "sel");
         row.MouseRightButtonUp += (_, e) =>
         {
             e.Handled = true;

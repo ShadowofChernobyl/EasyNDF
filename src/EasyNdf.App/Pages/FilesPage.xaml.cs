@@ -51,6 +51,7 @@ public partial class FilesPage : UserControl
             Model.ShowInNewLanguage();
             // Details is drawn again, in the new language
             detailsShown = null;
+            if (DetailsArea.Content is DetailsPanel) DetailsArea.Content = new DetailsPanel();
             ShowDetails();
         };
         searchPause.Tick += SearchPaused;
@@ -97,6 +98,8 @@ public partial class FilesPage : UserControl
             if (MainView.Find(this) is not MainView view || followsSettings) return;
             followsSettings = true;
             view.SettingChanged += key => { if (key is "autoFit" or "wrapRows" or "") FitColumns(); };
+            // Details' edits keep to one line each while Wrap text in lists is off
+            view.SettingChanged += key => { if (key is "wrapRows" && DetailsArea.Content is DetailsPanel details) details.ApplyListWrap(); };
         };
         ShowListState();
     }
@@ -122,7 +125,7 @@ public partial class FilesPage : UserControl
         if (found.Count == 0) return;
         IReadOnlyList<FileEntry> rows = await Model.AddFiles([.. found.Select(f => f.File)], fromFolder: false, (_, _) => Task.FromResult(new DuplicateAnswer(DuplicateChoice.KeepBoth, false)));
         for (int i = 0; i < rows.Count && i < found.Count; i++) Model.Restore(rows[i], found[i].Row);
-        if (found.Count < kept.Count) Model.Say(Texts.Get("Files.Restore.Missing", ("files", FileListModel.Files(kept.Count - found.Count))));
+        if (found.Count < kept.Count) Model.Say(Texts.Get("Files.Restore.Missing", ("files", FileListModel.Files(kept.Count - found.Count))), NoticeKind.Caution);
         await ReadAll(rows);
     }
 
@@ -188,6 +191,7 @@ public partial class FilesPage : UserControl
             Texts.Get("Files.Duplicate.Ask", ("file", shown), ("verdict", comparison.Verdict)),
             new DialogOptions
             {
+                Icon = DialogIcon.Question,
                 Extra = new ComparisonTable(comparison),
                 Ok = Texts.Get("Files.Duplicate.Replace"),
                 Alternative = Texts.Get("Files.Duplicate.KeepBoth"),
@@ -235,6 +239,7 @@ public partial class FilesPage : UserControl
         var choice = new GameChoice(GameChoice.StartingGame(SourceBar.Selection?.Chosen?.Game));
         DialogAnswer answer = await Messages.Ask(Texts.Get("Files.Game.Ask"), new DialogOptions
         {
+            Icon = DialogIcon.Question,
             Extra = choice.Labelled(GameChoice.Label, Texts.Get("Files.Game.Tip")),
             Note = Texts.Get("Files.Game.Note"),
             Ok = Texts.Get("Files.Game.Add"),
@@ -291,12 +296,12 @@ public partial class FilesPage : UserControl
                 return;
             }
             string zip = Data.Game.GameInstall.BaseZipOf(source.GameFolder);
-            Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))));
+            Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))), NoticeKind.Working);
             List<FileToAdd> listed = [.. (await Task.Run(() => ArchiveReader.NdfFilesListedIn(zip))).Select(file => file with { Game = source.Game })];
             Model.Say("");
             List<FileToAdd>? taken = await ChooseFolderFiles(listed);
             if (taken is null) return;
-            Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))));
+            Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))), NoticeKind.Working);
             List<FileToAdd> read = [.. (await Task.Run(() => ArchiveReader.WithContent(zip, taken))).Select(file => file with { Game = source.Game })];
             Model.Say("");
             await AddAndRead(read, fromFolder: true);
@@ -304,7 +309,7 @@ public partial class FilesPage : UserControl
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             Model.Say("");
-            await Messages.Tell(Texts.Get("Files.Source.NotRead", ("name", source.Name), ("reason", error.Message)));
+            await Messages.Tell(Texts.Get("Files.Source.NotRead", ("name", source.Name), ("reason", error.Message)), DialogIcon.Error);
         }
     }
 
@@ -344,7 +349,7 @@ public partial class FilesPage : UserControl
     /// </summary>
     private async Task AddFolderFiles(List<FileToAdd> found)
     {
-        if (found.Count == 0) { Model.Say(Texts.Get("Files.AddFolder.NoneFound")); return; }
+        if (found.Count == 0) { Model.Say(Texts.Get("Files.AddFolder.NoneFound"), NoticeKind.Caution); return; }
         if (await WithGames(found) is not List<FileToAdd> withGames) return;
         List<FileToAdd>? taken = await ChooseFolderFiles(withGames);
         if (taken is not null) await AddAndRead(taken, fromFolder: true);
@@ -356,14 +361,14 @@ public partial class FilesPage : UserControl
     /// </summary>
     private async Task<List<FileToAdd>?> ChooseFolderFiles(List<FileToAdd> found)
     {
-        if (found.Count == 0) { Model.Say(Texts.Get("Files.AddFolder.NoneFound")); return null; }
+        if (found.Count == 0) { Model.Say(Texts.Get("Files.AddFolder.NoneFound"), NoticeKind.Caution); return null; }
         // the "Adding a folder" setting: every file (asking first for a big folder), or only those with a preset
         bool onlyWithPreset = (string?)AppData.Current.Settings["folderMode"] == "matched";
         if (!onlyWithPreset && found.Count > 150)
         {
             DialogAnswer answer = await Messages.Ask(
                 Texts.Get("Files.AddFolder.BigAsk", ("count", FileStatus.Count(found.Count))),
-                new DialogOptions { Ok = Texts.Get("Files.AddFolder.AddAll"), Alternative = Texts.Get("Files.AddFolder.OnlyWithPreset"), Cancel = Texts.Get("Common.Cancel") });
+                new DialogOptions { Icon = DialogIcon.Question, Ok = Texts.Get("Files.AddFolder.AddAll"), Alternative = Texts.Get("Files.AddFolder.OnlyWithPreset"), Cancel = Texts.Get("Common.Cancel") });
             if (answer.Choice == DialogChoice.Cancel) return null;
             onlyWithPreset = answer.Choice == DialogChoice.Alternative;
         }
@@ -383,7 +388,7 @@ public partial class FilesPage : UserControl
             found = found.Where(HasRules).ToList();
             if (found.Count == 0)
             {
-                Model.Say(Texts.Get("Files.AddFolder.NoneWithPreset", ("count", FileStatus.Count(all))));
+                Model.Say(Texts.Get("Files.AddFolder.NoneWithPreset", ("count", FileStatus.Count(all))), NoticeKind.Caution);
                 return null;
             }
         }
@@ -425,7 +430,7 @@ public partial class FilesPage : UserControl
     private async Task AddNdfFiles(IReadOnlyList<string> paths)
     {
         var notNdf = paths.Where(path => !IsNdf(path)).Select(path => Path.GetFileName(path)).ToList();
-        if (notNdf.Count > 0) await Messages.Tell(NotLoadedMessage(notNdf));
+        if (notNdf.Count > 0) await Messages.Tell(NotLoadedMessage(notNdf), DialogIcon.Error);
         var ndf = paths.Where(IsNdf).Select(LooseFile).ToList();
         if (ndf.Count > 0) await AddAndRead(ndf, fromFolder: false);
     }
@@ -442,7 +447,7 @@ public partial class FilesPage : UserControl
         foreach (string archive in archives)
         {
             string name = Path.GetFileName(archive);
-            Model.Say(Texts.Get("Files.Opening", ("file", name)));
+            Model.Say(Texts.Get("Files.Opening", ("file", name)), NoticeKind.Working);
             try
             {
                 List<FileToAdd> files = await Task.Run(() => ArchiveReader.NdfFilesIn(archive));
@@ -457,7 +462,7 @@ public partial class FilesPage : UserControl
         Model.Say("");
         if (empty.Count > 0)
             problems.Add(Texts.Count("Files.Archive.Empty", empty.Count, ("files", string.Join(", ", empty.Select(n => "\"" + n + "\"")))));
-        if (problems.Count > 0) await Messages.Tell(string.Join(" ", problems));
+        if (problems.Count > 0) await Messages.Tell(string.Join(" ", problems), DialogIcon.Error);
         return found;
     }
 
@@ -507,6 +512,12 @@ public partial class FilesPage : UserControl
     /// <summary>A key the focused control did not take (see <see cref="MainView.HandleShortcut"/>).</summary>
     public void HandleShortcut(KeyEventArgs e)
     {
+        // Keys given to Details are its own: Delete there must not remove a file from the list above it
+        if (Keyboard.FocusedElement is Visual focused && DetailsArea.IsAncestorOf(focused))
+        {
+            if (DetailsArea.Content is DetailsPanel details && Keyboard.FocusedElement is not TextBox) details.HandleShortcut(e);
+            return;
+        }
         // Keys typed in a text box or a dropdown are theirs; the list's own keys wait while a run goes, as the list does.
         if (Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem || Model.IsBusy) return;
         if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
@@ -578,7 +589,26 @@ public partial class FilesPage : UserControl
 
     // ---- Preview, Run export and what they leave ----
 
-    internal FileRunner Runner => new(Model, RunSettings.From(AppData.Current.Settings)) { AskGameMod = AskGameMod };
+    internal FileRunner Runner => new(Model, RunSettings.From(AppData.Current.Settings)) { AskGameMod = AskGameMod, ShowFilesWithErrors = ShowFilesWithErrors };
+
+    /// <summary>
+    /// "Show Them" on the notice of files a run found values in that would stop mod generation: the list shows only files
+    /// with errors or warnings, and the first of those files is chosen, its Details open.
+    /// </summary>
+    private void ShowFilesWithErrors(FileEntry first)
+    {
+        MainView view = MainView.Of(this);
+        view.Tabs.SelectedItem = view.FilesTabItem;
+        Model.ShowOnly = ShowOnly.ErrorsOrWarnings;
+        // a search that hides them is put aside
+        if (!Model.Shown.Any(row => ReferenceEquals(row.Entry, first)) && Model.SearchText != "") Model.Search = "";
+        // the first in the list's order, which is not always the order the files ran in
+        FileRow? chosen = Model.Shown.FirstOrDefault(row => row.Entry.LastRun?.ValueErrors.Count > 0) ?? Model.Shown.FirstOrDefault(row => ReferenceEquals(row.Entry, first));
+        if (chosen is null) return;
+        Model.Click(chosen, control: false, shift: false);
+        BringIntoSight(chosen);
+        if (Panes.IsFolded) Panes.Fold(false);
+    }
 
     /// <summary>
     /// Asks which WARNO mod an EasyNDF mod's UNITS.csv is for, by the mod's folder name under WARNO\Mods; "" or null
@@ -588,6 +618,7 @@ public partial class FilesPage : UserControl
     {
         string typed = await Messages.AskName(Texts.Get("Files.Run.AskGameMod"), new DialogOptions
         {
+            Icon = DialogIcon.Question,
             Input = FileRunner.KeptGameMod(modName) ?? "",
             Placeholder = Texts.Get("Files.Run.AskGameMod.Hint"),
             Note = Texts.Get("Files.Run.AskGameMod.Note", ("mod", modName)),
@@ -599,7 +630,7 @@ public partial class FilesPage : UserControl
         string name = Path.GetFileName(typed.Trim().TrimEnd('\\', '/'));
         if (!FileRunner.IsFolderName(name))
         {
-            await Messages.Tell(Texts.Get("Files.Run.AskGameMod.NotAName", ("typed", typed)));
+            await Messages.Tell(Texts.Get("Files.Run.AskGameMod.NotAName", ("typed", typed)), DialogIcon.Error);
             return null;
         }
         return name;
@@ -632,6 +663,9 @@ public partial class FilesPage : UserControl
 
     /// <summary>What the Preview button does.</summary>
     internal Task Preview() => Runner.Run(write: false, ChooseExportFolder);
+
+    /// <summary>A Preview of one file only, as Details offers for a file with no run yet.</summary>
+    internal Task PreviewOnly(FileEntry entry) => Runner.Run(write: false, ChooseExportFolder, Model.Entries.Where(other => !ReferenceEquals(other, entry)).ToHashSet());
 
     private async void RunClicked(object sender, RoutedEventArgs e)
     {
@@ -669,6 +703,7 @@ public partial class FilesPage : UserControl
         if (warnings.Count == 0) return true;
         DialogAnswer answer = await Messages.Ask(Texts.Get("Divisions.Check.Ask"), new DialogOptions
         {
+            Icon = DialogIcon.Warning,
             Extra = WarningList(warnings),
             Ok = Texts.Get("Divisions.Check.ExportAnyway"),
             CheckText = Texts.Get("Divisions.Check.HideForSession"),
@@ -701,12 +736,12 @@ public partial class FilesPage : UserControl
         if (files.Count == 0) return true;
         // asked for each time, the folder is chosen after this question
         if (RunSettings.From(AppData.Current.Settings).AskExportFolder)
-            return await Messages.Confirm(Texts.Get("Files.ConfirmExport.AskFolderNext", ("files", FileListModel.Files(files.Count))), Texts.Get("Files.ConfirmExport.Export"));
+            return await Messages.Confirm(Texts.Get("Files.ConfirmExport.AskFolderNext", ("files", FileListModel.Files(files.Count))), Texts.Get("Files.ConfirmExport.Export"), DialogIcon.Question);
         int folders = files.Select(e => e.ExportFolder ?? "").Distinct().Count();
         bool someHaveNone = files.Any(e => e.ExportFolder is null);
         string question = Texts.Get("Files.ConfirmExport.Ask", ("files", FileListModel.Files(files.Count)), ("folders", Texts.Count("Files.ConfirmExport.Folders", folders)));
         if (someHaveNone) question += " " + Texts.Get("Files.ConfirmExport.SomeHaveNone");
-        return await Messages.Confirm(question, Texts.Get("Files.ConfirmExport.Export"));
+        return await Messages.Confirm(question, Texts.Get("Files.ConfirmExport.Export"), DialogIcon.Question);
     }
 
     /// <summary>
@@ -731,6 +766,7 @@ public partial class FilesPage : UserControl
                     Texts.Get("Files.Exported.Ask", ("file", entry.Name), ("stamp", entry.ExportStamp!.Replace("\n", " · "))),
                     new DialogOptions
                     {
+                        Icon = DialogIcon.Warning,
                         Ok = Texts.Get("Files.Exported.Skip"),
                         Alternative = Texts.Get("Files.Exported.ExportAnyway"),
                         Cancel = Texts.Get("Files.Exported.CancelExport"),
@@ -804,7 +840,7 @@ public partial class FilesPage : UserControl
         var dialog = new SaveFileDialog { Title = Texts.Get("Files.SaveAnyway"), FileName = row.Entry.Name, Filter = Texts.Get("Files.NdfFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         try { File.WriteAllText(dialog.FileName, text); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { _ = Messages.Tell(Texts.Get("Files.SaveAnyway.Failed", ("reason", error.Message))); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { _ = Messages.Tell(Texts.Get("Files.SaveAnyway.Failed", ("reason", error.Message)), DialogIcon.Error); }
     }
 
     /// <summary>"Save as zip...": packs the files the last Run export wrote into one .zip, keeping their folders.</summary>
@@ -821,7 +857,7 @@ public partial class FilesPage : UserControl
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await Messages.Tell(Texts.Get("Files.SaveZip.Failed", ("reason", error.Message)));
+            await Messages.Tell(Texts.Get("Files.SaveZip.Failed", ("reason", error.Message)), DialogIcon.Error);
         }
     }
 
@@ -836,7 +872,7 @@ public partial class FilesPage : UserControl
     internal Task<bool> AskToRemoveSelected()
     {
         int count = Model.SelectedCount;
-        return Messages.Confirm(Texts.Count("Files.Remove.Ask", count, ("files", FileListModel.Files(count))), Texts.Get("Files.Remove"));
+        return Messages.Confirm(Texts.Count("Files.Remove.Ask", count, ("files", FileListModel.Files(count))), Texts.Get("Files.Remove"), DialogIcon.Question);
     }
 
     private async void RemoveAllClicked(object sender, RoutedEventArgs e)
@@ -846,7 +882,7 @@ public partial class FilesPage : UserControl
         string message = hidden > 0
             ? Texts.Get("Files.RemoveAll.AskWithHidden", ("files", FileListModel.Files(Model.Entries.Count)), ("hidden", FileStatus.Count(hidden)))
             : Texts.Get("Files.RemoveAll.Ask", ("files", FileListModel.Files(Model.Entries.Count)));
-        if (await Messages.Confirm(message, Texts.Get("Files.RemoveAll"))) Model.RemoveAll();
+        if (await Messages.Confirm(message, Texts.Get("Files.RemoveAll"), DialogIcon.Question)) Model.RemoveAll();
     }
 
     /// <summary>
@@ -861,6 +897,13 @@ public partial class FilesPage : UserControl
         {
             case FileRowView.RemoveAction:
                 Model.Remove(row);
+                break;
+            case FileRowView.DetailsAction:
+                // the row chosen, Details opened on it when it was folded away, and on the rules its status is about
+                Model.Click(row, control: false, shift: false);
+                if (Panes.IsFolded) Panes.Fold(false);
+                ShowDetails();
+                if (DetailsArea.Content is DetailsPanel details) details.ShowWhatStatusSays();
                 break;
             case FileRowView.SaveAnywayAction:
                 SaveAnyway(row);
@@ -1012,7 +1055,7 @@ public partial class FilesPage : UserControl
         (FileEntry? Row, RunRecord? Run) now = (row, row?.LastRun);
         if (detailsShown == now) return;
         detailsShown = now;
-        if (DetailsArea.Content is not DetailsPanel panel) DetailsArea.Content = panel = new DetailsPanel(title => Panes.SecondTitle = title);
+        if (DetailsArea.Content is not DetailsPanel panel) DetailsArea.Content = panel = new DetailsPanel();
         panel.Show(row);
     }
 

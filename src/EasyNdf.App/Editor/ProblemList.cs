@@ -65,9 +65,28 @@ public sealed class ProblemList
             return;
         }
         stripLink.Inlines.Clear();
-        stripLink.Inlines.Add(new Run("⚠ " + (found.Count == 1 ? OneLine(found[0]) : Texts.Count("Editor.Problems.Count", found.Count))));
+        if (found.Count == 1) stripLink.Inlines.Add(Coloured(MarkOf(found[0]) + " " + OneLine(found[0]), found[0].IsWarning));
+        else
+        {
+            // "● 7 errors  ▲ 1 warning": each count in its own colour, a count of none left out
+            int warnings = found.Count(problem => problem.IsWarning), errors = found.Count - warnings;
+            if (errors > 0) stripLink.Inlines.Add(Coloured("● " + Texts.Count("Editor.Problems.Errors", errors), isWarning: false));
+            if (errors > 0 && warnings > 0) stripLink.Inlines.Add(new Run("  "));
+            if (warnings > 0) stripLink.Inlines.Add(Coloured("▲ " + Texts.Count("Editor.Problems.Warnings", warnings), isWarning: true));
+        }
         stripText.ToolTip = found.Count == 1 ? Texts.Get("Editor.Problems.GoTo.Tip") : Texts.Get("Editor.Problems.Show.Tip");
         if (IsOpen) FillList();
+    }
+
+    /// <summary>A problem's mark: ● for an error, ▲ for a warning.</summary>
+    private static string MarkOf(ProblemMark problem) => problem.IsWarning ? "▲" : "●";
+
+    /// <summary>Text in the theme's error colour, or its warning colour for a warning.</summary>
+    private static Run Coloured(string text, bool isWarning)
+    {
+        var run = new Run(text);
+        run.SetResourceReference(TextElement.ForegroundProperty, isWarning ? "caution" : "warn");
+        return run;
     }
 
     /// <summary>A problem in a line: "Line 8: expected ")"".</summary>
@@ -75,7 +94,7 @@ public sealed class ProblemList
         Texts.Get("Editor.Problems.One", ("line", problem.Line(problems.Document!)), ("problem", problem.Message));
 
     /// <summary>The strip's text, as it shows now.</summary>
-    internal string ShownText => stripText.Visibility == Visibility.Visible ? new TextRange(stripLink.ContentStart, stripLink.ContentEnd).Text : "";
+    internal string ShownText => stripText.Visibility == Visibility.Visible ? string.Concat(stripLink.Inlines.OfType<Run>().Select(run => run.Text)) : "";
 
     /// <summary>One problem goes to it; more open the list, or close it again.</summary>
     internal void StripClicked()
@@ -107,10 +126,16 @@ public sealed class ProblemList
         list.ItemsSource = problems.Problems.Select(problem => new ProblemRow(problem, document)).ToList();
     }
 
-    /// <summary>A row of the list: the problem, its line as shown, and its tooltip, which gives the message in full.</summary>
+    /// <summary>A row of the list: the problem, its mark, its line as shown, and its tooltip, which gives the message in full.</summary>
     private sealed class ProblemRow(ProblemMark problem, ICSharpCode.AvalonEdit.Document.TextDocument document)
     {
         public ProblemMark Problem { get; } = problem;
+
+        /// <summary>● for an error, ▲ for a warning.</summary>
+        public string Mark => MarkOf(Problem);
+
+        /// <summary>The mark's colour: the theme's error colour, or its warning colour.</summary>
+        public object? MarkColour => Application.Current.Resources[Problem.IsWarning ? "caution" : "warn"];
 
         /// <summary>"Line 8", worked out only when the row comes into sight.</summary>
         public string LineText => Texts.Get("Editor.Problems.Line", ("line", Problem.Line(document)));
@@ -121,11 +146,16 @@ public sealed class ProblemList
         public string Tip => Texts.Get("Editor.Problems.Row.Tip", ("problem", Message));
     }
 
-    /// <summary>How a row looks: the line, dimmed, in a column 64 wide, then the message, cut short with "…" if long.</summary>
+    /// <summary>How a row looks: its mark, the line, dimmed, in a column 64 wide, then the message, cut short with "…" if long.</summary>
     private static DataTemplate RowTemplate()
     {
         var row = new FrameworkElementFactory(typeof(DockPanel));
         row.SetBinding(FrameworkElement.ToolTipProperty, new System.Windows.Data.Binding(nameof(ProblemRow.Tip)));
+        var mark = new FrameworkElementFactory(typeof(TextBlock));
+        mark.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(ProblemRow.Mark)));
+        mark.SetBinding(TextBlock.ForegroundProperty, new System.Windows.Data.Binding(nameof(ProblemRow.MarkColour)));
+        mark.SetValue(FrameworkElement.MarginProperty, new Thickness(0, 0, 8, 0));
+        row.AppendChild(mark);
         var line = new FrameworkElementFactory(typeof(TextBlock));
         line.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding(nameof(ProblemRow.LineText)));
         line.SetValue(FrameworkElement.MinWidthProperty, 64.0);

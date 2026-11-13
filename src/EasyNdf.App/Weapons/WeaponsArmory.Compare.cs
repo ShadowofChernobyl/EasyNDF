@@ -68,8 +68,20 @@ public partial class WeaponsArmory
     }
 
     /// <summary>
-    /// A weapon's menu, on a right-click on its card or row, or ▾ on Compare: show it in the File Editor, make a rule
-    /// for it, compare it (or pin it, or take it off Compare), copy its descriptor.
+    /// "Show 3D Model…" for a missile; dim for other weapons, which are part of the model of the unit carrying them, with
+    /// the reason at the right and on hover.
+    /// </summary>
+    private static MenuChoice ShowModelChoice(IWeaponActions tab, Weapon weapon)
+    {
+        string? why = tab.WhyNoModel(weapon);
+        return new MenuChoice(Texts.Get("Units.Model.Menu.Show"), () => tab.ShowModel(weapon), IsEnabled: why is null,
+            Key: weapon.Missile is null ? Texts.Get("Units.Model.Menu.PartOfUnit") : "", Tip: why ?? Texts.Get("Units.Model.Menu.ShowMissile.Tip"));
+    }
+
+    /// <summary>
+    /// A weapon's menu, on a right-click on its card or row, or ▾ on Compare: show it in the File Editor, show a missile's
+    /// 3D model, list the units using it, make a rule for it, compare it (or pin it, or take it off Compare), copy its
+    /// descriptor.
     /// </summary>
     private void OpenWeaponMenu(Weapon weapon, FrameworkElement at)
     {
@@ -80,6 +92,10 @@ public partial class WeaponsArmory
         [
             Menus.Heading(weapon.Name),
             new MenuChoice(Texts.Get("Units.Pane.ShowInEditor"), () => tab.ShowInEditor(weapon), IsEnabled: tab.CanShowInEditor(weapon)),
+            ShowModelChoice(tab, weapon),
+            new MenuChoice(Texts.Get("Weapons.Menu.ShowUnits"), () => tab.ShowUnitsUsing(weapon), IsEnabled: weapon.Users.Count > 0,
+                Key: weapon.Users.Count > 0 ? Texts.Count("Weapons.UnitCount", weapon.Users.Count) : Texts.Get("Weapons.Menu.ShowUnits.None"),
+                Tip: weapon.Users.Count > 0 ? "" : Texts.Get("Weapons.Pane.CarriedByNone")),
             new MenuChoice(Texts.Get("Weapons.Menu.NewRule"), () => tab.NewRuleFor(weapon)),
             Menus.Line,
             onCompare && weapon.Descriptor != pinned ? new MenuChoice(Texts.Get("Units.Menu.Pin"), () => Pin(weapon)) : null,

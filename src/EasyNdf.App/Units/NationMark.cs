@@ -33,6 +33,9 @@ public sealed class NationMark : Grid
         Show(nation, firstSide);
     }
 
+    /// <summary>Its own size whatever room it is offered, so a card changing width does not lay it out again. Tuned for speed: Keep it that way when tidying.</summary>
+    protected override Size MeasureOverride(Size constraint) => base.MeasureOverride(new Size(double.PositiveInfinity, double.PositiveInfinity));
+
     /// <summary>Shows another nation, on a side: a card reused for another unit shows that unit's.</summary>
     public void Show(string nation, bool firstSide)
     {

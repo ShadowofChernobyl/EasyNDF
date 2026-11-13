@@ -5,9 +5,11 @@ using EasyNdf.Data;
 using EasyNdf.Data.Divisions;
 using EasyNdf.Data.FileList;
 using EasyNdf.Engine;
+using EasyNdf.Engine.Editing;
 using EasyNdf.Engine.Export;
 using EasyNdf.Engine.Mods;
 using EasyNdf.Engine.Rules;
+using EasyNdf.App.Editor;
 using EasyNdf.App.Mods;
 using EasyNdf.App.Text;
 
@@ -25,8 +27,14 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// </summary>
     public Func<string, Task<string?>>? AskGameMod { get; init; }
 
+    /// <summary>"Show Them" on the notice of files with values that would stop mod generation: shows them, the first one given.</summary>
+    public Action<FileEntry>? ShowFilesWithErrors { get; init; }
+
     /// <summary>The WARNO mod this export's UNITS.csv goes into, by its folder name; null when it writes none.</summary>
     private string? namesFileMod;
+
+    /// <summary>The values' types and limits, for the check of what the rules write; null when no WARNO file runs.</summary>
+    private ValueGuide? valueGuide;
 
     /// <summary>
     /// Runs the rules on every file that is on and has rules to run (<see cref="FilesThatRun"/>).
@@ -82,6 +90,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             }
         }
 
+        valueGuide = list.Any(ChecksValues) ? await ValueGuideOrNone() : null;
         model.StartProgress(write);
         var finished = new List<FileEntry>();
         model.IsBusy = true;
@@ -152,8 +161,35 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             SayModFilesWritten();
             MakeDictionaries(dictionariesToMake, finished);
             if (deckNumbersGiven.Count > 0)
-                model.SayAlso(Texts.Get("Files.Run.DeckNumbersGiven", ("units", string.Join(", ", deckNumbersGiven))));
+                model.Say(Texts.Get("Files.Run.DeckNumbersGiven", ("units", string.Join(", ", deckNumbersGiven))));
         }
+        // last, so the export's other notices do not push it out of sight
+        SayValueErrors(finished, write);
+    }
+
+    /// <summary>Whether a file's export is checked for values that would stop mod generation: WARNO's files are, as the guide is WARNO's.</summary>
+    private static bool ChecksValues(FileEntry entry) => entry.Game == Data.Game.GameTitle.Warno;
+
+    /// <summary>The guide to the values' types and limits; null if it cannot be read, and the files then run unchecked.</summary>
+    private static async Task<ValueGuide?> ValueGuideOrNone()
+    {
+        try { return await EditorGuide.Get(); }
+        catch (Exception error) when (error is InvalidOperationException or IOException or System.Text.Json.JsonException) { return null; }
+    }
+
+    /// <summary>
+    /// After a run: the files with values that would stop mod generation are named in one notice, which stays in the
+    /// recent list, with a button to see them.
+    /// </summary>
+    private void SayValueErrors(List<FileEntry> finished, bool write)
+    {
+        List<FileEntry> withErrors = [.. finished.Where(entry => entry.LastRun?.ValueErrors.Count > 0)];
+        if (withErrors.Count == 0) return;
+        string message = withErrors.Count == 1
+            ? Texts.Get(write ? "Files.Run.ValueErrors.NotExportedOne" : "Files.Run.ValueErrors.WouldNotExportOne", ("file", withErrors[0].Name))
+            : Texts.Get(write ? "Files.Run.ValueErrors.NotExported" : "Files.Run.ValueErrors.WouldNotExport", ("files", FileListModel.Files(withErrors.Count)));
+        NoticeAction? showThem = ShowFilesWithErrors is { } show ? new NoticeAction(Texts.Get(withErrors.Count == 1 ? "Files.Run.ValueErrors.ShowIt" : "Files.Run.ValueErrors.ShowThem"), () => show(withErrors[0])) : null;
+        model.Say(message, NoticeKind.Problem, showThem);
     }
 
     /// <summary>The units this export gave a number for deck codes (<see cref="GiveDeckNumbers"/>), by name, for the note after it.</summary>
@@ -319,7 +355,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     private string? FillGeneratedLists(List<ModRules> stack, List<GeneratedListsMaker.Input>? inputs)
     {
         if (inputs is null) return null;
-        if (inputs.Count == 0) return Texts.Get("Files.Run.Generated.NoUnits", ("file", GeneratedListsMaker.UnitsFile));
+        if (inputs.Count == 0) return Texts.Get("Files.Run.Generated.NoUnits", ("file", GeneratedListsMaker.UnitsFileNames));
         var rules = new JsonArray([.. stack.SelectMany(part => part.Rules).Select(rule => rule?.DeepClone())]);
         if (GeneratedBattlegroups.AnyIn(rules) && MissingWeaponFile(inputs) is string missing)
             return Texts.Get("Files.Run.Generated.NoWeapons", ("file", missing));
@@ -472,7 +508,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 byte[] mark = hasMark ? [0xEF, 0xBB, 0xBF] : [];
                 WriteWhole(path, [.. mark, .. System.Text.Encoding.UTF8.GetBytes(text)]);
             }
-            model.SayAlso(Texts.Get("Files.Run.DictionariesMade", ("files", string.Join(", ", toMake.Select(each => each.Name))),
+            model.Say(Texts.Get("Files.Run.DictionariesMade", ("files", string.Join(", ", toMake.Select(each => each.Name))),
                 ("folder", shownFolder), ("texts", toMake.Sum(each => each.Texts.Count))));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
@@ -604,7 +640,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     internal static IReadOnlySet<string> FilesWithArmoryRules(Data.Game.GameTitle game)
     {
         IReadOnlyList<JsonNode?> rules = ArmoryRulesOf(ModStack.RunningFor(game));
-        HashSet<string> files = DivisionChangeRules.FilesOf(rules);
+        HashSet<string> files = Data.Units.UnitReader.WithUnitsFileUnderBothNames(DivisionChangeRules.FilesOf(rules));
         if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFileOf(game));
         return files;
     }
@@ -693,7 +729,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         foreach (Mod mod in ModStack.Running)
         {
             IReadOnlyList<JsonNode?> rules = ArmoryPresets.RulesOf(mod);
-            HashSet<string> files = DivisionChangeRules.FilesOf(rules);
+            HashSet<string> files = Data.Units.UnitReader.WithUnitsFileUnderBothNames(DivisionChangeRules.FilesOf(rules));
             if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFileOf(mod.Game));
             byMod.Add((mod, files));
         }
@@ -755,7 +791,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
 
     /// <summary>Whether rules of the Armory are for a file of this name; for the game's dictionary (UNITS.csv, MODDING.csv), whether they give it texts.</summary>
     private static bool HasRulesFor(IEnumerable<JsonNode?> rules, string fileName, Data.Game.GameTitle game) =>
-        DivisionExtras.IsNamesFile(fileName, game) ? rules.Any(DivisionExtras.NeedsNamesFile) : DivisionChangeRules.FilesOf(rules).Contains(fileName);
+        DivisionExtras.IsNamesFile(fileName, game) ? rules.Any(DivisionExtras.NeedsNamesFile)
+            : Data.Units.UnitReader.WithUnitsFileUnderBothNames(DivisionChangeRules.FilesOf(rules)).Contains(fileName);
 
     /// <summary>
     /// After an export: the Armory's pictures of the user's own (division emblems, unit card pictures) copied into the
@@ -916,7 +953,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             List<string>? stages = stack.Count > 1 ? [] : null;
             int logLimit = stack.Count > 1 ? int.MaxValue : settings.LogLimit;
             var ruleCounts = new List<int>();
-            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write, logLimit, work.OtherFiles, stages, ruleCounts);
+            // the check of the values needs the text a Preview would otherwise leave unkept
+            bool checksValues = valueGuide is not null && ChecksValues(entry);
+            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write || checksValues, logLimit, work.OtherFiles, stages, ruleCounts);
+            List<RunValueError> valueErrors = checksValues && result.ParseError == "" && result.Edits > 0 && result.Text is string made
+                ? RunValueError.Place(result.Logs, ExportValueCheck.Find(work.Content.Text(), made, valueGuide!))
+                : [];
             clock.Stop();
             lock (conflictsFound) conflictsFound[entry.Key] = ConflictsIn(entry.Name, stack, result, stages ?? [], ruleCounts);
 
@@ -926,7 +968,13 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 // The export comes back with the source's line endings; the setting decides what is saved.
                 text = ExportFinishing.WithLineEndings(text, settings.LineEndings);
                 if (result.Edits > 0 && result.ParseError == "")
+                {
+                    string rulesMade = text;
                     text = ExportFinishing.AddHeader(text, MainView.AppVersion, settings.EditedWithLine, mod?.Name, watermark);
+                    // the errors' lines are the lines of the file saved, which starts with the header
+                    if (valueErrors.Count > 0 && LinesAdded(rulesMade, text) is > 0 and int header)
+                        valueErrors = [.. valueErrors.Select(error => error.Below(header))];
+                }
             }
 
             entry.Scanned = true;
@@ -939,7 +987,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 Info = info with { Names = [], Titles = [], Types = [], References = [] },
                 Milliseconds = clock.ElapsedMilliseconds,
                 RuleSets = work.RuleSets,
-                Held = write && result.ParseError != "",
+                RuleSources = SourcesOf(stack),
+                Held = write && (result.ParseError != "" || valueErrors.Count > 0),
+                ValueErrors = valueErrors,
                 Unchanged = write && result.ParseError == "" && result.Edits == 0,
             };
             entry.Edits = result.Edits;
@@ -954,6 +1004,14 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 entry.IsError = true;
                 if (write) entry.HeldOutput = text;
                 entry.Message = write ? Texts.Get("Files.Run.InvalidNotExported", ("problem", result.ParseError)) : Texts.Get("Files.Run.InvalidPreview", ("problem", result.ParseError));
+            }
+            else if (valueErrors.Count > 0)
+            {
+                // held back too: mod generation would stop on these values
+                entry.IsError = true;
+                if (write) entry.HeldOutput = text;
+                string errors = Texts.Count("Files.Run.ValueErrors.Count", valueErrors.Count, ("count", FileStatus.Count(valueErrors.Count)));
+                entry.Message = write ? Texts.Get("Files.Run.ValueErrors.Held", ("errors", errors)) : Texts.Get("Files.Run.ValueErrors.Preview", ("edits", edits), ("errors", errors));
             }
             else if (!write) entry.Message = Texts.Get("Files.Run.Preview", ("edits", edits));
             else if (result.Edits == 0 && !everyFile && HoldsEarlierExport(entry))
@@ -970,6 +1028,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             entry.IsError = true;
         }
     }
+
+    /// <summary>How many lines longer a text became: the export's header, put before what the rules made.</summary>
+    private static int LinesAdded(string before, string after) => after.AsSpan().Count('\n') - before.AsSpan().Count('\n');
 
     /// <summary>
     /// A file no mod that is on has rules for: its preset's mod is off on the Mods tab. With every file exported, it is
@@ -1033,6 +1094,25 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             stages?.Add(text);
         }
         return (Together(results), info!);
+    }
+
+    /// <summary>Where the rules of a file's run come from, in the order they run (<see cref="StackFor"/>): each rule set's, then the mod's Armory rules.</summary>
+    private static List<RuleSource> SourcesOf(List<ModRules> stack)
+    {
+        var sources = new List<RuleSource>();
+        int first = 0;
+        foreach (ModRules part in stack)
+        {
+            int ofTheRuleSets = 0;
+            foreach (ModPreset ruleSet in part.RuleSets)
+            {
+                sources.Add(new RuleSource(part.Mod.Name, ruleSet.Name, first + ofTheRuleSets, ruleSet.Rules.Count));
+                ofTheRuleSets += ruleSet.Rules.Count;
+            }
+            if (part.Rules.Count > ofTheRuleSets) sources.Add(new RuleSource(part.Mod.Name, null, first + ofTheRuleSets, part.Rules.Count - ofTheRuleSets));
+            first += part.Rules.Count;
+        }
+        return sources;
     }
 
     /// <summary>Several runs as one result: their rules' counts, edits and warnings in order, and the last run's text and error.</summary>

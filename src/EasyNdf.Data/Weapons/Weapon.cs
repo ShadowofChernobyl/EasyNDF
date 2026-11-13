@@ -116,6 +116,39 @@ public sealed record Weapon
     /// <summary>One of <see cref="FileValues"/>, as written; null when the ammunition does not have it.</summary>
     public string? FileValue(string name) => FileValues.GetValueOrDefault(name);
 
+    /// <summary>
+    /// Whether its name, text keys, picture and traits are written in each mounted weapon (TMountedWeaponDescriptor) that
+    /// fires it rather than in its ammunition, as WARNO v210942 on writes them. Rules then give a mounted weapon these
+    /// (<see cref="MountValues"/>), and change them there.
+    /// </summary>
+    public bool ShownOnMount { get; init; }
+
+    /// <summary>The properties a mounted weapon's picture and traits are written in (see <see cref="ShownOnMount"/>).</summary>
+    public const string PictureProperty = "InterfaceWeaponTexture", TraitsProperty = "TraitsToken";
+
+    /// <summary>
+    /// What a mounted weapon that fires it is given where <see cref="ShownOnMount"/>: its name and text keys as the game
+    /// writes them, its traits and its picture, each with its property, in the order the game writes them. Empty when
+    /// it is not shown on its mounts.
+    /// </summary>
+    /// <param name="picture">Its picture's texture instead of its own, as a change gives it; null for its own.</param>
+    /// <param name="traits">Its traits instead of its own; null for its own.</param>
+    public IReadOnlyList<(string Property, string Value)> MountValues(string? picture = null, IReadOnlyList<string>? traits = null)
+    {
+        if (!ShownOnMount) return [];
+        var values = new List<(string, string)>();
+        if (FileValue("Caliber") is string caliber) values.Add(("Caliber", caliber));
+        if ((picture ?? PictureTexture) is string texture) values.Add((PictureProperty, "\"" + texture + "\""));
+        if (FileValue("Name") is string name) values.Add(("Name", name));
+        values.Add((TraitsProperty, TraitsText(traits ?? Traits)));
+        if (FileValue("TypeCategoryName") is string category) values.Add(("TypeCategoryName", category));
+        if (FileValue("WeaponDescriptionToken") is string description) values.Add(("WeaponDescriptionToken", description));
+        return values;
+    }
+
+    /// <summary>Traits as a mounted weapon's TraitsToken writes them: ["STAT", "RADAR"].</summary>
+    public static string TraitsText(IEnumerable<string> traits) => "[" + string.Join(", ", traits.Select(token => "\"" + token + "\"")) + "]";
+
     /// <summary>One of <see cref="FileValues"/> as a number; null when the ammunition does not have it, or it is not a number.</summary>
     public double? FileNumber(string name) =>
         FileValue(name) is string written && double.TryParse(written, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double number)

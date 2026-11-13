@@ -41,7 +41,7 @@ public partial class EditorPage
         if (found < 0) found = direction > 0 ? text.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) : LastMatchStartingBy(text, wanted, text.Length);
         if (found < 0)
         {
-            Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), "caution");
+            Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), NoticeKind.Caution);
             return;
         }
         // Find looks through the whole text; a match inside a folded block opens that block
@@ -74,7 +74,7 @@ public partial class EditorPage
             Say(Texts.Get("Editor.Find.Found", ("file", shown.Name), ("text", wanted), ("line", Texts.Number(index + 1))));
             return;
         }
-        Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), "caution");
+        Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), NoticeKind.Caution);
     }
 
     /// <summary>
@@ -93,8 +93,6 @@ public partial class EditorPage
         double middle = shown.IsFile ? top + LineHeightForSize / 2 - Text.ViewportHeight / 2 : top - Math.Floor(Text.ViewportHeight / 2);
         Text.ScrollToVerticalOffset(Math.Max(0, middle));
         Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background);
-        // the pointed line's outline is drawn above the selection, on the caret layer
-        Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Caret);
     }
 
     private void GoKeyDown(object sender, KeyEventArgs e)
@@ -111,7 +109,7 @@ public partial class EditorPage
         string typed = text.Trim();
         if (typed == "" || !typed.All(char.IsAsciiDigit) || !int.TryParse(typed, out int number) || number < 1)
         {
-            Say(Texts.Get("Editor.Find.TypeLine"), "caution");
+            Say(Texts.Get("Editor.Find.TypeLine"), NoticeKind.Caution);
             return;
         }
         PointAt(number - 1);
@@ -151,7 +149,7 @@ public partial class EditorPage
             matches.Add(at);
         if (matches.Count == 0)
         {
-            Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), "caution");
+            Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), NoticeKind.Caution);
             return;
         }
         // from the end, so the places of the matches still to replace do not move
@@ -167,7 +165,7 @@ public partial class EditorPage
         wanted = FindBox.Text;
         if (shown is not { IsFile: true }) return false;
         if (wanted != "") return true;
-        Say(Texts.Get("Editor.Find.TypeFirst"), "caution");
+        Say(Texts.Get("Editor.Find.TypeFirst"), NoticeKind.Caution);
         return false;
     }
 }

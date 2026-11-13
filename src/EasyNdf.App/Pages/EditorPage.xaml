@@ -391,21 +391,26 @@
                         <TextBlock x:Name="Note" Style="{StaticResource Note}" Margin="6,0,6,0" VerticalAlignment="Center" TextWrapping="Wrap" />
                     </DockPanel>
                 </controls:Bevel>
-                <!-- #edBox: a sunken box that fills the pane -->
+                <!--
+                  the open files' tabs (EditorPage.Tabs.cs), on a strip with a light line under it, as the Armory's sub-tabs.
+                  2 pixels down: with the panes beside, the text boxes then start level with the Descriptor Tree under its
+                  note, which is a line of the same font as the tabs' names, so they stay level at any font size
+                -->
+                <controls:Bevel x:Name="TabStrip" DockPanel.Dock="Top" BottomRight="{DynamicResource line}" Edges="0,0,0,1" Margin="0,2,0,0" Visibility="Collapsed">
+                    <controls:TabRow x:Name="FileTabs" ClipToBounds="False" />
+                </controls:Bevel>
+                <!--
+                  #edBox: the files shown, side by side, each a sunken box with its status strip (Fold all and Unfold all, the
+                  caret's line and column, the problems and the text size) under its text; with no file open, what to do
+                -->
                 <Grid x:Name="EditorArea">
-                    <controls:Bevel x:Name="EditorBox" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
-                        <DockPanel>
-                            <!-- the status strip: Fold all and Unfold all, the caret's line and column, and the text size; shown with the text -->
-                            <ContentControl x:Name="StripHolder" DockPanel.Dock="Bottom" Focusable="False" Visibility="{Binding Visibility, ElementName=Text}" />
-                            <Grid>
-                            <TextBlock x:Name="EmptyText" Foreground="{DynamicResource muted}" Margin="10" Text="{t:Text Editor.ChooseAFileAbove}" />
-                            <avalon:TextEditor x:Name="Text" Visibility="Collapsed" FontFamily="{DynamicResource mono}" FontSize="12"
-                                               Background="{DynamicResource well}" Foreground="{DynamicResource ink}"
-                                               HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                                               ToolTip="{t:Text Editor.Text.Tip}" />
-                            </Grid>
-                        </DockPanel>
+                    <controls:Bevel x:Name="EmptyBox" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                        <StackPanel x:Name="EmptyText" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20">
+                            <TextBlock Foreground="{DynamicResource muted}" Text="{t:Text Editor.ChooseAFileAbove}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,10" />
+                            <Button Content="{t:Text Editor.OpenFile}" ToolTip="{t:Text Editor.OpenFile.Tip}" Click="OpenFileClicked" HorizontalAlignment="Center" />
+                        </StackPanel>
                     </controls:Bevel>
+                    <Grid x:Name="SideBySide" Visibility="Collapsed" />
                 </Grid>
                 </DockPanel>
             </controls:PanePair.Main>

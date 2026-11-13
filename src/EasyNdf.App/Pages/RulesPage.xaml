@@ -71,11 +71,11 @@
         <pages:SidewaysScroller x:Name="ColumnsScroller" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Focusable="False">
         <Grid x:Name="ColumnsGrid" HorizontalAlignment="Left">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="ModsColumnDefinition" Width="270*" />
+                <ColumnDefinition x:Name="ModsColumnDefinition" Width="340*" />
                 <ColumnDefinition Width="14" />
-                <ColumnDefinition x:Name="RuleSetsColumn" Width="310*" />
+                <ColumnDefinition x:Name="RuleSetsColumn" Width="300*" />
                 <ColumnDefinition Width="14" />
-                <ColumnDefinition x:Name="RulesColumnDefinition" Width="620*" />
+                <ColumnDefinition x:Name="RulesColumnDefinition" Width="576*" />
             </Grid.ColumnDefinitions>
 
             <!-- the mods: a click opens one; right-click has its commands; a mod file dropped on the list is imported -->
@@ -94,23 +94,13 @@
                 <Grid DockPanel.Dock="Top" Style="{StaticResource HeadingLine}">
                     <TextBlock x:Name="ModsLine" Foreground="{DynamicResource muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </Grid>
-                <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Note}" Margin="0" Text="{t:Text Rules.Mods.Note}" />
                 <!-- the open mod's commands, also on the list's right-click menu, as the Rule Sets column has its buttons -->
-                <controls:WrapRow DockPanel.Dock="Bottom" Margin="0,0,0,8">
+                <controls:WrapRow DockPanel.Dock="Bottom">
                     <Button x:Name="RenameModButton" Content="{t:Text Rules.Rename}" ToolTip="{t:Text Rules.RenameMod.Tip}" Click="RenameModClicked" />
                     <Button x:Name="ExportModButton" Content="{t:Text Rules.ExportModButton}" ToolTip="{t:Text Rules.ExportMod.Tip}" Click="ExportModClicked" />
                     <Button x:Name="WatermarkButton" Content="{t:Text Rules.WatermarkButton}" ToolTip="{t:Text Rules.WatermarkButton.Tip}" Click="WatermarkClicked" />
                     <Button x:Name="DeleteModButton" Content="{t:Text Rules.Delete}" ToolTip="{t:Text Rules.DeleteMod.Tip}" Click="DeleteModClicked" />
                 </controls:WrapRow>
-                <!-- while the open mod is off: it won't run, with Switch On, and OK to hide the line until another mod is opened -->
-                <DockPanel x:Name="ModOffLine" DockPanel.Dock="Bottom" Margin="0,0,0,8" Visibility="Collapsed">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{t:Text Common.Ok}" ToolTip="{t:Text Rules.ModOff.Ok.Tip}"
-                            Click="ModOffOkClicked" Margin="4,0,0,0" VerticalAlignment="Center" />
-                    <Button DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{t:Text Rules.ModOff.SwitchOn}" ToolTip="{t:Text Rules.ModOff.SwitchOn.Tip}"
-                            Click="ModOffSwitchOnClicked" Margin="6,0,0,0" VerticalAlignment="Center" />
-                    <TextBlock DockPanel.Dock="Left" Text="&#x26A0;" Foreground="{DynamicResource caution}" FontWeight="Bold" Margin="0,0,5,0" VerticalAlignment="Center" />
-                    <TextBlock x:Name="ModOffText" TextWrapping="Wrap" VerticalAlignment="Center" Foreground="{DynamicResource ink}" />
-                </DockPanel>
                 <controls:Bevel x:Name="ModBox" Style="{StaticResource SunkenList}" Margin="0,0,0,8" AllowDrop="True" Focusable="True" FocusVisualStyle="{x:Null}"
                                 AutomationProperties.Name="{t:Text Rules.Mods}" GotKeyboardFocus="ListGotKeyboardFocus" KeyDown="ListKeyDown"
                                 DragOver="ModFilesDraggedOver" Drop="ModFilesDropped" MouseRightButtonUp="ModListRightClicked">
@@ -234,7 +224,7 @@
                 </controls:WrapRow>
                 <controls:Bevel x:Name="PresetBox" Style="{StaticResource SunkenList}" Margin="0,0,0,10" MouseRightButtonUp="PresetListRightClicked"
                                 Focusable="True" FocusVisualStyle="{x:Null}" AutomationProperties.Name="{t:Text Rules.Presets}" GotKeyboardFocus="ListGotKeyboardFocus" KeyDown="ListKeyDown">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <controls:WholeRows><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                         <StackPanel>
                             <TextBlock x:Name="NoPresets" Text="{t:Text Rules.NoPresetsInThis}" Foreground="{DynamicResource muted}" Padding="4,2" />
                             <ItemsControl x:Name="PresetLines" Focusable="False">
@@ -260,7 +250,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
-                    </ScrollViewer>
+                    </ScrollViewer></controls:WholeRows>
                 </controls:Bevel>
             </DockPanel>
 
@@ -286,11 +276,8 @@
                         <TextBlock x:Name="AppliesText" VerticalAlignment="Center" Foreground="{DynamicResource ink}" TextTrimming="CharacterEllipsis" />
                     </DockPanel>
                 </Grid>
-                <!-- under the list, kept at the column's foot: adding rules, what the clipboard did, and the keys (copying, pasting and opening rules are on the right-click menu and the keys) -->
-                <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Note}" Margin="0"
-                           Text="{t:Text Rules.DoubleClickARule}" />
-                <TextBlock DockPanel.Dock="Bottom" x:Name="ClipNote" Style="{StaticResource Note}" Text="{Binding Note}" Margin="0,0,0,8" />
-                <controls:WrapRow DockPanel.Dock="Bottom" Margin="0,0,0,8">
+                <!-- under the list, kept at the column's foot: adding rules (copying, pasting and opening rules are on the right-click menu and the keys) -->
+                <controls:WrapRow DockPanel.Dock="Bottom">
                     <!-- a menu of the rule types, each with its symbol and a line on what it does -->
                     <Button x:Name="NewRuleButton" Content="{t:Text Rules.NewRule}" ToolTip="{t:Text Rules.NewRule.Tip}" Click="NewRuleClicked" />
                 </controls:WrapRow>
@@ -319,21 +306,9 @@
                                 <DataTemplate>
                                     <Border x:Name="Line" Style="{StaticResource RuleLine}" PreviewMouseLeftButtonDown="RulePressed" MouseLeftButtonUp="RuleClicked">
                                         <DockPanel>
-                                            <!-- a rule made from the Armory: a lock in place of the buttons, as it is changed there -->
+                                            <!-- a rule made from the Armory: a lock, as it is changed there -->
                                             <TextBlock x:Name="Lock" DockPanel.Dock="Right" Text="&#x1F512;" FontSize="11" Foreground="{DynamicResource muted}" VerticalAlignment="Center"
                                                        Margin="4,0,2,0" Visibility="Collapsed" ToolTip="{t:Text Rules.Locked.Tip}" />
-                                            <!-- ↑ ↓ + ×, 4 pixels apart -->
-                                            <StackPanel x:Name="LineButtons" DockPanel.Dock="Right" Orientation="Horizontal">
-                                                <Button Style="{StaticResource IconButton}" Content="&#x2191;" Tag="up" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveUp.Tip}" AutomationProperties.Name="{t:Text Rules.MoveUp.Tip}" Click="RuleButtonClicked" />
-                                                <Button Style="{StaticResource IconButton}" Content="&#x2193;" Tag="down" Margin="4,0,0,0" ToolTip="{t:Text Rules.MoveDown.Tip}" AutomationProperties.Name="{t:Text Rules.MoveDown.Tip}" Click="RuleButtonClicked" />
-                                                <!-- Duplicate: the copy icon, two square outlines, the front one over the corner of the one behind -->
-                                                <Button Style="{StaticResource IconButton}" Tag="dup" Margin="4,0,0,0" ToolTip="{t:Text Rules.Duplicate.Tip}" AutomationProperties.Name="{t:Text Rules.Duplicate.Tip}" Click="RuleButtonClicked">
-                                                    <Path Width="11" Height="11" StrokeThickness="1" VerticalAlignment="Center"
-                                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                          Data="M 3.5,3.5 V 0.5 H 10.5 V 7.5 H 7.5 M 0.5,3.5 H 7.5 V 10.5 H 0.5 Z" />
-                                                </Button>
-                                                <Button Style="{StaticResource IconButton}" Content="&#xD7;" Tag="del" Margin="4,0,0,0" ToolTip="{t:Text Rules.Delete.Tip}" AutomationProperties.Name="{t:Text Rules.Delete.Tip}" Click="RuleButtonClicked" />
-                                            </StackPanel>
                                             <Button x:Name="Fold" DockPanel.Dock="Left" Style="{StaticResource IconButton}" Tag="fold" Margin="0,0,4,0"
                                                     Content="&#x25BE;" ToolTip="{t:Text Rules.Fold.Tip}" AutomationProperties.Name="{t:Text Rules.Fold.Tip}" Visibility="Collapsed" Click="RuleButtonClicked" />
                                             <CheckBox DockPanel.Dock="Left" Style="{StaticResource Toggle}" IsChecked="{Binding IsOn, Mode=OneWay}" Margin="0,0,4,0" AutomationProperties.Name="{Binding Name}"
@@ -380,7 +355,6 @@
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsLocked}" Value="True">
                                             <Setter TargetName="Lock" Property="Visibility" Value="Visible" />
-                                            <Setter TargetName="LineButtons" Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding ShowsPicture}" Value="True">
                                             <Setter TargetName="Picture" Property="Visibility" Value="Visible" />

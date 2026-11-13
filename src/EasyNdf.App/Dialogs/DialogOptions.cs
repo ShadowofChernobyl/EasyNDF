@@ -6,6 +6,9 @@ namespace EasyNdf.App.Dialogs;
 /// <summary>What the message window offers, as the HTML app's <c>dialog(msg, o)</c> takes it.</summary>
 public sealed record DialogOptions
 {
+    /// <summary>The icon left of the message; none unless named.</summary>
+    public DialogIcon Icon { get; init; }
+
     /// <summary>The first button, drawn bold: "OK" unless named.</summary>
     public string Ok { get; init; } = "OK";
 
@@ -44,6 +47,19 @@ public sealed record DialogOptions
 
     /// <summary>Whether the first button stays off until something is typed in the text box.</summary>
     public bool NeedsInput { get; init; }
+}
+
+/// <summary>The icon of a message, which says what kind of message it is.</summary>
+public enum DialogIcon
+{
+    /// <summary>No icon: the message only asks for a name.</summary>
+    None,
+    /// <summary>What was asked for did not happen.</summary>
+    Error,
+    /// <summary>It can lose work, can't be undone, or may not work in the game.</summary>
+    Warning,
+    /// <summary>A harmless question.</summary>
+    Question,
 }
 
 /// <summary>Which button closed the message window. Escape counts as <see cref="Cancel"/>.</summary>

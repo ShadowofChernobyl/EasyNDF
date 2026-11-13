@@ -30,12 +30,16 @@
     <Resource Include="Assets\EasyNDF.ico" />
     <!-- WARNO Tactical Overhaul, the mod the app comes with: the HTML app's #defaultMod -->
     <EmbeddedResource Include="Assets\DefaultMod.json" LogicalName="DefaultMod.json" />
+    <!-- the File Editor's guide to WARNO's names: value types, descriptions, choices and limits (see Editor\EditorGuide.cs) -->
+    <EmbeddedResource Include="Assets\EditorGuide.json.gz" LogicalName="EditorGuide.json.gz" />
     <!-- the Help wiki's pages, copied from the HTML app -->
     <!-- the app's English texts, one file per part of the app (see Text\Texts.cs) -->
     <EmbeddedResource Include="Languages\en\*.json" LogicalName="EasyNdf.App.Languages.en.%(Filename)%(Extension)" />
     <!-- the other languages built into the app, one pack file each (fr.json...), made by the translate tool -->
     <EmbeddedResource Include="Languages\*.json" LogicalName="EasyNdf.App.LanguagePacks.%(Filename)%(Extension)" />
     <EmbeddedResource Include="Help\wiki.json" LogicalName="wiki.json" />
+    <!-- the 3D model viewer's shaders, compiled when the viewer first opens -->
+    <EmbeddedResource Include="Models\ModelShaders.hlsl" LogicalName="ModelShaders.hlsl" />
     <!-- the About tab's text, and the license its License button shows -->
     <EmbeddedResource Include="Help\about.html" LogicalName="about.html" />
     <EmbeddedResource Include="Help\changelog.html" LogicalName="changelog.html" />
@@ -52,6 +56,14 @@
     <!-- opens .rar archives (MIT; its notice is in THIRD-PARTY-NOTICES.txt, which ships beside the app) -->
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <!-- draw the 3D model viewer's models with Direct3D 11, and compile its shaders (MIT, as above) -->
+    <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.6.2" />
+    <!-- hand the drawn picture to WPF on the graphics card, without copying it back (MIT, as above) -->
+    <PackageReference Include="Vortice.Direct3D9" Version="3.6.2" />
+    <!-- play and mix the 3D model viewer's sounds (MIT, as above) -->
+    <PackageReference Include="NAudio.Core" Version="2.2.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
   </ItemGroup>
 
 </Project>

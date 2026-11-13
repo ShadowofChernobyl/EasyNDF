@@ -178,7 +178,7 @@ public partial class ThemeDesigner : UserControl
         try { AppData.Current.Themes.Save(theme); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)));
+            _ = View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)), DialogIcon.Error);
         }
         ThemeManager.ApplySaved();
     }
@@ -231,11 +231,11 @@ public partial class ThemeDesigner : UserControl
     {
         if (EditedTheme is not CustomTheme theme) return;
         string olivine = BuiltInThemes.ById[BuiltInThemes.DefaultId].Name;
-        if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.DeleteAsk", ("name", theme.Name), ("theme", olivine)), Texts.Get("Settings.Designer.Delete"))) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.DeleteAsk", ("name", theme.Name), ("theme", olivine)), Texts.Get("Settings.Designer.Delete"), DialogIcon.Warning)) return;
         try { AppData.Current.Themes.Delete(theme); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotDelete", ("problem", error.Message)));
+            await View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotDelete", ("problem", error.Message)), DialogIcon.Error);
             return;
         }
         Settings["theme"] = BuiltInThemes.DefaultId;
@@ -249,7 +249,7 @@ public partial class ThemeDesigner : UserControl
     {
         if (EditedTheme is not CustomTheme theme) return;
         Theme from = BuiltInThemes.ById.GetValueOrDefault(theme.BaseId) ?? BuiltInThemes.ById[BuiltInThemes.DefaultId];
-        if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.ResetAsk", ("name", theme.Name), ("theme", from.Name)), Texts.Get("Settings.Designer.ResetColors"))) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.ResetAsk", ("name", theme.Name), ("theme", from.Name)), Texts.Get("Settings.Designer.ResetColors"), DialogIcon.Warning)) return;
         theme.Colors = new Dictionary<string, string>(from.Colors);
         theme.Scheme = from.Scheme;
         theme.Font = CustomTheme.CleanFontName(from.Font);
@@ -266,7 +266,7 @@ public partial class ThemeDesigner : UserControl
         try { File.WriteAllText(dialog.FileName, ThemeStore.ExportText(theme)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)));
+            _ = View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)), DialogIcon.Error);
         }
     }
 
@@ -279,7 +279,7 @@ public partial class ThemeDesigner : UserControl
         try { imported = ReadThemeFile(dialog.FileName); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         {
-            await View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotImport", ("problem", error.Message)));
+            await View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotImport", ("problem", error.Message)), DialogIcon.Error);
             return;
         }
         AddTheme(imported);

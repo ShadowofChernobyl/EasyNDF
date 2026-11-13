@@ -16,7 +16,7 @@ namespace EasyNdf.App.Weapons;
 /// <summary>
 /// The Weapon pane's values, as the mock (A) chosen: every value of the weapon's ammunition, in folding sections of two
 /// columns. A value's name has a tooltip saying what it does in the game, its name in the file, and how sure that is;
-/// a value from its name and the game's data only is marked ≈, one whose effect is not known ?. Every value can be
+/// a value that is very likely but not confirmed is marked ≈, one whose effect is not known ?. Every value can be
 /// changed: numbers in a box, switches with a switch, choices and references to other descriptors from a list of the
 /// values the game's weapons have, the picture from the game's pictures and the traits from the game's traits. A value
 /// the ammunition does not have shows "–": a rule cannot set it. Each value's name in the file is its game's own
@@ -27,10 +27,10 @@ public static partial class WeaponPane
     /// <summary>How sure the pane is of what a value does.</summary>
     private enum Certainty
     {
-        /// <summary>Documented, or certain from the game's data.</summary>
+        /// <summary>Confirmed: no mark, and no certainty line in the tooltip.</summary>
         Known,
 
-        /// <summary>From its name and how the game uses it; not documented. Marked ≈.</summary>
+        /// <summary>Very likely, but not confirmed. Marked ≈.</summary>
         Likely,
 
         /// <summary>Not known: what it does in the game is not certain. Marked ?.</summary>
@@ -82,15 +82,15 @@ public static partial class WeaponPane
             Switch("Weapons.Pane.SuppressesOnMiss", "Weapons.About.SuppressesOnMiss", "AllowSuppressDamageWhenNoImpact", Certainty.Known),
             Switch("Weapons.Pane.Piercing", "Weapons.About.Piercing", "PiercingWeapon", Certainty.Known),
             Reference("Weapons.Pane.WeakerWithRange", "Weapons.About.WeakerWithRange", "DamageTypeEvolutionOverRangeDescriptor", Certainty.Known),
-            Switch("Weapons.Pane.Tandem", "Weapons.About.Tandem", "TandemCharge", Certainty.Likely),
-            Switch("Weapons.Pane.HarmlessToAllies", "Weapons.About.HarmlessToAllies", "IsHarmlessForAllies", Certainty.Likely),
-            FileNumber("Weapons.Pane.FireChance", "Weapons.About.FireChance", "FireTriggeringProbability", Certainty.Likely, value => WeaponNames.Number(value, 3)),
+            Switch("Weapons.Pane.Tandem", "Weapons.About.Tandem", "TandemCharge", Certainty.Known),
+            Switch("Weapons.Pane.HarmlessToAllies", "Weapons.About.HarmlessToAllies", "IsHarmlessForAllies", Certainty.Known),
+            FileNumber("Weapons.Pane.FireChance", "Weapons.About.FireChance", "FireTriggeringProbability", Certainty.Known, value => WeaponNames.Number(value, 3)),
             Reference("Weapons.Pane.Fire", "Weapons.About.Fire", "FireDescriptor", Certainty.Known),
             Reference("Weapons.Pane.Smoke", "Weapons.About.Smoke", "SmokeDescriptor", Certainty.Known),
-            Switch("Weapons.Pane.TopArmor", "Weapons.About.TopArmor", "ForceHitTopArmor", Certainty.Likely),
-            Switch("Weapons.Pane.TopArmorOnHit", "Weapons.About.TopArmorOnHit", "ForceHitTopArmorOnSuccess", Certainty.Likely),
-            Switch("Weapons.Pane.ArmorFromImpact", "Weapons.About.ArmorFromImpact", "ComputeArmorFromImpactLocation", Certainty.Likely),
-            Switch("Weapons.Pane.IgnoresFlammability", "Weapons.About.IgnoresFlammability", "IgnoreInflammabilityConditions", Certainty.Unknown),
+            Switch("Weapons.Pane.TopArmor", "Weapons.About.TopArmor", "ForceHitTopArmor", Certainty.Known),
+            Switch("Weapons.Pane.TopArmorOnHit", "Weapons.About.TopArmorOnHit", "ForceHitTopArmorOnSuccess", Certainty.Known),
+            Switch("Weapons.Pane.ArmorFromImpact", "Weapons.About.ArmorFromImpact", "ComputeArmorFromImpactLocation", Certainty.Known),
+            Switch("Weapons.Pane.IgnoresFlammability", "Weapons.About.IgnoresFlammability", "IgnoreInflammabilityConditions", Certainty.Known),
         ]),
         new("range", "Weapons.Pane.Range", false,
         [
@@ -100,8 +100,8 @@ public static partial class WeaponPane
             FileNumber("Weapons.Pane.HelicoptersMinimum", "Weapons.About.HelicoptersMinimum", "MinimumRangeHelicopterGRU", Certainty.Known, WeaponNames.Range),
             Typed("Weapons.Pane.Planes", "Weapons.About.Planes", WeaponField.PlaneRange, Certainty.Known, each => WeaponNames.Range(each.PlaneRange)),
             FileNumber("Weapons.Pane.PlanesMinimum", "Weapons.About.PlanesMinimum", "MinimumRangeAirplaneGRU", Certainty.Known, WeaponNames.Range),
-            FileNumber("Weapons.Pane.Missiles", "Weapons.About.Missiles", "MaximumRangeProjectileGRU", Certainty.Likely, WeaponNames.Range),
-            FileNumber("Weapons.Pane.MissilesMinimum", "Weapons.About.MissilesMinimum", "MinimumRangeProjectileGRU", Certainty.Likely, WeaponNames.Range),
+            FileNumber("Weapons.Pane.Missiles", "Weapons.About.Missiles", "MaximumRangeProjectileGRU", Certainty.Known, WeaponNames.Range),
+            FileNumber("Weapons.Pane.MissilesMinimum", "Weapons.About.MissilesMinimum", "MinimumRangeProjectileGRU", Certainty.Known, WeaponNames.Range),
         ]),
         new("accuracy", "Weapons.Pane.Accuracy", false,
         [
@@ -111,11 +111,11 @@ public static partial class WeaponPane
             FileNumber("Weapons.Pane.Critical", "Weapons.About.Critical", "BaseCriticModifier", Certainty.Known, value => WeaponNames.Number(value)),
             Typed("Weapons.Pane.DispersionFar", "Weapons.About.DispersionFar", WeaponField.DispersionFar, Certainty.Known, each => WeaponNames.Number(each.DispersionFar)),
             Typed("Weapons.Pane.DispersionNear", "Weapons.About.DispersionNear", WeaponField.DispersionNear, Certainty.Known, each => WeaponNames.Number(each.DispersionNear)),
-            FileNumber("Weapons.Pane.SpreadAngle", "Weapons.About.SpreadAngle", "AngleDispersion", Certainty.Likely, value => WeaponNames.Number(value, 3)),
-            FileNumber("Weapons.Pane.CorrectedSpread", "Weapons.About.CorrectedSpread", "CorrectedShotDispersionMultiplier", Certainty.Likely, value => WeaponNames.Number(value)),
-            FileNumber("Weapons.Pane.SuccessiveHits", "Weapons.About.SuccessiveHits", "MaxSuccessiveHitCount", Certainty.Unknown, value => WeaponNames.Number(value)),
-            FileNumber("Weapons.Pane.AccuracyBase", "Weapons.About.AccuracyBase", WeaponFileValues.AccuracyBase, Certainty.Unknown, value => WeaponNames.Number(value)),
-            FileNumber("Weapons.Pane.AccuracyTargeted", "Weapons.About.AccuracyTargeted", WeaponFileValues.AccuracyTargeted, Certainty.Unknown, value => WeaponNames.Number(value)),
+            FileNumber("Weapons.Pane.SpreadAngle", "Weapons.About.SpreadAngle", "AngleDispersion", Certainty.Known, value => WeaponNames.Number(value, 3)),
+            FileNumber("Weapons.Pane.CorrectedSpread", "Weapons.About.CorrectedSpread", "CorrectedShotDispersionMultiplier", Certainty.Known, value => WeaponNames.Number(value)),
+            FileNumber("Weapons.Pane.SuccessiveHits", "Weapons.About.SuccessiveHits", "MaxSuccessiveHitCount", Certainty.Known, value => WeaponNames.Number(value)),
+            FileNumber("Weapons.Pane.AccuracyBase", "Weapons.About.AccuracyBase", WeaponFileValues.AccuracyBase, Certainty.Known, value => WeaponNames.Number(value)),
+            FileNumber("Weapons.Pane.AccuracyTargeted", "Weapons.About.AccuracyTargeted", WeaponFileValues.AccuracyTargeted, Certainty.Known, value => WeaponNames.Number(value)),
         ]),
         new("firing", "Weapons.Pane.Firing", false,
         [
@@ -124,52 +124,52 @@ public static partial class WeaponPane
             FileNumber("Weapons.Pane.AtOnce", "Weapons.About.AtOnce", WeaponFileValues.SimultaneousShots, Certainty.Known, value => WeaponNames.Number(value)),
             FileNumber("Weapons.Pane.BetweenShots", "Weapons.About.BetweenShots", "TimeBetweenTwoShots", Certainty.Known, WeaponNames.Seconds),
             Typed("Weapons.Pane.Reload", "Weapons.About.Reload", WeaponField.Reload, Certainty.Known, each => WeaponNames.Seconds(each.Reload)),
-            FileNumber("Weapons.Pane.ReloadAtLeast", "Weapons.About.ReloadAtLeast", "TimeBetweenTwoSalvos_Min", Certainty.Likely, SecondsOrOff),
-            FileNumber("Weapons.Pane.ReloadAtMost", "Weapons.About.ReloadAtMost", "TimeBetweenTwoSalvos_Max", Certainty.Likely, SecondsOrOff),
-            Typed("Weapons.Pane.Supply", "Weapons.About.Supply", WeaponField.SupplyCost, Certainty.Likely, each => WeaponNames.Number(each.SupplyCost)),
-            FileNumber("Weapons.Pane.ShownPerSalvo", "Weapons.About.ShownPerSalvo", "AffichageMunitionParSalve", Certainty.Likely, value => WeaponNames.Number(value)),
-            FileNumber("Weapons.Pane.EffectsBetween", "Weapons.About.EffectsBetween", "TimeBetweenTwoFx", Certainty.Likely, WeaponNames.Seconds),
+            FileNumber("Weapons.Pane.ReloadAtLeast", "Weapons.About.ReloadAtLeast", "TimeBetweenTwoSalvos_Min", Certainty.Known, SecondsOrOff),
+            FileNumber("Weapons.Pane.ReloadAtMost", "Weapons.About.ReloadAtMost", "TimeBetweenTwoSalvos_Max", Certainty.Known, SecondsOrOff),
+            Typed("Weapons.Pane.Supply", "Weapons.About.Supply", WeaponField.SupplyCost, Certainty.Known, each => WeaponNames.Number(each.SupplyCost)),
+            FileNumber("Weapons.Pane.ShownPerSalvo", "Weapons.About.ShownPerSalvo", "AffichageMunitionParSalve", Certainty.Known, value => WeaponNames.Number(value)),
+            FileNumber("Weapons.Pane.EffectsBetween", "Weapons.About.EffectsBetween", "TimeBetweenTwoFx", Certainty.Known, WeaponNames.Seconds),
         ]),
         new("use", "Weapons.Pane.Use", false,
         [
-            Switch("Weapons.Pane.FiresMoving", "Weapons.About.FiresMoving", "CanShootWhileMoving", Certainty.Likely),
-            Switch("Weapons.Pane.MustDeploy", "Weapons.About.MustDeploy", WeaponFileValues.HasDeploymentTime, Certainty.Likely),
+            Switch("Weapons.Pane.FiresMoving", "Weapons.About.FiresMoving", "CanShootWhileMoving", Certainty.Known),
+            Switch("Weapons.Pane.MustDeploy", "Weapons.About.MustDeploy", WeaponFileValues.HasDeploymentTime, Certainty.Known),
             Switch("Weapons.Pane.FirePosition", "Weapons.About.FirePosition", "CanShootOnPosition", Certainty.Known),
-            FileNumber("Weapons.Pane.SalvosAtPosition", "Weapons.About.SalvosAtPosition", "NbSalvosShootOnPosition", Certainty.Likely, value => WeaponNames.Number(value)),
+            FileNumber("Weapons.Pane.SalvosAtPosition", "Weapons.About.SalvosAtPosition", "NbSalvosShootOnPosition", Certainty.Known, value => WeaponNames.Number(value)),
             Switch("Weapons.Pane.Indirect", "Weapons.About.Indirect", "TirIndirect", Certainty.Known),
-            Switch("Weapons.Pane.Reflex", "Weapons.About.Reflex", "TirReflexe", Certainty.Unknown),
-            Switch("Weapons.Pane.NoReflexOnPriority", "Weapons.About.NoReflexOnPriority", "ReflexShotDisabledIfPriorityTarget", Certainty.Unknown),
-            Switch("Weapons.Pane.OnePerDistrict", "Weapons.About.OnePerDistrict", "TargetOnlyOneUnitInDistrict", Certainty.Unknown),
+            Switch("Weapons.Pane.Reflex", "Weapons.About.Reflex", "TirReflexe", Certainty.Known),
+            Switch("Weapons.Pane.NoReflexOnPriority", "Weapons.About.NoReflexOnPriority", "ReflexShotDisabledIfPriorityTarget", Certainty.Known),
+            Switch("Weapons.Pane.OnePerDistrict", "Weapons.About.OnePerDistrict", "TargetOnlyOneUnitInDistrict", Certainty.Known),
         ]),
         new("projectile", "Weapons.Pane.Projectile", false,
         [
-            Choice("Weapons.Pane.ProjectileKind", "Weapons.About.ProjectileKind", "ProjectileType", Certainty.Likely),
-            FileNumber("Weapons.Pane.Speed", "Weapons.About.Speed", "ProjectileSpeedGRU", Certainty.Likely, value => WeaponNames.Number(value, 0)),
-            FileNumber("Weapons.Pane.Acceleration", "Weapons.About.Acceleration", "MaxAccelerationGRU", Certainty.Likely, value => WeaponNames.Number(value, 0)),
-            FileNumber("Weapons.Pane.Arc", "Weapons.About.Arc", WeaponFileValues.Arc, Certainty.Likely, Degrees),
+            Choice("Weapons.Pane.ProjectileKind", "Weapons.About.ProjectileKind", "ProjectileType", Certainty.Known),
+            FileNumber("Weapons.Pane.Speed", "Weapons.About.Speed", "ProjectileSpeedGRU", Certainty.Known, value => WeaponNames.Number(value, 0)),
+            FileNumber("Weapons.Pane.Acceleration", "Weapons.About.Acceleration", "MaxAccelerationGRU", Certainty.Known, value => WeaponNames.Number(value, 0)),
+            FileNumber("Weapons.Pane.Arc", "Weapons.About.Arc", WeaponFileValues.Arc, Certainty.Known, Degrees),
             FileNumber("Weapons.Pane.Corrections", "Weapons.About.Corrections", "MissileTimeBetweenCorrections", Certainty.Likely, WeaponNames.Seconds),
-            Switch("Weapons.Pane.FireAndForget", "Weapons.About.FireAndForget", "IsFireAndForget", Certainty.Likely),
-            Choice("Weapons.Pane.Guidance", "Weapons.About.Guidance", "Guidance", Certainty.Likely),
+            Switch("Weapons.Pane.FireAndForget", "Weapons.About.FireAndForget", "IsFireAndForget", Certainty.Known),
+            Choice("Weapons.Pane.Guidance", "Weapons.About.Guidance", "Guidance", Certainty.Known),
             Switch("Weapons.Pane.Submunitions", "Weapons.About.Submunitions", "IsSubAmmunition", Certainty.Likely),
             Reference("Weapons.Pane.Missile", "Weapons.About.Missile", "MissileDescriptor", Certainty.Known),
-            Switch("Weapons.Pane.ShotsInOrder", "Weapons.About.ShotsInOrder", "SalvoShotsSorted", Certainty.Unknown),
-            Switch("Weapons.Pane.AffectedByNumber", "Weapons.About.AffectedByNumber", "AffecteParNombre", Certainty.Unknown),
+            Switch("Weapons.Pane.ShotsInOrder", "Weapons.About.ShotsInOrder", "SalvoShotsSorted", Certainty.Known),
+            Switch("Weapons.Pane.AffectedByNumber", "Weapons.About.AffectedByNumber", "AffecteParNombre", Certainty.Known),
         ]),
         new("detection", "Weapons.Pane.Detection", true,
         [
-            FileNumber("Weapons.Pane.Noise", "Weapons.About.Noise", "NoiseDissimulationMalus", Certainty.Likely, value => WeaponNames.Number(value)),
-            FileNumber("Weapons.Pane.ShotsToNoise", "Weapons.About.ShotsToNoise", "ShotsBeforeMaxNoise", Certainty.Likely, value => WeaponNames.Number(value)),
+            FileNumber("Weapons.Pane.Noise", "Weapons.About.Noise", "NoiseDissimulationMalus", Certainty.Known, value => WeaponNames.Number(value)),
+            FileNumber("Weapons.Pane.ShotsToNoise", "Weapons.About.ShotsToNoise", "ShotsBeforeMaxNoise", Certainty.Known, value => WeaponNames.Number(value)),
         ]),
         new("display", "Weapons.Pane.Display", true,
         [
             new("Weapons.Pane.Picture", "Weapons.About.Picture", WeaponField.Picture, "InterfaceWeaponTexture", Certainty.Known, Shape.Picture, PictureName),
             new("Weapons.Pane.Traits", "Weapons.About.Traits", WeaponField.Traits, "TraitsToken", Certainty.Known, Shape.Traits, TraitNames),
-            Choice("Weapons.Pane.ComparedWith", "Weapons.About.ComparedWith", "MinMaxCategory", Certainty.Likely),
-            Switch("Weapons.Pane.ShowsDamage", "Weapons.About.ShowsDamage", "ShowDamageInUI", Certainty.Likely),
-            Switch("Weapons.Pane.ShowsSalvoAccuracy", "Weapons.About.ShowsSalvoAccuracy", "DisplaySalveAccuracy", Certainty.Likely),
-            Choice("Weapons.Pane.EffectSize", "Weapons.About.EffectSize", "FxPower", Certainty.Likely),
-            Choice("Weapons.Pane.ImpactEffect", "Weapons.About.ImpactEffect", "ImpactHappening", Certainty.Likely),
-            Choice("Weapons.Pane.Cursor", "Weapons.About.Cursor", "WeaponCursorType", Certainty.Likely),
+            Choice("Weapons.Pane.ComparedWith", "Weapons.About.ComparedWith", "MinMaxCategory", Certainty.Known),
+            Switch("Weapons.Pane.ShowsDamage", "Weapons.About.ShowsDamage", "ShowDamageInUI", Certainty.Known),
+            Switch("Weapons.Pane.ShowsSalvoAccuracy", "Weapons.About.ShowsSalvoAccuracy", "DisplaySalveAccuracy", Certainty.Known),
+            Choice("Weapons.Pane.EffectSize", "Weapons.About.EffectSize", "FxPower", Certainty.Known),
+            Choice("Weapons.Pane.ImpactEffect", "Weapons.About.ImpactEffect", "ImpactHappening", Certainty.Known),
+            Choice("Weapons.Pane.Cursor", "Weapons.About.Cursor", "WeaponCursorType", Certainty.Known),
         ]),
     ];
 
@@ -361,7 +361,8 @@ public static partial class WeaponPane
         return cell;
     }
 
-    /// <summary>A value's name's tooltip: what it does in the game, its name in the file in the code font (when it has one), and how sure that is.</summary>
+    /// <summary>A value's name's tooltip: what it does in the game, its name in the file in the code font (when it has one), and, when it
+    /// isn't confirmed, how sure that is.</summary>
     private static StackPanel AboutTip(PaneValue value, string? propertyName)
     {
         var about = new TextBlock { Text = Texts.Get(value.AboutKey), TextWrapping = TextWrapping.Wrap, MaxWidth = 300 };
@@ -369,15 +370,13 @@ public static partial class WeaponPane
         if (propertyName is null) property.Visibility = Visibility.Collapsed;
         property.SetResourceReference(TextBlock.FontFamilyProperty, "mono");
         property.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        string sureKey = value.Certainty switch
-        {
-            Certainty.Likely => "Weapons.Certainty.Likely",
-            Certainty.Unknown => "Weapons.Certainty.Unknown",
-            _ => "Weapons.Certainty.Known",
-        };
+        var tip = new StackPanel { Children = { about, property } };
+        if (value.Certainty == Certainty.Known) return tip;
+        string sureKey = value.Certainty == Certainty.Likely ? "Weapons.Certainty.Likely" : "Weapons.Certainty.Unknown";
         var sure = new TextBlock { Text = Texts.Get(sureKey), FontSize = 10.5, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap, MaxWidth = 300 };
         sure.SetResourceReference(TextBlock.ForegroundProperty, value.Certainty == Certainty.Unknown ? "caution" : "muted");
-        return new StackPanel { Children = { about, property, sure } };
+        tip.Children.Add(sure);
+        return tip;
     }
 
     // ---- changing values ----

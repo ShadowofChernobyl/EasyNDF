@@ -35,6 +35,20 @@ public static class GameInstall
     }
 
     /// <summary>
+    /// A Steam tool's folder, such as "Steel Division 2 Modding Assets": under steamapps\common in Steam's own folder,
+    /// else in any library Steam lists. Null when it is not found.
+    /// </summary>
+    public static string? FindTool(string folderName, IEnumerable<string>? steamFolders = null)
+    {
+        foreach (string library in SteamLibraries(steamFolders ?? DefaultSteamFolders()))
+        {
+            string candidate = Path.Combine(library, "steamapps", "common", folderName);
+            if (Directory.Exists(candidate)) return candidate;
+        }
+        return null;
+    }
+
+    /// <summary>
     /// The mods in a game's Mods folder, by name: every folder with a GameData folder in it. ModData, the game's own,
     /// is not a mod. Mods from the Steam Workshop are elsewhere and are not listed: EasyNDF is for mods being made.
     /// </summary>

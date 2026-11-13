@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Editor;
 using EasyNdf.App.Files;
 using EasyNdf.App.Rules;
@@ -56,7 +57,7 @@ public partial class EditorPage
         // a division file can have the Armory presets' rules without a rule set of its own
         if (FileRunner.RulesToRun(entry).Count == 0)
         {
-            Say(Texts.Get("Editor.Export.NoPreset", ("file", entry.Name)), "caution");
+            Say(Texts.Get("Editor.Export.NoPreset", ("file", entry.Name)), NoticeKind.Caution);
             return;
         }
 
@@ -72,7 +73,7 @@ public partial class EditorPage
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
 
-        Say(Texts.Get("Editor.Working"));
+        Say(Texts.Get("Editor.Working"), NoticeKind.Working);
         int exporting = loading != 0 ? loading
             : StartLoading(Texts.Get("Editor.Loading.Exporting", ("file", entry.Name)), RulesNameOf(entry), Texts.Get("Editor.Loading.Rules"), Texts.Get("Editor.Loading.ShowingExport"));
         try
@@ -81,6 +82,7 @@ public partial class EditorPage
         }
         finally
         {
+            Notices.Say("");
             if (loading == 0) EndLoading(exporting);
         }
     }
@@ -97,7 +99,7 @@ public partial class EditorPage
         }
         catch (Exception error)
         {
-            Say(Texts.Get("Editor.Export.Failed", ("problem", error.Message)), "warn");
+            Say(Texts.Get("Editor.Export.Failed", ("problem", error.Message)), NoticeKind.Problem);
             return;
         }
         if (!ReferenceEquals(shown, file)) return;
@@ -150,7 +152,7 @@ public partial class EditorPage
             if (shown.Entry is { LastRun: null } notRun)
             {
                 ChangesButton.IsChecked = false;
-                await Messages.Tell(Texts.Get("Editor.Export.RunFirst", ("file", notRun.Name)));
+                await Messages.Tell(Texts.Get("Editor.Export.RunFirst", ("file", notRun.Name)), DialogIcon.Error);
                 return;
             }
         }

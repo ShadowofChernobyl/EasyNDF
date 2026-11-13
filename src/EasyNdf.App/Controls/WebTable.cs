@@ -51,21 +51,6 @@ public sealed class WebTable : Grid
         return tableRow;
     }
 
-    /// <summary>
-    /// Shares the width out by other texts too: a <see cref="LongTable"/> uses a table with headings only as its heading
-    /// row, sized by all of its rows.
-    /// </summary>
-    internal void WidenFor(IEnumerable<IReadOnlyList<string>> rows)
-    {
-        foreach (IReadOnlyList<string> texts in rows)
-            for (int column = 0; column < texts.Count; column++)
-                widest[column] = Math.Max(widest[column], Math.Min(TextWidth(texts[column], codeColumns[column]), WidestCellText(codeColumns[column])));
-        ShareWidths();
-    }
-
-    /// <summary>Each column's share of the width, as the columns are sized now.</summary>
-    internal IReadOnlyList<GridLength> ColumnWidths => [.. ColumnDefinitions.Select(c => c.Width)];
-
     /// <summary>Each column's share of the width: its longest text, with the 7 pixels of padding each side.</summary>
     private void ShareWidths()
     {

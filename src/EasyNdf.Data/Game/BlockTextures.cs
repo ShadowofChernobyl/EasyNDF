@@ -2,7 +2,8 @@ namespace EasyNdf.Data.Game;
 
 /// <summary>
 /// Block-compressed textures (DXT1 and DXT5, also called BC1 and BC3): each 4×4 block of pixels is stored as two
-/// colours and a 2-bit choice per pixel between them; DXT5 adds an alpha block before each colour block.
+/// colours and a 2-bit choice per pixel between them; DXT5 adds an alpha block before each colour block. BC5, which 3D
+/// models' normal maps use, keeps two channels, each stored as DXT5's alpha block.
 /// </summary>
 public static class BlockTextures
 {
@@ -45,6 +46,44 @@ public static class BlockTextures
                     rgba[to + 1] = colours[choice][1];
                     rgba[to + 2] = colours[choice][2];
                     rgba[to + 3] = hasAlphaBlock ? alphas[pixel] : (byte)(lastIsClear && choice == 3 ? 0 : 255);
+                }
+            }
+        }
+        return rgba;
+    }
+
+    /// <summary>
+    /// The pixels of one part of a BC5 picture (two channels, such as a 3D model's normal map), in the order red, green,
+    /// blue, alpha: each 4×4 block holds a red block then a green block, each stored as a DXT5 alpha block is. Blue and
+    /// alpha are left full; a normal map's third value is worked out from the other two where it is used.
+    /// </summary>
+    /// <param name="blocks">The whole picture's blocks.</param>
+    /// <param name="width">The whole picture's width.</param>
+    /// <param name="height">The whole picture's height.</param>
+    /// <param name="left">The part's left edge.</param>
+    /// <param name="top">The part's top edge.</param>
+    /// <param name="partWidth">The part's width.</param>
+    /// <param name="partHeight">The part's height.</param>
+    public static byte[] DecodeTwoChannelPart(byte[] blocks, int width, int height, int left, int top, int partWidth, int partHeight)
+    {
+        var rgba = new byte[partWidth * partHeight * 4];
+        int blocksAcross = Math.Max(1, (width + 3) / 4);
+        int right = Math.Min(width, left + partWidth), bottom = Math.Min(height, top + partHeight);
+        for (int blockY = top / 4; blockY * 4 < bottom; blockY++)
+        {
+            for (int blockX = left / 4; blockX * 4 < right; blockX++)
+            {
+                int at = (blockY * blocksAcross + blockX) * 16;
+                byte[] reds = AlphaBlock(blocks, at), greens = AlphaBlock(blocks, at + 8);
+                for (int pixel = 0; pixel < 16; pixel++)
+                {
+                    int x = blockX * 4 + pixel % 4, y = blockY * 4 + pixel / 4;
+                    if (x < left || y < top || x >= right || y >= bottom) continue;
+                    int to = ((y - top) * partWidth + (x - left)) * 4;
+                    rgba[to] = reds[pixel];
+                    rgba[to + 1] = greens[pixel];
+                    rgba[to + 2] = 255;
+                    rgba[to + 3] = 255;
                 }
             }
         }

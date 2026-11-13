@@ -111,6 +111,9 @@ public interface IUnitActions
     /// </summary>
     FrameworkElement? LoadoutEditorFor(Unit unit) => null;
 
+    /// <summary>The ammunition of the weapon the units shown are narrowed to, which their weapons mark; null for none.</summary>
+    string? MarkedWeapon => null;
+
     /// <summary>Whether a unit is on the game's first side (NATO, the Allies), for its colour.</summary>
     bool IsFirstSide(Unit unit) => unit.Side == UnitNames.SidesOf(Game)[0];
 }
