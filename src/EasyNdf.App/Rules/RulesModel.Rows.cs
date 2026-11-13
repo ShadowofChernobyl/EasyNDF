@@ -144,7 +144,7 @@ public sealed partial class RulesModel
     /// <summary>The + button and "Create New Condition": a new row below the selected one (or at the end), selected. Returns its place.</summary>
     public int AddRow(string list)
     {
-        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused")); return -1; }
+        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused"), NoticeKind.Caution); return -1; }
         if (RowsOf(list) is not JsonArray rows) return -1;
         IReadOnlyList<int> picked = SelectedRowsOf(list);
         int at = picked.Count > 0 ? picked[^1] + 1 : rows.Count;
@@ -169,10 +169,10 @@ public sealed partial class RulesModel
     /// </summary>
     public void MoveRows(string list, int direction)
     {
-        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused")); return; }
+        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused"), NoticeKind.Caution); return; }
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
-        if (rows is null || picked.Count == 0) { Say(SelectRowsFirst); return; }
+        if (rows is null || picked.Count == 0) { Say(SelectRowsFirst, NoticeKind.Caution); return; }
         var placed = new HashSet<int>();
         int anchor = rowAnchor[list];
         foreach (int place in direction < 0 ? picked : picked.Reverse())
@@ -204,10 +204,10 @@ public sealed partial class RulesModel
     /// <summary>Delete in a list: the selected rows go, without asking.</summary>
     public void DeleteRows(string list)
     {
-        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused")); return; }
+        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused"), NoticeKind.Caution); return; }
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
-        if (rows is null || picked.Count == 0) { Say(SelectRowsFirst); return; }
+        if (rows is null || picked.Count == 0) { Say(SelectRowsFirst, NoticeKind.Caution); return; }
         foreach (int place in picked.Reverse()) rows.RemoveAt(place);
         selectedRows[list].Clear();
         rowAnchor[list] = -1;
@@ -218,7 +218,7 @@ public sealed partial class RulesModel
     /// <summary>"Duplicate" in a list's menu: copies of the selected rows below the last of them, selected.</summary>
     public void DuplicateRows(string list)
     {
-        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused")); return; }
+        if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused"), NoticeKind.Caution); return; }
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
         if (rows is null || picked.Count == 0) return;
@@ -236,7 +236,7 @@ public sealed partial class RulesModel
     {
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
-        if (rows is null || picked.Count == 0) { Say(SelectRowsFirst); return null; }
+        if (rows is null || picked.Count == 0) { Say(SelectRowsFirst, NoticeKind.Caution); return null; }
         var items = new JsonArray();
         foreach (int place in picked)
         {
@@ -255,11 +255,11 @@ public sealed partial class RulesModel
     private List<string>? PasteRows(List<JsonObject> conditions, List<JsonObject> actions)
     {
         var done = new List<string>();
-        if (OpenRule is not JsonObject rule) { Say(Texts.Get("Rules.Paste.SelectRule")); return null; }
+        if (OpenRule is not JsonObject rule) { Say(Texts.Get("Rules.Paste.SelectRule"), NoticeKind.Caution); return null; }
         string kind = (string?)rule["Kind"] ?? "Edit";
         if ((conditions.Count > 0 && !KindsWithConditions.Contains(kind)) || (actions.Count > 0 && !KindsWithActions.Contains(kind)))
         {
-            Say(conditions.Count > 0 && !KindsWithConditions.Contains(kind) ? Texts.Get("Rules.Paste.NoConditionsHere") : Texts.Get("Rules.Paste.NoActionsHere"));
+            Say(conditions.Count > 0 && !KindsWithConditions.Contains(kind) ? Texts.Get("Rules.Paste.NoConditionsHere") : Texts.Get("Rules.Paste.NoActionsHere"), NoticeKind.Caution);
             return null;
         }
         if (conditions.Count > 0)

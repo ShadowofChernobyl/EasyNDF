@@ -39,6 +39,8 @@ public partial class UnitsPage
         part = Enum.TryParse((string?)AppData.Current.State["armoryPart"], out ArmoryPart remembered) ? remembered : ArmoryPart.Units;
         BattlegroupScroller.SizeChanged += BattlegroupResized;
         HoldCardsDuringResizes();
+        // Tab reaches the weapon's name in the heading, Enter or Space follows it as a click does
+        Units.KeyPick.Make(UsedWeaponName, ShowUsedWeapon);
         ShowPartButtons();
     }
 
@@ -155,10 +157,16 @@ public partial class UnitsPage
 
     /// <summary>
     /// Show in Units, from the Unit pane: the Units sub-tab, on the unit's type, the unit still selected. A filter that
-    /// hides it (the search, a nation, a role) is left as it is: the user set it.
+    /// hides it (the search, a nation, a role) is left as it is: the user set it. A weapon it does not carry lets go,
+    /// as that filter may have been set long before, on another sub-tab.
     /// </summary>
     public void ShowInUnits(Data.Units.Unit unit)
     {
+        if (usedWeapon is not null && unit.Weapons.All(weapon => weapon.Ammunition != usedWeapon))
+        {
+            LetGoOfUsedWeapon();
+            ShownThingsChanged();
+        }
         // another type tab: the views kept for a sub-tab switch alone were drawn for the type shown before, so they are
         // drawn again (a new helicopter would otherwise be selected while the Tanks tab still shows)
         if (filter.Factory != unit.Factory) ShownThingsChanged();

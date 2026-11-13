@@ -47,6 +47,28 @@ public sealed class LinesPanel : VirtualizingPanel, IScrollInfo
     private Size viewport, extent;
     private double offset;
 
+    /// <summary>
+    /// The lines laid out at the last measure, while a bar or the window's edge is dragged. Tuned for speed: during a drag only
+    /// the lines in sight are laid out, as each step changes every line's width; those kept out of sight stay as they
+    /// were, and nothing is let go of, until the drag ends. Keep it that way when tidying.
+    /// </summary>
+    private (int First, int Last)? laidOutInDrag;
+
+    /// <summary>Where a line out of sight is put during a drag.</summary>
+    private const double OutOfSight = -100000;
+
+    /// <summary>Follows the drags: when one ends, every line is laid out at the width there is now.</summary>
+    public LinesPanel()
+    {
+        Action dragEnded = () =>
+        {
+            laidOutInDrag = null;
+            InvalidateMeasure();
+        };
+        Loaded += (_, _) => LayoutDrag.Ended += dragEnded;
+        Unloaded += (_, _) => LayoutDrag.Ended -= dragEnded;
+    }
+
     protected override Size MeasureOverride(Size available)
     {
         // the generator is ready only once the children have been asked for
@@ -73,9 +95,16 @@ public sealed class LinesPanel : VirtualizingPanel, IScrollInfo
         double viewportHeight = double.IsInfinity(available.Height) ? tops[^1] : available.Height;
         offset = Math.Clamp(offset, 0, Math.Max(0, tops[^1] - viewportHeight));
         // the lines in sight, and half a screen above and below, so a short scroll shows lines already made
-        int first = LineAt(offset - viewportHeight / 2, items.Count);
-        int last = LineAt(offset + viewportHeight * 1.5, items.Count);
-        LetGoOfLinesOutside(first, last, generator, children);
+        bool dragging = LayoutDrag.IsUnderWay;
+        double spare = dragging ? 0 : viewportHeight / 2;
+        int first = LineAt(offset - spare, items.Count);
+        int last = LineAt(offset + viewportHeight + spare, items.Count);
+        if (dragging) laidOutInDrag = (first, last);
+        else
+        {
+            laidOutInDrag = null;
+            LetGoOfLinesOutside(first, last, generator, children);
+        }
         bool heightsChanged = false;
         for (int index = first; index <= last && index < items.Count; index++)
         {
@@ -104,6 +133,11 @@ public sealed class LinesPanel : VirtualizingPanel, IScrollInfo
         {
             int index = generator.IndexFromGeneratorPosition(new GeneratorPosition(at, 0));
             if (index < 0 || index + 1 >= tops.Length) continue;
+            if (laidOutInDrag is var (first, last) && (index < first || index > last))
+            {
+                children[at].Arrange(new Rect(new Point(0, OutOfSight), children[at].RenderSize));
+                continue;
+            }
             children[at].Arrange(new Rect(0, tops[index] - offset, finalSize.Width, tops[index + 1] - tops[index]));
         }
         return finalSize;

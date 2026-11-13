@@ -11,6 +11,17 @@ public static class WindowPlace
 {
     private static bool IsOn => AppData.Current.Settings["rememberWindow"]?.GetValue<bool>() != false;
 
+    /// <summary>
+    /// The window's size the first time: 80% of the screen, so on a screen 1920 wide the panes have room side by side, but
+    /// never under its first size, nor larger than the screen.
+    /// </summary>
+    public static void SizeForFirstTime(Window window)
+    {
+        Rect screen = SystemParameters.WorkArea;
+        window.Width = Math.Min(screen.Width, Math.Max(window.Width, Math.Round(screen.Width * 0.8)));
+        window.Height = Math.Min(screen.Height, Math.Max(window.Height, Math.Round(screen.Height * 0.8)));
+    }
+
     /// <summary>Keeps the window's place in the app's state; the caller saves the state.</summary>
     public static void Keep(Window window)
     {

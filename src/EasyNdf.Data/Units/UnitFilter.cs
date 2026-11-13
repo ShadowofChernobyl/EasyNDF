@@ -2,7 +2,7 @@ namespace EasyNdf.Data.Units;
 
 /// <summary>
 /// The Units tab's filters: the search text, the side, the nations ticked, the role, the division chosen in the
-/// division list, "Only units in a division", "Only modded units" and the factory (the row of tabs above the list). A unit is shown when it
+/// division list, the weapon chosen from the Weapons sub-tab, "Only units in a division", "Only modded units" and the factory (the row of tabs above the list). A unit is shown when it
 /// passes all of them.
 /// </summary>
 public sealed class UnitFilter
@@ -36,6 +36,9 @@ public sealed class UnitFilter
     /// </summary>
     public IReadOnlySet<string>? InDivision { get; set; }
 
+    /// <summary>The units that carry the weapon chosen from the Weapons sub-tab, by descriptor; null for all units.</summary>
+    public IReadOnlySet<string>? Carrying { get; set; }
+
     /// <summary>Only units that are in at least one multiplayer division.</summary>
     public bool OnlyInDivision { get; set; }
 
@@ -56,6 +59,7 @@ public sealed class UnitFilter
         if (Role != "" && unit.Role != Role) return false;
         if (InDivision is not null && !InDivision.Contains(unit.Descriptor)) return false;
         if (InDivision is null && OnlyInDivision && unit.Divisions.Count == 0) return false;
+        if (Carrying is not null && !Carrying.Contains(unit.Descriptor)) return false;
         if (OnlyModded && VanillaUnits.Contains(unit.Descriptor)) return false;
         if (ignoring == Ignoring.Nothing && Factory != "" && unit.Factory != Factory) return false;
         if (!Typed.IsIn(unit.Name, Text) && !Typed.IsIn(unit.Descriptor, Text)) return false;

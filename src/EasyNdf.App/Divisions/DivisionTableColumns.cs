@@ -69,12 +69,18 @@ public static class DivisionTableColumns
     internal static int? ReadWholeNumber(string typed, int least) =>
         int.TryParse(typed, NumberStyles.Integer, Texts.Catalog.Culture, out int number) && number >= least ? number : null;
 
-    /// <summary>The units in each card (NumberOfUnitInPack): a whole number, 1 or more.</summary>
+    /// <summary>
+    /// The units in each card (NumberOfUnitInPack): a whole number, 1 or more. A veterancy level they would leave with no
+    /// unit is raised to the least share that holds one.
+    /// </summary>
     private static EditBox UnitsPerCardBox(DivisionUnit rule, Func<DivisionUnit, bool> keep) =>
         new(Texts.Number(rule.UnitsPerCard ?? 0), WholeNumberWidth, typed =>
         {
             if (ReadWholeNumber(typed, least: 1) is not int perCard) return false;
-            return keep(rule with { UnitsPerCard = perCard });
+            List<double> shares = [.. rule.VeterancyMultipliers.Select(share => DivisionNames.HoldingAUnit(perCard, share))];
+            return keep(shares.SequenceEqual(rule.VeterancyMultipliers)
+                ? rule with { UnitsPerCard = perCard }
+                : rule with { UnitsPerCard = perCard, VeterancyMultipliers = shares });
         });
 
     /// <summary>
@@ -92,7 +98,8 @@ public static class DivisionTableColumns
             {
                 if (ReadShare(typed) is not double share) return false;
                 List<double> shares = [.. rule.VeterancyMultipliers];
-                shares[changed] = share;
+                // in WARNO, a share that would leave the card with no unit is raised to the least that holds one
+                shares[changed] = rule.UnitsPerCard is int perCard ? DivisionNames.HoldingAUnit(perCard, share) : share;
                 return keep(rule with { VeterancyMultipliers = shares });
             })
             {
@@ -103,6 +110,13 @@ public static class DivisionTableColumns
             };
             // a level not offered is a dim 0, as in the Division pane
             if (rule.VeterancyMultipliers[level] == 0) box.SetResourceReference(Control.ForegroundProperty, "muted");
+            // a WARNO card left with no unit: the game won't generate the mod
+            if (rule.UnitsPerCard is int perCard && DivisionNames.IsEmptyPack(perCard, rule.VeterancyMultipliers[level]))
+            {
+                box.SetResourceReference(Control.ForegroundProperty, "warn");
+                box.ToolTip = Texts.Get("Divisions.Veterancy.EmptyPack.Tip", ("level", Texts.Number(level + 1)), ("units", Texts.Number(perCard)),
+                    ("share", Share(rule.VeterancyMultipliers[level])));
+            }
             boxes.Children.Add(box);
         }
         return boxes;

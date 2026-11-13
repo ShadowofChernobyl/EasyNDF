@@ -22,7 +22,8 @@ public static class WeaponKinds
 {
     /// <summary>
     /// A weapon's sort. Its name is looked at first ("SMOKE", "Rocket", "Roquette"), then its ammunition (WARNO's
-    /// missiles are in AmmunitionMissiles.ndf) and its damage family ("ap", "missile", "Balle"...).
+    /// missiles are in AmmunitionMissiles.ndf) and its damage family ("ap", "missile", "Balle"...). A gun's shell in
+    /// WARNO's Ammunition.ndf is no missile, though a HEAT shell's damage family is "ap_missile": it is anti-armour.
     /// </summary>
     public static WeaponKind Of(UnitWeapon weapon) => Of(weapon.Name, weapon.DamageFamily, weapon.AmmunitionFile, weapon.Missile);
 
@@ -34,10 +35,11 @@ public static class WeaponKinds
         if (name.Contains("smoke", StringComparison.Ordinal)) return WeaponKind.Smoke;
         if (name.Contains("rocket", StringComparison.Ordinal) || name.Contains("roquette", StringComparison.Ordinal) || family.Contains("roquette", StringComparison.Ordinal))
             return WeaponKind.Rocket;
-        if (ammunitionFile == "AmmunitionMissiles.ndf" || missile is not null || family.Contains("missile", StringComparison.Ordinal)
+        bool shell = ammunitionFile == "Ammunition.ndf" && missile is null;
+        if (ammunitionFile == "AmmunitionMissiles.ndf" || missile is not null || (!shell && family.Contains("missile", StringComparison.Ordinal))
             || name.StartsWith("sam ", StringComparison.Ordinal) || name.StartsWith("atgm", StringComparison.Ordinal))
             return WeaponKind.Missile;
-        if (family == "ap") return WeaponKind.AntiArmor;
+        if (family is "ap" or "ap_missile") return WeaponKind.AntiArmor;
         if (family.Contains("balle", StringComparison.Ordinal) || family == "cac") return WeaponKind.SmallArms;
         return WeaponKind.HighExplosive;
     }

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
 
 namespace EasyNdf.App;
@@ -19,6 +20,11 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
         VersionTag.Content = "v" + AppVersion;
+        Notifications.RecentChanged += ShowNoticeCount;
+        PreviewMouseDown += CloseNoticesOnClickElsewhere;
+        // the notifications stay above the usage readout
+        Readout.SizeChanged += (_, _) => Notifications.KeepAbove(Readout.ActualHeight);
+        Readout.IsVisibleChanged += (_, _) => Notifications.KeepAbove(Readout.IsVisible ? Readout.ActualHeight : 0);
         // the rule set list says how many listed files each rule set applies to
         RulesTab.FilesUsing = ruleSet => FilesTab.Model.Entries.Count(entry => Files.FileRunner.AppliesTo(ruleSet, entry));
         // a mod that is on whose game has no file on the Files tab is dimmed on the Mods tab
@@ -69,7 +75,7 @@ public partial class MainView : UserControl
         SettingChanged += key => { if (key is "panesAuto" or "panesSide" or "") Controls.PaneArrangement.Update(); };
         SettingChanged += key => { if (key == "panesScale") Controls.PaneArrangement.Update(alwaysTell: true); };
         // the scope lines are drawn behind the text, which is not redrawn by itself
-        SettingChanged += key => { if (key is "indentGuides" or "") EditorTab.Text.TextArea.TextView.InvalidateLayer(ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background); };
+        SettingChanged += key => { if (key is "indentGuides" or "") EditorTab.RedrawIndentGuides(); };
         SettingChanged += key => { if (key is "lineNumbers" or "wordWrap" or "") EditorTab.ApplyViewSettings(); };
         SettingChanged += key => { if (key is "treeShowsAll" or "") _ = EditorTab.RebuildTree(); };
         SettingChanged += key => { if (key is "uiScale" or "") ApplyScale(); };
@@ -197,15 +203,30 @@ public partial class MainView : UserControl
     /// <summary>The Redo button, Ctrl+Y and Ctrl+Shift+Z.</summary>
     public void Redo() => Tell(History.Redo());
 
-    /// <summary>
-    /// Says what Undo or Redo did under the Rules tab's buttons, above the file list too when something changed or
-    /// the Files tab is showing, and at the foot of the Armory when it is showing.
-    /// </summary>
-    private void Tell(UndoResult result)
+    /// <summary>Gives a notification of what Undo or Redo did.</summary>
+    private static void Tell(UndoResult result) => Notices.Say(result.Message, result.IsDone ? NoticeKind.Done : NoticeKind.Caution);
+
+    /// <summary>The button on the tab row opens or closes the recent notifications, under it at the right.</summary>
+    private void NoticesClicked(object sender, RoutedEventArgs e)
     {
-        RulesTab.Model.Say(result.Message);
-        if (result.IsDone || Tabs.SelectedItem == FilesTabItem) FilesTab.Model.Say(result.Message);
-        if (Tabs.SelectedItem == UnitsTabItem) UnitsTab.SayForAMoment(result.Message);
+        if (Notifications.IsRecentOpen) { Notifications.CloseRecent(); return; }
+        Point corner = NoticesButton.TranslatePoint(new Point(NoticesButton.ActualWidth, NoticesButton.ActualHeight), Notifications);
+        Notifications.OpenRecent(corner.Y + 2, Notifications.ActualWidth - corner.X);
+    }
+
+    /// <summary>The button shows how many notifications there are to look back on.</summary>
+    private void ShowNoticeCount()
+    {
+        int count = Notices.Recent.Count;
+        NoticeCount.Text = count == 0 ? "" : Text.Texts.Number(count);
+        NoticeCount.Visibility = count == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    /// <summary>A click anywhere else closes the recent notifications.</summary>
+    private void CloseNoticesOnClickElsewhere(object sender, MouseButtonEventArgs e)
+    {
+        if (!Notifications.IsRecentOpen || Notifications.IsOnRecent(e.GetPosition(Notifications)) || NoticesButton.IsMouseOver) return;
+        Notifications.CloseRecent();
     }
 
     /// <summary>
@@ -264,7 +285,8 @@ public partial class MainView : UserControl
     public bool IsTitleBarAt(Point point)
     {
         if (point.Y < 0 || point.Y >= TitleRow.ActualHeight) return false;
-        for (DependencyObject? hit = InputHitTest(point) as DependencyObject; hit is not null; hit = VisualTreeHelper.GetParent(hit))
+        // what is there can be a piece of a text, which is not a Visual
+        for (DependencyObject? hit = InputHitTest(point) as DependencyObject; hit is not null; hit = hit is Visual ? VisualTreeHelper.GetParent(hit) : LogicalTreeHelper.GetParent(hit))
             if (hit is ButtonBase) return false;
         return true;
     }
@@ -289,7 +311,7 @@ public partial class MainView : UserControl
         List<string> lost = WhatClosingLoses();
         if (lost.Count == 0) return true;
         string message = Texts.Get("Main.Close.Ask") + Environment.NewLine + string.Join(Environment.NewLine, lost.Select(line => "• " + line));
-        return await Messages.Confirm(message, Texts.Get("Main.Close.Anyway"));
+        return await Messages.Confirm(message, Texts.Get("Main.Close.Anyway"), DialogIcon.Warning);
     }
 
     /// <summary>

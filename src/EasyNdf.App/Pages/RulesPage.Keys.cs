@@ -171,7 +171,7 @@ public partial class RulesPage
     /// Scrolls a list so a line shows. The rule list makes only the lines in view, so a line not made yet is brought in
     /// by its panel, which makes it.
     /// </summary>
-    private static void BringLineIntoView(System.Windows.Controls.ItemsControl list, int index)
+    internal static void BringLineIntoView(System.Windows.Controls.ItemsControl list, int index)
     {
         list.UpdateLayout();
         if (list.ItemContainerGenerator.ContainerFromIndex(index) is FrameworkElement line) { line.BringIntoView(); return; }
@@ -306,7 +306,7 @@ public partial class RulesPage
         else if (AppData.Current.Settings["confirmDelete"]?.GetValue<bool>() != false)
         {
             string question = picked.Count == 1 ? Texts.Get("Rules.Rule.DeleteAsk", ("rule", Model.RuleName(picked[0]))) : Texts.Get("Rules.Rule.DeleteAskSeveral", ("count", picked.Count));
-            if (!await Messages.Confirm(question, Texts.Get("Rules.Delete"))) return false;
+            if (!await Messages.Confirm(question, Texts.Get("Rules.Delete"), DialogIcon.Warning)) return false;
         }
         List<int> places = [.. rules.Select(rule => Model.Rules.IndexOf(rule)).Where(place => place >= 0).Order()];
         if (places.Count == 0) return false;
@@ -326,10 +326,10 @@ public partial class RulesPage
         MainView view = MainView.Of(this);
         if (!view.UnitsTab.CanMakeEditable)
         {
-            await Messages.Tell(view.UnitsTab.ArmoryRulesBlockedReason ?? Texts.Get("Rules.Locked.ArmoryNotRead"));
+            await Messages.Tell(view.UnitsTab.ArmoryRulesBlockedReason ?? Texts.Get("Rules.Locked.ArmoryNotRead"), DialogIcon.Error);
             return false;
         }
-        if (!await Messages.Confirm(Texts.Get("Rules.Locked.DeleteAsk"), Texts.Get("Common.Menu.Delete"))) return false;
+        if (!await Messages.Confirm(Texts.Get("Rules.Locked.DeleteAsk"), Texts.Get("Common.Menu.Delete"), DialogIcon.Warning)) return false;
         List<int> places = [.. otherRules.Select(rule => Model.Rules.IndexOf(rule)).Where(place => place >= 0).Order()];
         if (places.Count > 0) Model.DeleteRules(places);
         view.UnitsTab.TakeBack(armoryRules);
@@ -343,7 +343,7 @@ public partial class RulesPage
     private async Task<bool> MayDeleteGroupHeading()
     {
         if (groupHeadingsNeedNoQuestion) return true;
-        DialogAnswer answer = await Messages.Ask(Texts.Get("Rules.Group.DeleteAsk"), new DialogOptions { Ok = Texts.Get("Common.Menu.Delete"), CheckText = Texts.Get("Rules.Group.DoNotAskAgain") });
+        DialogAnswer answer = await Messages.Ask(Texts.Get("Rules.Group.DeleteAsk"), new DialogOptions { Icon = DialogIcon.Question, Ok = Texts.Get("Common.Menu.Delete"), CheckText = Texts.Get("Rules.Group.DoNotAskAgain") });
         if (answer.Choice != DialogChoice.Ok) return false;
         if (answer.IsChecked) groupHeadingsNeedNoQuestion = true;
         return true;
@@ -353,7 +353,7 @@ public partial class RulesPage
     private async Task CutRules()
     {
         IReadOnlyList<int> picked = Model.SelectedRules;
-        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Rule.SelectToCut")); return; }
+        if (picked.Count == 0) { Model.Say(Texts.Get("Rules.Rule.SelectToCut"), NoticeKind.Caution); return; }
         int count = picked.Count;
         // nothing is deleted when the copy failed, as when another program has the clipboard open
         if (!CopyRules()) return;

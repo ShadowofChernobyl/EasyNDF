@@ -1,0 +1,26 @@
+<!--
+  The notifications, over everything else: popups at the bottom right that fade away, and the list of the recent ones under
+  their button. Only those take clicks: the rest of this layer lets them through to the app.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.NoticeLayer"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls">
+    <Grid>
+        <StackPanel x:Name="Toasts" Width="360" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10" />
+        <controls:Bevel x:Name="RecentBox" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                        Width="420" MaxHeight="320" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="Collapsed">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top" Margin="8,5">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource SmallButton}" Content="{t:Text Main.Notices.Close}" ToolTip="{t:Text Main.Notices.Close.Tip}" Click="CloseRecentClicked" />
+                    <TextBlock Text="{t:Text Main.Notices.Title}" Foreground="{DynamicResource accent}" FontWeight="Bold" VerticalAlignment="Center" />
+                </DockPanel>
+                <TextBlock x:Name="RecentEmpty" DockPanel.Dock="Top" Style="{StaticResource Note}" Margin="8,0,8,8" Text="{t:Text Main.Notices.None}" />
+                <ScrollViewer x:Name="RecentScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" Background="{DynamicResource well}">
+                    <StackPanel x:Name="RecentRows" />
+                </ScrollViewer>
+            </DockPanel>
+        </controls:Bevel>
+    </Grid>
+</UserControl>

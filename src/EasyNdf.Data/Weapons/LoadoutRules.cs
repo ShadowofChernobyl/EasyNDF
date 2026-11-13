@@ -345,13 +345,23 @@ public static class LoadoutRules
     /// <param name="loadout">The loadout the changes are made on.</param>
     /// <param name="changes">The unit's changes to it.</param>
     /// <param name="game">The game the rules are for; WARNO when not given.</param>
-    public static List<LoadoutAction> ActionsFor(Loadout loadout, IReadOnlyList<LoadoutChange> changes, GameTitle? game = null)
+    /// <param name="mountValues">
+    /// What a mounted weapon of a weapon is given besides its ammunition, by the weapon's descriptor: from WARNO v210942
+    /// on, its name, text keys, picture and traits (<see cref="Weapon.MountValues"/>). A weapon put in a place, or added,
+    /// is given them, so it shows as itself. None when not given.
+    /// </param>
+    public static List<LoadoutAction> ActionsFor(Loadout loadout, IReadOnlyList<LoadoutChange> changes, GameTitle? game = null,
+        Func<string, IReadOnlyList<(string Property, string Value)>>? mountValues = null)
     {
         var actions = new List<LoadoutAction>();
         foreach (LoadoutChange remove in changes.Where(change => change.Kind == LoadoutChange.Remove && change.MountText != ""))
             actions.Add(new LoadoutAction(MountListPath(remove.Turret), "Remove [array]", remove.MountText));
         foreach (LoadoutChange swap in LastOfEachPlace(changes, LoadoutChange.Swap))
+        {
             actions.Add(new LoadoutAction(MountPath(changes, swap) + Separator + "Ammunition", SetTo, AmmunitionReference(swap.Ammunition, game)));
+            foreach ((string property, string value) in mountValues?.Invoke(swap.Ammunition) ?? [])
+                actions.Add(new LoadoutAction(MountPath(changes, swap) + Separator + property, SetTo, value));
+        }
         // a game with no number of a weapon at one place gets none written
         IEnumerable<LoadoutChange> counts = Writes(game ?? GameTitle.Warno, LoadoutChange.Count) ? LastOfEachPlace(changes, LoadoutChange.Count) : [];
         foreach (LoadoutChange count in counts)
@@ -374,7 +384,8 @@ public static class LoadoutRules
             // Steel Division 2 keeps an entry of SalvoIsMainSalvo for each box in use
             if (loadout.MainSalvoCount is not null)
                 for (; mainSalvos <= box; mainSalvos++) actions.Add(new LoadoutAction("SalvoIsMainSalvo", "Insert [array]", "LastIndex: False"));
-            string mount = add.MountText.Replace(AmmoBoxBlank, box.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            string mount = WithMountValues(add.MountText, mountValues?.Invoke(add.Ammunition) ?? [])
+                .Replace(AmmoBoxBlank, box.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
                 .Replace(NumberBlank, number.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
             actions.Add(new LoadoutAction(MountListPath(add.Turret), "Insert [array]", "LastIndex: " + mount));
         }
@@ -382,6 +393,23 @@ public static class LoadoutRules
     }
 
     private const string SetTo = "Set To [int, float, string, boolean]";
+
+    /// <summary>
+    /// A mounted weapon's text given the values <paramref name="values"/> it does not have yet, each on a line of its
+    /// own before its closing bracket (see <see cref="ActionsFor"/>'s mountValues).
+    /// </summary>
+    private static string WithMountValues(string mountText, IReadOnlyList<(string Property, string Value)> values)
+    {
+        int end = mountText.LastIndexOf(')');
+        if (end < 0 || values.Count == 0) return mountText;
+        var lines = new System.Text.StringBuilder();
+        foreach ((string property, string value) in values)
+            if (!Regex.IsMatch(mountText, @"(?m)^\s*" + Regex.Escape(property) + @"\s*="))
+                lines.Append("    ").Append(property).Append(" = ").Append(value).Append('\n');
+        if (lines.Length == 0) return mountText;
+        string before = mountText[..end].TrimEnd(' ', '\t');
+        return before + (before.EndsWith('\n') ? "" : "\n") + lines + mountText[end..];
+    }
 
     /// <summary>
     /// The changes of a kind that still count: the last of each place, and none of a place whose weapon is taken off.
@@ -404,4 +432,8 @@ public static class LoadoutRules
     /// <summary>The path to a turret's list of mounted weapons: "TurretDescriptorList > Index1 > MountedWeaponDescriptorList".</summary>
     private static string MountListPath(int turret) =>
         "TurretDescriptorList" + Separator + "Index" + turret.ToString(CultureInfo.InvariantCulture) + Separator + "MountedWeaponDescriptorList";
+
+    /// <summary>The path to a property of a mounted weapon of a loadout, as the game has it: "TurretDescriptorList > Index0 > MountedWeaponDescriptorList > Index1 > Name".</summary>
+    public static string MountPropertyPath(LoadoutMount mount, string property) =>
+        MountListPath(mount.Turret) + Separator + "Index" + mount.Index.ToString(CultureInfo.InvariantCulture) + Separator + property;
 }

@@ -18,7 +18,8 @@ public static partial class UnitNames
         ["US"] = "Units.Nation.US", ["UK"] = "Units.Nation.UK", ["FR"] = "Units.Nation.FR", ["RFA"] = "Units.Nation.RFA",
         ["BEL"] = "Units.Nation.BEL", ["NL"] = "Units.Nation.NL", ["DK"] = "Units.Nation.DK", ["CAN"] = "Units.Nation.CAN",
         ["ESP"] = "Units.Nation.ESP", ["LUX"] = "Units.Nation.LUX", ["SOV"] = "Units.Nation.SOV", ["DDR"] = "Units.Nation.DDR",
-        ["POL"] = "Units.Nation.POL", ["TCH"] = "Units.Nation.TCH",
+        ["POL"] = "Units.Nation.POL", ["TCH"] = "Units.Nation.TCH", ["CUB"] = "Units.Nation.CUB", ["VEN"] = "Units.Nation.VEN",
+        ["COL"] = "Units.Nation.COL",
         // Steel Division 2 (those not above)
         ["CZ"] = "Units.Nation.CZ", ["SA"] = "Units.Nation.SA", ["NZ"] = "Units.Nation.NZ", ["YUG"] = "Units.Nation.YUG",
         ["GRE"] = "Units.Nation.GRE", ["BRZ"] = "Units.Nation.BRZ", ["EST"] = "Units.Nation.EST", ["BUL"] = "Units.Nation.BUL",

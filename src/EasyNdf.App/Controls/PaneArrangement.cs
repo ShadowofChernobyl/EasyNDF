@@ -27,6 +27,15 @@ public static class PaneArrangement
     /// <summary>Whether the second panes are beside the main ones.</summary>
     public static bool IsBeside { get; private set; } = true;
 
+    /// <summary>
+    /// Whether a pane that is beside at any size is (the Armory's Unit pane): while the window's size decides, unless the
+    /// window is too narrow to have cards beside it; otherwise as for the others.
+    /// </summary>
+    public static bool IsBesideAtAnySize { get; private set; } = true;
+
+    /// <summary>The narrowest window with such a pane beside: the Armory's left column, cards, and the pane.</summary>
+    private const double NarrowestBesideAtAnySize = 1000;
+
     /// <summary>Raised when the panes move beside or below.</summary>
     public static event Action? Changed;
 
@@ -68,8 +77,10 @@ public static class PaneArrangement
     public static void Update(bool alwaysTell = false)
     {
         bool beside = IsAutomatic ? AutomaticChoice() : (string?)Settings["panesSide"] != "below";
-        if (beside == IsBeside && !alwaysTell) return;
+        bool besideAtAnySize = IsAutomatic ? windowWidth >= NarrowestBesideAtAnySize && windowWidth > windowHeight : beside;
+        if (beside == IsBeside && besideAtAnySize == IsBesideAtAnySize && !alwaysTell) return;
         IsBeside = beside;
+        IsBesideAtAnySize = besideAtAnySize;
         Changed?.Invoke();
     }
 

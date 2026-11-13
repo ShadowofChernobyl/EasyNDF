@@ -9,14 +9,97 @@ namespace EasyNdf.Engine.Rules;
 /// <summary>What one action changed, as the Details list shows it.</summary>
 /// <param name="Descriptor">The descriptor's name, or a stand-in's label.</param>
 /// <param name="Target">The property or setting changed.</param>
-/// <param name="Old">The value before, shortened to 120 characters.</param>
-/// <param name="New">The value after, shortened to 120 characters.</param>
+/// <param name="Old">The value before, as <see cref="OfChange"/> keeps it.</param>
+/// <param name="New">The value after, as <see cref="OfChange"/> keeps it.</param>
 /// <param name="IsNote">
 /// Whether it is a note rather than a change: "Not run", "Removed from the file.", a failed check and the like. The
 /// conflicts between mods leave notes out; a descriptor a Clone or Add rule makes, or cannot make because its name is
 /// taken, is not a note, so two mods making one name are found.
 /// </param>
-public sealed record EditLogEntry(string Descriptor, string Target, string Old, string New, bool IsNote = false);
+public sealed record EditLogEntry(string Descriptor, string Target, string Old, string New, bool IsNote = false)
+{
+    /// <summary>The mark in a kept value where text was left out.</summary>
+    public const string LeftOutMark = "…";
+
+    /// <summary>A value this long or shorter, on both sides of the edit, is kept whole.</summary>
+    private const int KeptWholeUpTo = 160;
+
+    /// <summary>How much of what stayed the same is kept on each side of what changed, in a longer value.</summary>
+    private const int ContextKept = 60;
+
+    /// <summary>How much further the context may reach, so a word it starts or ends in is kept whole.</summary>
+    private const int ReachForAWord = 40;
+
+    /// <summary>The most kept of what changed; hardly ever reached.</summary>
+    private const int ChangeKept = 2000;
+
+    /// <summary>How many characters of what changed in <see cref="Old"/> were left out past <see cref="ChangeKept"/>.</summary>
+    public int OldLeftOut { get; init; }
+
+    /// <summary>How many characters of what changed in <see cref="New"/> were left out past <see cref="ChangeKept"/>.</summary>
+    public int NewLeftOut { get; init; }
+
+    /// <summary>
+    /// Tells the whole value after the edit from other values, for comparing what two mods leave when <see cref="New"/>
+    /// holds only a part of it; 0 for an entry not made by <see cref="OfChange"/>.
+    /// </summary>
+    public long NewPrint { get; init; }
+
+    /// <summary>
+    /// The entry for a value changed. Tuned for memory: values reach half a million characters and a run can log tens
+    /// of thousands of edits, while the part that changed is nearly always short, so a long value keeps only that part
+    /// and a little around it, marked with <see cref="LeftOutMark"/>. Keep it that way when tidying.
+    /// </summary>
+    public static EditLogEntry OfChange(string descriptor, string target, string oldText, string newText)
+    {
+        long print = ((long)(newText.Length + 1) << 32) | (uint)newText.GetHashCode();
+        if (oldText.Length <= KeptWholeUpTo && newText.Length <= KeptWholeUpTo)
+            return new EditLogEntry(descriptor, target, oldText, newText) { NewPrint = print };
+        int same = oldText.AsSpan().CommonPrefixLength(newText);
+        int sameAtEnd = CommonEndLength(oldText.AsSpan(same), newText.AsSpan(same));
+        int from = ContextStart(oldText, same);
+        (string oldKept, int oldLeftOut) = Kept(oldText, from, same, sameAtEnd);
+        (string newKept, int newLeftOut) = Kept(newText, from, same, sameAtEnd);
+        return new EditLogEntry(descriptor, target, oldKept, newKept) { OldLeftOut = oldLeftOut, NewLeftOut = newLeftOut, NewPrint = print };
+    }
+
+    /// <summary>What is kept of one side of the edit, and how much of what changed there was left out.</summary>
+    private static (string Text, int LeftOut) Kept(string text, int from, int same, int sameAtEnd)
+    {
+        int changedEnd = text.Length - sameAtEnd;
+        int leftOut = Math.Max(0, changedEnd - same - ChangeKept);
+        int to = leftOut > 0 ? same + ChangeKept : ContextEnd(text, changedEnd);
+        return (string.Concat(from > 0 ? LeftOutMark : "", text.AsSpan(from, to - from), to < text.Length ? LeftOutMark : ""), leftOut);
+    }
+
+    /// <summary>Where the context before what changed starts: at the start of a word, when one is near enough.</summary>
+    private static int ContextStart(string text, int changeStart)
+    {
+        int from = Math.Max(0, changeStart - ContextKept), furthest = Math.Max(0, from - ReachForAWord);
+        while (from > furthest && InAWord(text[from - 1]) && InAWord(text[from])) from--;
+        return from;
+    }
+
+    /// <summary>Where the context after what changed ends: at the end of a word, when one is near enough.</summary>
+    private static int ContextEnd(string text, int changeEnd)
+    {
+        int to = Math.Min(text.Length, changeEnd + ContextKept), furthest = Math.Min(text.Length, to + ReachForAWord);
+        while (to < furthest && InAWord(text[to - 1]) && InAWord(text[to])) to++;
+        return to;
+    }
+
+    private static bool InAWord(char c) => char.IsLetterOrDigit(c) || c == '_';
+
+    /// <summary>How many characters two texts end alike in. Tuned for speed: compares in blocks, for values of half a million characters.</summary>
+    private static int CommonEndLength(ReadOnlySpan<char> a, ReadOnlySpan<char> b)
+    {
+        const int Block = 256;
+        int most = Math.Min(a.Length, b.Length), same = 0;
+        while (same + Block <= most && a.Slice(a.Length - same - Block, Block).SequenceEqual(b.Slice(b.Length - same - Block, Block))) same += Block;
+        while (same < most && a[a.Length - 1 - same] == b[b.Length - 1 - same]) same++;
+        return same;
+    }
+}
 
 /// <summary>Counts and logs for the rule that is running.</summary>
 public sealed class EditContext
@@ -149,13 +232,11 @@ public sealed partial class ActionApplier
     /// <summary>"\n" typed into a rule's value box means a line break.</summary>
     private static string WithLineBreaks(string text) => text.Replace("\\n", "\n");
 
-    private static string Shorten(string text) => text.Length > 120 ? text[..117] + "..." : text;
-
     private void Note(string oldText, string newText)
     {
         context.Edits++;
         if (context.Log.Count < context.LogLimit)
-            context.Log.Add(new EditLogEntry(descriptor.LogName, fullTarget, Shorten(oldText), Shorten(newText)));
+            context.Log.Add(EditLogEntry.OfChange(descriptor.LogName, fullTarget, oldText, newText));
     }
 
     /// <summary>The text actions: Append, Prepend and Remove. Null when the operation does not apply to text.</summary>

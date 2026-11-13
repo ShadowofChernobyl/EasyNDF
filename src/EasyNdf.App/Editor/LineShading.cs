@@ -7,9 +7,10 @@ using ICSharpCode.AvalonEdit.Rendering;
 namespace EasyNdf.App.Editor;
 
 /// <summary>
-/// What is drawn behind whole lines of the File Editor: the line Find, Go to line and a search result point at, outlined
-/// in the accent colour (filled, it looked the same as the selected text, which is the match itself); and in "Changes
-/// only", removed and added lines in a faint red and green (15% of the theme's d-del and d-add).
+/// What is drawn behind whole lines of the File Editor: the line Find, Go to line, a search result or a descriptor
+/// points at, tinted in the theme's success green as a problem's line is tinted in its error colour (16%, Paul's choice
+/// over an outline); and in "Changes only", removed and added lines in a faint red and green (15% of the theme's d-del
+/// and d-add).
 /// </summary>
 public sealed class LineShading : IBackgroundRenderer
 {
@@ -22,47 +23,29 @@ public sealed class LineShading : IBackgroundRenderer
     /// <summary>Drawn under the text and the selection.</summary>
     public KnownLayer Layer => KnownLayer.Background;
 
-    /// <summary>
-    /// The outline of the line pointed at, drawn on its own layer above the selection (the caret's): drawn with the
-    /// backgrounds, the selected match's fill covered it. Added to the text view beside this.
-    /// </summary>
-    public IBackgroundRenderer Outline => outline ??= new PointedLineOutline(this);
-
-    private PointedLineOutline? outline;
-
     public void Draw(TextView textView, DrawingContext drawingContext)
     {
         if (!textView.VisualLinesValid) return;
         double width = Math.Max(textView.ActualWidth, ((System.Windows.Controls.Primitives.IScrollInfo)textView).ExtentWidth) + textView.HorizontalOffset;
+        Brush? pointedTint = PointedAt is { IsDeleted: false } ? PointedTint() : null;
         foreach (VisualLine line in textView.VisualLines)
         {
             int number = line.FirstDocumentLine.LineNumber;
             double top = line.VisualTop - textView.VerticalOffset;
             if (MarkBrush(number - 1) is Brush mark)
                 drawingContext.DrawRectangle(mark, null, new Rect(-textView.HorizontalOffset, top, width, line.Height));
+            if (pointedTint is not null && number == PointedAt!.Line)
+                drawingContext.DrawRectangle(pointedTint, null, new Rect(-textView.HorizontalOffset, top, width, line.Height));
         }
     }
 
-    /// <summary>The outline of the line pointed at, on the caret layer: above the selection (an outline hides no letters).</summary>
-    private sealed class PointedLineOutline(LineShading shading) : IBackgroundRenderer
+    /// <summary>The pointed line's tint: the theme's success green at 16%, as a problem's line has the error colour.</summary>
+    private static Brush? PointedTint()
     {
-        public KnownLayer Layer => KnownLayer.Caret;
-
-        public void Draw(TextView textView, DrawingContext drawingContext)
-        {
-            if (!textView.VisualLinesValid || shading.PointedAt is not { IsDeleted: false } anchor) return;
-            if (Application.Current.Resources["accent"] is not Brush accent) return;
-            double width = Math.Max(textView.ActualWidth, ((System.Windows.Controls.Primitives.IScrollInfo)textView).ExtentWidth) + textView.HorizontalOffset;
-            foreach (VisualLine line in textView.VisualLines)
-            {
-                if (line.FirstDocumentLine.LineNumber != anchor.Line) continue;
-                // a one-pixel outline, on whole pixels so it stays sharp
-                var pen = new Pen(accent, 1);
-                pen.Freeze();
-                double top = line.VisualTop - textView.VerticalOffset;
-                drawingContext.DrawRectangle(null, pen, new Rect(Math.Floor(-textView.HorizontalOffset) + 0.5, Math.Floor(top) + 0.5, Math.Floor(width) - 1, Math.Floor(line.Height) - 1));
-            }
-        }
+        if (Application.Current.Resources["ok"] is not SolidColorBrush green) return null;
+        var tint = new SolidColorBrush(Color.FromArgb(41, green.Color.R, green.Color.G, green.Color.B));
+        tint.Freeze();
+        return tint;
     }
 
     /// <summary>A removed or added line's background: its colour, 15% over the box (CSS <c>color-mix(..., 15%, transparent)</c>).</summary>

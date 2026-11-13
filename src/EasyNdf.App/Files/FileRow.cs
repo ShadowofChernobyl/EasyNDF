@@ -131,6 +131,12 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
     /// <summary>How the Status column's text is shown.</summary>
     public StatusKind StatusKind => FileStatus.Of(Entry).Kind;
 
+    /// <summary>
+    /// Whether the Status column's text is a link that opens Details: after a run with something to look at there, an
+    /// error, a warning or a rule that changed nothing.
+    /// </summary>
+    public bool HasDetailsLink => FileStatus.HasDetailsLink(Entry);
+
     /// <summary>The mods that run on the file, in the order they run: what the Mods column shows.</summary>
     public IReadOnlyList<ModOnFile> Mods => Entry.ModsOnFile;
 

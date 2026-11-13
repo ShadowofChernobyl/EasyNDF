@@ -36,7 +36,6 @@
                     <Button Style="{StaticResource GoButton}" Content="{t:Text Rules.RuleWindow.Done}" ToolTip="{t:Text Rules.RuleWindow.Done.Tip}" Click="DoneClicked" />
                     <Button Content="{t:Text Common.Cancel}" ToolTip="{t:Text Common.Cancel.Tip}" Click="CancelClicked" />
                     <TextBlock x:Name="ScanNote" Style="{StaticResource Note}" Margin="0" controls:FlexRow.Basis="Infinity" />
-                    <TextBlock x:Name="RuleMessage" Style="{StaticResource Note}" Margin="0" controls:FlexRow.Basis="Infinity" />
                 </controls:FlexRow>
 
                 <!-- #ruleBody: sunken, in the panel colour, 10 by 12 pixels in; it scrolls when the rule does not fit -->

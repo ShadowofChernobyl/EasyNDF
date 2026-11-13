@@ -33,7 +33,7 @@ public static class TransportKinds
         return Kind.Other;
     }
 
-    /// <summary>A kind's name as a list's heading: "Armed vehicles".</summary>
+    /// <summary>A kind's name as a list's heading: "Armed Vehicles".</summary>
     public static string Heading(Kind kind) => Texts.Get(kind switch
     {
         Kind.ArmedVehicle => "Divisions.Transports.Group.Armed",

@@ -22,10 +22,17 @@ public sealed record ValueText(IReadOnlyList<string> Lines, int At);
 /// <param name="Mod">The mod.</param>
 /// <param name="Rule">The rule that made the change (the mod's last one to change the value).</param>
 /// <param name="RuleIndex">Where the rule is among the rules the mod ran on the file, from 0.</param>
-/// <param name="Old">The value before, shortened to 120 characters.</param>
-/// <param name="New">The value after, shortened to 120 characters.</param>
+/// <param name="Old">The value before, as the edit log keeps it (<see cref="EditLogEntry.OfChange"/>).</param>
+/// <param name="New">The value after, as the edit log keeps it.</param>
 /// <param name="Text">The lines around the value as the mod leaves it; null when they were not found.</param>
-public sealed record ModChange(string Mod, string Rule, int RuleIndex, string Old, string New, ValueText? Text = null);
+public sealed record ModChange(string Mod, string Rule, int RuleIndex, string Old, string New, ValueText? Text = null)
+{
+    /// <summary>Tells the whole value left from other values (<see cref="EditLogEntry.NewPrint"/>); 0 when not known.</summary>
+    public long NewPrint { get; init; }
+
+    /// <summary>Whether another mod's change leaves the same value: <see cref="New"/> holds only a part of a long value, cut around what that mod changed.</summary>
+    public bool LeavesSameValueAs(ModChange other) => NewPrint != 0 && other.NewPrint != 0 ? NewPrint == other.NewPrint : New == other.New;
+}
 
 /// <summary>
 /// A value more than one mod changes in a file, each mod's change in the order they ran, for the Mod Conflicts window.
@@ -73,7 +80,7 @@ public static class ModConflictFinder
                 if (entry.IsNote) continue;
                 var value = (entry.Descriptor, entry.Target);
                 if (!changedBy.TryGetValue(value, out List<ModChange>? changes)) changedBy[value] = changes = [];
-                var change = new ModChange(mod, rule, ruleIndex, entry.Old, entry.New);
+                var change = new ModChange(mod, rule, ruleIndex, entry.Old, entry.New) { NewPrint = entry.NewPrint };
                 int mine = changes.FindIndex(other => other.Mod == mod);
                 if (mine >= 0) changes[mine] = change;
                 else changes.Add(change);
@@ -85,7 +92,7 @@ public static class ModConflictFinder
             // refusals before any mod made the name are not a clash between mods: the name was the game's
             List<ModChange> counted = isNameClash ? [.. changes.SkipWhile(IsRefused)] : changes;
             if (counted.Count < 2) continue;
-            if (!isNameClash && counted.All(change => change.New == counted[0].New)) continue;
+            if (!isNameClash && counted.All(change => change.LeavesSameValueAs(counted[0]))) continue;
             found.Add(new ConflictedValue(file, descriptor, target, isNameClash, counted));
         }
         return found;

@@ -40,11 +40,12 @@ public sealed class WeaponCard : Bevel
         level.SetResourceReference(TextBlock.ForegroundProperty, "caution");
         users.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         kind.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        DockPanel.SetDock(users, Dock.Right);
+        var usersLine = new StillText(users);
+        DockPanel.SetDock(usersLine, Dock.Right);
         DockPanel.SetDock(traits, Dock.Right);
-        var top = new DockPanel { Children = { users, level } };
-        var bottom = new DockPanel { Children = { traits, kind } };
-        Child = new StackPanel { Children = { top, picture, name, bottom } };
+        var top = new DockPanel { Children = { usersLine, new StillText(level) } };
+        var bottom = new DockPanel { Children = { traits, new StillText(kind) } };
+        Child = new StackPanel { Children = { top, picture, new StillText(name), bottom } };
     }
 
     /// <summary>The weapon shown.</summary>

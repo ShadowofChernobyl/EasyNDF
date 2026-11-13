@@ -249,7 +249,8 @@ public sealed partial class DivisionChangeRules
         {
             string? file = (string?)rule?[ArmoryKey]?[FileKey];
             bool isGroup = (string?)rule?["Kind"] == "Group";
-            if (isGroup || string.Equals(file, fileName, StringComparison.OrdinalIgnoreCase)) found.Add(rule!.DeepClone());
+            // the units file under either name (UnitReader.SameFile): WARNO v210942 renamed it TacticalUnits.ndf
+            if (isGroup || Units.UnitReader.SameFile(file, fileName)) found.Add(rule!.DeepClone());
         }
         // headings alone change nothing
         if (!found.Any(rule => (string?)rule?["Kind"] != "Group")) return [];
@@ -263,6 +264,24 @@ public sealed partial class DivisionChangeRules
                 ["Conditions"] = new JsonArray(), ["Actions"] = new JsonArray(), ["Params"] = new JsonObject(),
             });
         return found;
+    }
+
+    /// <summary>
+    /// Where a rule of what <see cref="ForFile(IEnumerable{JsonNode?}, FileList.FileEntry)"/> gives comes from: the Armory
+    /// preset that holds it, and its place there. Null when that place holds no rule of a preset.
+    /// </summary>
+    public static (ModPreset? Preset, int Index) SourceOf(Mod mod, FileList.FileEntry entry, int place)
+    {
+        var found = new List<(ModPreset Preset, int Index)>();
+        foreach (ModPreset preset in ArmoryPresets.AllOf(mod))
+            for (int index = 0; index < preset.Rules.Count; index++)
+            {
+                JsonNode? rule = preset.Rules[index];
+                if ((string?)rule?["Kind"] == "Group" || Units.UnitReader.SameFile((string?)rule?[ArmoryKey]?[FileKey], entry.Name)) found.Add((preset, index));
+            }
+        // the heading ForFile puts first when the rules start without one is in no preset
+        if (found.Count > 0 && (string?)found[0].Preset.Rules[found[0].Index]?["Kind"] != "Group") place--;
+        return place >= 0 && place < found.Count ? found[place] : (null, -1);
     }
 
     /// <summary>The rules of the Armory presets for a file of the list (<see cref="ForFile(IEnumerable{JsonNode?}, string)"/>); none for one it never writes to (<see cref="WritesTo"/>).</summary>
@@ -448,7 +467,9 @@ public sealed partial class DivisionChangeRules
                 ["Kind"] = "Add",
                 ["Params"] = new JsonObject
                 {
-                    ["Text"] = texture + " is TUIResourceTexture_Common\n(\n    FileName = \"GameData:/" + path + "\"\n)",
+                    // TUIResourceTexture itself: WARNO v210942 removed the TUIResourceTexture_Common template, which
+                    // only passed its FileName on to a TUIResourceTexture, so older versions read it the same
+                    ["Text"] = texture + " is TUIResourceTexture\n(\n    FileName = \"GameData:/" + path + "\"\n)",
                     ["Name"] = "",
                 },
             }, TexturesFile, division, "Add");

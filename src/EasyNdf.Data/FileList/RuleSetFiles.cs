@@ -26,11 +26,18 @@ public static class RuleSetFiles
         // megabytes of memory to clean up after each click on a mod. Tuned for speed: Keep it that way when tidying.
         string[] folders = FoldersOf(folder);
         int bestFit = byName ? BestFitByName(fileName, folders, ruleSets) : -1;
+        // WARNO v210942 renamed Generated/Gameplay/Gfx/UniteDescriptor.ndf to Generated/Gameplay/TacticalUnits.ndf: rule
+        // sets made for the old name and place apply to the new file as well
+        bool renamedUnits = string.Equals(fileName, Units.UnitReader.TacticalUnitsFile, StringComparison.OrdinalIgnoreCase);
+        string[] oldFolders = renamedUnits ? [.. folders, "gfx"] : [];
+        int oldBestFit = renamedUnits && byName ? BestFitByName(Units.UnitReader.UnitsFile, oldFolders, ruleSets) : -1;
         var applying = new List<ModPreset>();
         foreach (ModPreset ruleSet in ruleSets)
         {
             if (ruleSet.IsArmoryPreset) continue;
-            if (FitsBestByName(ruleSet, fileName, folders, bestFit) || Lists(ruleSet, fileName, folders)) applying.Add(ruleSet);
+            if (FitsBestByName(ruleSet, fileName, folders, bestFit) || Lists(ruleSet, fileName, folders)
+                || (renamedUnits && (FitsBestByName(ruleSet, Units.UnitReader.UnitsFile, oldFolders, oldBestFit) || Lists(ruleSet, Units.UnitReader.UnitsFile, oldFolders))))
+                applying.Add(ruleSet);
         }
         return applying;
     }

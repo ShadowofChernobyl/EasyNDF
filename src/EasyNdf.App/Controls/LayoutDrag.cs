@@ -23,6 +23,9 @@ public static class LayoutDrag
     /// <summary>Whether a drag is under way.</summary>
     public static bool IsUnderWay => UnderWay is not null;
 
+    /// <summary>Raised as a drag starts.</summary>
+    public static event Action? Started;
+
     /// <summary>Raised at each step of a drag, before the screen is laid out for it.</summary>
     public static event Action<LayoutDragKind>? Stepped;
 
@@ -30,7 +33,12 @@ public static class LayoutDrag
     public static event Action? Ended;
 
     /// <summary>A drag starts.</summary>
-    public static void Start(LayoutDragKind kind) => UnderWay ??= kind;
+    public static void Start(LayoutDragKind kind)
+    {
+        if (UnderWay is not null) return;
+        UnderWay = kind;
+        Started?.Invoke();
+    }
 
     /// <summary>A step of the drag: the window or a pane changes size.</summary>
     public static void Step()

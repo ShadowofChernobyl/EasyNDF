@@ -92,19 +92,24 @@ public static class VeterancyMarks
             marks.Children.Add(place);
         }
         Bevel strip = StripAround(marks);
-        // a tile's strip takes the height its column leaves it, under the transport button too: the marks are drawn
-        // shorter to fit rather than push the button below the picture
+        // a tile's strip takes the height its column leaves it, under the transport button too: the marks spread over
+        // it from top to bottom, as on a battlegroup's card, or are drawn shorter to fit rather than push the button
+        // below the picture
         strip.Child = null;
-        strip.Child = new Squeezable { Child = new Viewbox { Child = marks, Stretch = Stretch.Fill, StretchDirection = StretchDirection.DownOnly } };
+        strip.Child = new Squeezable { Child = marks };
         return strip;
     }
 
     /// <summary>
     /// Holds the marks without asking for any height, so the strip can be shorter than its marks would like: it is given
-    /// what its column has left, and the marks are drawn shorter to fit.
+    /// what its column has left. Where that is as tall as the marks or taller, they are spread over all of it
+    /// (<see cref="SpreadMarks"/>); where it is shorter, they are drawn shorter to fit.
     /// </summary>
     private sealed class Squeezable : Decorator
     {
+        /// <summary>How much shorter the marks are drawn; 1 while they have room.</summary>
+        private readonly ScaleTransform shorter = new();
+
         protected override Size MeasureOverride(Size constraint)
         {
             if (Child is null) return default;
@@ -114,7 +119,12 @@ public static class VeterancyMarks
 
         protected override Size ArrangeOverride(Size arrangeSize)
         {
-            Child?.Arrange(new Rect(arrangeSize));
+            if (Child is null) return arrangeSize;
+            double natural = Child.DesiredSize.Height;
+            bool fits = arrangeSize.Height >= natural || natural <= 0;
+            Child.RenderTransform = shorter;
+            shorter.ScaleY = fits ? 1 : arrangeSize.Height / natural;
+            Child.Arrange(new Rect(0, 0, arrangeSize.Width, fits ? arrangeSize.Height : natural));
             return arrangeSize;
         }
     }

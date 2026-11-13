@@ -109,6 +109,12 @@ public sealed class Unit
     /// <summary>Its speed on roads, in km/h.</summary>
     public double? RoadSpeed { get; init; }
 
+    /// <summary>How fast it speeds up, in the game's GRU a second each second (WARNO's MaxAccelerationGRU); null when not given.</summary>
+    public double? AccelerationGru { get; init; }
+
+    /// <summary>How fast it slows down, in the game's GRU a second each second (WARNO's MaxDecelerationGRU); null when not given.</summary>
+    public double? DecelerationGru { get; init; }
+
     /// <summary>Its optics: how well it spots.</summary>
     public double? Optics { get; init; }
 
@@ -207,6 +213,12 @@ public sealed class Unit
     public string? PictureSource { get => pictureSource; init => pictureSource = value; }
 
     /// <summary>
+    /// How the game names its 3D model, for the model viewer; null for a unit that names none. A unit made from another
+    /// keeps its model unit's, as it keeps its model.
+    /// </summary>
+    public UnitLook? Look { get; init; }
+
+    /// <summary>
     /// The same unit with the name and picture a mod gives it, where its own files cannot say them: a unit another mod
     /// that is on adds, whose name is in that mod's own texts and whose picture is the user's own file; this one stays
     /// as it is.
@@ -224,6 +236,22 @@ public sealed class Unit
     /// <summary>Its longest weapon range; null when it has no weapon with a range.</summary>
     public double? LongestRange => Weapons.Select(w => w.Range).Where(range => range > 0).DefaultIfEmpty().Max();
 }
+
+/// <summary>
+/// How the game names a unit's 3D model, as its apparence module (VehicleApparenceModuleDescriptor,
+/// InfantryApparenceModuleDescriptor and the like) gives it.
+/// </summary>
+/// <param name="Mesh">
+/// Its model's descriptor in DepictionResources, such as "Modele_M1A1_Abrams_US"; null for infantry, whose soldiers'
+/// models are listed in DepictionInfantry.ndf instead.
+/// </param>
+/// <param name="Mimetic">Its MimeticName, such as "M1A1_Abrams_US", or "squad_Airborne_Dragon_US" for infantry.</param>
+/// <param name="Depiction">Its BlackHoleKey, the name its depiction is registered under; null when it has none.</param>
+/// <param name="SteelDivisionDepiction">
+/// Steel Division 2's: the depiction its TApparenceModelModuleDescriptor names (Depiction = ~/Gfx_Tiger_E), which
+/// names its models; null in WARNO, and when it names none.
+/// </param>
+public sealed record UnitLook(string? Mesh, string? Mimetic, string? Depiction, string? SteelDivisionDepiction = null);
 
 /// <summary>The units of one game or mod, with what was read from where.</summary>
 /// <param name="Game">The game the units are from.</param>

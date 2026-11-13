@@ -28,8 +28,9 @@ public static class WeaponLedger
     /// <param name="bestRange">On Compare, the longest range among the units compared, drawn in the "best" colour; null for none.</param>
     /// <param name="openMenu">Opens a weapon's menu and gives it back: at the mouse over the row, or under the ▾ button.</param>
     /// <param name="showWeapon">A double-click on a weapon: shows it on the Weapons sub-tab; null where it cannot.</param>
+    /// <param name="marked">The ammunition of a weapon to mark, in the selection colour; null for none.</param>
     public static FrameworkElement Build(Unit unit, string rangeUnit, bool narrow, double? bestRange, Func<UnitWeapon, FrameworkElement, ContextMenu> openMenu,
-        Action<UnitWeapon>? showWeapon = null)
+        Action<UnitWeapon>? showWeapon = null, string? marked = null)
     {
         if (unit.Weapons.Count == 0)
         {
@@ -45,7 +46,7 @@ public static class WeaponLedger
         {
             rows.Children.Add(GroupRow(kind));
             foreach ((UnitWeapon weapon, int index) in weapons)
-                rows.Children.Add(WeaponRow(unit, weapon, index, narrow, bestRange, openMenu, showWeapon));
+                rows.Children.Add(WeaponRow(unit, weapon, index, narrow, bestRange, openMenu, showWeapon, weapon.Ammunition == marked));
         }
         var table = new Bevel { Child = rows };
         table.SetResourceReference(Bevel.TopLeftProperty, "lo");
@@ -111,7 +112,7 @@ public static class WeaponLedger
     /// numbers. Under the mouse the row takes the selection colour, and the hover colour while its menu is open.
     /// </summary>
     private static Bevel WeaponRow(Unit unit, UnitWeapon weapon, int index, bool narrow, double? bestRange, Func<UnitWeapon, FrameworkElement, ContextMenu> openMenu,
-        Action<UnitWeapon>? showWeapon)
+        Action<UnitWeapon>? showWeapon, bool marked)
     {
         Grid grid = RowGrid();
         grid.Children.Add(NameCell(unit, weapon, index, narrow, out Button menuButton));
@@ -124,11 +125,12 @@ public static class WeaponLedger
 
         var row = new Bevel { Child = grid, Edges = new Thickness(0, 0, 0, 1), Background = Brushes.Transparent, Cursor = Cursors.Arrow };
         row.SetResourceReference(Bevel.BottomRightProperty, "line");
+        if (marked) row.SetResourceReference(Bevel.BackgroundProperty, "sel");
         bool menuOpen = false;
         void Colour()
         {
             if (menuOpen) row.SetResourceReference(Bevel.BackgroundProperty, "hover");
-            else if (row.IsMouseOver) row.SetResourceReference(Bevel.BackgroundProperty, "sel");
+            else if (row.IsMouseOver || marked) row.SetResourceReference(Bevel.BackgroundProperty, "sel");
             else row.Background = Brushes.Transparent;
             menuButton.Visibility = menuOpen || row.IsMouseOver ? Visibility.Visible : Visibility.Hidden;
         }

@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Divisions;
 using EasyNdf.App.Mods;
 using EasyNdf.App.Rules;
@@ -26,20 +27,9 @@ public partial class UnitsPage
     /// <returns>Whether it was made.</returns>
     private bool ChangeDivisions(Action<Mod> change)
     {
-        // a change made while it can't be seen would be made blind
-        if (!ArmoryShowsModChanges)
+        if (WhyChangesCannotBeMade() is string reason)
         {
-            _ = MainView.Of(this).Messages.Tell(Texts.Get("Units.ModChanges.OffEdit"));
-            return false;
-        }
-        if (!ModStack.IsOn(OpenMod))
-        {
-            _ = MainView.Of(this).Messages.Tell(Texts.Get("Units.ModChanges.ModOffEdit", ("mod", OpenMod.Name)));
-            return false;
-        }
-        if (WhyRulesCannotBeMade() is string reason)
-        {
-            _ = MainView.Of(this).Messages.Tell(reason);
+            _ = MainView.Of(this).Messages.Tell(reason, DialogIcon.Error);
             return false;
         }
         // a game the Armory writes in part only takes some changes: the others would be saved and never written
@@ -47,13 +37,13 @@ public partial class UnitsPage
         change(tried);
         if (!UnitChangeRules.WritesEverythingOf(tried))
         {
-            _ = MainView.Of(this).Messages.Tell(WhyNotWrittenForThisGame(tried));
+            _ = MainView.Of(this).Messages.Tell(WhyNotWrittenForThisGame(tried), DialogIcon.Error);
             return false;
         }
         List<string> missing = FilesMissingFor(change);
         if (missing.Count > 0)
         {
-            _ = MainView.Of(this).Messages.Tell(Texts.Count("Divisions.FilesMissing", missing.Count, ("files", string.Join(", ", missing))));
+            _ = MainView.Of(this).Messages.Tell(Texts.Count("Divisions.FilesMissing", missing.Count, ("files", string.Join(", ", missing))), DialogIcon.Error);
             return false;
         }
         change(OpenMod);
@@ -77,13 +67,13 @@ public partial class UnitsPage
             .Select(rule => (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.FileKey])
             .OfType<string>()];
         // a generated division's units are made at export from the units on the Files tab
-        if (GeneratedUnitLists.AnyIn(changed)) files.Add(Files.GeneratedListsMaker.UnitsFile);
+        if (GeneratedUnitLists.AnyIn(changed)) files.Add(UnitChangeRules.UnitsFileOf(GameUnits));
         // and a generated battlegroup is chosen by its units' weapons, and written into Decks.ndf and DeckPacks.ndf
         if (GeneratedBattlegroups.AnyIn(changed)) files.AddRange(Files.GeneratedListsMaker.BattlegroupFiles);
         IEnumerable<string> needed = files.Distinct(StringComparer.OrdinalIgnoreCase);
         var entries = MainView.Of(this).FilesTab.Model.Entries;
         // a file of another game would not take the change: only the mods of its own game run on it
-        return [.. needed.Where(file => !entries.Any(entry => entry.Source is not null && entry.Game == Game && string.Equals(entry.Name, file, StringComparison.OrdinalIgnoreCase)))];
+        return [.. needed.Where(file => !entries.Any(entry => entry.Source is not null && entry.Game == Game && UnitReader.SameFile(file, entry.Name)))];
     }
 
     private JsonArray RulesOf(Mod mod) => ArmoryPresets.RulesFor(mod, GameDivisions, Texts.Catalog, UnitNameOf, GameBattlegroupCards, GameUnits, GameWeapons, GameLoadouts);
@@ -114,6 +104,14 @@ public partial class UnitsPage
     /// copy of one, nor a change to a unit's weapons whose loadout it does not have.</item>
     /// </list>
     /// </summary>
+    /// <summary>Why a change cannot be made in the open mod now, with the reason a person can act on first; null when it can.</summary>
+    private string? WhyChangesCannotBeMade() =>
+        OtherGameReason
+        // a change made while it can't be seen would be made blind
+        ?? (ArmoryShowsModChanges ? null : Texts.Get("Units.ModChanges.OffEdit"))
+        ?? (ModStack.IsOn(OpenMod) ? null : Texts.Get("Units.ModChanges.ModOffEdit", ("mod", OpenMod.Name)))
+        ?? WhyRulesCannotBeMade();
+
     private string? WhyRulesCannotBeMade()
     {
         if (OtherGameReason is string otherGame) return otherGame;

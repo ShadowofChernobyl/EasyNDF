@@ -105,6 +105,31 @@ public partial class UnitsPage
     /// <summary>The division chosen in the list; null for All units.</summary>
     internal Data.Divisions.Division? ChosenDivisionNow => chosenDivision;
 
+    /// <summary>The filters, as a user sets them.</summary>
+    internal UnitFilter FilterNow => filter;
+
+    /// <summary>The filters as at first, everything shown again.</summary>
+    internal void ResetFiltersNow()
+    {
+        ResetFilters();
+        ShowAll();
+    }
+
+    /// <summary>Chooses a division in the list on the Units sub-tab, or none.</summary>
+    internal void ChooseDivisionKeepingPartNow(Data.Divisions.Division? division) => ChooseDivision(division, keepsPart: true);
+
+    /// <summary>The weapon named in the heading; "" when none shows.</summary>
+    internal string UsedWeaponShownNow => UsedWeaponMark.Visibility == System.Windows.Visibility.Visible ? UsedWeaponName.Text : "";
+
+    /// <summary>The heading's ✕ beside the weapon.</summary>
+    internal System.Windows.FrameworkElement ClearUsedWeaponNow => ClearUsedWeaponButton;
+
+    /// <summary>The weapon's name in the heading, which goes back to it.</summary>
+    internal System.Windows.FrameworkElement UsedWeaponNameNow => UsedWeaponName;
+
+    /// <summary>The heading's ✕ beside the weapon, as a click does.</summary>
+    internal void ClickClearUsedWeaponNow() => ClearUsedWeaponClicked(this, new System.Windows.RoutedEventArgs());
+
     /// <summary>How many units the centre shows now.</summary>
     internal int ShownCountNow => shown.Count;
 

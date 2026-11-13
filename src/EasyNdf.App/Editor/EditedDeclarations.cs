@@ -96,7 +96,7 @@ public sealed class EditedDeclarations
     public int Count => marks.Count;
 
     /// <summary>The declaration a place is in: from its declaration line to the next one; null when either is too far to find.</summary>
-    private static (int Start, int End)? Around(TextDocument text, int offset)
+    internal static (int Start, int End)? Around(TextDocument text, int offset)
     {
         DocumentLine at = text.GetLineByOffset(Math.Min(offset, text.TextLength));
         DocumentLine? first = at;

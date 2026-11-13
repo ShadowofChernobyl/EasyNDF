@@ -113,7 +113,7 @@ public partial class RowWindow : UserControl
         if (!IsOpen) return;
         if (row is not null && rowBeforeEditing is not null && !JsonNode.DeepEquals(row, rowBeforeEditing))
         {
-            if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Rules.DiscardChanges"), Texts.Get("Rules.Discard"))) return;
+            if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Rules.DiscardChanges"), Texts.Get("Rules.Discard"), DialogIcon.Warning)) return;
             RulesModel.PutBack(row, rowBeforeEditing);
         }
         Close();

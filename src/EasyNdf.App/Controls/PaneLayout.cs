@@ -136,8 +136,32 @@ public sealed class SectionColumns : Panel
 
     public static bool GetFullWidth(UIElement element) => (bool)element.GetValue(FullWidthProperty);
 
-    /// <summary>The rows the sections are laid out in: one or two sections each, and how tall each row is.</summary>
-    private readonly List<(UIElement[] Sections, double Height)> rows = [];
+    /// <summary>The rows the sections are laid out in: one or two sections each, how tall each row is, and whether it was laid out just now.</summary>
+    private readonly List<(UIElement[] Sections, double Height, bool LaidOut)> rows = [];
+
+    /// <summary>
+    /// Follows the drags: while a bar or the window's edge is dragged only the sections in sight are laid out, and those out
+    /// of sight stay as they were until the drag ends: a pane can be several screens tall, and every step changed the
+    /// width of all of it. Tuned for speed: Keep it that way when tidying.
+    /// </summary>
+    public SectionColumns()
+    {
+        Action dragEnded = InvalidateMeasure;
+        Loaded += (_, _) => LayoutDrag.Ended += dragEnded;
+        Unloaded += (_, _) => LayoutDrag.Ended -= dragEnded;
+    }
+
+    /// <summary>The part of the panel in sight in the pane during a drag, with a little to spare; null for all of it.</summary>
+    private (double Top, double Bottom)? SightDuringDrag()
+    {
+        if (!LayoutDrag.IsUnderWay) return null;
+        DependencyObject? at = this;
+        while (at is not null and not ScrollViewer) at = System.Windows.Media.VisualTreeHelper.GetParent(at);
+        if (at is not ScrollViewer scroller) return null;
+        const double ToSpare = 120;
+        double top = -TranslatePoint(new Point(0, 0), scroller).Y;
+        return (top - ToSpare, top + scroller.ViewportHeight + ToSpare);
+    }
 
     protected override Size MeasureOverride(Size available)
     {
@@ -145,6 +169,7 @@ public sealed class SectionColumns : Panel
         double width = available.Width;
         bool twoColumns = !double.IsInfinity(width) && width >= PaneLayout.TwoColumnsFrom;
         var shown = InternalChildren.Cast<UIElement>().Where(child => child.Visibility != Visibility.Collapsed).ToList();
+        (double Top, double Bottom)? sight = SightDuringDrag();
         double height = 0, widest = 0;
         for (int at = 0; at < shown.Count; at++)
         {
@@ -152,14 +177,15 @@ public sealed class SectionColumns : Panel
             bool pairs = twoColumns && !GetFullWidth(first) && at + 1 < shown.Count && !GetFullWidth(shown[at + 1]);
             UIElement[] row = pairs ? [first, shown[++at]] : [first];
             double each = pairs ? width / 2 : width;
-            double rowHeight = 0;
+            double rowHeight = 0, heightBefore = row.Max(section => section.DesiredSize.Height);
+            bool layOut = sight is not var (top, bottom) || (height < bottom && height + heightBefore > top) || row.Any(section => !section.IsMeasureValid);
             foreach (UIElement section in row)
             {
-                section.Measure(new Size(each, double.PositiveInfinity));
+                if (layOut) section.Measure(new Size(each, double.PositiveInfinity));
                 rowHeight = Math.Max(rowHeight, section.DesiredSize.Height);
                 widest = Math.Max(widest, section.DesiredSize.Width * row.Length);
             }
-            rows.Add((row, rowHeight));
+            rows.Add((row, rowHeight, layOut));
             height += rowHeight;
         }
         // hidden sections are measured too, so they have a size when shown
@@ -170,10 +196,14 @@ public sealed class SectionColumns : Panel
     protected override Size ArrangeOverride(Size finalSize)
     {
         double top = 0;
-        foreach ((UIElement[] sections, double height) in rows)
+        foreach ((UIElement[] sections, double height, bool laidOut) in rows)
         {
             double each = finalSize.Width / sections.Length;
-            for (int at = 0; at < sections.Length; at++) sections[at].Arrange(new Rect(at * each, top, each, height));
+            for (int at = 0; at < sections.Length; at++)
+            {
+                if (laidOut) sections[at].Arrange(new Rect(at * each, top, each, height));
+                else sections[at].Arrange(new Rect(new Point(at * each, top), sections[at].RenderSize));
+            }
             top += height;
         }
         return finalSize;

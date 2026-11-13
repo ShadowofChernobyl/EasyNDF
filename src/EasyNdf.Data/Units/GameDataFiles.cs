@@ -85,6 +85,9 @@ public sealed class GameDataFiles : IDisposable
         return sameName.Count == 1 ? sameName[0] : null;
     }
 
+    /// <summary>Whether there is a file whose path ends with <paramref name="endOfPath"/>, without reading it.</summary>
+    public bool Has(string endOfPath) => ChangedFileFor(endOfPath) is not null || EntryEndingWith(endOfPath) is not null;
+
     /// <summary>
     /// The text of the file whose path ends with <paramref name="endOfPath"/>, such as
     /// "Generated/Gameplay/Gfx/UniteDescriptor.ndf"; null when there is none.
@@ -113,12 +116,47 @@ public sealed class GameDataFiles : IDisposable
     public IEnumerable<string> PathsWhere(Func<string, bool> picked) =>
         (baseZip?.Entries ?? []).Select(e => e.FullName.Replace('\\', '/')).Where(path => !path.EndsWith('/') && picked(path));
 
-    /// <summary>The text of a file by its full path inside base.zip (as <see cref="PathsWhere"/> gives it).</summary>
+    /// <summary>
+    /// <see cref="PathsWhere"/>, with the files the mod adds of its own (under its GameData folder, not in base.zip)
+    /// after the game's, in base.zip's form ("GameData/Gameplay/..."). A mod's new unit names its model in a file the
+    /// game does not have.
+    /// </summary>
+    public IEnumerable<string> PathsWithModWhere(Func<string, bool> picked) => PathsWhere(picked).Concat(ModOnlyPaths().Where(picked));
+
+    private List<string>? modOnlyPaths;
+
+    /// <summary>The paths of the mod's files that base.zip does not have, listed once.</summary>
+    private List<string> ModOnlyPaths()
+    {
+        if (modOnlyPaths is not null) return modOnlyPaths;
+        modOnlyPaths = [];
+        string? gameData = modFolder is null ? null : Path.Combine(modFolder, "GameData");
+        if (gameData is null || !Directory.Exists(gameData)) return modOnlyPaths;
+        try
+        {
+            foreach (string file in Directory.EnumerateFiles(gameData, "*", SearchOption.AllDirectories))
+            {
+                string path = Path.GetRelativePath(modFolder!, file).Replace(Path.DirectorySeparatorChar, '/');
+                if (!entryByPath.ContainsKey(path)) modOnlyPaths.Add(path);
+            }
+        }
+        catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
+        {
+            // a folder that cannot be listed adds nothing
+        }
+        return modOnlyPaths;
+    }
+
+    /// <summary>
+    /// The text of a file by its full path inside base.zip (as <see cref="PathsWhere"/> gives it), or a file the mod adds
+    /// of its own (as <see cref="PathsWithModWhere"/> gives it).
+    /// </summary>
     public string? ReadPath(string path)
     {
         if (ChangedFileFor(path) is ChangedFile changed) return changed.Text;
         ZipArchiveEntry? entry = entryByPath.GetValueOrDefault(path.Replace('\\', '/'));
-        return entry is null ? null : TextOf(entry);
+        if (entry is not null) return TextOf(entry);
+        return ModPathOf(path) is string own && File.Exists(own) ? File.ReadAllText(own, Encoding.UTF8) : null;
     }
 
     /// <summary>

@@ -195,7 +195,7 @@ public partial class UnitsPage
         if (OriginalLoadoutOf(unit) is not Loadout original) return;
         string weaponName = ShownWeapons().GetValueOrDefault(mount.Ammunition)?.Name ?? Weapon.NameOf(mount.Ammunition);
         Dialogs.MessageOverlay messages = MainView.Of(this).Messages;
-        if (!await messages.Confirm(Texts.Get("Weapons.Loadout.RemoveAsk", ("weapon", weaponName), ("unit", unit.Name)), Texts.Get("Weapons.Loadout.RemoveOk"))) return;
+        if (!await messages.Confirm(Texts.Get("Weapons.Loadout.RemoveAsk", ("weapon", weaponName), ("unit", unit.Name)), Texts.Get("Weapons.Loadout.RemoveOk"), DialogIcon.Question)) return;
         if (await MountTextOf(original, mount) is not string text) return;
         ChangeLoadout(unit, (changes, _) => changes.Add(new LoadoutChange(LoadoutChange.Remove, mount.Turret, mount.Index, MountText: text)));
     }
@@ -209,11 +209,11 @@ public partial class UnitsPage
         Dialogs.MessageOverlay messages = MainView.Of(this).Messages;
         if (LoadedFile(UnitChangeRules.LoadoutsFile) is not FileEntry file)
         {
-            await messages.Tell(Texts.Count("Divisions.FilesMissing", 1, ("files", UnitChangeRules.LoadoutsFile)));
+            await messages.Tell(Texts.Count("Divisions.FilesMissing", 1, ("files", UnitChangeRules.LoadoutsFile)), DialogIcon.Error);
             return null;
         }
         string? text = await Task.Run(() => LoadoutRules.MountText(new StringReader(FileContent.Text(file)), original.Descriptor, mount.Turret, mount.Index));
-        if (text is null) await messages.Tell(Texts.Get("Weapons.Loadout.NoMount", ("loadout", original.Descriptor)));
+        if (text is null) await messages.Tell(Texts.Get("Weapons.Loadout.NoMount", ("loadout", original.Descriptor)), DialogIcon.Error);
         return text;
     }
 
@@ -270,7 +270,7 @@ public partial class UnitsPage
     {
         if (LoadedFile(UnitChangeRules.LoadoutsFile) is not FileEntry file)
         {
-            await MainView.Of(this).Messages.Tell(Texts.Count("Divisions.FilesMissing", 1, ("files", UnitChangeRules.LoadoutsFile)));
+            await MainView.Of(this).Messages.Tell(Texts.Count("Divisions.FilesMissing", 1, ("files", UnitChangeRules.LoadoutsFile)), DialogIcon.Error);
             return false;
         }
         found(await Task.Run(() => LoadoutRules.MountTextOf(new StringReader(FileContent.Text(file)), ammunition)));
@@ -323,6 +323,8 @@ public partial class UnitsPage
     /// <summary>The editor's buttons for one unit.</summary>
     private sealed class UnitLoadoutActions(UnitsPage page, Unit unit) : ILoadoutActions
     {
+        public string? MarkedWeapon => page.MarkedWeapon;
+
         public void Swap(LoadoutMount mount) => page.SwapWeapon(unit, mount);
 
         public void CopyAndChange(LoadoutMount mount) => page.CopyAndChange(unit, mount);

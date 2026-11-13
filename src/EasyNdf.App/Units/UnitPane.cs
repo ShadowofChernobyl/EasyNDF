@@ -210,11 +210,10 @@ public static class UnitPane
         var contents = new StackPanel();
         if (actions.LoadoutEditorFor(unit) is FrameworkElement editor)
         {
-            contents.Children.Add(Muted(Texts.Get("Units.Pane.Loadout.Note"), new Thickness(0, 0, 0, 8)));
             contents.Children.Add(editor);
         }
         else contents.Children.Add(WeaponLedger.Build(unit, actions.Game.RangeUnit, narrow, bestRange: null, (weapon, at) => actions.OpenWeaponMenu(unit, weapon, at),
-            weapon => actions.ShowWeaponInArmory(weapon.Ammunition)));
+            weapon => actions.ShowWeaponInArmory(weapon.Ammunition), actions.MarkedWeapon));
         return new FoldSection("weapons", Texts.Get("Units.Weapons"), Texts.Count("Units.Pane.Weapons.Count", unit.Weapons.Count), contents, FoldsKey);
     }
 
@@ -460,7 +459,7 @@ public static class UnitPane
     {
         var block = new TextBlock { Text = text };
         if (isName) block.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        var cell = new Bevel { Child = block, Padding = new Thickness(7, 2, 7, 2), Edges = new Thickness(0, 0, 0, lastRow ? 0 : 1) };
+        var cell = new Bevel { Child = block, Padding = new Thickness(7, 2, 7, 2), Edges = new Thickness(0, 0, 0, lastRow ? 0 : 1), KeepsTextStill = true };
         cell.SetResourceReference(Bevel.BottomRightProperty, "line");
         if (isName) cell.SetResourceReference(Bevel.BackgroundProperty, "panel");
         Grid.SetRow(cell, row);

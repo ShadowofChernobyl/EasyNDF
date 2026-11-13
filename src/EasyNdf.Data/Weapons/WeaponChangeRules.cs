@@ -96,6 +96,9 @@ public sealed class WeaponChangeRules
     private readonly GameTitle game;
     private readonly JsonArray rules = [];
 
+    /// <summary>The game's loadouts by descriptor, where a weapon shown on its mounts (<see cref="Weapon.ShownOnMount"/>) has its picture and traits changed.</summary>
+    private IReadOnlyDictionary<string, Loadout> loadouts = new Dictionary<string, Loadout>();
+
     private WeaponChangeRules(TextCatalog texts, GameTitle game)
     {
         this.texts = texts;
@@ -112,18 +115,26 @@ public sealed class WeaponChangeRules
     /// <param name="game">The game's weapons, before the mod's changes.</param>
     /// <param name="texts">The language the rules are named in.</param>
     /// <param name="loadoutName">The names of the units with a loadout, by the loadout's descriptor, for the rules' names.</param>
-    public static JsonArray For(Mod mod, IReadOnlyList<Weapon> game, TextCatalog texts, Func<string, string> loadoutName)
+    /// <param name="loadouts">
+    /// The game's loadouts by descriptor: from WARNO v210942 on, a weapon's picture and traits are changed in the mounted
+    /// weapons that fire it there (<see cref="Weapon.ShownOnMount"/>). Without them, those changes are not written.
+    /// </param>
+    public static JsonArray For(Mod mod, IReadOnlyList<Weapon> game, TextCatalog texts, Func<string, string> loadoutName,
+        IReadOnlyDictionary<string, Loadout>? loadouts = null)
     {
         var byDescriptor = new Dictionary<string, Weapon>(StringComparer.Ordinal);
         foreach (Weapon weapon in game) byDescriptor.TryAdd(weapon.Descriptor, weapon);
-        var writer = new WeaponChangeRules(texts, mod.Game);
+        var writer = new WeaponChangeRules(texts, mod.Game) { loadouts = loadouts ?? new Dictionary<string, Loadout>() };
         foreach (WeaponEdit edit in mod.WeaponEdits)
         {
             if (edit.ChangesNothing || !byDescriptor.TryGetValue(edit.Descriptor, out Weapon? gameWeapon)) continue;
+            bool onMounts = gameWeapon.ShownOnMount && (edit.Picture is not null || edit.Traits is not null);
             // what the Armory cannot write for the mod's game is left out, never written WARNO's way
-            if (writer.ValueActions(edit, gameWeapon).Count == 0) continue;
+            bool onAmmunition = writer.ValueActions(edit, gameWeapon).Count > 0;
+            if (!onAmmunition && !onMounts) continue;
             writer.Group(gameWeapon.Name);
-            writer.EditRule(edit, gameWeapon);
+            if (onAmmunition) writer.EditRule(edit, gameWeapon);
+            if (onMounts) writer.MountRules(edit.Descriptor, edit.Descriptor, edit.Picture, edit.Traits, EditRuleName(gameWeapon, texts), EditChange);
         }
         if (!AddsWeapons(mod.Game)) return writer.rules;
         // a copy may be made from an earlier copy, which is made by then
@@ -135,10 +146,88 @@ public sealed class WeaponChangeRules
             string madeFromName = byDescriptor.TryGetValue(weapon.MadeFrom, out Weapon? original) ? original.Name
                 : mod.Weapons.FirstOrDefault(each => each.Descriptor == weapon.MadeFrom)?.Name ?? weapon.MadeFrom;
             writer.Group(weapon.Name);
-            writer.CloneRule(weapon, madeFromName, GameWeaponOf(weapon, mod, byDescriptor));
-            foreach (string loadout in weapon.Loadouts) writer.LoadoutRule(weapon, loadout, loadoutName(loadout));
+            Weapon? gameWeapon = GameWeaponOf(weapon, mod, byDescriptor);
+            writer.CloneRule(weapon, madeFromName, gameWeapon);
+            foreach (string loadout in weapon.Loadouts)
+            {
+                writer.LoadoutRule(weapon, loadout, loadoutName(loadout));
+                // from WARNO v210942 on, the copy's own picture and traits are its mounted weapons'
+                if (gameWeapon?.ShownOnMount == true && (weapon.Picture is not null || weapon.Traits is not null))
+                    writer.MountRules(weapon.MadeFrom, weapon.Descriptor, weapon.Picture, weapon.Traits,
+                        weapon.Name + ": " + texts.Get("Weapons.Rule.Loadout", ("units", loadoutName(loadout))), NewChange, loadout);
+            }
         }
         return writer.rules;
+    }
+
+    /// <summary>
+    /// What a mounted weapon of each weapon is given besides its ammunition, by the weapon's descriptor, for the rules of
+    /// units' loadouts (<see cref="LoadoutRules.ActionsFor"/>): from WARNO v210942 on, the game's weapon's name, text keys,
+    /// picture and traits, with the mod's own picture and traits where it changes them; for a weapon the mod adds, those
+    /// of the game's weapon it is made from, with its own. Empty for a weapon not shown on its mounts.
+    /// </summary>
+    /// <param name="mod">The mod.</param>
+    /// <param name="game">The game's weapons, before the mod's changes.</param>
+    public static Func<string, IReadOnlyList<(string Property, string Value)>> MountValuesFor(Mod mod, IReadOnlyList<Weapon> game)
+    {
+        var byDescriptor = new Dictionary<string, Weapon>(StringComparer.Ordinal);
+        foreach (Weapon weapon in game) byDescriptor.TryAdd(weapon.Descriptor, weapon);
+        return descriptor =>
+        {
+            if (byDescriptor.TryGetValue(descriptor, out Weapon? weapon))
+            {
+                WeaponEdit? edit = mod.WeaponEdits.FirstOrDefault(each => each.Descriptor == descriptor);
+                return weapon.MountValues(edit?.Picture, edit?.Traits);
+            }
+            if (mod.Weapons.FirstOrDefault(each => each.Descriptor == descriptor) is not ModWeapon added) return [];
+            // the nearest picture and traits up the copies it is made from, then the game's weapon's
+            string? picture = added.Picture;
+            IReadOnlyList<string>? traits = added.Traits;
+            string from = added.MadeFrom;
+            for (int step = 0; step <= mod.Weapons.Count && !byDescriptor.ContainsKey(from); step++)
+            {
+                ModWeapon? earlier = mod.Weapons.FirstOrDefault(each => each.Descriptor == from);
+                if (earlier is null) return [];
+                picture ??= earlier.Picture;
+                traits ??= earlier.Traits;
+                from = earlier.MadeFrom;
+            }
+            return byDescriptor.TryGetValue(from, out Weapon? root) ? root.MountValues(picture, traits) : [];
+        };
+    }
+
+    /// <summary>
+    /// The rules giving a weapon shown on its mounts (<see cref="Weapon.ShownOnMount"/>) its picture and traits: for each
+    /// of the game's loadouts (or only <paramref name="onlyLoadout"/>), an Edit rule on WeaponDescriptor.ndf setting them
+    /// in every mounted weapon there that fires <paramref name="ammunition"/>.
+    /// </summary>
+    /// <param name="ammunition">The ammunition the mounted weapons fire in the game's loadouts.</param>
+    /// <param name="weapon">The weapon the rules are for, by descriptor (a copy's own, for a copy).</param>
+    /// <param name="picture">Its picture's texture; null to leave it.</param>
+    /// <param name="traits">Its traits; null to leave them.</param>
+    /// <param name="name">The rules' name.</param>
+    /// <param name="change">What the Armory keeps of the rules (<see cref="NewChange"/>, <see cref="EditChange"/>).</param>
+    /// <param name="onlyLoadout">The one loadout to change, or null for every loadout.</param>
+    private void MountRules(string ammunition, string weapon, string? picture, IReadOnlyList<string>? traits, string name, string change, string? onlyLoadout = null)
+    {
+        foreach ((string descriptor, Loadout loadout) in loadouts)
+        {
+            if (onlyLoadout is not null && descriptor != onlyLoadout) continue;
+            var actions = new JsonArray();
+            foreach (LoadoutMount mount in loadout.Turrets.SelectMany(turret => turret.Mounts).Where(mount => mount.Ammunition == ammunition))
+            {
+                if (picture is not null) actions.Add(Action(LoadoutRules.MountPropertyPath(mount, Weapon.PictureProperty), SetValue, "\"" + picture + "\""));
+                if (traits is not null) actions.Add(Action(LoadoutRules.MountPropertyPath(mount, Weapon.TraitsProperty), SetList, Weapon.TraitsText(traits)));
+            }
+            if (actions.Count == 0) continue;
+            Rule(new JsonObject
+            {
+                ["Name"] = name,
+                ["Kind"] = "Edit",
+                ["Conditions"] = new JsonArray(Condition(Conditions.DescriptorTitle, descriptor)),
+                ["Actions"] = actions,
+            }, LoadoutsFile, weapon, "Edit", change);
+        }
     }
 
     /// <summary>
@@ -183,7 +272,7 @@ public sealed class WeaponChangeRules
         ["Name"] = CopyRuleName(weapon, madeFromName, texts),
         ["Kind"] = "Clone",
         ["Params"] = new JsonObject { ["Source"] = weapon.MadeFrom, ["NewName"] = weapon.Descriptor },
-        ["Actions"] = game == GameTitle.SteelDivision2 && gameWeapon is not null ? SteelDivisionValueActions(weapon, gameWeapon) : WarnoValueActions(weapon),
+        ["Actions"] = game == GameTitle.SteelDivision2 && gameWeapon is not null ? SteelDivisionValueActions(weapon, gameWeapon) : WarnoValueActions(weapon, gameWeapon?.ShownOnMount == true),
     }, weapon.File, weapon.Descriptor, "Clone", NewChange);
 
     /// <summary>
@@ -208,15 +297,19 @@ public sealed class WeaponChangeRules
     /// <param name="values">The values given.</param>
     /// <param name="gameWeapon">The weapon they are given to, as the game has it: its scale, and its kind of damage.</param>
     private JsonArray ValueActions(WeaponValues values, Weapon gameWeapon) =>
-        game == GameTitle.SteelDivision2 ? SteelDivisionValueActions(values, gameWeapon) : WarnoValueActions(values);
+        game == GameTitle.SteelDivision2 ? SteelDivisionValueActions(values, gameWeapon) : WarnoValueActions(values, gameWeapon.ShownOnMount);
 
-    /// <summary>WARNO's actions for the values given, on its ammunition's properties, written as WARNO writes them.</summary>
-    private static JsonArray WarnoValueActions(WeaponValues values)
+    /// <summary>
+    /// WARNO's actions for the values given, on its ammunition's properties, written as WARNO writes them. A weapon shown
+    /// on its mounts (<paramref name="shownOnMount"/>, WARNO v210942 on) has its picture and traits there instead
+    /// (<see cref="MountRules"/>), so they are left out here.
+    /// </summary>
+    private static JsonArray WarnoValueActions(WeaponValues values, bool shownOnMount = false)
     {
         var actions = new JsonArray();
-        if (values.Picture is string picture) actions.Add(Action("InterfaceWeaponTexture", SetValue, "\"" + picture + "\""));
+        if (!shownOnMount && values.Picture is string picture) actions.Add(Action("InterfaceWeaponTexture", SetValue, "\"" + picture + "\""));
         // the traits as the game writes them: ['MOTION', 'F&F', 'HEAT']
-        if (values.Traits is IReadOnlyList<string> traits)
+        if (!shownOnMount && values.Traits is IReadOnlyList<string> traits)
             actions.Add(Action("TraitsToken", SetList, "[" + string.Join(", ", traits.Select(token => "'" + token + "'")) + "]"));
         foreach (WeaponStat stat in WeaponStat.All)
             if (values.Given(stat.Field) is double value) actions.Add(Action(stat.Target, SetValue, stat.Written(value)));

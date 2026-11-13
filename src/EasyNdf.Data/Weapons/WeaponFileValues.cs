@@ -32,6 +32,9 @@ public static class WeaponFileValues
     /// <summary>The angle it fires its shells at, in radians, which the pane shows in degrees.</summary>
     public const string Arc = "PitchForParabolic";
 
+    /// <summary>The values WARNO v210942 on writes in the mounted weapon (TMountedWeaponDescriptor) rather than the ammunition.</summary>
+    private static readonly string[] MountedNames = ["Name", "TypeCategoryName", "Caliber", "WeaponDescriptionToken"];
+
     /// <summary>The ammunition's own properties kept, found by name.</summary>
     private static readonly string[] OwnNames =
     [
@@ -69,17 +72,24 @@ public static class WeaponFileValues
     /// </summary>
     /// <param name="ammunition">The ammunition descriptor.</param>
     /// <param name="inMetres">Turns a distance of the files ((N) * Metre) into metres as the game shows them; none to keep N.</param>
+    /// <param name="mount">
+    /// The first mounted weapon that fires it, or null: from WARNO v210942 on, the weapon's name and text keys
+    /// (<see cref="MountedNames"/>) are written there, and are taken from it where the ammunition has none.
+    /// </param>
     /// <remarks>
     /// Tuned for speed: the ammunition's properties are gone through once (<see cref="FirstPropertiesOf"/>), not once for
     /// each of the some sixty names looked for, which took a tenth of reading the weapons. Keep it that way when tidying.
     /// </remarks>
-    public static Dictionary<string, string> Read(ObjectValue ammunition, Func<double?, double?>? inMetres = null)
+    public static Dictionary<string, string> Read(ObjectValue ammunition, Func<double?, double?>? inMetres = null, ObjectValue? mount = null)
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
         Dictionary<string, NdfValue> firstByName = FirstPropertiesOf(ammunition);
         NdfValue? FirstNamed(string name) => firstByName.GetValueOrDefault(name);
         foreach (string name in OwnNames)
             if (Written(FirstNamed(name)) is string written) values[name] = written;
+        if (mount is not null)
+            foreach (string name in MountedNames)
+                if (!values.ContainsKey(name) && Written(Own(mount, name)) is string written) values[name] = written;
         if (Own(ammunition, "Arme") is ObjectValue damage && Written(Find(damage, "Family")) is string family) values[DamageFamily] = family;
         foreach ((string field, SteelDivisionAmmunition.Property property) in SteelDivisionAmmunition.RenamedFileValues)
         {

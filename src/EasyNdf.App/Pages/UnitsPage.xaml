@@ -54,28 +54,20 @@
                         <units:SourceChoice x:Name="SourceChoice" />
                         <!-- "Show mods' changes", and the mods that are on under it -->
                         <units:ModChangesSwitch />
-                        <!-- the source's folder; it takes no room until a source is chosen -->
-                        <TextBlock x:Name="WhereText" FontSize="11.5" Foreground="{DynamicResource muted}" TextWrapping="Wrap" Margin="0,3,0,0">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <Trigger Property="Text" Value="">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
                         <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.Find}" /></controls:Bevel>
                         <TextBox x:Name="SearchBox" Tag="{t:Text Units.SearchBox.Hint}" ToolTip="{t:Text Units.SearchBox.Tip}" TextChanged="SearchChanged" />
-                        <StackPanel x:Name="SideChoices" Orientation="Horizontal" Margin="0,6,0,0" />
-                        <ComboBox x:Name="RoleChoice" ToolTip="{t:Text Units.RoleChoice.Tip}" Margin="0,6,0,0" SelectionChanged="RoleChosen" />
-                        <CheckBox x:Name="OnlyInDivision" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyInDivision}" ToolTip="{t:Text Units.OnlyInDivision.Tip}"
-                                  controls:OffReason.Text="{t:Text Units.OnlyInDivision.Off}" IsChecked="False" Margin="0,6,0,0" Click="OnlyInDivisionClicked" />
-                    <CheckBox x:Name="OnlyModded" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyModded}"
-                              IsChecked="False" Margin="0,6,0,0" Click="OnlyModdedClicked" />
+                        <DockPanel Margin="0,6,0,0">
+                            <StackPanel x:Name="SideChoices" DockPanel.Dock="Left" Orientation="Horizontal" />
+                            <ComboBox x:Name="RoleChoice" ToolTip="{t:Text Units.RoleChoice.Tip}" Margin="6,0,0,0" SelectionChanged="RoleChosen" />
+                        </DockPanel>
+                        <controls:WrapRow Gap="12" Margin="0,6,0,0">
+                            <CheckBox x:Name="OnlyInDivision" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyInDivision}" ToolTip="{t:Text Units.OnlyInDivision.Tip}"
+                                      controls:OffReason.Text="{t:Text Units.OnlyInDivision.Off}" IsChecked="False" Click="OnlyInDivisionClicked" />
+                            <CheckBox x:Name="OnlyModded" Style="{StaticResource Toggle}" Content="{t:Text Units.OnlyModded}"
+                                      IsChecked="False" Click="OnlyModdedClicked" />
+                        </controls:WrapRow>
                     </StackPanel>
                     <!-- the nations above, the divisions below, and a bar between them that shares the height (as in the File Editor's descriptor viewer) -->
                     <Grid x:Name="ListsBox">
@@ -92,9 +84,11 @@
                                 </DockPanel>
                             </controls:Bevel>
                             <controls:Bevel Style="{StaticResource SunkenBox}">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                    <StackPanel x:Name="NationList" KeyboardNavigation.TabNavigation="Once" />
-                                </ScrollViewer>
+                                <controls:WholeRows>
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                        <StackPanel x:Name="NationList" KeyboardNavigation.TabNavigation="Once" />
+                                    </ScrollViewer>
+                                </controls:WholeRows>
                             </controls:Bevel>
                         </DockPanel>
                         <!-- drag to share the height; double-click shares it evenly again -->
@@ -141,9 +135,11 @@
                                 </DockPanel>
                             </controls:Bevel>
                             <controls:Bevel Style="{StaticResource SunkenBox}">
-                                <ScrollViewer x:Name="DivisionScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                                    <StackPanel x:Name="DivisionList" KeyboardNavigation.TabNavigation="Once" />
-                                </ScrollViewer>
+                                <controls:WholeRows>
+                                    <ScrollViewer x:Name="DivisionScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                        <StackPanel x:Name="DivisionList" KeyboardNavigation.TabNavigation="Once" />
+                                    </ScrollViewer>
+                                </controls:WholeRows>
                             </controls:Bevel>
                         </DockPanel>
                     </Grid>
@@ -160,6 +156,38 @@
                                 <TextBlock x:Name="TitleText" DockPanel.Dock="Left" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                 <TextBlock x:Name="SummaryText" DockPanel.Dock="Left" Foreground="{DynamicResource muted}" FontWeight="Normal" Margin="10,0,0,0" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis" />
+                                <!-- on the Units sub-tab, narrowed to a weapon's units, as the chosen division's mark: its name goes back to it, ✕ shows every unit -->
+                                <Grid x:Name="UsedWeaponMark" DockPanel.Dock="Left" Margin="10,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
+                                    <!-- the selection colour, fading out to the right -->
+                                    <Border Background="{DynamicResource sel}">
+                                        <Border.OpacityMask>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Color="Black" Offset="0.6" />
+                                                <GradientStop Color="Transparent" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Border.OpacityMask>
+                                    </Border>
+                                    <Border BorderBrush="{DynamicResource accent}" BorderThickness="3,0,0,0" Padding="6,0,2,0">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Left" Text="{t:Text Units.UsingWeapon}" Foreground="{DynamicResource muted}" FontWeight="Normal" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                            <Button x:Name="ClearUsedWeaponButton" DockPanel.Dock="Right" Style="{StaticResource HeadingButton}" Width="22" Padding="0" Margin="7,0,0,0" Content="✕"
+                                                    ToolTip="{t:Text Divisions.Chosen.Clear.Tip}" AutomationProperties.Name="{t:Text Divisions.Chosen.Clear.Tip}" Click="ClearUsedWeaponClicked" />
+                                            <TextBlock x:Name="UsedWeaponName" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Cursor="Hand" MouseLeftButtonUp="UsedWeaponNameClicked">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource ink}" />
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                                                                <Setter Property="TextDecorations" Value="Underline" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </DockPanel>
+                                    </Border>
+                                </Grid>
                             </DockPanel>
                             <!-- with a division chosen: where it comes from, and which mod its changes are saved in, as the two can differ -->
                             <TextBlock x:Name="SavedInText" Foreground="{DynamicResource muted}" FontWeight="Normal" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
@@ -206,7 +234,7 @@
 
                     <Grid>
                         <!-- Cards and Table, with the Unit pane beside or below -->
-                        <controls:PanePair x:Name="Panes" Key="units" DefaultBelow="300">
+                        <controls:PanePair x:Name="Panes" Key="units" DefaultBelow="300" BesideAtAnySize="True">
                             <controls:PanePair.Main>
                                 <DockPanel>
                                     <!--

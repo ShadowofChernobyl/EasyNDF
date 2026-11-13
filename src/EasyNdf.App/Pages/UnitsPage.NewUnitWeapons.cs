@@ -1,4 +1,5 @@
 using System.Windows;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
 using EasyNdf.App.Weapons;
 using EasyNdf.Data.Units;
@@ -82,7 +83,7 @@ public partial class UnitsPage : INewUnitWeapons
         {
             string weaponName = page.WeaponsWithPending(pending).GetValueOrDefault(mount.Ammunition)?.Name ?? Weapon.NameOf(mount.Ammunition);
             string unitName = pending.UnitName.Trim() == "" ? Texts.Get("Units.New.Title") : pending.UnitName.Trim();
-            if (!await MainView.Of(page).Messages.Confirm(Texts.Get("Weapons.Loadout.RemoveAsk", ("weapon", weaponName), ("unit", unitName)), Texts.Get("Weapons.Loadout.RemoveOk"))) return;
+            if (!await MainView.Of(page).Messages.Confirm(Texts.Get("Weapons.Loadout.RemoveAsk", ("weapon", weaponName), ("unit", unitName)), Texts.Get("Weapons.Loadout.RemoveOk"), DialogIcon.Question)) return;
             if (await page.MountTextOf(original, mount) is not string text) return;
             pending.Changes.Add(new LoadoutChange(LoadoutChange.Remove, mount.Turret, mount.Index, MountText: text));
             changed();

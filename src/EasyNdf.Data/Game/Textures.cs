@@ -37,6 +37,8 @@ public sealed record Texture(int Width, int Height, string Format, byte[] Pixels
             return new Picture(width, height, BlockTextures.DecodePart(Pixels, Width, Height, hasAlphaBlock: false, x, y, width, height));
         if (Format.StartsWith("DXT5", StringComparison.Ordinal) || Format.StartsWith("BC3", StringComparison.Ordinal))
             return new Picture(width, height, BlockTextures.DecodePart(Pixels, Width, Height, hasAlphaBlock: true, x, y, width, height));
+        if (Format.StartsWith("BC5", StringComparison.Ordinal))
+            return new Picture(width, height, BlockTextures.DecodeTwoChannelPart(Pixels, Width, Height, x, y, width, height));
         Picture part = new Picture(Width, Height, Pixels).Crop(x, y, width, height);
         // these two keep blue before red in memory
         if (Format.StartsWith("A8R8G8B8", StringComparison.Ordinal) || Format.StartsWith("B8G8R8A8", StringComparison.Ordinal))
@@ -99,7 +101,7 @@ public static class Textures
     {
         int blocks = Math.Max(1, (width + 3) / 4) * Math.Max(1, (height + 3) / 4);
         if (format.StartsWith("DXT1", StringComparison.Ordinal) || format.StartsWith("BC1", StringComparison.Ordinal)) return blocks * 8;
-        if (format.StartsWith("DXT5", StringComparison.Ordinal) || format.StartsWith("BC3", StringComparison.Ordinal)) return blocks * 16;
+        if (format.StartsWith("DXT5", StringComparison.Ordinal) || format.StartsWith("BC3", StringComparison.Ordinal) || format.StartsWith("BC5", StringComparison.Ordinal)) return blocks * 16;
         if (IsFourBytesPerPixel(format)) return width * height * 4;
         throw new InvalidDataException("a .tgv in the format " + format + ", which EasyNDF cannot read yet");
     }

@@ -33,7 +33,44 @@ public static class UnitReader
     /// category). Only the first must exist.
     /// </summary>
     private static readonly (string File, bool MustExist)[] UnitFilesRead =
-        [("UniteDescriptor.ndf", true), ("BuildingDescriptors.ndf", false), ("DefenseProductionsDescriptors.ndf", false)];
+        [(UnitsFile, true), ("BuildingDescriptors.ndf", false), ("DefenseProductionsDescriptors.ndf", false)];
+
+    /// <summary>
+    /// The units file's name before WARNO v210942 (and in Steel Division 2), in Generated/Gameplay/Gfx; and its name
+    /// from v210942 on, in Generated/Gameplay.
+    /// </summary>
+    public const string UnitsFile = "UniteDescriptor.ndf", TacticalUnitsFile = "TacticalUnits.ndf";
+
+    /// <summary>Whether a file is the units file, under either name (<see cref="UnitsFile"/>, <see cref="TacticalUnitsFile"/>).</summary>
+    public static bool IsUnitsFile(string? name) =>
+        string.Equals(name, UnitsFile, StringComparison.OrdinalIgnoreCase) || string.Equals(name, TacticalUnitsFile, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether two file names are the same file for a rule: the same name in any capitals, or the units file under its
+    /// two names, so rules made for UniteDescriptor.ndf run on WARNO v210942's TacticalUnits.ndf, and the other way round.
+    /// </summary>
+    public static bool SameFile(string? ruleFile, string? fileName) =>
+        string.Equals(ruleFile, fileName, StringComparison.OrdinalIgnoreCase) || (IsUnitsFile(ruleFile) && IsUnitsFile(fileName));
+
+    /// <summary>
+    /// A set of file names that rules are for, given the units file's other name when it holds one (<see cref="SameFile"/>),
+    /// so a file of either name is found in it.
+    /// </summary>
+    public static HashSet<string> WithUnitsFileUnderBothNames(HashSet<string> files)
+    {
+        if (files.Any(file => IsUnitsFile(file))) files.UnionWith([UnitsFile, TacticalUnitsFile]);
+        return files;
+    }
+
+    /// <summary>
+    /// Where a file of <see cref="UnitFilesRead"/> is, and its name: the units file is TacticalUnits.ndf in
+    /// Generated/Gameplay where the files have it (WARNO v210942 on), else UniteDescriptor.ndf; the others are in
+    /// Generated/Gameplay/Gfx.
+    /// </summary>
+    private static (string Path, string File) WhereIs(GameDataFiles files, string file) =>
+        file == UnitsFile && files.Has("Generated/Gameplay/" + TacticalUnitsFile)
+            ? ("Generated/Gameplay/" + TacticalUnitsFile, TacticalUnitsFile)
+            : ("Generated/Gameplay/Gfx/" + file, file);
 
     /// <summary>
     /// The names of the files whose values the units and divisions show (pictures and flags aside): an EasyNDF mod's
@@ -42,7 +79,7 @@ public static class UnitReader
     /// </summary>
     public static IReadOnlyList<string> FilesWithValues { get; } =
     [
-        "UniteDescriptor.ndf", "BuildingDescriptors.ndf", "DefenseProductionsDescriptors.ndf", "WeaponDescriptor.ndf", "Ammunition.ndf", "AmmunitionMissiles.ndf", "DeckSerializer.ndf",
+        "UniteDescriptor.ndf", "TacticalUnits.ndf", "BuildingDescriptors.ndf", "DefenseProductionsDescriptors.ndf", "WeaponDescriptor.ndf", "Ammunition.ndf", "AmmunitionMissiles.ndf", "DeckSerializer.ndf",
         "Divisions.ndf", "DivisionList.ndf", "DivisionRules.ndf", "DivisionCostMatrix.ndf", "Decks.ndf", "DeckPacks.ndf",
         // where the units' pictures and the divisions' emblems are: a mod's new units and divisions name their own
         "ButtonTexturesUnites.ndf", "DefenseTextures.ndf", "DivisionTextures.ndf",
@@ -60,10 +97,11 @@ public static class UnitReader
     {
         var problems = new List<string>();
         Dictionary<string, Loadout> loadouts = [];
-        Dictionary<string, List<(string Ammunition, int Count)>> weaponSets = ReadWeaponSets(files, problems, loadouts);
+        Dictionary<string, ObjectValue> firstMounts = new(StringComparer.Ordinal);
+        Dictionary<string, List<(string Ammunition, int Count)>> weaponSets = ReadWeaponSets(files, problems, loadouts, firstMounts);
         Dictionary<string, string> weaponPictures = ReadWeaponPictures(files);
         Scales scales = ReadScales(files);
-        Dictionary<string, Weapon> ammunition = ReadAmmunition(files, problems, weaponPictures, scales);
+        Dictionary<string, Weapon> ammunition = ReadAmmunition(files, problems, weaponPictures, scales, firstMounts);
         var battlegroupCards = new HashSet<string>(StringComparer.Ordinal);
         List<Division> allDivisions = DivisionReader.Read(files, texts, problems, battlegroupCards);
         Dictionary<string, List<string>> divisions = DivisionsOfEachUnit(allDivisions);
@@ -73,9 +111,10 @@ public static class UnitReader
         Dictionary<string, int> armorLevels = ReadArmorLevels(files);
 
         var units = new List<Unit>();
-        foreach ((string file, bool mustExist) in UnitFilesRead)
+        foreach ((string fileRead, bool mustExist) in UnitFilesRead)
         {
-            foreach (Declaration declaration in Declarations(files, "Generated/Gameplay/Gfx/" + file, IsUnitName, problems, mustExist))
+            (string path, string file) = WhereIs(files, fileRead);
+            foreach (Declaration declaration in Declarations(files, path, IsUnitName, problems, mustExist))
             {
                 if (declaration.Value is not ObjectValue unit) continue;
                 units.Add(ReadUnit(declaration.Name, file, unit, texts, weaponSets, ammunition, divisions, pictures, deckNumbers, scales));
@@ -127,6 +166,8 @@ public static class UnitReader
             SpeedScale = speed.Scale,
             SpeedIsInFlight = speed.IsInFlight,
             RoadSpeed = Number(fields.Find("DisplayRoadSpeedInKmph")) ?? Number(fields.Find("RealRoadSpeed")),
+            AccelerationGru = Number(fields.Find("MaxAccelerationGRU")),
+            DecelerationGru = Number(fields.Find("MaxDecelerationGRU")),
             Optics = NumberFor(fields.Find("OpticalStrengths"), "Standard") ?? Number(fields.Find("OpticalStrength")),
             Vision = vision,
             MetresScale = metresScale,
@@ -146,7 +187,21 @@ public static class UnitReader
             SeatsTaken = transportable is null ? null : Number(Own(transportable, "NbSeatsOccupied")) ?? 1,
             HasDeckNumber = deckNumbers.ContainsKey(descriptor),
             DeckNumber = deckNumbers.TryGetValue(descriptor, out int number) ? number : null,
+            Look = LookOf(unit, fields),
         };
+    }
+
+    /// <summary>How the unit names its 3D model (see <see cref="UnitLook"/>); null when it names none.</summary>
+    private static UnitLook? LookOf(ObjectValue unit, UnitFields fields)
+    {
+        // the apparence's ReferenceMesh, whatever a mod names it; else the first Modele_ the unit names
+        string? mesh = fields.Find("ReferenceMesh") is ScalarValue { Kind: ScalarKind.Reference } reference ? LastPart(reference.Text) : FirstReference(unit, "Modele_");
+        string? mimetic = Text(fields.Find("MimeticName"));
+        string? depiction = Text(fields.Find("BlackHoleKey"));
+        // Steel Division 2's apparence names its depiction (~/Gfx_...), which names the models
+        string? gfx = fields.Find("Depiction") is ScalarValue { Kind: ScalarKind.Reference } named && LastPart(named.Text) is string last
+            && last.StartsWith("Gfx_", StringComparison.Ordinal) ? last : null;
+        return mesh is null && mimetic is null && depiction is null && gfx is null ? null : new UnitLook(mesh, mimetic, depiction, gfx);
     }
 
     /// <summary>
@@ -205,7 +260,7 @@ public static class UnitReader
         var descriptors = new HashSet<string>(StringComparer.Ordinal);
         foreach ((string file, _) in UnitFilesRead)
         {
-            using TextReader? reader = files.Open("Generated/Gameplay/Gfx/" + file);
+            using TextReader? reader = files.Open(WhereIs(files, file).Path);
             if (reader is null) continue;
             while (reader.ReadLine() is string line)
                 if (UnitDeclarationLine.Match(line) is { Success: true } match) descriptors.Add(match.Groups[1].Value);
@@ -439,9 +494,12 @@ public static class UnitReader
 
     /// <summary>
     /// Each weapon set in WeaponDescriptor.ndf: its weapons' ammunition, and how many of each. Each is also read as a
-    /// loadout, turret by turret, into <paramref name="loadouts"/>, for the Armory's weapons editor.
+    /// loadout, turret by turret, into <paramref name="loadouts"/>, for the Armory's weapons editor. The first mounted
+    /// weapon of each ammunition goes into <paramref name="firstMounts"/>: from WARNO v210942 on, a weapon's name,
+    /// picture and traits are written there, not in its ammunition.
     /// </summary>
-    private static Dictionary<string, List<(string Ammunition, int Count)>> ReadWeaponSets(GameDataFiles files, List<string> problems, Dictionary<string, Loadout> loadouts)
+    private static Dictionary<string, List<(string Ammunition, int Count)>> ReadWeaponSets(
+        GameDataFiles files, List<string> problems, Dictionary<string, Loadout> loadouts, Dictionary<string, ObjectValue> firstMounts)
     {
         var sets = new Dictionary<string, List<(string, int)>>(StringComparer.Ordinal);
         foreach (Declaration declaration in Declarations(files, "Generated/Gameplay/Gfx/WeaponDescriptor.ndf", name => name.StartsWith("WeaponDescriptor_", StringComparison.Ordinal), problems))
@@ -452,6 +510,7 @@ public static class UnitReader
             foreach (ObjectValue weapon in AllObjects(declaration.Value))
             {
                 if (Own(weapon, "Ammunition") is not NdfValue ammunition || Text(ammunition) is not string name) continue;
+                firstMounts.TryAdd(name, weapon);
                 int count = (int)(Number(Own(weapon, "NbWeapons")) ?? 1);
                 mounts.Add((name, Math.Max(1, count)));
             }
@@ -484,13 +543,23 @@ public static class UnitReader
                     EffectTag: effectTag,
                     WeaponNumber: Text(Own(mount, "HandheldEquipmentKey")) is string key ? WeaponNumberOf(key) : EffectTagNumberOf(effectTag)));
             }
-            turrets.Add(new LoadoutTurret(turretIndex, Text(Own(turret, "Tag")) ?? "", turret.TypeName ?? "", mounts));
+            turrets.Add(new LoadoutTurret(turretIndex, Text(Own(turret, "Tag")) ?? "", turret.TypeName ?? "", mounts) { Motion = MotionOf(turret) });
         }
         int mountsInTurrets = turrets.Sum(turret => turret.Mounts.Count);
         if (mountsInTurrets != AllObjects(manager).Count(each => Own(each, "Ammunition") is not null)) return null;
         List<int> boxes = [.. ItemsOf(Own(manager, "Salves")).Select(box => (int)(Number(box) ?? 0))];
         int? mainSalvos = Own(manager, "SalvoIsMainSalvo") is NdfValue main ? ItemsOf(main).Count : null;
         return new Loadout(descriptor, boxes, turrets, mainSalvos);
+    }
+
+    /// <summary>How far and how fast a turret turns, in radians, as its descriptor says; null when it says none of it.</summary>
+    private static TurretMotion? MotionOf(ObjectValue turret)
+    {
+        double? turn = Number(Own(turret, "AngleRotationMax"));
+        double? lowest = Number(Own(turret, "AngleRotationMinPitch"));
+        double? highest = Number(Own(turret, "AngleRotationMaxPitch"));
+        double? speed = Number(Own(turret, "VitesseRotation"));
+        return turn is null && lowest is null && highest is null && speed is null ? null : new TurretMotion(turn, lowest, highest, speed);
     }
 
     /// <summary>The N of Steel Division 2's "weapon_effet_tagN"; 0 when it is not one.</summary>
@@ -509,16 +578,18 @@ public static class UnitReader
 
     /// <summary>
     /// Every ammunition, from Ammunition.ndf and (WARNO's missiles) AmmunitionMissiles.ndf, as the weapons the Weapons
-    /// sub-tab shows, by descriptor, in the files' order.
+    /// sub-tab shows, by descriptor, in the files' order. <paramref name="firstMounts"/> gives each one's first mounted
+    /// weapon, where WARNO v210942 on writes its name, picture and traits.
     /// </summary>
-    private static Dictionary<string, Weapon> ReadAmmunition(GameDataFiles files, List<string> problems, Dictionary<string, string> pictures, Scales scales)
+    private static Dictionary<string, Weapon> ReadAmmunition(
+        GameDataFiles files, List<string> problems, Dictionary<string, string> pictures, Scales scales, Dictionary<string, ObjectValue> firstMounts)
     {
         var all = new Dictionary<string, Weapon>(StringComparer.Ordinal);
         foreach (string file in new[] { "Ammunition.ndf", "AmmunitionMissiles.ndf" })
         {
             foreach (Declaration declaration in Declarations(files, "Generated/Gameplay/Gfx/" + file, name => name.StartsWith("Ammo_", StringComparison.Ordinal), problems, mustExist: file == "Ammunition.ndf"))
                 if (declaration.Value is ObjectValue ammunition)
-                    all[declaration.Name] = WeaponOf(declaration.Name, ammunition, file, pictures, scales);
+                    all[declaration.Name] = WeaponOf(declaration.Name, ammunition, file, pictures, scales, firstMounts.GetValueOrDefault(declaration.Name));
         }
         return all;
     }
@@ -526,21 +597,26 @@ public static class UnitReader
     /// <summary>
     /// An ammunition as a weapon. WARNO's names first, then Steel Division 2's for the values it keeps under others
     /// (<see cref="SteelDivisionAmmunition"/>): its distances in metres as the game shows them, with the scale they were
-    /// turned by; its aiming time, shots a salvo and time between salvos.
+    /// turned by; its aiming time, shots a salvo and time between salvos. Its picture, traits, name and text keys are
+    /// the ammunition's, or (WARNO v210942 on, where the ammunition has none) those of <paramref name="mount"/>, the
+    /// first mounted weapon that fires it.
     /// </summary>
-    private static Weapon WeaponOf(string descriptor, ObjectValue ammunition, string file, Dictionary<string, string> pictures, Scales scales)
+    private static Weapon WeaponOf(string descriptor, ObjectValue ammunition, string file, Dictionary<string, string> pictures, Scales scales, ObjectValue? mount = null)
     {
         double? Metres(string property) => scales.InMetres(Number(Own(ammunition, property)));
+        NdfValue? Shown(string property) => Own(ammunition, property) ?? (mount is null ? null : Own(mount, property));
         (string family, int level) = DamageOf(Own(ammunition, "Arme"));
         string name = Weapon.NameOf(descriptor);
         string? missile = Text(Own(ammunition, "MissileDescriptor"));
         NdfValue? hitChances = Find(ammunition, "BaseHitValueModifiers");
-        string? texture = Text(Own(ammunition, "InterfaceWeaponTexture"));
+        string? texture = Text(Shown("InterfaceWeaponTexture"));
         WeaponKind kind = WeaponKinds.Of(name, family, file, missile);
         return new Weapon
         {
             Descriptor = descriptor,
             File = file,
+            // WARNO v210942 on: its name, picture and traits are its mounted weapons', not its ammunition's
+            ShownOnMount = mount is not null && Own(ammunition, "Name") is null && Own(mount, "Name") is not null,
             Name = name,
             Kind = kind,
             Category = WeaponCategories.Of(descriptor, kind),
@@ -564,12 +640,12 @@ public static class UnitReader
             Reload = Number(Own(ammunition, "TimeBetweenTwoSalvos")) ?? Number(Own(ammunition, "TempsEntreDeuxSalves")),
             ShotsPerSalvo = Number(Own(ammunition, "ShotsCountPerSalvo")) ?? Number(Own(ammunition, "NbTirParSalves")),
             SupplyCost = Number(Own(ammunition, "SupplyCost")),
-            Traits = [.. ItemsOf(Own(ammunition, "TraitsToken")).Select(Text).OfType<string>()],
+            Traits = [.. ItemsOf(Shown("TraitsToken")).Select(Text).OfType<string>()],
             PictureTexture = texture,
             PictureSource = texture is null ? null : pictures.GetValueOrDefault(texture),
             Missile = missile,
             MustDeploy = Text(Own(ammunition, "HasDeploymentTime")) == "True",
-            FileValues = WeaponFileValues.Read(ammunition, scales.InMetres),
+            FileValues = WeaponFileValues.Read(ammunition, scales.InMetres, mount),
         };
     }
 

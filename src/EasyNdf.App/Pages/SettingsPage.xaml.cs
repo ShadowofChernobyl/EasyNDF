@@ -203,7 +203,7 @@ public partial class SettingsPage : UserControl
         if (showing || sender is not CheckBox { Tag: string key } toggle) return;
         // every time the "Edited with EasyNDF" comment is turned off, the user is told what it costs, and can keep it
         if (key == "stamp" && toggle.IsChecked != true
-            && !await View.Messages.Confirm(Texts.Get("Settings.StampOff.Ask"), Texts.Get("Settings.StampOff.TurnOff")))
+            && !await View.Messages.Confirm(Texts.Get("Settings.StampOff.Ask"), Texts.Get("Settings.StampOff.TurnOff"), DialogIcon.Warning))
         {
             toggle.IsChecked = true;
             return;
@@ -243,7 +243,7 @@ public partial class SettingsPage : UserControl
         }
         catch (Exception problem) when (problem is System.IO.IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
         {
-            _ = View.Messages.Tell(problem.Message);
+            _ = View.Messages.Tell(problem.Message, DialogIcon.Error);
         }
     }
 
@@ -390,7 +390,7 @@ public partial class SettingsPage : UserControl
         try { File.WriteAllText(dialog.FileName, ModFiles.BackupText(AppData.Current.Mods, AppData.Current.ModFileStore)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell(Texts.Get("Settings.Backup.NotSaved", ("reason", error.Message)));
+            _ = View.Messages.Tell(Texts.Get("Settings.Backup.NotSaved", ("reason", error.Message)), DialogIcon.Error);
             return;
         }
         DataNote.Text = Texts.Get("Settings.Backup.Done", ("presets", Rules.RulesModel.Count(presets)), ("file", Path.GetFileName(dialog.FileName)));
@@ -408,7 +408,7 @@ public partial class SettingsPage : UserControl
     /// <summary>"Reset settings": every setting as at first, the theme too. Mods, rules and files are kept.</summary>
     private async void ResetClicked(object sender, RoutedEventArgs e)
     {
-        if (!await View.Messages.Confirm(Texts.Get("Settings.Reset.Ask"), Texts.Get("Settings.ResetSettings"))) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Reset.Ask"), Texts.Get("Settings.ResetSettings"), DialogIcon.Warning)) return;
         AppData.Current.ResetSettings();
         ThemeManager.ApplySaved();
         Text.Texts.UseSaved();
@@ -427,6 +427,7 @@ public partial class SettingsPage : UserControl
         bool hasOwnThemes = AppData.Current.Themes.Themes.Count > 0;
         DialogAnswer answer = await View.Messages.Ask(Texts.Get("Settings.ResetLook.Ask"), new DialogOptions
         {
+            Icon = DialogIcon.Warning,
             Ok = Texts.Get("Settings.ResetLook.Go"),
             Extra = ResetLookLists(),
             CheckText = hasOwnThemes ? Texts.Get("Settings.ResetLook.DeleteThemes") : null,
@@ -477,11 +478,11 @@ public partial class SettingsPage : UserControl
     /// </summary>
     private async void ClearClicked(object sender, RoutedEventArgs e)
     {
-        if (!await View.Messages.Confirm(Texts.Get("Settings.Clear.Ask"), Texts.Get("Settings.Clear.Confirm"))) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.Clear.Ask"), Texts.Get("Settings.Clear.Confirm"), DialogIcon.Warning)) return;
         try { AppData.Current.ClearAll(); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await View.Messages.Tell(Texts.Get("Settings.Clear.NotAll", ("reason", error.Message)));
+            await View.Messages.Tell(Texts.Get("Settings.Clear.NotAll", ("reason", error.Message)), DialogIcon.Error);
         }
         // the app starts again, as the HTML app reloads its page
         if (Environment.ProcessPath is string app) Process.Start(app);

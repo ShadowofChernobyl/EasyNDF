@@ -242,7 +242,11 @@ public sealed class PanePair : Grid
     /// <summary>Whether the second pane is folded away, with only its heading showing.</summary>
     public bool IsFolded => isFolded;
 
-    private bool Beside => PaneArrangement.IsBeside;
+    /// <summary>Whether the second pane is beside the main one, as <see cref="BesideAtAnySize"/> and the arrangement say.</summary>
+    internal bool Beside => BesideAtAnySize ? PaneArrangement.IsBesideAtAnySize : PaneArrangement.IsBeside;
+
+    /// <summary>Whether the second pane stays beside in a window under 1500 wide (see <see cref="PaneArrangement.IsBesideAtAnySize"/>).</summary>
+    public bool BesideAtAnySize { get; set; }
 
     private double DefaultSize => !Beside ? DefaultBelow : Room > 0 ? Math.Round(DefaultShareBeside * Room) : DefaultBeside;
 

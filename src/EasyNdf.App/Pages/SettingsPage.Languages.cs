@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
 using EasyNdf.Data;
 using EasyNdf.Data.Languages;
@@ -62,7 +63,7 @@ public partial class SettingsPage
         try { pack = AppData.Current.Languages.Import(File.ReadAllText(dialog.FileName), Texts.Catalog.English); }
         catch (Exception error) when (error is ModFileException or IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell(Texts.Get("Settings.LanguageNotImported", ("reason", error.Message)));
+            _ = View.Messages.Tell(Texts.Get("Settings.LanguageNotImported", ("reason", error.Message)), DialogIcon.Error);
             return;
         }
         UseLanguage(pack.Code);
@@ -88,7 +89,7 @@ public partial class SettingsPage
         try { File.WriteAllText(dialog.FileName, LanguageStore.Export(pack, Texts.Catalog.English, MainView.AppVersion)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell(Texts.Get("Settings.LanguageNotExported", ("reason", error.Message)));
+            _ = View.Messages.Tell(Texts.Get("Settings.LanguageNotExported", ("reason", error.Message)), DialogIcon.Error);
             return;
         }
         ShowLanguageNote(Texts.Get("Settings.LanguageExported", ("file", Path.GetFileName(dialog.FileName))));
@@ -101,7 +102,7 @@ public partial class SettingsPage
     private async void RemoveLanguageClicked(object sender, RoutedEventArgs e)
     {
         if (!AppData.Current.Languages.Packs.TryGetValue(Texts.Catalog.LanguageCode, out LanguagePack? pack)) return;
-        if (!await View.Messages.Confirm(Texts.Get("Settings.RemoveLanguage.Ask", ("name", pack.Name)), Texts.Get("Settings.RemoveLanguage"))) return;
+        if (!await View.Messages.Confirm(Texts.Get("Settings.RemoveLanguage.Ask", ("name", pack.Name)), Texts.Get("Settings.RemoveLanguage"), DialogIcon.Warning)) return;
         try { AppData.Current.Languages.Delete(pack.Code); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         UseLanguage(Texts.BuiltIn.ContainsKey(pack.Code) ? pack.Code : LanguagePack.EnglishCode);

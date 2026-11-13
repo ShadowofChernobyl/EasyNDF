@@ -270,7 +270,7 @@ public partial class SwapWeaponWindow : UserControl
         if (picked.Fit == LoadoutRules.Fit.CannotGoThere && !riskyWeaponsAllowed)
         {
             DialogAnswer answer = await MainView.Of(this).Messages.Ask(Texts.Get("Weapons.Swap.Risky", ("weapon", picked.Weapon.Name), ("reason", picked.Reason)),
-                new DialogOptions { Ok = Texts.Get("Weapons.Risky.GoOn"), CheckText = Texts.Get("Weapons.Risky.HideForSession") });
+                new DialogOptions { Icon = DialogIcon.Warning, Ok = Texts.Get("Weapons.Risky.GoOn"), CheckText = Texts.Get("Weapons.Risky.HideForSession") });
             if (answer.Choice != DialogChoice.Ok) return;
             if (answer.IsChecked) riskyWeaponsAllowed = true;
         }

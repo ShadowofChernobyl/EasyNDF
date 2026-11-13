@@ -48,8 +48,14 @@ public static class GeneratedListsMaker
     /// <summary>A game's files the lists are made from (<see cref="InputFiles"/>, <see cref="SteelDivisionInputFiles"/>).</summary>
     public static IReadOnlyList<string> InputFilesOf(GameTitle game) => game == GameTitle.SteelDivision2 ? SteelDivisionInputFiles : InputFiles;
 
-    /// <summary>The file without which no list can be made.</summary>
+    /// <summary>
+    /// The file without which no list can be made. WARNO v210942 on names it TacticalUnits.ndf, which is taken in its
+    /// place (<see cref="InputsFrom"/>).
+    /// </summary>
     public const string UnitsFile = "UniteDescriptor.ndf";
+
+    /// <summary>The units file's names, as messages give them: TacticalUnits.ndf, or UniteDescriptor.ndf before WARNO v210942.</summary>
+    public static string UnitsFileNames => Data.Units.UnitReader.TacticalUnitsFile + " / " + UnitsFile;
 
     /// <summary>
     /// The files a generated battlegroup needs on the Files tab besides those of its division: its deck and cards are
@@ -111,7 +117,8 @@ public static class GeneratedListsMaker
         var inputs = new List<Input>();
         foreach (string name in InputFilesOf(game))
         {
-            FileEntry? entry = InputFile(entries, name, game);
+            // WARNO v210942 on keeps its units in TacticalUnits.ndf
+            FileEntry? entry = (name == UnitsFile ? InputFile(entries, Data.Units.UnitReader.TacticalUnitsFile, game) : null) ?? InputFile(entries, name, game);
             if (entry is null)
             {
                 if (name == UnitsFile) return null;

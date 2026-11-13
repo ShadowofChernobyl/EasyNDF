@@ -65,8 +65,8 @@ public static class ArmoryPresets
         IReadOnlyDictionary<string, Weapons.Loadout>? gameLoadouts = null)
     {
         JsonArray rules = DivisionChangeRules.For(mod, game, texts, unitName, gameCards);
-        foreach (JsonNode? rule in Units.UnitChangeRules.For(mod, gameUnits, texts, gameLoadouts, unitName)) rules.Add(rule!.DeepClone());
-        foreach (JsonNode? rule in Weapons.WeaponChangeRules.For(mod, gameWeapons, texts, loadout => UnitsWithLoadout(gameUnits, loadout))) rules.Add(rule!.DeepClone());
+        foreach (JsonNode? rule in Units.UnitChangeRules.For(mod, gameUnits, texts, gameLoadouts, unitName, gameWeapons)) rules.Add(rule!.DeepClone());
+        foreach (JsonNode? rule in Weapons.WeaponChangeRules.For(mod, gameWeapons, texts, loadout => UnitsWithLoadout(gameUnits, loadout), gameLoadouts)) rules.Add(rule!.DeepClone());
         return rules;
     }
 

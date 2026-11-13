@@ -193,7 +193,7 @@ public static class OpenModUnits
         {
             string? file = (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.FileKey];
             bool isGroup = (string?)rule?["Kind"] == "Group";
-            if (!isGroup && string.Equals(file, entry.Name, StringComparison.OrdinalIgnoreCase) && !ArmoryPresets.IsLocked(rule)) return true;
+            if (!isGroup && Data.Units.UnitReader.SameFile(file, entry.Name) && !ArmoryPresets.IsLocked(rule)) return true;
         }
         return false;
     }

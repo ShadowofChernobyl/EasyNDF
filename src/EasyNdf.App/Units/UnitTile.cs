@@ -85,13 +85,13 @@ public sealed class UnitTile : Grid
 
         nation.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         nationMark = new NationMark(unit.Nation, firstSide);
-        var nationLine = new DockPanel { Margin = new Thickness(0, 2, 0, 0), Children = { nationMark, nation } };
+        var nationLine = new DockPanel { Margin = new Thickness(0, 2, 0, 0), Children = { nationMark, new StillText(nation) } };
         cards.SetResourceReference(TextElement.ForegroundProperty, "muted");
         name.Inlines.Add(cards);
         name.Inlines.Add(nameText);
         pictureArea = new Grid { Children = { picture, unitsPerCard, cost } };
         pictureRow.Children.Add(pictureArea);
-        tile.Child = new StackPanel { Children = { pictureRow, name, nationLine } };
+        tile.Child = new StackPanel { Children = { pictureRow, new StillText(name), nationLine } };
         Children.Add(tile);
         Show(unit, firstSide);
 

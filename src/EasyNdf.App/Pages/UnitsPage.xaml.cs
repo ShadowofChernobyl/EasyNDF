@@ -54,6 +54,8 @@ public partial class UnitsPage : UserControl
         };
         IsVisibleChanged += (_, _) => TabShown();
         ShowSource();
+        // says All Roles from the start, not blank until a source is chosen
+        FillRoleChoice();
         PreviewKeyDown += FoldKeys;
         PreviewKeyDown += ZoomKeys;
         PreviewKeyDown += SelectAllKey;
@@ -72,7 +74,7 @@ public partial class UnitsPage : UserControl
         PrepareUnitKeys();
         LeftColumnSplit.Prepare(LeftColumn, LeftSplit);
         // Cards or Table, whichever was used last; Compare, kept by an earlier version, counts as Cards
-        view = (string?)AppData.Current.State["unitView"] == nameof(UnitView.Table) ? UnitView.Table : UnitView.Cards;
+        view = RememberedView;
         ShowViewButtons();
     }
 
@@ -166,7 +168,6 @@ public partial class UnitsPage : UserControl
     {
         TitleText.Inlines.Clear();
         UnitSource? chosen = sources.Chosen;
-        WhereText.Text = chosen?.Folder ?? "";
         WeaponsView.ShowWhere(chosen?.Folder ?? "");
         // the game the "only modded" switches compare with: the source's, WARNO until one is chosen
         string gameName = (chosen?.Game ?? GameTitle.Warno).Name;
@@ -282,11 +283,13 @@ public partial class UnitsPage : UserControl
     // ---- the filters ----
 
     /// <summary>
-    /// The filters as at first, for a source just read: every type (ALL), side, nation, role and division, and every
-    /// unit, those in no division too (a unit only some division's transport is in none, such as the M2A2 BRAT).
+    /// The filters as at first, for a source just read: every type (ALL), side, nation, role, division and weapon, and
+    /// every unit, those in no division too (a unit only some division's transport is in none, such as the M2A2 BRAT).
     /// </summary>
     private void ResetFilters()
     {
+        usedWeapon = null;
+        filtersBeforeWeapon = null;
         filter.Text = "";
         filter.Side = "";
         filter.Nations.Clear();
@@ -337,6 +340,13 @@ public partial class UnitsPage : UserControl
             .OrderBy(role => role.Item2, StringComparer.Create(Texts.Catalog.Culture, ignoreCase: true));
         foreach ((string code, string name) in roles) RoleChoice.Items.Add(new ComboBoxItem { Content = name, Tag = code });
         // the role chosen stays chosen when the list is filled again in another language
+        ShowRoleChosen();
+    }
+
+    /// <summary>The list shows the role chosen, drawing nothing else.</summary>
+    private void ShowRoleChosen()
+    {
+        fillingLists = true;
         RoleChoice.SelectedItem = RoleChoice.Items.OfType<ComboBoxItem>().FirstOrDefault(item => (string)item.Tag == filter.Role) ?? RoleChoice.Items[0];
         fillingLists = false;
     }
@@ -490,6 +500,9 @@ public partial class UnitsPage : UserControl
 
     // ---- the view ----
 
+    /// <summary>Cards or Table, whichever was shown last: Compare is never kept.</summary>
+    private static UnitView RememberedView => (string?)AppData.Current.State["unitView"] == nameof(UnitView.Table) ? UnitView.Table : UnitView.Cards;
+
     private void ViewClicked(object sender, RoutedEventArgs e)
     {
         view = sender == TableButton ? UnitView.Table : sender == CompareButton ? UnitView.Compare : UnitView.Cards;
@@ -540,6 +553,7 @@ public partial class UnitsPage : UserControl
         UseDivisionMarks();
         // on the Divisions sub-tab, and on Units with a division chosen, only the division's units: the filters narrow them further
         filter.InDivision = ShowsDivisionUnits || UnitsShowOneDivision ? ChosenDivisionUnits() : null;
+        NarrowToUsedWeapon();
         FillNationList(mayKeep: onlyPartChanged);
         FillFactoryTabs(mayKeep: onlyPartChanged);
         FillDivisionList(mayKeep: onlyPartChanged);
@@ -576,7 +590,6 @@ public partial class UnitsPage : UserControl
     /// <summary>The note at the foot of the tab: how Compare reads its numbers, or how to use the list.</summary>
     private void ShowFootnote()
     {
-        if (messageTimer?.IsEnabled == true) return;
         if (ShowsBattlegroup)
         {
             Footnote.Text = Texts.Get("Divisions.Battlegroup.Footnote");
@@ -585,30 +598,5 @@ public partial class UnitsPage : UserControl
         Footnote.Text = view == UnitView.Compare
             ? Texts.Get("Units.Footnote.Compare") + " " + Texts.Get(Game.RangeUnit == "GRU" ? "Units.Footnote.RangeGru" : "Units.Footnote.RangeMetres")
             : Texts.Get("Units.Footnote.List");
-    }
-
-    /// <summary>How long a message stays at the foot of the tab before its note comes back.</summary>
-    private static readonly TimeSpan MessageTime = TimeSpan.FromSeconds(4);
-
-    private System.Windows.Threading.DispatcherTimer? messageTimer;
-
-    /// <summary>
-    /// Shows a message, such as what Undo did, at the foot of the tab in place of its note for a few seconds: the tab
-    /// has no message line of its own, as the Files and Rules tabs have.
-    /// </summary>
-    public void SayForAMoment(string message)
-    {
-        if (messageTimer is null)
-        {
-            messageTimer = new System.Windows.Threading.DispatcherTimer { Interval = MessageTime };
-            messageTimer.Tick += (_, _) =>
-            {
-                messageTimer.Stop();
-                ShowFootnote();
-            };
-        }
-        messageTimer.Stop();
-        Footnote.Text = message;
-        messageTimer.Start();
     }
 }

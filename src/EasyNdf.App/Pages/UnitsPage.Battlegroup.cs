@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
+using EasyNdf.App.Dialogs;
 using EasyNdf.App.Divisions;
 using EasyNdf.App.Text;
 using EasyNdf.App.Units;
@@ -105,7 +106,7 @@ public partial class UnitsPage : IBattlegroupEditing
     {
         if (chosenDivision is not Division division) return;
         string ask = Texts.Get("Divisions.Battlegroup.Revert.Ask", ("battlegroup", BattlegroupName(division)), ("mod", OpenMod.Name));
-        if (!await MainView.Of(this).Messages.Confirm(ask, Texts.Get("Divisions.Battlegroup.Revert.Do"))) return;
+        if (!await MainView.Of(this).Messages.Confirm(ask, Texts.Get("Divisions.Battlegroup.Revert.Do"), DialogIcon.Warning)) return;
         string descriptor = division.Descriptor;
         ChangeDivisions(mod => DivisionChanges.ChangeDetails(mod, GameDivisions, descriptor, entry =>
         {
@@ -156,7 +157,7 @@ public partial class UnitsPage : IBattlegroupEditing
         // its cards are chosen again at each export: a change by hand would be lost
         if (division.Battlegroup?.Generated is not null)
         {
-            _ = MainView.Of(this).Messages.Tell(Texts.Get("Divisions.Battlegroup.Generation.CardsLocked"));
+            _ = MainView.Of(this).Messages.Tell(Texts.Get("Divisions.Battlegroup.Generation.CardsLocked"), DialogIcon.Error);
             return false;
         }
         List<BattlegroupCard> cards = [.. division.Battlegroup?.Cards ?? []];

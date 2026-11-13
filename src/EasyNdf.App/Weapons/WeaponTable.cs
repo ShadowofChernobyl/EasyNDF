@@ -239,7 +239,8 @@ public sealed class WeaponTable : UserControl
     /// <summary>The row an element clicked is in; null for none.</summary>
     private static WeaponTableRow? RowAt(object clicked)
     {
-        for (DependencyObject? at = clicked as DependencyObject; at is not null; at = VisualTreeHelper.GetParent(at))
+        // what was clicked can be a piece of a text, which is not a Visual
+        for (DependencyObject? at = clicked as DependencyObject; at is not null; at = at is Visual ? VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
             if (at is WeaponTableRow row) return row;
         return null;
     }

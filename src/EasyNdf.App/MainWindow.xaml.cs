@@ -33,6 +33,7 @@ public partial class MainWindow : Window
             View.FilesTab.KeepSession();
             AppData.Current.SaveWhatWaits();
         };
+        WindowPlace.SizeForFirstTime(this);
         WindowPlace.Restore(this);
         Loaded += async (_, _) =>
         {

@@ -19,6 +19,7 @@
              xmlns:controls="clr-namespace:EasyNdf.App.Controls"
              xmlns:pages="clr-namespace:EasyNdf.App.Pages"
              xmlns:dialogs="clr-namespace:EasyNdf.App.Dialogs"
+             xmlns:models="clr-namespace:EasyNdf.App.Models"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
@@ -69,6 +70,7 @@
                 <controls:UsageReadout x:Name="Readout" DockPanel.Dock="Bottom" />
 
                 <!-- #tabs and the pages. Code picks a tab by its name (EditorTabItem...), so tabs can be added between others. -->
+                <Grid>
                 <TabControl x:Name="Tabs">
                     <TabItem x:Name="FilesTabItem" Header="{t:Text Main.Files}" Tag="{t:Text Main.Files.Tip}">
                         <pages:FilesPage x:Name="FilesTab" />
@@ -92,6 +94,15 @@
                         <pages:AboutPage x:Name="AboutTab" />
                     </TabItem>
                 </TabControl>
+                <!-- the recent notifications, at the right of the tab row -->
+                <Button x:Name="NoticesButton" Style="{StaticResource IconButton}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,10,0"
+                        ToolTip="{t:Text Main.Notices.Tip}" AutomationProperties.Name="{t:Text Main.Notices.Title}" Click="NoticesClicked">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M 1,2 H 13 V 10 H 6 L 3,13 V 10 H 1 Z" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.3" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock x:Name="NoticeCount" Margin="4,0,0,0" VerticalAlignment="Center" Visibility="Collapsed" />
+                    </StackPanel>
+                </Button>
+                </Grid>
 
             </DockPanel>
         </controls:Bevel>
@@ -129,6 +140,8 @@
         <dialogs:NewUnitWindow x:Name="NewUnit" />
         <!-- the Armory's Swap window, over the New Unit window when it is opened from there -->
         <dialogs:SwapWeaponWindow x:Name="SwapWeapon" />
+        <!-- the 3D model viewer, over the New Unit window when it is opened from there -->
+        <models:ModelViewer x:Name="ModelViewer" />
         <!-- a panel shown beside its button, such as a unit's transports in the Armory -->
         <dialogs:FloatingPanel x:Name="Floating" />
         <!-- the welcome window, the first time the app starts -->
@@ -137,5 +150,7 @@
         <dialogs:MessageOverlay x:Name="Messages" />
         <!-- the popup of the ? buttons, over the windows too -->
         <dialogs:HelpPopup x:Name="HelpPopup" />
+        <!-- the notifications, over everything: what the last action did -->
+        <dialogs:NoticeLayer x:Name="Notifications" />
     </Grid>
 </UserControl>

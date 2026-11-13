@@ -90,9 +90,6 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>The rule list's lines, with folded groups' rules left out.</summary>
     public IReadOnlyList<RuleRow> RuleRows { get; private set; } = [];
 
-    /// <summary>What the last action did (the HTML app's <c>#clipNote</c>).</summary>
-    public string Note { get; private set; } = "";
-
     /// <summary>"Presets": the open mod's, the one in bold in the mod list (its name made the heading too long to read).</summary>
     public string PresetsTitle => Texts.Get("Rules.Presets");
 
@@ -129,16 +126,8 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// <summary>What the preset list says when the mod has no presets.</summary>
     public static string NoPresetsText => Texts.Get("Rules.NoPresetsInThis");
 
-    /// <summary>Raised with each message, so the rule window can show it too while it is open.</summary>
-    public event Action<string>? Said;
-
-    /// <summary>Shows a message under the rule list's buttons, and in the rule window while it is open.</summary>
-    public void Say(string message)
-    {
-        Note = message;
-        Said?.Invoke(message);
-        Changed();
-    }
+    /// <summary>Gives a notification of what the last action did.</summary>
+    public void Say(string message, NoticeKind kind = NoticeKind.Done) => Notices.Say(message, kind);
 
     // ---- mods ----
 
@@ -324,7 +313,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         // an Armory preset goes when the Armory's changes do, so nothing they make is left without its rules
         if (gone.Any(preset => preset.IsArmoryPreset && preset.Rules.Any(ArmoryPresets.IsLocked)))
         {
-            Say(Texts.Get("Rules.Locked.PresetRefused"));
+            Say(Texts.Get("Rules.Locked.PresetRefused"), NoticeKind.Caution);
             return;
         }
         foreach (ModPreset preset in gone) OpenMod.Presets.Remove(preset);
@@ -366,7 +355,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         string nothing = Texts.Get("Rules.Paste.Nothing");
         JsonNode? parsed;
         try { parsed = JsonNode.Parse(text); }
-        catch (System.Text.Json.JsonException) { Say(nothing); return false; }
+        catch (System.Text.Json.JsonException) { Say(nothing, NoticeKind.Caution); return false; }
         List<JsonNode?> items = parsed is JsonArray list ? [.. list] : [parsed];
         // a mod file's text: its presets
         items = [.. items.SelectMany(x => x?["Presets"] is JsonArray presets ? [.. presets] : new List<JsonNode?> { x })];
@@ -383,14 +372,14 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         List<JsonObject> actionItems = [.. items.OfType<JsonObject>().Where(x => KindOf(x) == "Action")];
         if (ruleItems.Count == 0 && conditionItems.Count == 0 && actionItems.Count == 0)
         {
-            if (presetItems.Count == 0) Say(nothing);
+            if (presetItems.Count == 0) Say(nothing, NoticeKind.Caution);
             return presetItems.Count > 0;
         }
 
         bool madePreset = ruleItems.Count > 0 && NeedsPresetForNewRules;
         string madeNote = madePreset ? MadePresetNoteForOpen() : "";
         if (madePreset) MakePresetForRules();
-        if (OpenPreset is null) { Say(Texts.Get("Rules.Paste.SelectRule")); return presetItems.Count > 0; }
+        if (OpenPreset is null) { Say(Texts.Get("Rules.Paste.SelectRule"), NoticeKind.Caution); return presetItems.Count > 0; }
         var done = new List<string>();
         if (ruleItems.Count > 0)
         {
@@ -501,6 +490,14 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     }
 
     /// <summary>Selects one rule alone.</summary>
+    /// <summary>Picks a rule of the open rule set from elsewhere in the app, with its group unfolded so it shows.</summary>
+    public void GoToRule(int index)
+    {
+        Reveal(index);
+        SelectOnly(index);
+        Refresh();
+    }
+
     public void SelectOnly(int index)
     {
         CurrentRule = index;
@@ -526,7 +523,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     public bool RefusedForLocked(IEnumerable<int> places)
     {
         if (!places.Any(IsLocked)) return false;
-        Say(Texts.Get("Rules.Locked.Refused"));
+        Say(Texts.Get("Rules.Locked.Refused"), NoticeKind.Caution);
         return true;
     }
 
@@ -574,30 +571,6 @@ public sealed partial class RulesModel : INotifyPropertyChanged
             changed = true;
         }
         if (changed) FoldsChanged();
-    }
-
-    /// <summary>A rule's ↑ or ↓: swaps it with the rule above or below.</summary>
-    public void MoveRule(int index, int direction)
-    {
-        int other = index + direction;
-        if (other < 0 || other >= Rules.Count) return;
-        if (RefusedForLocked([index, other])) return;
-        Swap(index, other);
-        SelectOnly(other);
-        Reveal(other);
-        SaveRules();
-    }
-
-    /// <summary>A rule's +: a copy of it below it, selected.</summary>
-    public void DuplicateRule(int index)
-    {
-        if (RefusedForLocked([index])) return;
-        var copy = (JsonObject)Rules[index]!.DeepClone();
-        ReseedClone(copy);
-        Rules.Insert(index + 1, copy);
-        SelectOnly(index + 1);
-        Reveal(index + 1);
-        SaveRules();
     }
 
     /// <summary>

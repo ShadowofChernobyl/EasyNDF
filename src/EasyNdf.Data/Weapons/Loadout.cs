@@ -30,7 +30,21 @@ public sealed record Loadout(string Descriptor, IReadOnlyList<int> AmmoBoxes, IR
 /// <param name="Tag">Its name in the 3D model, such as "tourelle1".</param>
 /// <param name="Type">How it moves, as the game names it: TTurretTwoAxisDescriptor, TTurretUnitDescriptor...</param>
 /// <param name="Mounts">The weapons mounted on it.</param>
-public sealed record LoadoutTurret(int Index, string Tag, string Type, IReadOnlyList<LoadoutMount> Mounts);
+public sealed record LoadoutTurret(int Index, string Tag, string Type, IReadOnlyList<LoadoutMount> Mounts)
+{
+    /// <summary>How far and how fast it turns, as WeaponDescriptor.ndf says; null when the turret says none of it.</summary>
+    public TurretMotion? Motion { get; init; }
+}
+
+/// <summary>
+/// How far and how fast a turret turns, in radians, as its descriptor says; each null when it does not say. On aircraft
+/// these are the arcs the weapons fire in, not parts that move.
+/// </summary>
+/// <param name="TurnLimit">How far it turns each way (AngleRotationMax); a full turn (2π) turns all the way round.</param>
+/// <param name="LowestPitch">How far its gun goes down (AngleRotationMinPitch), below zero.</param>
+/// <param name="HighestPitch">How far its gun goes up (AngleRotationMaxPitch).</param>
+/// <param name="Speed">How fast it turns, in radians a second (VitesseRotation).</param>
+public sealed record TurretMotion(double? TurnLimit, double? LowestPitch, double? HighestPitch, double? Speed);
 
 /// <summary>A weapon mounted on a turret (a TMountedWeaponDescriptor).</summary>
 /// <param name="Turret">Its turret's place in the loadout.</param>

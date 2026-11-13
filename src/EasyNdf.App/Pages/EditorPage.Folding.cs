@@ -19,101 +19,82 @@ namespace EasyNdf.App.Pages;
 /// </summary>
 public partial class EditorPage
 {
-    /// <summary>The folded blocks of the text shown; null for none (no file, or "Changes only").</summary>
-    private FoldingManager? folding;
-
-    /// <summary>The text <see cref="folding"/> belongs to, whose folds are kept when another text is shown.</summary>
-    private ShownText? foldingFor;
-
-    /// <summary>Draws the folded blocks.</summary>
-    private readonly FoldedBlocks foldedBlocks = new();
-
-    /// <summary>Where the block each line starts ends, as worked out since the text last changed, by line from 0.</summary>
-    private readonly Dictionary<int, int> blockEnds = [];
-
-    /// <summary>
-    /// The ends worked out before the text last changed. A block too long to look through on a key typed keeps the arrow
-    /// it had until its end is found again (see <see cref="ArrowEndOf"/>).
-    /// </summary>
-    private readonly Dictionary<int, int> blockEndsBefore = [];
-
-    /// <summary>The lines whose block's end is being looked for away from the screen's thread.</summary>
-    private readonly HashSet<int> endsBeingFound = [];
-
-    /// <summary>Counts the changes to the text, so an end found in an older text is not kept.</summary>
-    private int textChanges;
+    /// <summary>The folded blocks of the file in use; null for none (no file, or "Changes only").</summary>
+    private FoldingManager? folding => view.Folding;
 
     /// <summary>How many lines below a line are looked through for its block's end while drawing its arrow.</summary>
     private const int LinesLookedAtOnce = 3000;
 
-    /// <summary>Sets up folding when the page is built.</summary>
-    private void StartFolding()
+    /// <summary>Sets up folding for a file's text box: its arrows are its own text's.</summary>
+    private void StartFolding(FileView v)
     {
-        markColumn.Arrows = ArrowOf;
-        markColumn.ArrowClicked += ToggleBlock;
-        Text.TextArea.TextView.MouseHover += FoldedBlockHovered;
-        Text.TextArea.TextView.MouseHoverStopped += (_, _) => foldTip.IsOpen = false;
-        Text.PreviewMouseRightButtonUp += EditorRightClicked;
-    }
-
-    /// <summary>Before another text is shown: the folds of the one shown are kept with it, and its folding is taken off the editor.</summary>
-    private void PutFoldingAway()
-    {
-        if (folding is null) return;
-        if (foldingFor is not null)
+        v.MarkColumn.Arrows = index => ArrowOf(v, index);
+        v.MarkColumn.ArrowClicked += index =>
         {
-            foldingFor.Folds = [.. folding.AllFoldings.Where(f => f.IsFolded).Select(f => (f.StartOffset, f.EndOffset))];
-            foldingFor.Document.Changed -= ForgetBlockEnds;
-        }
-        FoldingManager.Uninstall(folding);
-        folding = null;
-        foldingFor = null;
-        foldedBlocks.Folding = null;
+            Use(v);
+            ToggleBlock(index);
+        };
+        v.Editor.TextArea.TextView.MouseHover += (_, e) => FoldedBlockHovered(v, e);
+        v.Editor.TextArea.TextView.MouseHoverStopped += (_, _) => foldTip.IsOpen = false;
+        v.Editor.PreviewMouseRightButtonUp += EditorRightClicked;
     }
 
-    /// <summary>After a text is put in the editor: its folding, with the blocks it had folded.</summary>
-    private void BringFoldingBack()
+    /// <summary>
+    /// Before another text is shown in a box: the folds of the one shown are kept with it, and its folding is taken off
+    /// the box. The ends of blocks worked out (see <see cref="FileView.BlockEnds"/>) are its own, the text changing since
+    /// counted, so an end found in an older text is not kept.
+    /// </summary>
+    private static void PutFoldingAway(FileView v)
     {
-        blockEnds.Clear();
-        blockEndsBefore.Clear();
-        textChanges++;
-        if (shown is null || shown.IsChangesOnly) return;
-        folding = FoldingManager.Install(Text.TextArea);
+        if (v.Folding is null) return;
+        if (v.FoldingFor is not null)
+        {
+            v.FoldingFor.Folds = [.. v.Folding.AllFoldings.Where(f => f.IsFolded).Select(f => (f.StartOffset, f.EndOffset))];
+            v.FoldingFor.Document.Changed -= v.ForgetBlockEnds;
+        }
+        FoldingManager.Uninstall(v.Folding);
+        v.Folding = null;
+        v.FoldingFor = null;
+        v.FoldedBlocks.Folding = null;
+    }
+
+    /// <summary>After a text is put in a box: its folding, with the blocks it had folded.</summary>
+    private static void BringFoldingBack(FileView v)
+    {
+        v.BlockEnds.Clear();
+        v.BlockEndsBefore.Clear();
+        v.TextChanges++;
+        if (v.Shown is not ShownText text || text.IsChangesOnly) return;
+        TextArea area = v.Editor.TextArea;
+        v.Folding = FoldingManager.Install(area);
         // AvalonEdit's own margin is taken off: the mark column draws the arrows as the HTML app does. Its own marker stays,
         // as it is what lets the folding hide lines in this editor; FoldedBlocks goes before it, so the box drawn is ours.
-        foreach (FoldingMargin margin in Text.TextArea.LeftMargins.OfType<FoldingMargin>().ToList()) Text.TextArea.LeftMargins.Remove(margin);
-        Text.TextArea.TextView.ElementGenerators.Remove(foldedBlocks);
-        Text.TextArea.TextView.ElementGenerators.Insert(0, foldedBlocks);
-        foldedBlocks.Folding = folding;
-        foldingFor = shown;
-        shown.Document.Changed += ForgetBlockEnds;
-        foreach ((int start, int end) in shown.Folds)
-            if (end <= shown.Document.TextLength) Fold(start, end);
-        markColumn.ArrowsLightUp = shown.IsExport;
+        foreach (FoldingMargin margin in area.LeftMargins.OfType<FoldingMargin>().ToList()) area.LeftMargins.Remove(margin);
+        area.TextView.ElementGenerators.Remove(v.FoldedBlocks);
+        area.TextView.ElementGenerators.Insert(0, v.FoldedBlocks);
+        v.FoldedBlocks.Folding = v.Folding;
+        v.FoldingFor = text;
+        text.Document.Changed += v.ForgetBlockEnds;
+        foreach ((int start, int end) in text.Folds)
+            if (end <= text.Document.TextLength) Fold(v.Folding, start, end);
+        v.MarkColumn.ArrowsLightUp = text.IsExport;
     }
 
-    private void ForgetBlockEnds(object? sender, DocumentChangeEventArgs e)
-    {
-        textChanges++;
-        foreach ((int line, int end) in blockEnds) blockEndsBefore[line] = end;
-        blockEnds.Clear();
-    }
-
-    /// <summary>The lines of the text shown, and the block each starts inside, as the folding reads them.</summary>
-    private (DocumentLines Lines, IReadOnlyList<int> Blocks) LinesAndBlocks() => (new DocumentLines(shown!.Document), shown.Colourizer!.Blocks);
+    /// <summary>The lines of a box's text, and the block each starts inside, as the folding reads them.</summary>
+    private static (DocumentLines Lines, IReadOnlyList<int> Blocks) LinesAndBlocks(FileView v) => (new DocumentLines(v.Shown!.Document), v.Shown.Colourizer!.Blocks);
 
     /// <summary>
     /// A line's arrow: ▸ when its block is folded; ▾ when it starts one, which in the file means a block that closes
     /// (the HTML app's fold gutter), and in a read-only view any line that opens one (its <c>edCanFold</c>).
     /// </summary>
-    private FoldArrow ArrowOf(int index)
+    private FoldArrow ArrowOf(FileView v, int index)
     {
-        if (folding is null || shown is null || index >= shown.Document.LineCount) return FoldArrow.None;
-        DocumentLine line = shown.Document.GetLineByNumber(index + 1);
-        if (folding.GetFoldingsAt(line.EndOffset).Any(f => f.IsFolded)) return FoldArrow.Shut;
-        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks();
-        if (shown.IsExport) return NdfFolding.StartsBlock(lines, blocks, index) ? FoldArrow.Open : FoldArrow.None;
-        return ArrowEndOf(index) > index ? FoldArrow.Open : FoldArrow.None;
+        if (v.Folding is null || v.Shown is not ShownText text || index >= text.Document.LineCount) return FoldArrow.None;
+        DocumentLine line = text.Document.GetLineByNumber(index + 1);
+        if (v.Folding.GetFoldingsAt(line.EndOffset).Any(f => f.IsFolded)) return FoldArrow.Shut;
+        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks(v);
+        if (text.IsExport) return NdfFolding.StartsBlock(lines, blocks, index) ? FoldArrow.Open : FoldArrow.None;
+        return ArrowEndOf(v, index) > index ? FoldArrow.Open : FoldArrow.None;
     }
 
     /// <summary>
@@ -121,91 +102,89 @@ public partial class EditorPage
     /// lines are looked through at once: for a block that goes on further (one a quote or bracket left open runs to the
     /// file's end), the end known before is shown while the real one is found away from the screen's thread.
     /// </summary>
-    private int ArrowEndOf(int index)
+    private int ArrowEndOf(FileView v, int index)
     {
-        if (blockEnds.TryGetValue(index, out int end)) return end;
-        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks();
+        if (v.BlockEnds.TryGetValue(index, out int end)) return end;
+        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks(v);
         end = NdfFolding.BlockEnd(lines, blocks, index, LinesLookedAtOnce);
         if (end != NdfFolding.FurtherThanLooked)
         {
-            blockEnds[index] = end;
+            v.BlockEnds[index] = end;
             return end;
         }
-        FindFarEndLater(index, blocks[index]);
-        return blockEndsBefore.GetValueOrDefault(index, -1);
+        FindFarEndLater(v, index, blocks[index]);
+        return v.BlockEndsBefore.GetValueOrDefault(index, -1);
     }
 
     /// <summary>Finds a long block's end in a snapshot of the text, then draws its arrow again, unless the text changed meanwhile.</summary>
-    private async void FindFarEndLater(int index, int startsInside)
+    private static async void FindFarEndLater(FileView v, int index, int startsInside)
     {
-        if (shown is null || !endsBeingFound.Add(index)) return;
-        int changes = textChanges;
-        TextDocument document = shown.Document;
+        if (v.Shown is null || !v.EndsBeingFound.Add(index)) return;
+        int changes = v.TextChanges;
+        TextDocument document = v.Shown.Document;
         ITextSource text = document.CreateSnapshot();
         int lineStart = document.GetLineByNumber(index + 1).Offset;
         int linesOn = await Task.Run(() => FarBlockEnd.Find(text, lineStart, startsInside));
-        endsBeingFound.Remove(index);
-        if (changes != textChanges || shown?.Document != document) return;
-        blockEnds[index] = linesOn < 0 ? -1 : index + linesOn;
-        markColumn.InvalidateVisual();
+        v.EndsBeingFound.Remove(index);
+        if (changes != v.TextChanges || v.Shown?.Document != document) return;
+        v.BlockEnds[index] = linesOn < 0 ? -1 : index + linesOn;
+        v.MarkColumn.InvalidateVisual();
     }
 
     /// <summary>Where the block a line starts ends, or -1; remembered until the text changes.</summary>
-    private int BlockEndOf(int index)
+    private static int BlockEndOf(FileView v, int index)
     {
-        if (blockEnds.TryGetValue(index, out int end)) return end;
-        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks();
+        if (v.BlockEnds.TryGetValue(index, out int end)) return end;
+        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks(v);
         end = NdfFolding.BlockEnd(lines, blocks, index);
-        blockEnds[index] = end;
+        v.BlockEnds[index] = end;
         return end;
     }
 
     /// <summary>A click on an arrow folds its block, or unfolds it; the line clicked stays where it is.</summary>
     internal void ToggleBlock(int index)
     {
-        if (folding is null || shown is null) return;
+        if (folding is not FoldingManager manager || shown is null) return;
         DocumentLine line = shown.Document.GetLineByNumber(index + 1);
-        List<FoldingSection> here = [.. folding.GetFoldingsAt(line.EndOffset)];
+        List<FoldingSection> here = [.. manager.GetFoldingsAt(line.EndOffset)];
         bool wasFolded = here.Any(f => f.IsFolded);
-        foreach (FoldingSection fold in here) folding.RemoveFolding(fold);
+        foreach (FoldingSection fold in here) manager.RemoveFolding(fold);
         if (wasFolded) return;
-        int end = BlockEndOf(index);
-        if (end > index) Fold(line.EndOffset, shown.Document.GetLineByNumber(end + 1).EndOffset);
+        int end = BlockEndOf(view, index);
+        if (end > index) Fold(manager, line.EndOffset, shown.Document.GetLineByNumber(end + 1).EndOffset);
     }
 
     /// <summary>Folds the text from the end of a block's first line to the end of its last, leaving the first line.</summary>
-    private void Fold(int start, int end)
+    private static void Fold(FoldingManager manager, int start, int end)
     {
-        FoldingSection fold = folding!.CreateFolding(start, end);
+        FoldingSection fold = manager.CreateFolding(start, end);
         fold.Title = "⋯";
         fold.IsFolded = true;
     }
 
     // ---- Fold all and Unfold all, in the status strip ----
 
-    private System.Windows.Controls.Button? foldAllButton, unfoldAllButton;
-
     /// <summary>
-    /// Fold all and Unfold all, at the left of the status strip under the text. They used to sit at the right of the File
-    /// Editor heading, where, with the panes switching between beside and below, they ended up next to the pane
+    /// Fold all and Unfold all, at the left of a file's status strip under its text. They used to sit at the right of the
+    /// File Editor heading, where, with the panes switching between beside and below, they ended up next to the pane
     /// buttons and were mistaken for them. A right-click on them offers the same two.
     /// </summary>
-    private FrameworkElement FoldButtons()
+    private FrameworkElement FoldButtons(FileView v)
     {
-        foldAllButton = FoldButton("FoldAllIcon", FoldAll, new Thickness(0, 0, 6, 0));
-        unfoldAllButton = FoldButton("UnfoldAllIcon", UnfoldAll, new Thickness(0));
+        v.FoldAllButton = FoldButton("FoldAllIcon", FoldAll, new Thickness(0, 0, 6, 0));
+        v.UnfoldAllButton = FoldButton("UnfoldAllIcon", UnfoldAll, new Thickness(0));
         var buttons = new System.Windows.Controls.StackPanel
         {
             Orientation = System.Windows.Controls.Orientation.Horizontal,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { foldAllButton, unfoldAllButton },
+            Children = { v.FoldAllButton, v.UnfoldAllButton },
         };
         buttons.MouseRightButtonUp += (_, e) =>
         {
             e.Handled = true;
             Menus.Show(buttons, FoldChoices());
         };
-        ShowFoldTips();
+        ShowFoldTips(v);
         return buttons;
     }
 
@@ -226,15 +205,20 @@ public partial class EditorPage
         return button;
     }
 
-    /// <summary>The buttons' tooltips, in the language in use.</summary>
+    /// <summary>The buttons' tooltips, in the language in use, in every open file.</summary>
     private void ShowFoldTips()
     {
-        if (foldAllButton is null || unfoldAllButton is null) return;
-        foldAllButton.ToolTip = Texts.Get("Editor.FoldAll.Tip");
-        unfoldAllButton.ToolTip = Texts.Get("Editor.UnfoldAll.Tip");
+        foreach (FileView v in AllViews) ShowFoldTips(v);
+    }
+
+    private static void ShowFoldTips(FileView v)
+    {
+        if (v.FoldAllButton is null || v.UnfoldAllButton is null) return;
+        v.FoldAllButton.ToolTip = Texts.Get("Editor.FoldAll.Tip");
+        v.UnfoldAllButton.ToolTip = Texts.Get("Editor.UnfoldAll.Tip");
         // the buttons show only an icon, so a screen reader is given their names
-        System.Windows.Automation.AutomationProperties.SetName(foldAllButton, Texts.Get("Editor.Menu.FoldAll"));
-        System.Windows.Automation.AutomationProperties.SetName(unfoldAllButton, Texts.Get("Editor.Menu.UnfoldAll"));
+        System.Windows.Automation.AutomationProperties.SetName(v.FoldAllButton, Texts.Get("Editor.Menu.FoldAll"));
+        System.Windows.Automation.AutomationProperties.SetName(v.UnfoldAllButton, Texts.Get("Editor.Menu.UnfoldAll"));
     }
 
     /// <summary>Fold all and Unfold all as menu items, with their keys (the same ones that fold the Rules tab's groups).</summary>
@@ -250,12 +234,12 @@ public partial class EditorPage
     /// <summary>"Fold all": every block that starts at the top level, which is every descriptor; then back to the top.</summary>
     internal void FoldAll()
     {
-        if (folding is null || shown is null) return;
-        folding.Clear();
-        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks();
+        if (folding is not FoldingManager manager || shown is null) return;
+        manager.Clear();
+        (DocumentLines lines, IReadOnlyList<int> blocks) = LinesAndBlocks(view);
         TextDocument document = shown.Document;
         foreach ((int first, int last) in NdfFolding.TopLevelBlocks(lines, blocks))
-            Fold(document.GetLineByNumber(first + 1).EndOffset, document.GetLineByNumber(last + 1).EndOffset);
+            Fold(manager, document.GetLineByNumber(first + 1).EndOffset, document.GetLineByNumber(last + 1).EndOffset);
         Text.ScrollToVerticalOffset(0);
     }
 
@@ -285,9 +269,9 @@ public partial class EditorPage
 
     private readonly System.Windows.Controls.ToolTip foldTip = new() { Placement = PlacementMode.Mouse };
 
-    private void FoldedBlockHovered(object sender, MouseEventArgs e)
+    private void FoldedBlockHovered(FileView v, MouseEventArgs e)
     {
-        TextView view = Text.TextArea.TextView;
+        TextView view = v.Editor.TextArea.TextView;
         Point point = e.GetPosition(view);
         VisualLine? line = view.GetVisualLineFromVisualTop(point.Y + view.VerticalOffset);
         if (line is null) return;
@@ -341,7 +325,7 @@ public partial class EditorPage
             if (Text.SelectionLength > 0) items.Add(new MenuChoice(Texts.Get("Editor.Menu.CopySelected"), () => Copy(Text.SelectedText)));
             items.Add(new MenuChoice(Texts.Get("Editor.CopyThisLine"), () => Copy(lineText), line is not null && !isGap));
             items.Add(Menus.Line);
-            FoldArrow arrow = index >= 0 ? ArrowOf(index) : FoldArrow.None;
+            FoldArrow arrow = index >= 0 ? ArrowOf(this.view, index) : FoldArrow.None;
             if (arrow != FoldArrow.None) items.Add(new MenuChoice(arrow == FoldArrow.Shut ? Texts.Get("Editor.Menu.UnfoldBlock") : Texts.Get("Editor.Menu.FoldBlock"), () => ToggleBlock(index)));
         }
         items.AddRange(FoldChoices());

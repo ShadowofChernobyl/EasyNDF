@@ -43,6 +43,9 @@ public partial class WeaponsArmory : UserControl
         Table.WeaponRightClicked += OpenWeaponMenu;
         view = Enum.TryParse((string?)AppData.Current.State["weaponView"], out WeaponView remembered) ? remembered : WeaponView.Cards;
         PrepareZoom();
+        // the dropdowns say what they hold from the start, not blank until a source is chosen
+        FillDamageChoice();
+        ShowZoom();
         PreviewKeyDown += DeleteKey;
         LeftColumnSplit.Prepare(LeftColumn, LeftSplit);
         foreach (Control list in new Control[] { CardsList, Table })
@@ -455,7 +458,8 @@ public partial class WeaponsArmory : UserControl
     /// <summary>The card an element clicked is on; null for none.</summary>
     private static WeaponCard? CardAt(object clicked)
     {
-        for (DependencyObject? at = clicked as DependencyObject; at is not null; at = VisualTreeHelper.GetParent(at))
+        // what was clicked can be a piece of a text, which is not a Visual
+        for (DependencyObject? at = clicked as DependencyObject; at is not null; at = at is Visual ? VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
             if (at is WeaponCard card) return card;
         return null;
     }
@@ -533,6 +537,9 @@ public partial class WeaponsArmory : UserControl
 
     /// <summary>The weapons the filters leave now.</summary>
     internal IReadOnlyList<Weapon> ShownNow => shown;
+
+    /// <summary>The weapon selected now; null for none.</summary>
+    internal Weapon? SelectedWeaponNow => AllWeapons.FirstOrDefault(weapon => weapon.Descriptor == selected);
 
     /// <summary>Selects a weapon, as a click on it does.</summary>
     internal void SelectNow(Weapon weapon) => Select(weapon);

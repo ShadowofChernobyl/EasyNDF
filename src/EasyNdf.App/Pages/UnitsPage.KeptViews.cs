@@ -19,10 +19,10 @@ public partial class UnitsPage
     private int changesShown;
 
     /// <summary>
-    /// What a view was drawn for: the count of changes then, the division it showed, the sub-tab, and the unit
-    /// selected (for the Unit pane). Two alike mean the view would be drawn the same.
+    /// What a view was drawn for: the count of changes then, the division it showed, the sub-tab, the unit selected (for
+    /// the Unit pane) and the weapon the units are narrowed to. Two alike mean the view would be drawn the same.
     /// </summary>
-    private sealed record DrawnFor(int Changes, Division? Division, ArmoryPart Part, Unit? Selected = null);
+    private sealed record DrawnFor(int Changes, Division? Division, ArmoryPart Part, Unit? Selected = null, string? Weapon = null);
 
     private DrawnFor? divisionListDrawnFor, divisionCardsDrawnFor, battlegroupDrawnFor, unitCardsDrawnFor, unitPaneDrawnFor, divisionPaneDrawnFor;
     private DrawnFor? nationListDrawnFor, factoryTabsDrawnFor;
@@ -34,16 +34,16 @@ public partial class UnitsPage
     private DrawnFor DrawnForNow() => new(changesShown, chosenDivision, part);
 
     /// <summary>
-    /// What the Unit pane would be drawn for now: the unit selected. Neither the sub-tab nor the division changes it;
-    /// its Show in Units button is shown or hidden for the sub-tab without drawing it again.
+    /// What the Unit pane would be drawn for now: the unit selected, and the weapon it marks. Neither the sub-tab nor the
+    /// division changes it otherwise; its Show in Units button is shown or hidden for the sub-tab without drawing it again.
     /// </summary>
-    private DrawnFor UnitPaneDrawnForNow() => new(changesShown, null, ArmoryPart.Units, selection.Selected);
+    private DrawnFor UnitPaneDrawnForNow() => new(changesShown, null, ArmoryPart.Units, selection.Selected, MarkedWeapon);
 
     /// <summary>
     /// What the nation list's and the type tabs' counts would be drawn for now: they count a division's units on the
-    /// Divisions sub-tab and on Units with a division chosen, and every unit otherwise.
+    /// Divisions sub-tab and on Units with a division chosen, a weapon's on Units with one chosen, and every unit otherwise.
     /// </summary>
-    private DrawnFor CountsDrawnForNow() => new(changesShown, ShowsDivisionUnits || UnitsShowOneDivision ? chosenDivision : null, ArmoryPart.Units);
+    private DrawnFor CountsDrawnForNow() => new(changesShown, ShowsDivisionUnits || UnitsShowOneDivision ? chosenDivision : null, ArmoryPart.Units, Weapon: MarkedWeapon);
 
     /// <summary>
     /// Whether a view can be shown as it was drawn: on a sub-tab switch (<paramref name="mayKeep"/>), when it was drawn
