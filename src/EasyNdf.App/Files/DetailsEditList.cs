@@ -231,7 +231,7 @@ internal sealed class DetailsEditList : Bevel
         }
         heading.Visibility = Visibility.Visible;
         RuleStats stats = details.Stats[rule];
-        ShowHeading(stats, details.ErrorsOf(rule).Count);
+        ShowHeading(stats, details.ErrorsOf(rule));
         ShowNotes(details, rule, stats);
 
         RuleEdits edits = details.EditsOf(rule, textToFind);
@@ -243,12 +243,12 @@ internal sealed class DetailsEditList : Bevel
         ShowEdits(edits, stats, details.LogOf(rule).Count);
     }
 
-    private void ShowHeading(RuleStats stats, int errors)
+    private void ShowHeading(RuleStats stats, IReadOnlyList<RunValueError> errors)
     {
         (string glyph, string colour) = Rules.RuleRow.SymbolOf(stats.Kind);
-        // a rule that wrote values that would stop mod generation is marked as an error, as in the rule list
-        symbol.Child = errors > 0 ? NoticeLayer.Icon(NoticeKind.Problem, 16) : FolderGlyph.For(glyph, colour, 16);
-        symbol.ToolTip = errors > 0 ? DetailsCounts.WouldStopGeneration(errors) : Rules.RuleKindNames.Of(stats.Kind);
+        // a rule that wrote values that would stop mod generation (or crash the game) is marked as an error, as in the rule list
+        symbol.Child = errors.Count > 0 ? NoticeLayer.Icon(NoticeKind.Problem, 16) : FolderGlyph.For(glyph, colour, 16);
+        symbol.ToolTip = errors.Count > 0 ? DetailsCounts.WhatErrorsDo(errors) : Rules.RuleKindNames.Of(stats.Kind);
         ruleName.Inlines.Clear();
         DetailsText.Add(ruleName.Inlines, stats.Name, null, find);
         ruleCounts.Inlines.Clear();

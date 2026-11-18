@@ -87,7 +87,7 @@
 
                     <!-- the model, sunken; the marks of the turrets over it; a click gives it the keys -->
                     <controls:Bevel x:Name="ViewFrame" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="#0b0e0c"
-                                    Width="880" Height="540" ClipToBounds="True" Cursor="Hand" ToolTip="{t:Text Units.Model.View.Tip}"
+                                    Width="880" Height="540" ClipToBounds="True" Cursor="Hand"
                                     Focusable="True" FocusVisualStyle="{x:Null}"
                                     MouseDown="ViewPressed" MouseMove="ViewDragged" MouseUp="ViewReleased" LostMouseCapture="ViewCaptureLost"
                                     MouseWheel="ViewScrolled" SizeChanged="ViewResized">

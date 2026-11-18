@@ -32,12 +32,11 @@ internal sealed class ModelScene
     private readonly Matrix4x4[] pose;
     private readonly Matrix4x4[] inverses;
     private readonly List<(int Node, float Radius)> wheels = [];
-    private readonly List<(int Node, int Axis, double Speed, double Direction)> rotors = [];
-    private readonly List<int> blades = [];
+    private readonly List<Rotor> rotors = [];
     private readonly List<(int Hub, FxAttachment Blur)> blurs = [];
     private readonly List<(double At, Action Run)> timers = [];
     private readonly double gatlingSpeed, gatlingAcceleration;
-    private double clock, rotorAngle, rotorSecondsToChange = 5, gatlingTurning, gatlingAngle, gatlingSpinsUntil;
+    private double clock, rotorSecondsToChange = 5, gatlingTurning, gatlingAngle, gatlingSpinsUntil;
 
     /// <summary>Gets a model ready to move.</summary>
     /// <param name="mesh">The model.</param>
@@ -71,13 +70,15 @@ internal sealed class ModelScene
         foreach (UnitRotor rotor in depiction?.Rotors ?? [])
         {
             if (mesh.NodeNamed(rotor.Node) is not (int node and >= 0)) continue;
-            rotors.Add((node, rotor.Axis, rotor.Speed, rotor.Clockwise ? -1 : 1));
-            // the blades are hidden while the blur the game draws in their place shows
+            int bladesAt = rotor.Blades is string bladesNode ? mesh.NodeNamed(bladesNode) : -1;
+            int blurAt = -1;
+            // the blades are hidden while the blur drawn in their place shows
             if (rotor.Blur is FxAttachment blur && mesh.NodeNamed(blur.Anchor) is int hub and >= 0)
             {
+                blurAt = blurs.Count;
                 blurs.Add((hub, blur));
-                if (rotor.Blades is string bladesNode && mesh.NodeNamed(bladesNode) is int bladesAt and >= 0) blades.Add(bladesAt);
             }
+            rotors.Add(new Rotor(node, rotor.Axis, rotor.Speed, rotor.Clockwise ? -1 : 1, rotor.BladeCount, bladesAt, blurAt));
         }
         if (depiction?.Gatling is GatlingBarrels gatling && mesh.NodeNamed(gatling.Node) is int barrels and >= 0)
         {
@@ -267,13 +268,39 @@ internal sealed class ModelScene
     public IReadOnlyList<(int Hub, FxAttachment Blur)> RotorBlurs => blurs;
 
     /// <summary>
-    /// How fast the rotors turn when their blades give way to their blur, as a share of their full speed. The game
-    /// decides this in its own code, which cannot be read: half speed is this viewer's choice.
+    /// Whether a rotor's blur (by its place in <see cref="RotorBlurs"/>) shows in place of its blades: once the rotor
+    /// turns more than a quarter turn divided by its blade count from one frame to the next.
     /// </summary>
-    private const double BlurFromLevel = 0.5;
+    public bool IsBlurred(int blur) => ShowsBlur && rotors.Any(rotor => rotor.Blur == blur && rotor.IsBlurred);
 
-    /// <summary>Whether the rotors turn fast enough that their blur shows in place of their blades.</summary>
-    public bool RotorsBlurred => blurs.Count > 0 && RotorLevel >= BlurFromLevel;
+    /// <summary>Whether a fast rotor's blur shows in place of its blades; off, the blades always show (Hide Effects).</summary>
+    public bool ShowsBlur { get; set; } = true;
+
+    /// <summary>A rotor: its node and axis, its full speed (turns a minute) and way round, its blades, and where it has got to.</summary>
+    private sealed class Rotor(int node, int axis, double speed, double direction, int bladeCount, int blades, int blur)
+    {
+        public int Node { get; } = node;
+        public int Axis { get; } = axis;
+        public double Speed { get; } = speed;
+        public double Direction { get; } = direction;
+        public int BladeCount { get; } = bladeCount;
+        public int Blades { get; } = blades;
+        public int Blur { get; } = blur;
+        public double Angle { get; set; }
+        public bool IsBlurred { get; set; }
+
+        /// <summary>
+        /// Turns on for a frame, at a share of its full speed: its speed (turns a minute) times the share cubed, a 24th of
+        /// it for each millisecond, so it creeps round as it starts and is soon too fast to follow; its blades blur once a
+        /// frame's turn times its blade count is more than a quarter turn.
+        /// </summary>
+        public void Step(double level, double seconds)
+        {
+            double step = Speed / 60 * 2 * Math.PI * level * level * level * seconds * 1000 / 24;
+            Angle = (Angle + step) % (2 * Math.PI);
+            IsBlurred = Blur >= 0 && seconds > 0 && step * BladeCount > Math.PI / 2;
+        }
+    }
 
     /// <summary>Starts the rotors, reaching full speed in this many seconds (the engine's start sound), or stops them.</summary>
     public void TurnRotors(bool on, double seconds)
@@ -314,7 +341,7 @@ internal sealed class ModelScene
         Driven += Speed * seconds;
         // the rotors spin up over the engine's start, and wind down more slowly
         RotorLevel += Math.Clamp(RotorLevelTo - RotorLevel, -seconds / Math.Max(8, rotorSecondsToChange), seconds / rotorSecondsToChange);
-        if (rotors.Count > 0) rotorAngle += rotors[0].Speed / 60 * 2 * Math.PI * RotorLevel * seconds;
+        foreach (Rotor rotor in rotors) rotor.Step(RotorLevel, seconds);
         // gatling barrels reach their speed in about a second (RotationAcceleration 1 as the share of it gained each second)
         double gatlingTo = clock < gatlingSpinsUntil ? gatlingSpeed : 0, change = gatlingSpeed * Math.Max(0.2, gatlingAcceleration) * seconds;
         gatlingTurning += Math.Clamp(gatlingTo - gatlingTurning, -change, change);
@@ -345,15 +372,15 @@ internal sealed class ModelScene
         }
         // a wheel rolls forward about its own y axis, by the distance driven over its size
         foreach ((int node, float radius) in wheels) Add(node, Matrix4x4.CreateRotationY((float)(Driven / radius)));
-        foreach ((int node, int axis, double _, double direction) in rotors)
+        foreach (Rotor rotor in rotors)
         {
-            float angle = (float)(rotorAngle * direction);
-            Add(node, axis == 0 ? Matrix4x4.CreateRotationX(angle) : axis == 1 ? Matrix4x4.CreateRotationY(angle) : Matrix4x4.CreateRotationZ(angle));
+            float angle = (float)(rotor.Angle * rotor.Direction);
+            Add(rotor.Node, rotor.Axis == 0 ? Matrix4x4.CreateRotationX(angle) : rotor.Axis == 1 ? Matrix4x4.CreateRotationY(angle) : Matrix4x4.CreateRotationZ(angle));
         }
         if (GatlingNode >= 0) Add(GatlingNode, Matrix4x4.CreateRotationX((float)gatlingAngle));
         // blades shrunk to nothing where they hang, while their blur shows
-        if (RotorsBlurred)
-            foreach (int node in blades) Add(node, Matrix4x4.CreateScale(0));
+        foreach (Rotor rotor in rotors)
+            if (ShowsBlur && rotor.IsBlurred && rotor.Blades >= 0) Add(rotor.Blades, Matrix4x4.CreateScale(0));
 
         var moved = new Matrix4x4?[mesh.Nodes.Count];
         Matrix4x4 Moved(int node)

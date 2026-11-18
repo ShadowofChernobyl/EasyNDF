@@ -59,14 +59,14 @@ public static class BuiltInThemes
     {
         ["steam"] = new Theme("Olivine", "dark", new Dictionary<string, string>
         {
-            ["toggle"] = "#364f3b",
+            ["toggle"] = "#6a6e36",
             ["bg"] = "#141815",
             ["panel"] = "#1c221e",
             ["well"] = "#141815",
             ["ink"] = "#e3e8e2",
             ["muted"] = "#98a39b",
             ["line"] = "#333c35",
-            ["accent"] = "#7fb88a",
+            ["accent"] = "#b7a946",
             ["ok"] = "#7fb88a",
             ["warn"] = "#f0957a",
             ["caution"] = "#bfac5f",

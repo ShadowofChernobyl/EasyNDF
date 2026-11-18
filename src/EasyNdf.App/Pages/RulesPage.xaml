@@ -106,9 +106,11 @@
                                 DragOver="ModFilesDraggedOver" Drop="ModFilesDropped" MouseRightButtonUp="ModListRightClicked">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                         <ItemsControl x:Name="ModLines" Focusable="False">
-                            <ItemsControl.ItemTemplate>
+                            <ItemsControl.ItemTemplateSelector>
+                                <pages:ListLineTemplates>
+                                <pages:ListLineTemplates.Item>
                                 <DataTemplate>
-                                    <Border Style="{StaticResource ListLine}" MouseLeftButtonUp="ModClicked" ToolTip="{Binding LineTip}">
+                                    <Border x:Name="Line" Style="{StaticResource ListLine}" MouseLeftButtonUp="ModClicked" ToolTip="{Binding LineTip}">
                                         <DockPanel>
                                             <!-- on or off: every mod that is on runs, in the list's order, as a rule's switch does in its preset -->
                                             <CheckBox DockPanel.Dock="Left" Style="{StaticResource Toggle}" IsChecked="{Binding IsOn, Mode=OneWay}" Margin="0,0,5,0" AutomationProperties.Name="{Binding Name}"
@@ -148,14 +150,10 @@
                                         </DockPanel>
                                     </Border>
                                     <DataTemplate.Triggers>
-                                        <!-- the open mod: bold, in the accent colour -->
-                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                            <Setter TargetName="Name" Property="FontWeight" Value="Bold" />
-                                            <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource accent}" />
-                                        </DataTrigger>
                                         <!--
-                                          a mod that is off is dim, as a rule that is off, the open one too (still bold), so
-                                          on and off can be told apart down the whole list
+                                          the open mod is only highlighted, as a selected rule set or rule is (ListLine);
+                                          a mod that is off is dim, as a rule that is off, the open one too, so on and off
+                                          can be told apart down the whole list
                                         -->
                                         <DataTrigger Binding="{Binding IsOn}" Value="False">
                                             <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource muted}" />
@@ -164,12 +162,49 @@
                                         <DataTrigger Binding="{Binding IsIdle}" Value="True">
                                             <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource muted}" />
                                         </DataTrigger>
+                                        <!-- under a group's heading: 18 pixels in, as a rule is -->
+                                        <DataTrigger Binding="{Binding IsInGroup}" Value="True">
+                                            <Setter TargetName="Line" Property="Padding" Value="18,2,4,2" />
+                                        </DataTrigger>
+                                        <!-- in a group that is off: dim, as it does not run -->
+                                        <DataTrigger Binding="{Binding GroupIsOff}" Value="True">
+                                            <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource muted}" />
+                                        </DataTrigger>
                                         <DataTrigger Binding="{Binding HasConflicts}" Value="True">
                                             <Setter TargetName="Conflict" Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
+                            </pages:ListLineTemplates.Item>
+                                <!-- a group's heading, as a rule group's: its fold button, its switch (its mods run only while it is on), a folder, its name; a click folds it -->
+                                <pages:ListLineTemplates.Group>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource RuleLine}" Cursor="Hand" MouseLeftButtonUp="ModGroupClicked" ToolTip="{Binding Name}">
+                                            <DockPanel>
+                                                <Button x:Name="Fold" DockPanel.Dock="Left" Style="{StaticResource IconButton}" Margin="0,0,4,0" Content="&#x25BE;"
+                                                        ToolTip="{t:Text Rules.FoldGroup.Tip}" AutomationProperties.Name="{t:Text Rules.FoldGroup.Tip}" Click="ModGroupFoldClicked" />
+                                                <CheckBox DockPanel.Dock="Left" Style="{StaticResource Toggle}" IsChecked="{Binding IsOn, Mode=OneWay}" Margin="0,0,5,0" VerticalAlignment="Center"
+                                                          AutomationProperties.Name="{Binding Name}" ToolTip="{t:Text Rules.ModGroupSwitch.Tip}" Click="ModGroupSwitchClicked" />
+                                                <controls:FolderGlyph DockPanel.Dock="Left" Margin="1,0,5,0" VerticalAlignment="Center" theming:ThemeColour.Foreground="accent" />
+                                                <TextBlock x:Name="Count" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" FontSize="11" VerticalAlignment="Center"
+                                                           Margin="4,0,0,0" Visibility="Collapsed" Text="{Binding HiddenText}" />
+                                                <TextBlock x:Name="Name" Style="{StaticResource LineName}" Text="{Binding Name}" />
+                                            </DockPanel>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsFolded}" Value="True">
+                                                <Setter TargetName="Fold" Property="Content" Value="&#x25B8;" />
+                                                <Setter TargetName="Fold" Property="ToolTip" Value="{t:Text Rules.UnfoldGroup.Tip}" />
+                                                <Setter TargetName="Count" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsOff}" Value="True">
+                                                <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource muted}" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </pages:ListLineTemplates.Group>
+                                </pages:ListLineTemplates>
+                            </ItemsControl.ItemTemplateSelector>
                         </ItemsControl>
                     </ScrollViewer>
                 </controls:Bevel>
@@ -217,7 +252,7 @@
                 </controls:Bevel>
                 <controls:Bevel DockPanel.Dock="Bottom" Style="{StaticResource Heading}" Margin="0,12,0,6"><TextBlock Text="{t:Text Rules.ArmoryChanges}" TextTrimming="CharacterEllipsis" /></controls:Bevel>
                 <controls:WrapRow DockPanel.Dock="Bottom" Margin="0">
-                    <Button x:Name="NewPresetButton" ToolTip="{t:Text Rules.NewPreset.Tip}" Content="{t:Text Rules.New}" Click="NewPresetClicked" />
+                    <Button x:Name="NewPresetButton" ToolTip="{t:Text Rules.NewPreset.Tip}" Content="{t:Text Rules.NewMenu}" Click="NewPresetMenuClicked" />
                     <Button x:Name="RenamePresetButton" ToolTip="{t:Text Rules.RenamePreset.Tip}" Content="{t:Text Rules.Rename}" Click="RenamePresetClicked" />
                     <Button x:Name="DuplicatePresetButton" ToolTip="{t:Text Rules.DuplicatePreset.Tip}" Content="{t:Text Rules.Duplicate}" Click="DuplicatePresetClicked" />
                     <Button x:Name="DeletePresetButton" ToolTip="{t:Text Rules.DeletePreset.Tip}" Content="{t:Text Rules.Delete}" Click="DeletePresetClicked" />
@@ -228,15 +263,21 @@
                         <StackPanel>
                             <TextBlock x:Name="NoPresets" Text="{t:Text Rules.NoPresetsInThis}" Foreground="{DynamicResource muted}" Padding="4,2" />
                             <ItemsControl x:Name="PresetLines" Focusable="False">
-                                <ItemsControl.ItemTemplate>
+                                <ItemsControl.ItemTemplateSelector>
+                                <pages:ListLineTemplates>
+                                <pages:ListLineTemplates.Item>
                                     <DataTemplate>
-                                        <Border Style="{StaticResource ListLine}" MouseLeftButtonUp="PresetClicked" ToolTip="{Binding Name}">
+                                        <Border x:Name="Line" Style="{StaticResource ListLine}" MouseLeftButtonUp="PresetClicked" ToolTip="{Binding Name}">
                                             <DockPanel>
                                                 <TextBlock x:Name="Use" DockPanel.Dock="Right" Text="{Binding UseText}" ToolTip="{Binding UseTip}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="4,0,0,0" />
                                                 <TextBlock x:Name="Name" Style="{StaticResource LineName}" Text="{Binding Name}" />
                                             </DockPanel>
                                         </Border>
                                         <DataTemplate.Triggers>
+                                            <!-- under a group's heading: 18 pixels in, as a rule is -->
+                                            <DataTrigger Binding="{Binding IsInGroup}" Value="True">
+                                                <Setter TargetName="Line" Property="Padding" Value="18,2,4,2" />
+                                            </DataTrigger>
                                             <!-- a rule set that applies to no file never runs: "⚠ no file", in the caution colour -->
                                             <DataTrigger Binding="{Binding AppliesToNothing}" Value="True">
                                                 <Setter TargetName="Use" Property="Foreground" Value="{DynamicResource caution}" />
@@ -247,7 +288,34 @@
                                             </DataTrigger>
                                         </DataTemplate.Triggers>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
+                                </pages:ListLineTemplates.Item>
+                                <!-- a group's heading, as a rule group's: its fold button, a folder, its name; a click folds it -->
+                                <pages:ListLineTemplates.Group>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource RuleLine}" Cursor="Hand" MouseLeftButtonUp="PresetGroupClicked" ToolTip="{Binding Name}">
+                                            <DockPanel>
+                                                <Button x:Name="Fold" DockPanel.Dock="Left" Style="{StaticResource IconButton}" Margin="0,0,4,0" Content="&#x25BE;"
+                                                        ToolTip="{t:Text Rules.FoldGroup.Tip}" AutomationProperties.Name="{t:Text Rules.FoldGroup.Tip}" Click="PresetGroupFoldClicked" />
+                                                <controls:FolderGlyph DockPanel.Dock="Left" Margin="1,0,5,0" VerticalAlignment="Center" theming:ThemeColour.Foreground="accent" />
+                                                <TextBlock x:Name="Count" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" FontSize="11" VerticalAlignment="Center"
+                                                           Margin="4,0,0,0" Visibility="Collapsed" Text="{Binding HiddenText}" />
+                                                <TextBlock x:Name="Name" Style="{StaticResource LineName}" Text="{Binding Name}" />
+                                            </DockPanel>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsFolded}" Value="True">
+                                                <Setter TargetName="Fold" Property="Content" Value="&#x25B8;" />
+                                                <Setter TargetName="Fold" Property="ToolTip" Value="{t:Text Rules.UnfoldGroup.Tip}" />
+                                                <Setter TargetName="Count" Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsOff}" Value="True">
+                                                <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource muted}" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </pages:ListLineTemplates.Group>
+                                </pages:ListLineTemplates>
+                            </ItemsControl.ItemTemplateSelector>
                             </ItemsControl>
                         </StackPanel>
                     </ScrollViewer></controls:WholeRows>

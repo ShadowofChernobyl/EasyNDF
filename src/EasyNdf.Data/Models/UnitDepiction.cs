@@ -77,7 +77,14 @@ public sealed record SoundChoice(IReadOnlyList<string> Files, double Volume, dou
 /// <param name="Blades">The node its blades hang from, hidden while their blur shows; null for none.</param>
 /// <param name="BlurAction">The tag of the action that draws its blur (BlurActionId); null for none.</param>
 /// <param name="Blur">That action: the blur drawn in place of its blades when they turn fast (FX_Binder_Rotor at its hub, told the blades' length and count); null for none.</param>
-public sealed record UnitRotor(string Node, int Axis, double Speed, bool Clockwise, string? Blades = null, string? BlurAction = null, FxAttachment? Blur = null);
+public sealed record UnitRotor(string Node, int Axis, double Speed, bool Clockwise, string? Blades = null, string? BlurAction = null, FxAttachment? Blur = null)
+{
+    /// <summary>How many blades it has (BladeCount, at least 2): the more, the slower it turns when its blur takes over.</summary>
+    public int BladeCount { get; init; } = 2;
+
+    /// <summary>Whether it is a plane's propeller (DepictionOperator_Propellers) rather than a helicopter's rotor.</summary>
+    public bool IsPropeller { get; init; }
+}
 
 /// <summary>
 /// A model of its own drawn on the unit's at one of its nodes (a TSubDepiction with a model), such as the TOW Humvee's

@@ -14,6 +14,12 @@ namespace EasyNdf.Data.Models;
 /// <param name="High">The corner with the highest.</param>
 public sealed record ModelMesh(string Path, IReadOnlyList<ModelPart> Parts, IReadOnlyList<ModelNode> Nodes, Vector3 Low, Vector3 High)
 {
+    /// <summary>
+    /// The folder its pictures come from, when its descriptor names one of its own (Textures, such as
+    /// "Assets/3D/Units/COL/Avion/SilverStar_Mk3AT": one model painted for another army); null for its own folder.
+    /// </summary>
+    public string? Textures { get; init; }
+
     /// <summary>How many triangles it has, as the viewer's foot shows.</summary>
     public int TriangleCount => Parts.Sum(part => part.Indexes.Length / 3);
 
@@ -25,6 +31,11 @@ public sealed record ModelMesh(string Path, IReadOnlyList<ModelPart> Parts, IRea
         return -1;
     }
 }
+
+/// <summary>A model as a descriptor names it: its path, and the folder its pictures come from.</summary>
+/// <param name="Path">Its path in the game, such as "Assets/3D/Units/CAN/Avion/SilverStar_Mk3AT/SilverStar_Mk3AT.fbx".</param>
+/// <param name="Textures">The folder of its pictures when the descriptor names one (Textures); null for the model's own.</param>
+public sealed record ModelFile(string Path, string? Textures = null);
 
 /// <summary>A part of a model: its vertices, its triangles (three vertex numbers each) and its material.</summary>
 /// <param name="Vertices">Its vertices: each names its nodes counted from <see cref="NodeBase"/>.</param>

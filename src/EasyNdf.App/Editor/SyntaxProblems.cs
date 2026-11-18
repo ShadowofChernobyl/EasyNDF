@@ -87,11 +87,34 @@ public sealed class SyntaxProblems : IBackgroundRenderer
             guide = value;
             if (document is null) return;
             marks = null; // checked whole again, for the values everywhere
+            checkNumber++; // as for the impacts: a check made without the guide, still running, is thrown away
             _ = CheckNow();
         }
     }
 
     private ValueGuide? guide;
+
+    /// <summary>
+    /// The impact names an ammunition's ImpactHappening can take (<see cref="ImpactNames"/>); null checks none. Setting
+    /// it checks the text again.
+    /// </summary>
+    public IReadOnlySet<string>? Impacts
+    {
+        get => impacts;
+        set
+        {
+            if (ReferenceEquals(value, impacts)) return;
+            impacts = value;
+            if (document is null || guide is null) return;
+            marks = null; // checked whole again, for the impacts everywhere
+            // a check made without them, still running, is thrown away: it would keep its marks, and the next check
+            // would then read only what was typed since
+            checkNumber++;
+            _ = CheckNow();
+        }
+    }
+
+    private IReadOnlySet<string>? impacts;
 
     /// <summary>
     /// What the tip at a place shows, given the problem there (null for none); null shows only the problem's message.
@@ -108,6 +131,8 @@ public sealed class SyntaxProblems : IBackgroundRenderer
         if (ReferenceEquals(text, document)) return;
         if (document is not null) document.Changed -= TextChanged;
         document = text;
+        // another file's impact names may not be this one's: they are given again for it
+        impacts = null;
         edited.Follow(text);
         marks = null;
         pickedLine = null;
@@ -195,6 +220,7 @@ public sealed class SyntaxProblems : IBackgroundRenderer
             int mine = ++checkNumber;
             TextDocument checkedText = document;
             ValueGuide? valueGuide = guide;
+            IReadOnlySet<string>? impactNames = impacts;
             // a large text checked before: only the declarations typed in since are checked again; the marks of the
             // others moved with the text as it changed
             if (marks is not null && checkedText.TextLength >= EditedDeclarations.LargeText && edited.Take() is { } stretches)
@@ -202,7 +228,7 @@ public sealed class SyntaxProblems : IBackgroundRenderer
                 int taken = edited.Count;
                 List<(int Start, string Text)> parts = [.. stretches.Select(stretch => (stretch.Start, checkedText.GetText(stretch.Start, stretch.End - stretch.Start)))];
                 List<(int Start, List<NdfProblem> Found, List<ValueProblem> Values)> checkedParts = await Task.Run(() =>
-                    parts.Select(part => (part.Start, NdfChecker.Check(part.Text), ValuesIn(part.Text, valueGuide, part.Start))).ToList());
+                    parts.Select(part => (part.Start, NdfChecker.Check(part.Text), ValuesIn(part.Text, valueGuide, impactNames, part.Start))).ToList());
                 if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
                 foreach ((int start, int end) in stretches)
                     foreach (ProblemMark old in marks.FindOverlappingSegments(start, end - start).ToList()) marks.Remove(old);
@@ -220,7 +246,7 @@ public sealed class SyntaxProblems : IBackgroundRenderer
             (List<NdfProblem> found, List<ValueProblem> foundValues) = await Task.Run(() =>
             {
                 string text = snapshot.Text;
-                return (NdfChecker.Check(text), ValuesIn(text, valueGuide, 0));
+                return (NdfChecker.Check(text), ValuesIn(text, valueGuide, impactNames, 0));
             });
             // the text changed since, or another text is shown: the next check marks it
             if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
@@ -245,8 +271,8 @@ public sealed class SyntaxProblems : IBackgroundRenderer
     }
 
     /// <summary>The values marked in a text (or a stretch of one, starting at <paramref name="shift"/>); none without a guide.</summary>
-    private static List<ValueProblem> ValuesIn(string text, ValueGuide? guide, int shift) =>
-        guide is null ? [] : ValueChecker.Check(text, guide, shift);
+    private static List<ValueProblem> ValuesIn(string text, ValueGuide? guide, IReadOnlySet<string>? impacts, int shift) =>
+        guide is null ? [] : ValueChecker.Check(text, guide, shift, impacts);
 
     /// <summary>A syntax problem's mark, in a stretch of the text that starts at <paramref name="start"/>.</summary>
     private static ProblemMark SyntaxMark(NdfProblem problem, int start) =>

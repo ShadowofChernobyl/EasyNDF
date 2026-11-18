@@ -2127,14 +2127,29 @@
       "text": "Non exporté : {errors} ; la génération du mod échouerait.",
       "machine": true
     },
+    "Files.Details.ValueErrors.Held.Crash": {
+      "english": "Not exported: {errors} would crash the game.",
+      "text": "Non exporté : {errors} ; le jeu planterait.",
+      "machine": true
+    },
     "Files.Details.ValueErrors": {
       "english": "{errors} would stop mod generation.",
       "text": "{errors} : la génération du mod échouerait.",
       "machine": true
     },
+    "Files.Details.ValueErrors.Crash": {
+      "english": "{errors} would crash the game.",
+      "text": "{errors} : le jeu planterait.",
+      "machine": true
+    },
     "Files.Details.ValueErrors.Other": {
       "english": "Values that would stop mod generation, written where no rule shows an edit:",
       "text": "Valeurs qui arrêteraient la génération du mod, écrites là où aucune règle ne montre de modification :",
+      "machine": true
+    },
+    "Files.Details.ValueErrors.Other.Crash": {
+      "english": "Values that would crash the game, written where no rule shows an edit:",
+      "text": "Valeurs qui feraient planter le jeu, écrites là où aucune règle ne montre de modification :",
       "machine": true
     },
     "Files.Details.ValueError.At": {
@@ -2198,8 +2213,8 @@
       "machine": true
     },
     "Files.Details.Filter.Errors.Tip": {
-      "english": "The rules that wrote a value that would stop mod generation",
-      "text": "Les règles qui ont écrit une valeur qui arrêterait la génération du mod",
+      "english": "The rules that wrote a value that would stop mod generation or crash the game",
+      "text": "Les règles qui ont écrit une valeur qui arrêterait la génération du mod ou ferait planter le jeu",
       "machine": true
     },
     "Files.Details.ShowingFirst": {
@@ -2352,9 +2367,19 @@
       "text": "{files} non exportés : des valeurs arrêteraient la génération du mod.",
       "machine": true
     },
+    "Files.Run.ValueErrors.NotExported.Crash": {
+      "english": "{files} not exported: values would crash the game.",
+      "text": "{files} non exportés : des valeurs feraient planter le jeu.",
+      "machine": true
+    },
     "Files.Run.ValueErrors.NotExportedOne": {
       "english": "{file} not exported: values would stop mod generation.",
       "text": "{file} non exporté : des valeurs arrêteraient la génération du mod.",
+      "machine": true
+    },
+    "Files.Run.ValueErrors.NotExportedOne.Crash": {
+      "english": "{file} not exported: values would crash the game.",
+      "text": "{file} non exporté : des valeurs feraient planter le jeu.",
       "machine": true
     },
     "Files.Run.ValueErrors.WouldNotExport": {
@@ -2362,9 +2387,19 @@
       "text": "{files} ne seraient pas exportés : des valeurs arrêteraient la génération du mod.",
       "machine": true
     },
+    "Files.Run.ValueErrors.WouldNotExport.Crash": {
+      "english": "{files} would not export: values would crash the game.",
+      "text": "{files} ne seraient pas exportés : des valeurs feraient planter le jeu.",
+      "machine": true
+    },
     "Files.Run.ValueErrors.WouldNotExportOne": {
       "english": "{file} would not export: values would stop mod generation.",
       "text": "{file} ne serait pas exporté : des valeurs arrêteraient la génération du mod.",
+      "machine": true
+    },
+    "Files.Run.ValueErrors.WouldNotExportOne.Crash": {
+      "english": "{file} would not export: values would crash the game.",
+      "text": "{file} ne serait pas exporté : des valeurs feraient planter le jeu.",
       "machine": true
     },
     "Files.Run.ValueErrors.ShowThem": {
@@ -2917,9 +2952,99 @@
       "text": "Ne pas exporter",
       "machine": true
     },
-    "Rules.New": {
-      "english": "New",
-      "text": "Nouveau",
+    "Rules.NewMenu": {
+      "english": "New ▾",
+      "text": "Nouveau ▾",
+      "machine": true
+    },
+    "Rules.NewMenu.RuleSet": {
+      "english": "Rule Set...",
+      "text": "Ensemble de règles...",
+      "machine": true
+    },
+    "Rules.NewMenu.Group": {
+      "english": "Group...",
+      "text": "Groupe...",
+      "machine": true
+    },
+    "Rules.Menu.NewGroup": {
+      "english": "New Group...",
+      "text": "Nouveau groupe...",
+      "machine": true
+    },
+    "Rules.Menu.MoveToGroup": {
+      "english": "Move to Group",
+      "text": "Déplacer vers le groupe",
+      "machine": true
+    },
+    "Rules.Menu.NoGroup": {
+      "english": "No Group",
+      "text": "Aucun groupe",
+      "machine": true
+    },
+    "Rules.Menu.RenameGroup": {
+      "english": "Rename Group...",
+      "text": "Renommer le groupe...",
+      "machine": true
+    },
+    "Rules.Menu.DeleteGroup": {
+      "english": "Delete Group",
+      "text": "Supprimer le groupe",
+      "machine": true
+    },
+    "Rules.Menu.DeleteGroup.Tip": {
+      "english": "What is in the group is kept.",
+      "text": "Ce que contient le groupe est conservé.",
+      "machine": true
+    },
+    "Rules.Menu.FoldGroup": {
+      "english": "Fold",
+      "text": "Replier",
+      "machine": true
+    },
+    "Rules.Menu.UnfoldGroup": {
+      "english": "Unfold",
+      "text": "Déplier",
+      "machine": true
+    },
+    "Rules.Group.NewName": {
+      "english": "Name for the new group:",
+      "text": "Nom du nouveau groupe :",
+      "machine": true
+    },
+    "Rules.Group.Rename": {
+      "english": "New name for the group:",
+      "text": "Nouveau nom du groupe :",
+      "machine": true
+    },
+    "Rules.Group.Exists": {
+      "english": "A group with that name already exists.",
+      "text": "Un groupe portant ce nom existe déjà.",
+      "machine": true
+    },
+    "Rules.ModGroupSwitch.Tip": {
+      "english": "On: its mods that are on run. Off: none of them run; each keeps its own switch.",
+      "text": "Activé : ses mods activés s’exécutent. Désactivé : aucun ne s’exécute ; chacun garde son propre interrupteur.",
+      "machine": true
+    },
+    "Rules.ModGroup.Hidden": {
+      "english": "{count} mod hidden|{count} mods hidden",
+      "text": "{count} mod masqué|{count} mods masqués",
+      "machine": true
+    },
+    "Rules.PresetGroup.Hidden": {
+      "english": "{count} rule set hidden|{count} rule sets hidden",
+      "text": "{count} ensemble de règles masqué|{count} ensembles de règles masqués",
+      "machine": true
+    },
+    "Rules.FoldGroup.Tip": {
+      "english": "Hide what is in this group",
+      "text": "Masquer le contenu de ce groupe",
+      "machine": true
+    },
+    "Rules.UnfoldGroup.Tip": {
+      "english": "Show what is in this group",
+      "text": "Afficher le contenu de ce groupe",
       "machine": true
     },
     "Rules.New.Tip": {
@@ -4697,6 +4822,16 @@
       "text": "Listes de fichiers, d’ensembles de règles et de règles, et modifications dans Détails.",
       "machine": true
     },
+    "Settings.FolderTree": {
+      "english": "Show folders as a tree",
+      "text": "Afficher les dossiers en arborescence",
+      "machine": true
+    },
+    "Settings.FolderTree.Note": {
+      "english": "Group by folder shows the top folders first; each opens to its own folders and files. Off: one line per folder path.",
+      "text": "Grouper par dossier affiche d’abord les dossiers du haut ; chacun s’ouvre sur ses propres dossiers et fichiers. Désactivé : une ligne par chemin de dossier.",
+      "machine": true
+    },
     "Settings.AutoFitFileList": {
       "english": "Auto-fit file list columns",
       "text": "Ajustement automatique des colonnes de la liste des fichiers",
@@ -4957,6 +5092,16 @@
       "text": "Concepteur de thèmes",
       "machine": true
     },
+    "Settings.ThemeDesignerButton": {
+      "english": "Theme Designer…",
+      "text": "Concepteur de thèmes…",
+      "machine": true
+    },
+    "Settings.ThemeDesignerButton.Tip": {
+      "english": "Open the Theme Designer beside the app, to make and change your own themes",
+      "text": "Ouvrir le concepteur de thèmes à côté de l’application, pour créer et modifier vos propres thèmes",
+      "machine": true
+    },
     "Settings.Data": {
       "english": "Data",
       "text": "Données",
@@ -5063,8 +5208,8 @@
       "machine": true
     },
     "Settings.Designer.ExportTheme": {
-      "english": "Export theme",
-      "text": "Exporter le thème",
+      "english": "Export",
+      "text": "Exporter",
       "machine": true
     },
     "Settings.Designer.Export.Tip": {
@@ -5073,8 +5218,8 @@
       "machine": true
     },
     "Settings.Designer.ImportTheme": {
-      "english": "Import theme...",
-      "text": "Importer un thème…",
+      "english": "Import…",
+      "text": "Importer…",
       "machine": true
     },
     "Settings.Designer.ImportTheme.Tip": {
@@ -5090,146 +5235,6 @@
     "Settings.Designer.EditorColors": {
       "english": "Editor Colors",
       "text": "Couleurs de l’éditeur",
-      "machine": true
-    },
-    "Settings.Preview.Preview": {
-      "english": "Preview",
-      "text": "Aperçu",
-      "machine": true
-    },
-    "Settings.Preview.AHeadingInThe": {
-      "english": "A Heading in the Accent Color",
-      "text": "Un titre dans la couleur d’accentuation",
-      "machine": true
-    },
-    "Settings.Preview.NormalText": {
-      "english": "Normal text beside",
-      "text": "Texte normal à côté de",
-      "machine": true
-    },
-    "Settings.Preview.DimText": {
-      "english": "dim text for notes",
-      "text": "texte atténué pour les notes",
-      "machine": true
-    },
-    "Settings.Preview.And": {
-      "english": "and",
-      "text": "et",
-      "machine": true
-    },
-    "Settings.Preview.ALink": {
-      "english": "a link",
-      "text": "un lien",
-      "machine": true
-    },
-    "Settings.Preview.SampleLink.Tip": {
-      "english": "A sample link",
-      "text": "Un exemple de lien",
-      "machine": true
-    },
-    "Settings.Preview.Button": {
-      "english": "Button",
-      "text": "Bouton",
-      "machine": true
-    },
-    "Settings.Preview.RunExport": {
-      "english": "Export",
-      "text": "Exporter",
-      "machine": true
-    },
-    "Settings.Preview.SwitchedOff": {
-      "english": "Switched off",
-      "text": "Désactivé",
-      "machine": true
-    },
-    "Settings.Preview.TextBox": {
-      "english": "Text box",
-      "text": "Zone de texte",
-      "machine": true
-    },
-    "Settings.Preview.TextBox.Tip": {
-      "english": "A sample text box",
-      "text": "Exemple de zone de texte",
-      "machine": true
-    },
-    "Settings.Preview.ASampleDropdown.Tip": {
-      "english": "A sample dropdown",
-      "text": "Exemple de menu déroulant",
-      "machine": true
-    },
-    "Settings.Preview.Dropdown": {
-      "english": "Dropdown",
-      "text": "Menu déroulant",
-      "machine": true
-    },
-    "Settings.Preview.EveryNdfFileIn": {
-      "english": "Every .ndf file in it",
-      "text": "Chaque fichier .ndf qu’il contient",
-      "machine": true
-    },
-    "Settings.Preview.OnlyFilesTheRules": {
-      "english": "Only files the rules changed",
-      "text": "Uniquement les fichiers modifiés par les règles",
-      "machine": true
-    },
-    "Settings.Preview.BundleIntoOneZip": {
-      "english": "Bundle into one zip",
-      "text": "Regrouper dans un fichier ZIP",
-      "machine": true
-    },
-    "Settings.Preview.AskEachTime": {
-      "english": "Ask each time",
-      "text": "Demander à chaque fois",
-      "machine": true
-    },
-    "Settings.Preview.AMuchLongerChoice": {
-      "english": "A much longer choice, to show how a wide entry looks",
-      "text": "Une option beaucoup plus longue, pour montrer à quoi ressemble une entrée large",
-      "machine": true
-    },
-    "Settings.Preview.Checkbox": {
-      "english": "Checkbox",
-      "text": "Case à cocher",
-      "machine": true
-    },
-    "Settings.Preview.ToggleSlider": {
-      "english": "Toggle slider",
-      "text": "Interrupteur",
-      "machine": true
-    },
-    "Settings.Preview.Columns": {
-      "english": "Columns",
-      "text": "Colonnes",
-      "machine": true
-    },
-    "Settings.Preview.Columns.Tip": {
-      "english": "Show or hide columns",
-      "text": "Afficher ou masquer les colonnes",
-      "machine": true
-    },
-    "Settings.Preview.SampleList": {
-      "english": "Sample list",
-      "text": "Liste d’exemples",
-      "machine": true
-    },
-    "Settings.Preview.ResetText": {
-      "english": "Reset text",
-      "text": "Réinitialiser le texte",
-      "machine": true
-    },
-    "Settings.Preview.ResetText.Tip": {
-      "english": "Restore the sample text",
-      "text": "Restaurer le texte d’exemple",
-      "machine": true
-    },
-    "Settings.Preview.SampleEditor": {
-      "english": "Sample editor",
-      "text": "Exemple d’éditeur",
-      "machine": true
-    },
-    "Settings.Preview.SampleOfChangesOnly": {
-      "english": "Sample of Changes only",
-      "text": "Exemple des modifications uniquement",
       "machine": true
     },
     "Settings.Language": {
@@ -5383,8 +5388,8 @@
       "machine": true
     },
     "Settings.FontsRow.ThemeFont": {
-      "english": "{font} (the theme's)",
-      "text": "{font} (celui du thème)",
+      "english": "{font} (default)",
+      "text": "{font} (par défaut)",
       "machine": true
     },
     "Settings.ColumnsReset": {
@@ -5750,36 +5755,6 @@
     "Settings.Designer.DefaultName": {
       "english": "My theme",
       "text": "Mon thème",
-      "machine": true
-    },
-    "Settings.Preview.Exported": {
-      "english": "Exported: {edits} edits",
-      "text": "Exporté : {edits} modifications",
-      "machine": true
-    },
-    "Settings.Preview.Selected": {
-      "english": "Ready (this row is selected)",
-      "text": "Prêt (cette ligne est sélectionnée)",
-      "machine": true
-    },
-    "Settings.Preview.ChangedNothing": {
-      "english": "Exported: {edits} edits. 1 rule changed nothing",
-      "text": "Exporté : {edits} modifications. 1 règle n’a rien changé",
-      "machine": true
-    },
-    "Settings.Preview.NotValid": {
-      "english": "Not exported: the result would not be a valid file",
-      "text": "Non exporté : le résultat ne serait pas un fichier valide",
-      "machine": true
-    },
-    "Settings.Preview.NoPreset": {
-      "english": "(none)",
-      "text": "(aucun)",
-      "machine": true
-    },
-    "Settings.Preview.Off": {
-      "english": "Switched off",
-      "text": "Désactivé",
       "machine": true
     },
     "Settings.Fonts.ThemeFont": {
@@ -6462,6 +6437,16 @@
       "text": "La génération du mod échouera.",
       "machine": true
     },
+    "Editor.Value.MustBeSet": {
+      "english": "{name} must be set.",
+      "text": "{name} doit être défini.",
+      "machine": true
+    },
+    "Editor.Value.GameCrashes": {
+      "english": "The game crashes when it is fired.",
+      "text": "Le jeu plante quand elle est tirée.",
+      "machine": true
+    },
     "Editor.Value.NegativeWhy": {
       "english": "Mod generation works, but -1 turns into 4294967295.",
       "text": "La génération du mod fonctionne, mais -1 devient 4294967295.",
@@ -6930,11 +6915,6 @@
     "Files.Run.ModFiles.Written": {
       "english": "Wrote {count} file of File rules into the mod.|Wrote {count} files of File rules into the mod.",
       "text": "{count} fichier de règles Fichier écrit dans le mod.|{count} fichiers de règles Fichier écrits dans le mod.",
-      "machine": true
-    },
-    "Files.Run.ModFiles.Removed": {
-      "english": "Took out {count} file of File rules now switched off.|Took out {count} files of File rules now switched off.",
-      "text": "{count} fichier de règles Fichier désormais désactivées retiré.|{count} fichiers de règles Fichier désormais désactivées retirés.",
       "machine": true
     },
     "Files.Run.ModFiles.NoGameData": {
@@ -7863,13 +7843,13 @@
       "machine": true
     },
     "Divisions.Battlegroup.Problem.UnitUnknown": {
-      "english": "{unit}: no such unit in the source. If a mod adds it, put UniteDescriptor.ndf on the Files tab so the Armory runs the mod's rules on it.",
-      "text": "{unit} : aucune unité de ce nom dans la source. Si un mod l’ajoute, placez UniteDescriptor.ndf dans l’onglet Fichiers pour que l’Armurerie exécute les règles du mod sur ce fichier.",
+      "english": "{unit}: no such unit in the source. If a mod adds it, put {file} on the Files tab so the Armory runs the mod's rules on it.",
+      "text": "{unit} : aucune unité de ce nom dans la source. Si un mod l’ajoute, placez {file} dans l’onglet Fichiers pour que l’Armurerie exécute les règles du mod sur ce fichier.",
       "machine": true
     },
     "Divisions.Battlegroup.Problem.UnitsUnknown": {
-      "english": "{count} units of these cards are not in the source ({units}). If a mod adds them, put UniteDescriptor.ndf on the Files tab so the Armory runs the mod's rules on it.",
-      "text": "{count} unités de ces cartes ne sont pas dans la source ({units}). Si un mod les ajoute, placez UniteDescriptor.ndf dans l’onglet Fichiers pour que l’Armurerie exécute les règles du mod sur ce fichier.",
+      "english": "{count} units of these cards are not in the source ({units}). If a mod adds them, put {file} on the Files tab so the Armory runs the mod's rules on it.",
+      "text": "{count} unités de ces cartes ne sont pas dans la source ({units}). Si un mod les ajoute, placez {file} dans l’onglet Fichiers pour que l’Armurerie exécute les règles du mod sur ce fichier.",
       "machine": true
     },
     "Files.Run.DeckNumbersGiven": {

@@ -1,3 +1,4 @@
+using System.Windows;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using EasyNdf.Data;
@@ -78,6 +79,12 @@ public sealed class FileRow(FileEntry entry) : INotifyPropertyChanged
 
     /// <summary>Whether the row is shown under its folder's line ("Group by folder").</summary>
     public bool IsInFolder { get; set; }
+
+    /// <summary>In a folder tree, how many folders its folder is in: the name is set a step further in for each.</summary>
+    public int FolderDepth { get; set; }
+
+    /// <summary>The space around the name: a step further in for each folder in a folder tree.</summary>
+    public Thickness NameMargin => new(7 + FolderDepth * FolderRow.Step, 3, 7, 3);
 
     /// <summary>Whether there is a folder line.</summary>
     public bool HasFolderLine => FolderLine != "";
@@ -175,11 +182,23 @@ public sealed class FolderRow(string path, IReadOnlyList<FileRow> rows, bool isO
     /// <summary>Whether its files are shown.</summary>
     public bool IsOpen { get; } = isOpen;
 
+    /// <summary>How far in a folder tree's line is set for each folder it is in, in pixels.</summary>
+    public const double Step = 18;
+
+    /// <summary>In a folder tree, how many folders it is in; 0 in the flat list.</summary>
+    public int Depth { get; init; }
+
+    /// <summary>In a folder tree, its own name ("Gfx"); null in the flat list, which shows the whole path.</summary>
+    public string? Name { get; init; }
+
+    /// <summary>The space around the arrow and name: a step further in for each folder it is in.</summary>
+    public Thickness LabelMargin => new(7 + Depth * Step, 3, 7, 3);
+
     /// <summary>Tells the screen that the count or the checkbox may have changed.</summary>
     public void Refresh() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
 
     /// <summary>The path as shown.</summary>
-    public string Label => Path != "" ? Path : Texts.Get("Files.Folder.OnTheirOwn");
+    public string Label => Path == "" ? Texts.Get("Files.Folder.OnTheirOwn") : Name ?? Path;
 
     /// <summary>"3 files", and how many are selected.</summary>
     public string CountText

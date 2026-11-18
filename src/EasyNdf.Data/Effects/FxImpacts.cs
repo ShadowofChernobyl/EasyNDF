@@ -17,7 +17,8 @@ public sealed record SmokeScreen(double Radius, double Height, double Density, d
 /// </summary>
 public static partial class FxImpacts
 {
-    private const string ImpactsFile = "Generated/Gameplay/Gfx/MimeticImpactMapping.ndf";
+    /// <summary>The file that maps each impact's name to what it plays, below a GameData folder.</summary>
+    public const string ImpactsFile = "Generated/Gameplay/Gfx/MimeticImpactMapping.ndf";
     private const string SmokesFile = "Generated/Gameplay/Gfx/SmokeDescriptor.ndf";
 
     /// <summary>The effect that draws a smoke cloud (Template_DescriptorSmoke_Depiction's fx_smoke).</summary>
@@ -46,6 +47,12 @@ public static partial class FxImpacts
         }
         return [.. effects.Distinct(StringComparer.Ordinal)];
     }
+
+    /// <summary>
+    /// The impact names a mapping file (<see cref="ImpactsFile"/>) maps: the names an ammunition's ImpactHappening can
+    /// take, as written, letter case and all ("MissileAASIDEWINDER" of its ('MissileAASIDEWINDER', TImpactHappening(...))).
+    /// </summary>
+    public static HashSet<string> NamesIn(string mapping) => [.. ImpactName().Matches(mapping).Select(match => match.Groups[1].Value)];
 
     /// <summary>The smoke cloud of a smoke descriptor ("$/GFX/Weapon/Descriptor_Smoke_..."); null when none is found.</summary>
     public static SmokeScreen? SmokeOf(GameDataFiles files, string smokeDescriptor)
@@ -93,6 +100,10 @@ public static partial class FxImpacts
     /// <summary>An impact's ground happening: everything after "EImpactSurface/Ground," up to the end of its line.</summary>
     [GeneratedRegex(@"EImpactSurface/Ground\s*,\s*([^\n]+)")]
     private static partial Regex GroundHappening();
+
+    /// <summary>A mapped impact's name: the text before ", TImpactHappening(".</summary>
+    [GeneratedRegex(@"\(\s*'([^']+)'\s*,\s*TImpactHappening\b")]
+    private static partial Regex ImpactName();
 
     [GeneratedRegex(@"\$/GFX/GameFx/([A-Za-z0-9_]+)")]
     private static partial Regex GameFx();

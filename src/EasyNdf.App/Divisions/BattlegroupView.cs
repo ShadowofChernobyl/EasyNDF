@@ -106,7 +106,7 @@ public static class BattlegroupView
         var lines = new StackPanel();
         // cards of units the source does not have, said once for all of them: what to do is the same for each
         List<string> unknown = [.. problems.Where(problem => IsUnknownUnit(problem, units)).Select(problem => problem.Subject).Distinct()];
-        if (unknown.Count > 1) lines.Children.Add(ProblemLine(UnknownUnitsText(unknown)));
+        if (unknown.Count > 1) lines.Children.Add(ProblemLine(UnknownUnitsText(unknown, units)));
         foreach (BattlegroupProblem problem in problems.Where(problem => unknown.Count <= 1 || !IsUnknownUnit(problem, units)))
             lines.Children.Add(ProblemLine(ProblemText(problem, units)));
         var box = new Border { Child = lines, BorderThickness = new Thickness(1), Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(10, 8, 10, 4) };
@@ -115,8 +115,11 @@ public static class BattlegroupView
     }
 
     /// <summary>Several cards of units the source does not have, in one line: how many, the first five, and what to do.</summary>
-    public static string UnknownUnitsText(IReadOnlyList<string> units) => Texts.Get("Divisions.Battlegroup.Problem.UnitsUnknown",
-        ("count", Texts.Number(units.Count)), ("units", string.Join(", ", units.Take(5).Select(ShortName)) + (units.Count > 5 ? "…" : "")));
+    /// <param name="unknown">The units the source does not have.</param>
+    /// <param name="units">The source's units, which tell the file a mod adds units to.</param>
+    public static string UnknownUnitsText(IReadOnlyList<string> unknown, IReadOnlyDictionary<string, Unit> units) => Texts.Get("Divisions.Battlegroup.Problem.UnitsUnknown",
+        ("count", Texts.Number(unknown.Count)), ("units", string.Join(", ", unknown.Take(5).Select(ShortName)) + (unknown.Count > 5 ? "…" : "")),
+        ("file", UnitChangeRules.UnitsFileOf(units.Values)));
 
     /// <summary>A line of the problems box, with the warning sign.</summary>
     private static TextBlock ProblemLine(string text)
@@ -128,7 +131,7 @@ public static class BattlegroupView
 
     /// <summary>
     /// Whether a problem is a card of a unit the source does not have at all. A mod adds such a unit with its rules on
-    /// UniteDescriptor.ndf, which the Armory runs only when that file is on the Files tab.
+    /// the units file (<see cref="UnitChangeRules.UnitsFileOf"/>), which the Armory runs only when that file is on the Files tab.
     /// </summary>
     private static bool IsUnknownUnit(BattlegroupProblem problem, IReadOnlyDictionary<string, Unit> units) =>
         problem.Kind == BattlegroupProblemKind.UnitNotInDivision && !units.ContainsKey(problem.Subject);
@@ -144,7 +147,7 @@ public static class BattlegroupView
         string transport = problem.Transport is string each && units.TryGetValue(each, out Unit? ride) ? ride.Name : problem.Transport ?? "";
         return problem.Kind switch
         {
-            BattlegroupProblemKind.UnitNotInDivision when found is null => Texts.Get("Divisions.Battlegroup.Problem.UnitUnknown", ("unit", ShortName(unit))),
+            BattlegroupProblemKind.UnitNotInDivision when found is null => Texts.Get("Divisions.Battlegroup.Problem.UnitUnknown", ("unit", ShortName(unit)), ("file", UnitChangeRules.UnitsFileOf(units.Values))),
             BattlegroupProblemKind.UnitNotInDivision => Texts.Get("Divisions.Battlegroup.Problem.UnitNotInDivision", ("unit", unit)),
             BattlegroupProblemKind.NeedsTransport => Texts.Get("Divisions.Battlegroup.Problem.NeedsTransport", ("unit", unit)),
             BattlegroupProblemKind.TransportNotAllowed => Texts.Get("Divisions.Battlegroup.Problem.TransportNotAllowed", ("unit", unit), ("transport", transport)),

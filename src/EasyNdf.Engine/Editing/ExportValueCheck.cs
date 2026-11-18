@@ -3,7 +3,7 @@ using EasyNdf.Engine.Ndf;
 
 namespace EasyNdf.Engine.Editing;
 
-/// <summary>A value an export would write that stops mod generation, as the File Editor marks it.</summary>
+/// <summary>A value an export would write that stops mod generation (or crashes the game), as the File Editor marks it.</summary>
 /// <param name="Descriptor">The name of the declaration it is in; empty for an unnamed one.</param>
 /// <param name="Line">The value's line in the exported file, counted from 1.</param>
 /// <param name="FirstLine">For a name set twice, the line of its first value; 0 otherwise.</param>
@@ -29,7 +29,8 @@ public static partial class ExportValueCheck
     /// <param name="source">The file the rules ran on.</param>
     /// <param name="exported">What they made of it.</param>
     /// <param name="guide">The values' types and limits.</param>
-    public static List<ExportValueError> Find(string source, string exported, ValueGuide guide)
+    /// <param name="impacts">The impact names the MimeticImpactMapping.ndf the game will load maps; null checks no ImpactHappening.</param>
+    public static List<ExportValueError> Find(string source, string exported, ValueGuide guide, IReadOnlySet<string>? impacts = null)
     {
         var before = new Dictionary<string, (int Start, int End)>(StringComparer.Ordinal);
         int unnamed = 0;
@@ -58,7 +59,7 @@ public static partial class ExportValueCheck
             try { document = Parser.Parse(exported[start..end]); }
             catch (NdfParseException) { found[index] = ("", []); return; }
             string name = document.Declarations.Count > 0 && !document.Declarations[0].IsUnnamed ? document.Declarations[0].Name : "";
-            found[index] = (name, ValueChecker.Check(document, guide, start, mountsNamed).FindAll(problem => !problem.IsWarning));
+            found[index] = (name, ValueChecker.Check(document, guide, start, mountsNamed, impacts).FindAll(problem => !problem.IsWarning));
         });
 
         var errors = new List<ExportValueError>();

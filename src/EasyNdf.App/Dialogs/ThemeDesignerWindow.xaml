@@ -1,0 +1,44 @@
+<!--
+  The Theme Designer in a window of its own, opened by the Theme Designer… button in Settings, Appearance. It stays above
+  the app but never blocks it: every change shows in the app itself at once, so there is no separate preview. Like the main
+  window it has the app's own title row (Windowing/CustomTitleBar.cs). Its colour window and its messages open inside it.
+-->
+<Window x:Class="EasyNdf.App.Dialogs.ThemeDesignerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:t="clr-namespace:EasyNdf.App.Text"
+        xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+        xmlns:pages="clr-namespace:EasyNdf.App.Pages"
+        xmlns:dialogs="clr-namespace:EasyNdf.App.Dialogs"
+        Title="{t:Text Settings.ThemeDesigner}" Icon="../Assets/EasyNDF.ico"
+        Width="620" Height="760" MinWidth="380" MinHeight="320"
+        ShowInTaskbar="False" WindowStartupLocation="Manual"
+        Background="{DynamicResource panel}">
+
+    <!-- the same text settings as the main view, so the designer reads as part of the app -->
+    <Grid x:Name="Page" Background="{DynamicResource panel}"
+          TextElement.Foreground="{DynamicResource ink}" TextElement.FontFamily="{DynamicResource ui-font}" TextElement.FontSize="12.5"
+          TextBlock.LineHeight="18.125" TextBlock.LineStackingStrategy="BlockLineHeight"
+          UseLayoutRounding="False" SnapsToDevicePixels="False" TextOptions.TextFormattingMode="Ideal">
+        <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}">
+            <DockPanel>
+                <!-- the title row: the window's name and its close button; the rest of the row drags the window -->
+                <controls:Bevel x:Name="TitleRow" DockPanel.Dock="Top" BottomRight="{DynamicResource lo}" Edges="0,0,0,1" Padding="10,6">
+                    <DockPanel>
+                        <StackPanel x:Name="CaptionButtons" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource CaptionButton}" Content="&#xE8BB;" ToolTip="{t:Text Main.Close.Tip}" Click="CloseClicked" />
+                        </StackPanel>
+                        <TextBlock Text="{t:Text Settings.ThemeDesigner}" FontWeight="Bold" FontSize="13" Margin="2,0" VerticalAlignment="Center" />
+                    </DockPanel>
+                </controls:Bevel>
+                <!-- 10 pixels from the window's edges, as the app's pages are; the scrollbar keeps clear of the edge too -->
+                <ScrollViewer x:Name="Scroller" Margin="10" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <pages:ThemeDesigner x:Name="Designer" />
+                </ScrollViewer>
+            </DockPanel>
+        </controls:Bevel>
+        <!-- the colour window and the messages, over the designer while open -->
+        <dialogs:ColourWindow x:Name="ColourWindow" />
+        <dialogs:MessageOverlay x:Name="Messages" />
+    </Grid>
+</Window>

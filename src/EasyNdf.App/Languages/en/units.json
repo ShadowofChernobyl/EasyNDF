@@ -830,7 +830,6 @@
   "Units.Model.NotInAssets": "The game's files name {model}, but Steel Division 2's Modding Assets don't have it: they hold the models of the units the game had when they came out.",
   "Units.Model.CannotRead": "The model couldn't be read: {problem}",
   "Units.Model.CannotDraw": "This computer can't draw 3D models here: {problem}",
-  "Units.Model.View.Tip": "Drag to turn and tilt. Right-drag to move. Scroll to zoom. Keys: arrows turn and tilt, Shift+arrows move, + and − zoom, F fires, Home resets.",
   "Units.Model.Turrets": "Turrets",
   "Units.Model.ModChanges": "Mod Changes",
   "Units.Model.ModChanges.Tip": "On, the unit turns, fires and drives as the open mod's changes make it, before you export; off, as the game's files have it",
@@ -879,7 +878,7 @@
   "Units.Model.Engines": "Engines",
   "Units.Model.ViewHeading": "View",
   "Units.Model.Turntable": "Turntable",
-  "Units.Model.Turntable.Tip": "Turn the model slowly by itself, once every 20 seconds, until you drag it",
+  "Units.Model.Turntable.Tip": "Turn the model slowly by itself, once every 20 seconds",
   "Units.Model.Grid": "Ground Grid",
   "Units.Model.Grid.Tip": "Lines 6 metres apart on the ground, every fifth one stronger, to judge size",
   "Units.Model.GridScale": "Squares are 6 m",
@@ -887,6 +886,8 @@
   "Units.Model.Floor.Tip": "Stand the model on a floor lit from above, with its shadow; off, it shows on a plain dark backdrop",
   "Units.Model.Wireframe": "Wireframe",
   "Units.Model.Wireframe.Tip": "Draw the model's triangles over it, to see how detailed it is",
+  "Units.Model.HideEffects": "Hide Effects",
+  "Units.Model.HideEffects.Tip": "Hide dust, smoke, muzzle flashes and rotor blur; the sounds still play",
   "Units.Model.Sound": "Sound",
   "Units.Model.Sound.Tip": "Play the game's sounds for the weapons, the engine and the turret"
 }

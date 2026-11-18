@@ -65,12 +65,16 @@ public static class UnitReader
     /// <summary>
     /// Where a file of <see cref="UnitFilesRead"/> is, and its name: the units file is TacticalUnits.ndf in
     /// Generated/Gameplay where the files have it (WARNO v210942 on), else UniteDescriptor.ndf; the others are in
-    /// Generated/Gameplay/Gfx.
+    /// Generated/Gameplay/Gfx. A mod made before v210942, with its own UniteDescriptor.ndf and no TacticalUnits.ndf of its
+    /// own, keeps its units in UniteDescriptor.ndf whichever version the game is now.
     /// </summary>
-    private static (string Path, string File) WhereIs(GameDataFiles files, string file) =>
-        file == UnitsFile && files.Has("Generated/Gameplay/" + TacticalUnitsFile)
-            ? ("Generated/Gameplay/" + TacticalUnitsFile, TacticalUnitsFile)
-            : ("Generated/Gameplay/Gfx/" + file, file);
+    private static (string Path, string File) WhereIs(GameDataFiles files, string file)
+    {
+        const string tactical = "Generated/Gameplay/" + TacticalUnitsFile, older = "Generated/Gameplay/Gfx/" + UnitsFile;
+        if (file != UnitsFile) return ("Generated/Gameplay/Gfx/" + file, file);
+        bool olderMod = files.HasOwn(older) && !files.HasOwn(tactical);
+        return !olderMod && files.Has(tactical) ? (tactical, TacticalUnitsFile) : (older, UnitsFile);
+    }
 
     /// <summary>
     /// The names of the files whose values the units and divisions show (pictures and flags aside): an EasyNDF mod's

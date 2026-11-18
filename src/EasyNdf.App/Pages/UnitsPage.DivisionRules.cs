@@ -109,7 +109,7 @@ public partial class UnitsPage
         OtherGameReason
         // a change made while it can't be seen would be made blind
         ?? (ArmoryShowsModChanges ? null : Texts.Get("Units.ModChanges.OffEdit"))
-        ?? (ModStack.IsOn(OpenMod) ? null : Texts.Get("Units.ModChanges.ModOffEdit", ("mod", OpenMod.Name)))
+        ?? (ModStack.Runs(OpenMod) ? null : Texts.Get("Units.ModChanges.ModOffEdit", ("mod", OpenMod.Name)))
         ?? WhyRulesCannotBeMade();
 
     private string? WhyRulesCannotBeMade()

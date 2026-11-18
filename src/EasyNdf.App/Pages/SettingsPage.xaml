@@ -14,8 +14,7 @@
     <!--
       every category on one page that scrolls; the list on the left jumps to each and marks the one in view. Laid out as
       the Help tab is: in the middle of the tab, the list 240 wide down the left, the ? in a row above the page, and the
-      cards across the whole page. At most 2304 pixels wide, twice Help's, which gives the Theme Designer room for its
-      colours beside its preview.
+      cards across the whole page. At most 2304 pixels wide, twice Help's.
     -->
     <Grid MaxWidth="2304" HorizontalAlignment="Stretch">
         <Grid.ColumnDefinitions>
@@ -122,6 +121,9 @@
                         <controls:SettingRow Label="{t:Text Settings.WrapTextInLists}" Note="{t:Text Settings.WrapTextInLists.Note}">
                             <CheckBox x:Name="WrapSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="wrapRows" />
                         </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.FolderTree}" Note="{t:Text Settings.FolderTree.Note}">
+                            <CheckBox x:Name="FolderTreeSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="folderTree" />
+                        </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.AutoFitFileList}" Note="{t:Text Settings.AutoFitFileList.Note}">
                             <CheckBox x:Name="FitSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="autoFit" />
                         </controls:SettingRow>
@@ -206,8 +208,12 @@
                 <StackPanel>
                     <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Appearance}" /></controls:Bevel>
                     <controls:SettingGrid Margin="6,4,6,6">
-                        <controls:SettingRow Label="{t:Text Settings.Theme}" Note="{t:Text Settings.Theme.Note}">
-                            <ComboBox x:Name="ThemeChoice" MinWidth="144" SelectionChanged="ThemeChosen" />
+                        <controls:SettingRow x:Name="ThemeRow" Label="{t:Text Settings.Theme}" Note="{t:Text Settings.Theme.Note}">
+                            <!-- the theme in use, and the Theme Designer's window, which shows the changes in the app itself -->
+                            <controls:WrapRow Gap="6">
+                                <ComboBox x:Name="ThemeChoice" MinWidth="144" SelectionChanged="ThemeChosen" />
+                                <Button Content="{t:Text Settings.ThemeDesignerButton}" ToolTip="{t:Text Settings.ThemeDesignerButton.Tip}" Click="DesignerClicked" VerticalAlignment="Center" />
+                            </controls:WrapRow>
                         </controls:SettingRow>
                         <controls:SettingRow x:Name="FontsRow" Label="{t:Text Settings.Fonts}">
                             <!-- the fonts in use, as a value beside the button -->
@@ -250,13 +256,6 @@
                             </DockPanel>
                         </controls:SettingRow>
                     </controls:SettingGrid>
-                    <!-- the Theme Designer (the HTML app's .tdz): under a line, with a bold heading of its own -->
-                    <Border x:Name="DesignerBlock" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource line}">
-                        <StackPanel>
-                            <TextBlock Text="{t:Text Settings.ThemeDesigner}" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource ink}" Margin="12,12,12,-4" />
-                            <pages:ThemeDesigner x:Name="Designer" />
-                        </StackPanel>
-                    </Border>
                 </StackPanel>
             </controls:Bevel>
 

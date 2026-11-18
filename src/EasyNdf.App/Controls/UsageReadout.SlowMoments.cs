@@ -311,7 +311,7 @@ public sealed partial class UsageReadout
     {
         try { Clipboard.SetText(Report()); }
         catch (System.Runtime.InteropServices.ExternalException) { return; }
-        var said = Coloured(Texts.Count("Main.Usage.Copied", slowMoments.Count), "accent");
+        var said = Coloured(Texts.Count("Main.Usage.Copied", slowMoments.Count), "ok");
         said.Margin = new Thickness(10, 4, 10, 4);
         var panel = new Bevel { Child = said };
         panel.SetResourceReference(Bevel.TopLeftProperty, "hi");

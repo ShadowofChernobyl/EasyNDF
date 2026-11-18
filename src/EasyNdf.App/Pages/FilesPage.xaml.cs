@@ -98,6 +98,7 @@ public partial class FilesPage : UserControl
             if (MainView.Find(this) is not MainView view || followsSettings) return;
             followsSettings = true;
             view.SettingChanged += key => { if (key is "autoFit" or "wrapRows" or "") FitColumns(); };
+            view.SettingChanged += key => { if (key is "folderTree" or "") Model.FolderTreeChanged(); };
             // Details' edits keep to one line each while Wrap text in lists is off
             view.SettingChanged += key => { if (key is "wrapRows" && DetailsArea.Content is DetailsPanel details) details.ApplyListWrap(); };
         };
@@ -690,18 +691,21 @@ public partial class FilesPage : UserControl
     private bool divisionCheckHidden;
 
     /// <summary>
-    /// Before Run export: what may not work in the game in the divisions the open mod changes (see
-    /// <see cref="UnitsPage.DivisionWarnings"/>), with Export Anyway or Cancel. True to go on.
+    /// Before Run export: what may not work in the game in the divisions and units the mods that run on this export
+    /// change (see <see cref="UnitsPage.DivisionWarnings"/>), with Export Anyway or Cancel. True to go on. A mod switched
+    /// off, or for another game, is not checked: none of its divisions are written.
     /// </summary>
     private async Task<bool> DivisionsAreChecked()
     {
         if (divisionCheckHidden) return true;
+        HashSet<string> running = [.. Mods.ModStack.RunningOn(FilesToExport()).Select(mod => mod.Name)];
+        if (running.Count == 0) return true;
         // the Armory may not have seen the Files tab's files since they changed: its units are brought up to date first
         UnitsPage armory = MainView.Of(this).UnitsTab;
         await armory.BringModValuesUpToDate();
-        List<string> warnings = armory.DivisionWarnings();
+        List<UnitsPage.ModWarnings> warnings = [.. armory.DivisionWarnings().Where(found => running.Contains(found.Mod))];
         if (warnings.Count == 0) return true;
-        DialogAnswer answer = await Messages.Ask(Texts.Get("Divisions.Check.Ask"), new DialogOptions
+        DialogAnswer answer = await Messages.Ask(Texts.Get(warnings.Count > 1 ? "Divisions.Check.AskSeveral" : "Divisions.Check.Ask"), new DialogOptions
         {
             Icon = DialogIcon.Warning,
             Extra = WarningList(warnings),
@@ -712,20 +716,81 @@ public partial class FilesPage : UserControl
         return answer.Choice == DialogChoice.Ok;
     }
 
-    /// <summary>The warnings, one a line, in a box that scrolls past 40 of them.</summary>
-    private static FrameworkElement WarningList(List<string> warnings)
+    /// <summary>
+    /// The warnings in a sunken list, as Mod Conflicts lists its files: a line for each mod, with how many warnings it
+    /// has, that a click (or Enter or Space) unfolds to its warnings. Every mod starts folded.
+    /// </summary>
+    private static FrameworkElement WarningList(List<UnitsPage.ModWarnings> found)
     {
-        const int Shown = 40;
         var lines = new StackPanel();
-        foreach (string warning in warnings.Take(Shown))
-            lines.Children.Add(new TextBlock { Text = "• " + warning, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 3) });
-        if (warnings.Count > Shown)
+        foreach (UnitsPage.ModWarnings mod in found)
         {
-            var more = new TextBlock { Text = Texts.Get("Divisions.Check.More", ("count", Texts.Number(warnings.Count - Shown))) };
-            more.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-            lines.Children.Add(more);
+            var warnings = new StackPanel { Visibility = Visibility.Collapsed };
+            foreach (string warning in mod.Warnings) warnings.Children.Add(WarningLine(warning));
+            lines.Children.Add(ModLine(mod, warnings));
+            lines.Children.Add(warnings);
         }
-        return new ScrollViewer { Content = lines, MaxHeight = 260, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 6, 0, 0) };
+        var list = new Bevel
+        {
+            Child = new ScrollViewer { Content = lines, MaxHeight = 300, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false },
+            Margin = new Thickness(0, 6, 0, 0),
+        };
+        list.SetResourceReference(Bevel.TopLeftProperty, "lo");
+        list.SetResourceReference(Bevel.BottomRightProperty, "hi");
+        list.SetResourceReference(Bevel.BackgroundProperty, "well");
+        return list;
+    }
+
+    /// <summary>A mod's line in the warnings: ▸ or ▾, its name in the accent colour, and how many warnings it has.</summary>
+    private static Border ModLine(UnitsPage.ModWarnings mod, StackPanel warnings)
+    {
+        var arrow = new TextBlock { Text = "▸", Width = 12, VerticalAlignment = VerticalAlignment.Center };
+        arrow.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        var count = new TextBlock { Text = Texts.Number(mod.Warnings.Count), FontSize = 11, Margin = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        count.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        DockPanel.SetDock(count, Dock.Right);
+        var name = new TextBlock { Text = mod.Mod, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        name.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+        var row = new DockPanel();
+        row.Children.Add(count);
+        row.Children.Add(arrow);
+        row.Children.Add(name);
+        var line = new Border
+        {
+            Child = row, Padding = new Thickness(4, 3, 0, 3), BorderThickness = new Thickness(0, 0, 0, 1), Cursor = Cursors.Hand,
+            Focusable = true, FocusVisualStyle = null,
+        };
+        line.SetResourceReference(Border.BackgroundProperty, "panel");
+        line.SetResourceReference(Border.BorderBrushProperty, "line");
+        System.Windows.Automation.AutomationProperties.SetName(line, mod.Mod);
+        void Fold()
+        {
+            bool open = warnings.Visibility != Visibility.Visible;
+            warnings.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+            arrow.Text = open ? "▾" : "▸";
+        }
+        line.MouseLeftButtonUp += (_, _) => Fold();
+        line.KeyDown += (_, e) =>
+        {
+            if (e.Key is not (Key.Enter or Key.Space)) return;
+            Fold();
+            e.Handled = true;
+        };
+        return line;
+    }
+
+    /// <summary>A warning in a mod's fold: the caution mark, then the warning, wrapped.</summary>
+    private static Border WarningLine(string warning)
+    {
+        var mark = new TextBlock { Text = "⚠", Margin = new Thickness(0, 0, 5, 0) };
+        mark.SetResourceReference(TextBlock.ForegroundProperty, "caution");
+        DockPanel.SetDock(mark, Dock.Left);
+        var row = new DockPanel();
+        row.Children.Add(mark);
+        row.Children.Add(new TextBlock { Text = warning, TextWrapping = TextWrapping.Wrap });
+        var line = new Border { Child = row, Padding = new Thickness(18, 3, 6, 3), BorderThickness = new Thickness(0, 0, 0, 1) };
+        line.SetResourceReference(Border.BorderBrushProperty, "line");
+        return line;
     }
 
     /// <summary>"Confirm before Run export": says how many files will be written, and to how many folders, and asks.</summary>

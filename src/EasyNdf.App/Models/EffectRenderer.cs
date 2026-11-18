@@ -174,7 +174,7 @@ internal sealed class EffectRenderer : IDisposable
 
     /// <summary>
     /// A particle's four corners: a square of its Size facing the camera, turned by its Rotation; or, stretched
-    /// (Stretching above 0), as long as its Size times its stretching along its Direction as the camera sees it, moved
+    /// (Stretching above 0), as long as its Size times its stretching along its Direction, facing the camera, moved
     /// along it by OffsetAlongDirection, its texture's width running along it, the right edge in front: the game's
     /// streaks (tracers, sparks) are long pictures with their bright head on the right.
     /// </summary>
@@ -190,9 +190,11 @@ internal sealed class EffectRenderer : IDisposable
         bool stretched = stretching > 0 && onScreen.LengthSquared() > 1e-6f;
         if (stretched)
         {
-            Vector3 way = Vector3.Normalize(onScreen);
+            // along its own direction in the scene, turned about it to face the camera: as long as its direction is
+            // drawn on screen, so its back end stays at the point it leaves from (a muzzle) from any side
+            Vector3 way = Vector3.Normalize(direction);
             along = way * half * stretching;
-            across = Vector3.Normalize(Vector3.Cross(camera.Forward, way)) * half;
+            across = Vector3.Normalize(Vector3.Cross(camera.Forward, Vector3.Normalize(onScreen))) * half;
             centre += Vector3.Normalize(direction) * fields[FxFields.OffsetAlongDirection].Number;
         }
         else

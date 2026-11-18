@@ -6,7 +6,8 @@ namespace EasyNdf.Data.Models;
 /// <summary>
 /// Finds the 3D models of a unit or a missile in the game's files: a model's descriptor (Modele_...) is a TResourceMesh
 /// in GameData/Gameplay/Gfx/DepictionResources, whose Mesh is the model's path, written out or as a constant of those
-/// files ("ModelFile_M1A1_Abrams_US", "US_AB_1", each "GameData:/....fbx"). A vehicle names its descriptor
+/// files ("ModelFile_M1A1_Abrams_US", "US_AB_1", each "GameData:/....fbx"), and whose Textures, when it has one, is the
+/// folder its pictures come from (one army's model painted for another's). A vehicle names its descriptor
 /// (<see cref="UnitLook.Mesh"/>); an infantry squad's soldiers are listed in DepictionInfantry.ndf, up to ten models to
 /// a squad; a missile names its descriptor in MissileDescriptors.ndf.
 /// </summary>
@@ -15,8 +16,14 @@ public sealed partial class ModelLinks(GameDataFiles files)
 {
     private const string ResourcesFolder = "/Gameplay/Gfx/DepictionResources/";
 
-    /// <summary>Each model descriptor's Mesh as written: a path, or the name of a constant holding one.</summary>
-    private readonly Dictionary<string, string> meshes = new(StringComparer.Ordinal);
+    /// <summary>
+    /// Each model descriptor's Mesh as written: a path, or the name of a constant holding one, then what is added to it
+    /// ("" for nothing; Modele_AEC_Militant_UK_Path+"/AEC_Militant.fbx" adds a file to a folder).
+    /// </summary>
+    private readonly Dictionary<string, (string Value, string Added)> meshes = new(StringComparer.Ordinal);
+
+    /// <summary>Each model descriptor's Textures, for those that have one: a folder, such as "Assets/3D/Units/COL/Avion/SilverStar_Mk3AT".</summary>
+    private readonly Dictionary<string, string> textureFolders = new(StringComparer.Ordinal);
 
     /// <summary>The constants holding a path, such as US_AB_1, "Assets/3D/Units/US/Infanterie/Airborne/Airborne_1.fbx".</summary>
     private readonly Dictionary<string, string> pathConstants = new(StringComparer.Ordinal);
@@ -25,26 +32,26 @@ public sealed partial class ModelLinks(GameDataFiles files)
     private List<string>? resourceFiles;
 
     /// <summary>
-    /// A unit's models, as their paths in the game ("Assets/3D/....fbx"): one for a vehicle or an aircraft, one for each
-    /// soldier of an infantry squad; none when they cannot be found.
+    /// A unit's models, as their paths in the game ("Assets/3D/....fbx") with their pictures' folders: one for a vehicle
+    /// or an aircraft, one for each soldier of an infantry squad; none when they cannot be found.
     /// </summary>
-    public IReadOnlyList<string> ModelsOf(UnitLook look)
+    public IReadOnlyList<ModelFile> ModelsOf(UnitLook look)
     {
-        if (look.Mesh is not null && MeshPathOf(look.Mesh) is string path) return [path];
+        if (look.Mesh is not null && MeshPathOf(look.Mesh) is ModelFile file) return [file];
         // a squad's soldiers are its squad module's BlackHoleKey's (a mod's zombies keep another squad's MimeticName),
         // else its MimeticName's
         string? mimeticSquad = look.Mimetic is null ? null : look.Mimetic.StartsWith("squad_", StringComparison.Ordinal) ? look.Mimetic["squad_".Length..] : look.Mimetic;
         foreach (string? squad in new[] { look.Depiction, mimeticSquad })
         {
             if (squad is null) continue;
-            List<string> soldiers = [.. SoldierDescriptors(squad).Select(MeshPathOf).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase)];
+            List<ModelFile> soldiers = [.. SoldierDescriptors(squad).Select(MeshPathOf).OfType<ModelFile>().DistinctBy(soldier => soldier.Path + "|" + soldier.Textures, StringComparer.OrdinalIgnoreCase)];
             if (soldiers.Count > 0) return soldiers;
         }
         // else the model its depiction draws up close: Alternatives_<BlackHoleKey> in DepictionAlternatives.ndf
         foreach (string? key in new[] { look.Depiction, look.Mimetic })
-            if (key is not null && AlternativesMesh(key) is string descriptor && MeshPathOf(descriptor) is string drawn) return [drawn];
+            if (key is not null && AlternativesMesh(key) is string descriptor && MeshPathOf(descriptor) is ModelFile drawn) return [drawn];
         // Steel Division 2: the model its depiction draws up close
-        if (look.SteelDivisionDepiction is string gfx && SteelDivisionModel(gfx) is string model) return [model];
+        if (look.SteelDivisionDepiction is string gfx && SteelDivisionModel(gfx) is string model) return [new ModelFile(model)];
         return [];
     }
 
@@ -142,7 +149,7 @@ public sealed partial class ModelLinks(GameDataFiles files)
     }
 
     /// <summary>A missile's model, by its descriptor in MissileDescriptors.ndf (such as "Descriptor_Missile_ATGM_BGM71_TOW"); null when none is found.</summary>
-    public string? MissileModel(string missile)
+    public ModelFile? MissileModel(string missile)
     {
         string? text = files.Read("Generated/Gameplay/Gfx/MissileDescriptors.ndf");
         if (text is null) return null;
@@ -171,13 +178,13 @@ public sealed partial class ModelLinks(GameDataFiles files)
         return [.. SoldierLine().Matches(list).Select(match => match.Groups[1].Value)];
     }
 
-    /// <summary>A model descriptor's path ("Assets/3D/....fbx"), such as a pylon's or a launcher's; null when no DepictionResources file has it.</summary>
-    public string? MeshPath(string descriptor) => MeshPathOf(descriptor);
+    /// <summary>A model descriptor's model ("Assets/3D/....fbx"), such as a pylon's or a launcher's; null when no DepictionResources file has it.</summary>
+    public ModelFile? MeshPath(string descriptor) => MeshPathOf(descriptor);
 
-    /// <summary>A model descriptor's path ("Assets/3D/....fbx"); null when no DepictionResources file has it.</summary>
-    private string? MeshPathOf(string descriptor)
+    /// <summary>A model descriptor's model ("Assets/3D/....fbx"); null when no DepictionResources file has it.</summary>
+    private ModelFile? MeshPathOf(string descriptor)
     {
-        if (Resolved(descriptor) is string known) return known;
+        if (Resolved(descriptor) is ModelFile known) return known;
         // a mod's new units often name their models in files of their own, which the game does not have
         resourceFiles ??= [.. files.PathsWithModWhere(path => path.Contains(ResourcesFolder, StringComparison.OrdinalIgnoreCase) && path.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase))];
         // a vehicle's descriptor usually sits in a file of its own name; the shared files hold soldiers, weapons and missiles
@@ -189,34 +196,51 @@ public sealed partial class ModelLinks(GameDataFiles files)
         {
             if (!filesRead.Add(path)) continue;
             if (files.ReadPath(path) is not string text) continue;
-            foreach (Match mesh in MeshLine().Matches(text)) meshes.TryAdd(mesh.Groups[1].Value, mesh.Groups[2].Value);
+            foreach (Match mesh in MeshLine().Matches(text))
+            {
+                string value = mesh.Groups[2].Success ? mesh.Groups[2].Value : mesh.Groups[3].Value;
+                if (!meshes.TryAdd(mesh.Groups[1].Value, (value, mesh.Groups[4].Value))) continue;
+                // its Textures, before or after its Mesh among its values, up to the next declaration
+                Match next = NextDeclaration().Match(text, mesh.Index + mesh.Length);
+                Match textures = TexturesLine().Match(text, mesh.Index, (next.Success ? next.Index : text.Length) - mesh.Index);
+                if (textures.Success) textureFolders[mesh.Groups[1].Value] = textures.Groups[1].Value.TrimEnd('/');
+            }
             foreach (Match constant in PathConstant().Matches(text)) pathConstants.TryAdd(constant.Groups[1].Value, constant.Groups[2].Value);
-            if (Resolved(descriptor) is string found) return found;
+            if (Resolved(descriptor) is ModelFile found) return found;
         }
         return null;
     }
 
-    /// <summary>A descriptor's path once its Mesh, and the constant it names if it names one, have been read; null before.</summary>
-    private string? Resolved(string descriptor)
+    /// <summary>A descriptor's model once its Mesh, and the constant it names if it names one, have been read; null before.</summary>
+    private ModelFile? Resolved(string descriptor)
     {
-        if (!meshes.TryGetValue(descriptor, out string? mesh)) return null;
-        if (mesh.StartsWith("GameData:/", StringComparison.OrdinalIgnoreCase)) return mesh["GameData:/".Length..];
-        return pathConstants.TryGetValue(mesh, out string? path) ? path : null;
+        if (!meshes.TryGetValue(descriptor, out var mesh)) return null;
+        string? path = mesh.Value.StartsWith("GameData:/", StringComparison.OrdinalIgnoreCase) ? mesh.Value["GameData:/".Length..] : pathConstants.GetValueOrDefault(mesh.Value);
+        return path is null ? null : new ModelFile(path + mesh.Added, textureFolders.GetValueOrDefault(descriptor));
     }
 
     /// <summary>
     /// A TResourceMesh: its name (Modele_... in the game, anything in a mod), then its Mesh wherever it comes among its
-    /// values, a path in quotes or a constant's name (group 2 either way).
+    /// values: a path in quotes (group 2) or a constant's name, with or without "~/" before it (group 3), then any text
+    /// in quotes added to it with "+" (group 4).
     /// </summary>
-    [GeneratedRegex("""(?:export\s+)?([A-Za-z0-9_]+)\s+is\s+TResourceMesh\s*\((?:[^()]|\([^()]*\))*?\bMesh\s*=\s*["']?([^"'\s)]+)""")]
+    [GeneratedRegex("""(?:export\s+)?([A-Za-z0-9_]+)\s+is\s+TResourceMesh\s*\((?:[^()]|\([^()]*\))*?\bMesh\s*=\s*(?:["']([^"']+)["']|(?:~/)?([^"'\s)+]+))(?:\s*\+\s*["']([^"']*)["'])?""")]
     private static partial Regex MeshLine();
+
+    /// <summary>A TResourceMesh's Textures: the folder after "GameData:/" (group 1).</summary>
+    [GeneratedRegex("""\bTextures\s*=\s*["']GameData:/([^"']+)["']""")]
+    private static partial Regex TexturesLine();
 
     /// <summary>A depiction's visual: its selector (DepictionVisual_LOD_High...), then the model descriptor it draws.</summary>
     [GeneratedRegex("""(\w*)\s*\(\s*(?:SelectorId\s*=\s*\[[^\]]*\]\s*)?MeshDescriptor\s*=\s*\$/GFX/DepictionResources/([A-Za-z0-9_]+)""")]
     private static partial Regex AlternativeMesh();
 
-    /// <summary>A constant holding a path: its name, then the path after "GameData:/" (which stays in group 2's text).</summary>
-    [GeneratedRegex("""(?m)^\s*(?:export\s+)?([A-Za-z0-9_]+)\s+is\s+["']GameData:/([^"']+)["']""")]
+    /// <summary>
+    /// A constant holding a path: its name, then the path after "GameData:/" (which stays in group 2's text). It need
+    /// not start a line: some files put one straight after the declaration before it, as in
+    /// "...TResourceMesh (Mesh=DCA_ZUR_23_2S_JOD_POL_LOW)DCA_ZUR_23_2S_JOD_POL is 'GameData:/...'".
+    /// </summary>
+    [GeneratedRegex("""(?<![A-Za-z0-9_])(?:export\s+)?([A-Za-z0-9_]+)\s+is\s+["']GameData:/([^"']+)["']""")]
     private static partial Regex PathConstant();
 
     [GeneratedRegex("""SelectorId\s*=\s*\[\s*LOD_High\s*,[^\]]*\]\s*MeshDescriptor\s*=\s*\$/GFX/DepictionResources/([A-Za-z0-9_]+)""")]

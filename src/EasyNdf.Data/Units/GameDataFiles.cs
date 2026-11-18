@@ -85,8 +85,30 @@ public sealed class GameDataFiles : IDisposable
         return sameName.Count == 1 ? sameName[0] : null;
     }
 
+    /// <summary>
+    /// The mod's own file whose path ends with <paramref name="endOfPath"/>, among the files base.zip doesn't have, in
+    /// base.zip's form ("GameData/..."): a mod made for an older version of the game keeps files where that version had
+    /// them (WARNO's units in Generated/Gameplay/Gfx/UniteDescriptor.ndf before v210942). Null when there is none.
+    /// </summary>
+    private string? ModOnlyPathEndingWith(string endOfPath)
+    {
+        if (modFolder is null) return null;
+        string wanted = "/" + endOfPath.Replace('\\', '/').TrimStart('/');
+        return ModOnlyPaths().FirstOrDefault(path => ("/" + path).EndsWith(wanted, StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>Whether there is a file whose path ends with <paramref name="endOfPath"/>, without reading it.</summary>
-    public bool Has(string endOfPath) => ChangedFileFor(endOfPath) is not null || EntryEndingWith(endOfPath) is not null;
+    public bool Has(string endOfPath) =>
+        ChangedFileFor(endOfPath) is not null || EntryEndingWith(endOfPath) is not null || ModOnlyPathEndingWith(endOfPath) is not null;
+
+    /// <summary>
+    /// Whether the mod has its own copy of the file whose path ends with <paramref name="endOfPath"/> (or an EasyNDF
+    /// mod's rules make it), rather than only the game's: what tells a mod made for an older version of the game.
+    /// </summary>
+    public bool HasOwn(string endOfPath) =>
+        ChangedFileFor(endOfPath) is not null
+        || (EntryEndingWith(endOfPath) is ZipArchiveEntry entry && ModPathOf(entry.FullName) is string own && File.Exists(own))
+        || ModOnlyPathEndingWith(endOfPath) is not null;
 
     /// <summary>
     /// The text of the file whose path ends with <paramref name="endOfPath"/>, such as
@@ -96,7 +118,8 @@ public sealed class GameDataFiles : IDisposable
     {
         if (ChangedFileFor(endOfPath) is ChangedFile changed) return changed.Text;
         ZipArchiveEntry? entry = EntryEndingWith(endOfPath);
-        return entry is null ? null : TextOf(entry);
+        if (entry is not null) return TextOf(entry);
+        return ModOnlyPathEndingWith(endOfPath) is string modOnly && ModPathOf(modOnly) is string path ? File.ReadAllText(path, Encoding.UTF8) : null;
     }
 
     /// <summary>
@@ -107,7 +130,8 @@ public sealed class GameDataFiles : IDisposable
     {
         if (ChangedFileFor(endOfPath) is ChangedFile changed) return new StringReader(changed.Text);
         ZipArchiveEntry? entry = EntryEndingWith(endOfPath);
-        if (entry is null) return null;
+        if (entry is null)
+            return ModOnlyPathEndingWith(endOfPath) is string modOnly && ModPathOf(modOnly) is string path ? new StreamReader(path, Encoding.UTF8) : null;
         if (ModPathOf(entry.FullName) is string own && File.Exists(own)) return new StreamReader(own, Encoding.UTF8);
         return new StreamReader(entry.Open(), Encoding.UTF8);
     }

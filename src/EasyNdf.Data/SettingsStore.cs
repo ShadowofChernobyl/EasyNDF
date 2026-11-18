@@ -28,6 +28,7 @@ public sealed class SettingsStore(string settingsFolder)
         ["keepComments"] = true,
         ["dlOnExport"] = true,
         ["wrapRows"] = false,
+        ["folderTree"] = true,
         ["dupes"] = "ask",
         ["logCap"] = 500,
         ["decimals"] = 2,

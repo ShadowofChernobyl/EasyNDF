@@ -36,22 +36,22 @@ internal static class ModelAssembly
     /// <param name="main">The unit's model.</param>
     /// <param name="mainPictures">Its parts' pictures.</param>
     /// <param name="depiction">What its depiction hangs; null for nothing.</param>
-    /// <param name="meshPath">A model descriptor's path.</param>
-    /// <param name="readModel">Reads a model by its path; null when the packs do not have it.</param>
+    /// <param name="meshPath">A model descriptor's model: its path and its pictures' folder.</param>
+    /// <param name="readModel">Reads a model; null when the packs do not have it.</param>
     /// <param name="picturesOf">A model's parts' pictures.</param>
     public static Assembled Assemble(ModelMesh main, List<MaterialPictures> mainPictures, UnitDepiction? depiction,
-        Func<string, string?> meshPath, Func<string, ModelMesh?> readModel, Func<ModelMesh, List<MaterialPictures>> picturesOf)
+        Func<string, ModelFile?> meshPath, Func<ModelFile, ModelMesh?> readModel, Func<ModelMesh, List<MaterialPictures>> picturesOf)
     {
         var nodes = new List<ModelNode>(main.Nodes);
         var parts = new List<ModelPart>(main.Parts);
         var pictures = new List<MaterialPictures>(mainPictures);
         var munitions = new List<(HungMunition Munition, int Order)>();
         var launches = new List<(int Weapon, int Node, int Order)>();
-        var read = new Dictionary<string, ModelMesh?>(StringComparer.OrdinalIgnoreCase);
+        var read = new Dictionary<ModelFile, ModelMesh?>();
         ModelMesh? Read(string? descriptor)
         {
-            if (descriptor is null || meshPath(descriptor) is not string path) return null;
-            if (!read.TryGetValue(path, out ModelMesh? mesh)) read[path] = mesh = readModel(path);
+            if (descriptor is null || meshPath(descriptor) is not ModelFile file) return null;
+            if (!read.TryGetValue(file, out ModelMesh? mesh)) read[file] = mesh = readModel(file);
             return mesh;
         }
         // the nodes each sub-model brought, by its descriptor, for the mounts a launcher's weapon uses
@@ -73,7 +73,7 @@ internal static class ModelAssembly
             if (PylonFor(weapon.Pylons, each, Read) is not ModelMesh pylon) continue;
             List<int> places = PlacesOf(pylon);
             ModelMesh? munition = weapon.Munition is null ? null : Read(weapon.Munition);
-            string? munitionPath = weapon.Munition is null ? null : meshPath(weapon.Munition);
+            string? munitionPath = weapon.Munition is null ? null : meshPath(weapon.Munition)?.Path;
             int used = munition is null ? mounts.Count : Math.Min(mounts.Count, (weapon.Count + Math.Max(1, Math.Min(each, places.Count)) - 1) / Math.Max(1, Math.Min(each, places.Count)));
             List<MaterialPictures> pylonPictures = picturesOf(pylon), munitionPictures = munition is null ? [] : picturesOf(munition);
             int left = weapon.Count;

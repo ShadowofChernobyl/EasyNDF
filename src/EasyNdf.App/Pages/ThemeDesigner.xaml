@@ -1,17 +1,22 @@
 <!--
-  The Theme Designer, under the Appearance settings on the Settings tab (the HTML app's .tdz): buttons for the user's own
-  themes, a note, and beside the preview the colours and scrollbars of the theme in use when it is the user's own.
+  The Theme Designer, in its own window (Dialogs/ThemeDesignerWindow.xaml), opened from the Appearance settings: buttons
+  for the user's own themes, a note, and the colours of the theme in use when it is the user's own. There is no preview:
+  each change shows in the app itself.
   ThemeDesigner.xaml.cs fills in the rows and saves each change at once.
 -->
 <UserControl x:Class="EasyNdf.App.Pages.ThemeDesigner"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:t="clr-namespace:EasyNdf.App.Text"
-             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
-             xmlns:pages="clr-namespace:EasyNdf.App.Pages">
-    <!-- in the Appearance card, under its own heading -->
-    <controls:Bevel Edges="0" Padding="12">
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls">
+    <!-- the window keeps 10 pixels round it; 10 more on the right keep the colours clear of the scrollbar -->
+    <controls:Bevel Edges="0" Padding="0,0,10,0">
         <StackPanel>
+            <!-- the theme in use, as in Settings: switching here switches the whole app -->
+            <DockPanel Margin="0,0,0,10">
+                <TextBlock Text="{t:Text Settings.Theme}" FontWeight="Bold" Margin="0,0,10,0" VerticalAlignment="Center" />
+                <ComboBox x:Name="ThemeChoice" MinWidth="200" HorizontalAlignment="Left" SelectionChanged="ThemeChosen" />
+            </DockPanel>
             <controls:WrapRow Gap="6" Margin="0,0,0,8">
                 <Button Content="{t:Text Settings.Designer.NewFromThisTheme}" ToolTip="{t:Text Settings.Designer.NewFromThisTheme.Tip}" Click="NewClicked" />
                 <Button x:Name="RenameButton" Content="{t:Text Settings.Designer.Rename}" ToolTip="{t:Text Settings.Designer.Rename.Tip}" Click="RenameClicked" />
@@ -22,39 +27,25 @@
             </controls:WrapRow>
             <TextBlock x:Name="Note" Style="{StaticResource Note}" />
 
-            <!-- .tdgrid: the colours (27rem) beside the preview; one above the other when the window is narrow -->
-            <Grid x:Name="Columns" Margin="0,10,0,0" SizeChanged="ColumnsResized">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition x:Name="ColoursColumn" Width="432" />
-                    <ColumnDefinition x:Name="GapColumn" Width="14" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition x:Name="GapRow" Height="0" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <StackPanel x:Name="Colours" VerticalAlignment="Top">
-                    <!-- the colours of the app itself, then its scrollbars -->
-                    <controls:Bevel Style="{StaticResource ThemeBox}">
+            <StackPanel x:Name="Colours" Margin="0,10,0,0">
+                <!-- the colours of the app itself, then its scrollbars -->
+                <controls:Bevel Style="{StaticResource ThemeBox}">
+                    <StackPanel>
+                        <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Designer.InterfaceColors}" /></controls:Bevel>
+                        <Grid x:Name="InterfaceRows" Margin="12,10" />
+                    </StackPanel>
+                </controls:Bevel>
+                <!-- .tbox.ed: the colours of the File Editor's text, marked by a 3-pixel stripe of the accent colour on the left -->
+                <Grid Margin="0,14,0,0">
+                    <controls:Bevel Style="{StaticResource ThemeBox}" Padding="2,0,0,0">
                         <StackPanel>
-                            <controls:Bevel Style="{StaticResource CardHeading}"><TextBlock Text="{t:Text Settings.Designer.InterfaceColors}" /></controls:Bevel>
-                            <Grid x:Name="InterfaceRows" Margin="12,10" />
+                            <controls:Bevel Style="{StaticResource CardHeading}" Background="{DynamicResource sel}"><TextBlock Text="{t:Text Settings.Designer.EditorColors}" /></controls:Bevel>
+                            <Grid x:Name="EditorRows" Margin="12,10" />
                         </StackPanel>
                     </controls:Bevel>
-                    <!-- .tbox.ed: the colours of the File Editor's text, marked by a 3-pixel stripe of the accent colour on the left -->
-                    <Grid Margin="0,14,0,0">
-                        <controls:Bevel Style="{StaticResource ThemeBox}" Padding="2,0,0,0">
-                            <StackPanel>
-                                <controls:Bevel Style="{StaticResource CardHeading}" Background="{DynamicResource sel}"><TextBlock Text="{t:Text Settings.Designer.EditorColors}" /></controls:Bevel>
-                                <Grid x:Name="EditorRows" Margin="12,10" />
-                            </StackPanel>
-                        </controls:Bevel>
-                        <Rectangle Width="3" HorizontalAlignment="Left" Fill="{DynamicResource accent}" />
-                    </Grid>
-                </StackPanel>
-                <pages:ThemePreview x:Name="Preview" Grid.Column="2" VerticalAlignment="Top" />
-            </Grid>
+                    <Rectangle Width="3" HorizontalAlignment="Left" Fill="{DynamicResource accent}" />
+                </Grid>
+            </StackPanel>
         </StackPanel>
     </controls:Bevel>
 </UserControl>

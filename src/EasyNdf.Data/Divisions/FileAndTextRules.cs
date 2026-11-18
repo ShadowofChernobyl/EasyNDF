@@ -155,44 +155,17 @@ public static class FileAndTextRules
     }
 
     /// <summary>
-    /// Deletes, under the mod's folder, the files of File rules that are switched off (themselves, or under a group
-    /// switched off, or of a mod that is off), where no rule that is on writes a file too: an earlier export wrote them,
-    /// and they would stay in the mod unseen. Only a file that is still the one the rule wrote is deleted, never one
-    /// the user put there or changed. Returns how many were deleted.
+    /// The rules of several rule sets in one list, for what the File rules write: each rule judged within its own rule
+    /// set, so a group switched off at the end of one does not switch off the rules of the next, as joining them would
+    /// (an export then left out the next rule set's files). Group headings are left out, and a rule that is off is a
+    /// copy switched off.
     /// </summary>
-    /// <param name="rules">Every mod's rules, those of mods that are off copied as switched off.</param>
-    /// <param name="modFolder">The mod's folder (<see cref="ModFolderOf"/>).</param>
-    public static int RemoveFilesOfRulesOff(IEnumerable<JsonNode?> rules, string modFolder)
-    {
-        List<JsonNode?> all = [.. rules];
-        HashSet<JsonNode> on = [.. DivisionExtras.RulesThatAreOn(all)];
-        List<CarriedFile> used = FilesOf(all);
-        int removed = 0;
-        foreach (JsonNode? rule in all)
-        {
-            if (rule is null || on.Contains(rule) || CarriedFileOf(rule) is not CarriedFile file) continue;
-            if (used.Any(other => SamePlace(other.Destination, file.Destination))) continue;
-            if (DivisionExtras.TargetUnder(modFolder, file.Destination) is not string target || !File.Exists(target)) continue;
-            if (ModFileStore.NameFor(File.ReadAllBytes(target), file.StoredName) != file.StoredName) continue;
-            File.Delete(target);
-            removed++;
-        }
-        return removed;
-    }
-
-    /// <summary>
-    /// The rules of several rule sets in one list, for what the File rules write and remove: each rule judged within its
-    /// own rule set, so a group switched off at the end of one does not switch off the rules of the next, as joining
-    /// them would (an export then removed a file another rule set had just written). Group headings are left out, and
-    /// a rule that is off is a copy switched off.
-    /// </summary>
-    /// <param name="allOff">Every rule as off: the rule sets of a mod that is off.</param>
-    public static IEnumerable<JsonNode?> EachInItsOwnRuleSet(IEnumerable<IEnumerable<JsonNode?>> ruleSets, bool allOff = false)
+    public static IEnumerable<JsonNode?> EachInItsOwnRuleSet(IEnumerable<IEnumerable<JsonNode?>> ruleSets)
     {
         foreach (IEnumerable<JsonNode?> ruleSet in ruleSets)
         {
             List<JsonNode?> rules = [.. ruleSet];
-            HashSet<JsonNode> on = allOff ? [] : [.. DivisionExtras.RulesThatAreOn(rules)];
+            HashSet<JsonNode> on = [.. DivisionExtras.RulesThatAreOn(rules)];
             foreach (JsonNode? rule in rules)
             {
                 if (rule is null || (string?)rule["Kind"] == "Group") continue;

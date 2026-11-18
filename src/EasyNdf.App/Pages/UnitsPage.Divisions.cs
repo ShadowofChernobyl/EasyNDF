@@ -51,14 +51,14 @@ public partial class UnitsPage
     /// and it is for the source's game. The Armory shows only the mods that are on, as export runs only those, and
     /// only those of the source's game, as only those run on its files.
     /// </summary>
-    private bool ShowsOpenMod => ArmoryShowsModChanges && ModStack.IsOn(OpenMod) && OpenMod.Game == Game;
+    private bool ShowsOpenMod => ArmoryShowsModChanges && ModStack.Runs(OpenMod) && OpenMod.Game == Game;
 
     /// <summary>
     /// Why the Armory's changes cannot be saved in the open mod: it is for another game than the source's, and the
     /// changes are made to the source's units, divisions and weapons; null when it is for the source's game.
     /// </summary>
     private string? OtherGameReason => OpenMod.Game == Game ? null
-        : !AppData.Current.Mods.Any(mod => mod.Game == Game && ModStack.IsOn(mod)) ? Texts.Get("Units.NoModOfGame", ("game", Game.Name))
+        : !AppData.Current.Mods.Any(mod => mod.Game == Game && ModStack.Runs(mod)) ? Texts.Get("Units.NoModOfGame", ("game", Game.Name))
         : Texts.Get("Units.OtherGame", ("mod", OpenMod.Name), ("modGame", OpenMod.Game.Name), ("game", Game.Name));
 
     /// <summary>"Show mods' changes", under the Source: on, the Armory shows the values as the mods that are on make them; off, as the source has them.</summary>

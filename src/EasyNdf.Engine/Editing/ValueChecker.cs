@@ -41,6 +41,18 @@ public enum ValueProblemKind
     /// WARNO v210942 on a weapon's name is its mounted weapon's, not its ammunition's, and the game refuses one without.
     /// </summary>
     MountWithoutName,
+
+    /// <summary>
+    /// An ammunition's ImpactHappening that MimeticImpactMapping.ndf does not map, letter case and all: mod generation
+    /// works, but the game crashes when the ammunition is fired ("requested and missing in Mimetic World Descriptor").
+    /// </summary>
+    NoSuchImpact,
+
+    /// <summary>
+    /// A value mod generation can't do without, left out or set to nil ("Property 'LobbyFullSound' must be defined"), as
+    /// a test confirmed; for some, only while another value of the object is True.
+    /// </summary>
+    MissingValue,
 }
 
 /// <summary>A value the File Editor marks, and what is wrong with it.</summary>
@@ -77,13 +89,17 @@ public sealed record ValueProblem(int Position, int Length, ValueProblemKind Kin
 
     /// <summary>Whether this is a warning (mod generation works) rather than an error (it fails).</summary>
     public bool IsWarning => Kind == ValueProblemKind.NegativeInZeroOrMore;
+
+    /// <summary>Whether this error lets mod generation work but crashes the game in play.</summary>
+    public bool CrashesGame => Kind == ValueProblemKind.NoSuchImpact;
 }
 
 /// <summary>
 /// The File Editor's value check: in every object of a type the <see cref="ValueGuide"/> knows, each value whose type
 /// is certain is checked against its kind (an int, a float, a boolean), its choices (when the list is complete), and
-/// the limits tests showed stop mod generation; a name set twice in one object is marked too. References, constants and
-/// calculations are never marked, as they can't be judged from the text.
+/// the limits tests showed stop mod generation; a name set twice in one object is marked too, and, given the names
+/// MimeticImpactMapping.ndf maps, an ammunition's ImpactHappening it doesn't. References, constants and calculations are
+/// never marked, as they can't be judged from the text.
 /// </summary>
 public static partial class ValueChecker
 {
@@ -95,12 +111,14 @@ public static partial class ValueChecker
     /// Whether the file the text is from gives its mounted weapons their names (<see cref="NamesMountedWeapons"/>), so a
     /// mounted weapon without one is marked; an older file's have none, which is right for it.
     /// </param>
-    public static List<ValueProblem> Check(NdfDocument document, ValueGuide guide, int shift = 0, bool mountsNamed = false)
+    /// <param name="impacts">The impact names the file's MimeticImpactMapping.ndf maps; null checks no ImpactHappening.</param>
+    public static List<ValueProblem> Check(NdfDocument document, ValueGuide guide, int shift = 0, bool mountsNamed = false, IReadOnlySet<string>? impacts = null)
     {
         var problems = new List<ValueProblem>();
+        var context = new CheckContext(guide, shift, mountsNamed, impacts);
         foreach (Declaration declaration in document.Declarations)
         {
-            CheckValue(declaration.Value, guide, shift, mountsNamed, problems);
+            CheckValue(declaration.Value, context, problems);
             if (problems.Count >= MostProblems) break;
         }
         problems.Sort((a, b) => a.Position.CompareTo(b.Position));
@@ -132,13 +150,14 @@ public static partial class ValueChecker
     /// with a syntax problem is left to the syntax check. <paramref name="shift"/> is added to every position, for a
     /// stretch of a larger text.
     /// </summary>
-    public static List<ValueProblem> Check(string text, ValueGuide guide, int shift = 0)
+    /// <param name="impacts">The impact names the file's MimeticImpactMapping.ndf maps; null checks no ImpactHappening.</param>
+    public static List<ValueProblem> Check(string text, ValueGuide guide, int shift = 0, IReadOnlySet<string>? impacts = null)
     {
         var problems = new List<ValueProblem>();
         bool mountsNamed = NamesMountedWeapons(text);
         foreach ((int start, int end) in NdfChecker.DeclarationStretches(text))
         {
-            try { problems.AddRange(Check(Parser.Parse(text[start..end]), guide, start + shift, mountsNamed)); }
+            try { problems.AddRange(Check(Parser.Parse(text[start..end]), guide, start + shift, mountsNamed, impacts)); }
             catch (NdfParseException) { }
             if (problems.Count >= MostProblems) break;
         }
@@ -158,23 +177,30 @@ public static partial class ValueChecker
 
     // ---- walking the values ----
 
+    /// <summary>What a check goes by, the same for every value of a text.</summary>
+    /// <param name="Guide">The values' types and limits.</param>
+    /// <param name="Shift">What is added to every position.</param>
+    /// <param name="MountsNamed">Whether the file gives its mounted weapons their names (<see cref="NamesMountedWeapons"/>).</param>
+    /// <param name="Impacts">The impact names the file's MimeticImpactMapping.ndf maps; null checks no ImpactHappening.</param>
+    private sealed record CheckContext(ValueGuide Guide, int Shift, bool MountsNamed, IReadOnlySet<string>? Impacts);
+
     /// <summary>Checks a value and every value inside it.</summary>
-    private static void CheckValue(NdfValue value, ValueGuide guide, int shift, bool mountsNamed, List<ValueProblem> problems)
+    private static void CheckValue(NdfValue value, CheckContext context, List<ValueProblem> problems)
     {
         switch (value)
         {
             case ObjectValue item:
-                CheckObject(item, guide, shift, mountsNamed, problems);
+                CheckObject(item, context, problems);
                 break;
             case ListValue list:
-                foreach (NdfValue entry in list.Items) CheckValue(entry, guide, shift, mountsNamed, problems);
+                foreach (NdfValue entry in list.Items) CheckValue(entry, context, problems);
                 break;
             case PairValue pair:
-                CheckValue(pair.First, guide, shift, mountsNamed, problems);
-                CheckValue(pair.Second, guide, shift, mountsNamed, problems);
+                CheckValue(pair.First, context, problems);
+                CheckValue(pair.Second, context, problems);
                 break;
             case AssignValue assign:
-                CheckValue(assign.Value, guide, shift, mountsNamed, problems);
+                CheckValue(assign.Value, context, problems);
                 break;
         }
     }
@@ -183,8 +209,9 @@ public static partial class ValueChecker
     /// Checks an object's values against its type's names, then the objects inside them. A name set twice is marked in
     /// any object, as mod generation fails on it whatever the type.
     /// </summary>
-    private static void CheckObject(ObjectValue item, ValueGuide guide, int shift, bool mountsNamed, List<ValueProblem> problems)
+    private static void CheckObject(ObjectValue item, CheckContext context, List<ValueProblem> problems)
     {
+        (ValueGuide guide, int shift) = (context.Guide, context.Shift);
         var firstSet = new Dictionary<string, NdfValue>(StringComparer.Ordinal);
         var marked = new HashSet<NdfValue>();
         foreach (Property property in item.Properties)
@@ -198,6 +225,8 @@ public static partial class ValueChecker
                     problem = new ValueProblem(start + shift, end - start, ValueProblemKind.WrittenTwice, property.Name, "") { FirstPosition = firstStart + shift };
                 else if (value is ScalarValue scalar && guide.Find(item.TypeName, property.Name) is { IsTypeCertain: true } info)
                     problem = ProblemWith(info, property.Name, scalar, start + shift, end - start);
+                if (problem is null && IsUnmappedImpact(item.TypeName, property.Name, value, context.Impacts))
+                    problem = new ValueProblem(start + shift, end - start, ValueProblemKind.NoSuchImpact, property.Name, ((ScalarValue)value).Text);
                 if (problem is not null)
                 {
                     problems.Add(problem);
@@ -205,15 +234,47 @@ public static partial class ValueChecker
                 }
             }
             firstSet.TryAdd(property.Name, value);
-            CheckValue(value, guide, shift, mountsNamed, problems);
+            CheckValue(value, context, problems);
         }
         CheckComparisons(item.TypeName, firstSet, marked, guide, shift, problems);
         CheckArrays(item.TypeName, firstSet, guide, shift, problems);
         // WARNO v210942 on: a mounted weapon carries its weapon's name, and the game refuses one without ("Property
         // 'Name' must be defined"); marked on its type name, where its other values were written in the older way
-        if (mountsNamed && item.TypeName == "TMountedWeaponDescriptor" && !firstSet.ContainsKey("Name") && item.Start is int at)
+        if (context.MountsNamed && item.TypeName == "TMountedWeaponDescriptor" && !firstSet.ContainsKey("Name") && item.Start is int at)
             problems.Add(new ValueProblem(at + shift, Math.Max(1, item.SourceTypeNameLength), ValueProblemKind.MountWithoutName, "Name", ""));
+        CheckRequired(item, firstSet, guide, shift, problems);
     }
+
+    /// <summary>
+    /// The values of an object mod generation can't do without (<see cref="ValueInfo.IsRequired"/>): one left out is
+    /// marked on the object's type name, as there is no value to underline; one set to nil, on the nil. A value
+    /// required only while another is True (<see cref="ValueInfo.RequiredWhen"/>) is checked only when that other is
+    /// written True.
+    /// </summary>
+    private static void CheckRequired(ObjectValue item, Dictionary<string, NdfValue> firstSet, ValueGuide guide, int shift, List<ValueProblem> problems)
+    {
+        foreach (string name in guide.RequiredNamesOf(item.TypeName))
+        {
+            if (guide.Find(item.TypeName, name)?.RequiredWhen is { } flag
+                && !(firstSet.TryGetValue(flag, out NdfValue? on) && on is ScalarValue onText && onText.Text.Equals("True", StringComparison.OrdinalIgnoreCase)))
+                continue;
+            if (!firstSet.TryGetValue(name, out NdfValue? value))
+            {
+                if (item.Start is int at)
+                    problems.Add(new ValueProblem(at + shift, Math.Max(1, item.SourceTypeNameLength), ValueProblemKind.MissingValue, name, ""));
+            }
+            else if (value is ScalarValue { Text: "nil" } && value.Start is int start && value.End is int end)
+                problems.Add(new ValueProblem(start + shift, end - start, ValueProblemKind.MissingValue, name, "nil"));
+        }
+    }
+
+    /// <summary>
+    /// Whether a value is an ammunition's ImpactHappening, written as a text, that the impact names don't have. The game
+    /// looks the name up letter case and all: 'MIssileAASIDEWINDER' is not 'MissileAASIDEWINDER'.
+    /// </summary>
+    private static bool IsUnmappedImpact(string type, string name, NdfValue value, IReadOnlySet<string>? impacts) =>
+        impacts is { Count: > 0 } && type == "TAmmunitionDescriptor" && name == "ImpactHappening"
+        && value is ScalarValue { Kind: ScalarKind.String } text && text.Text.Length >= 2 && !impacts.Contains(text.Text[1..^1]);
 
     /// <summary>
     /// WARNO v210942's checks of arrays at mod generation, which no single value's limit can say (the game's messages:

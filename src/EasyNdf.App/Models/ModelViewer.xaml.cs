@@ -28,13 +28,13 @@ public partial class ModelViewer : UserControl
     /// <summary>What is being shown: a unit (with its turrets) or a missile.</summary>
     /// <param name="Name">The title.</param>
     /// <param name="Source">Where its files are: the game, or a game mod with its own copies.</param>
-    /// <param name="FindModels">Finds its models' paths in the game's files.</param>
+    /// <param name="FindModels">Finds its models in the game's files: their paths and their pictures' folders.</param>
     /// <param name="Changed">Its values as the Armory shows them: with the open mod's changes.</param>
     /// <param name="Original">Its values as the game's files have them, before the open mod's changes; null when the mod adds the unit.</param>
     /// <param name="Flies">Whether it is an aircraft, whose turrets do not move on the model.</param>
     /// <param name="Yaw">Which way round the camera starts, in degrees.</param>
     /// <param name="DepictionKey">Its depiction's BlackHoleKey, for its sounds and its moving parts; null for none.</param>
-    private sealed record Subject(string Name, UnitSource Source, Func<ModelLinks, IReadOnlyList<string>> FindModels,
+    private sealed record Subject(string Name, UnitSource Source, Func<ModelLinks, IReadOnlyList<ModelFile>> FindModels,
         SubjectValues Changed, SubjectValues? Original, bool Flies, double Yaw, string? DepictionKey);
 
     /// <summary>The values of a unit the viewer shows: its turrets with their weapons, and how it drives.</summary>
@@ -79,8 +79,9 @@ public partial class ModelViewer : UserControl
             }
         }
 
-        /// <summary>A model from the first pack that has it: a mod's own model, else the game's.</summary>
-        public ModelMesh? ReadModel(string path) => Packs.FirstOrDefault(pack => pack.Has(path))?.Read(path);
+        /// <summary>A model from the first pack that has it (a mod's own model, else the game's), with its pictures' folder.</summary>
+        public ModelMesh? ReadModel(ModelFile file) =>
+            Packs.FirstOrDefault(pack => pack.Has(file.Path))?.Read(file.Path) is ModelMesh mesh ? mesh with { Textures = file.Textures } : null;
 
         public void Dispose()
         {
@@ -97,7 +98,7 @@ public partial class ModelViewer : UserControl
     private EffectRenderer? effectRenderer;
     private FxPlayer? effects;
     private ModelScene? scene;
-    private IReadOnlyList<string> modelPaths = [];
+    private IReadOnlyList<ModelFile> modelFiles = [];
     private int shownModel;
     private readonly ModelCamera camera = new();
     private int opening;
@@ -185,7 +186,7 @@ public partial class ModelViewer : UserControl
 
     /// <summary>Opens the viewer on a missile's model, by its descriptor in MissileDescriptors.ndf.</summary>
     public void OpenMissile(string name, string missile, UnitSource source) =>
-        Open(new Subject(name, source, links => links.MissileModel(missile) is string path ? [path] : [], SubjectValues.None, null, Flies: false, Yaw: 310, DepictionKey: null));
+        Open(new Subject(name, source, links => links.MissileModel(missile) is ModelFile file ? [file] : [], SubjectValues.None, null, Flies: false, Yaw: 310, DepictionKey: null));
 
     /// <summary>
     /// Whether models of this game can be shown: WARNO's from its mesh pack, Steel Division 2's from its Modding Assets
@@ -225,7 +226,7 @@ public partial class ModelViewer : UserControl
     {
         try
         {
-            (OpenFiles opened, IReadOnlyList<string> paths) = await Task.Run(() =>
+            (OpenFiles opened, IReadOnlyList<ModelFile> models) = await Task.Run(() =>
             {
                 static bool Wanted(ArchiveFile file) =>
                     MeshPack.IsPackFile(file.Name) || ModelTextures.IsModelTextureFile(file.Name) || IsSoundFile(file.Name) || FxTextures.IsEffectTextureFile(file.Name);
@@ -255,10 +256,10 @@ public partial class ModelViewer : UserControl
                 return;
             }
             files = opened;
-            modelPaths = paths;
+            modelFiles = models;
             depiction = read;
             sounds = new ModelSounds(opened.Sound) { IsOn = SoundSwitch.IsChecked == true, Loudness = LoudnessOf(VolumeSlider.Value) };
-            if (paths.Count == 0)
+            if (models.Count == 0)
             {
                 StatusText.Text = Texts.Get("Units.Model.NoModel");
                 return;
@@ -290,12 +291,13 @@ public partial class ModelViewer : UserControl
     {
         if (files is null || renderer is null || subject is null) return;
         shownModel = index;
-        string path = modelPaths[index];
+        ModelFile file = modelFiles[index];
+        string path = file.Path;
         OpenFiles reading = files;
         UnitDepiction? hanging = depiction;
         ModelAssembly.Assembled? assembled = await Task.Run(() =>
         {
-            ModelMesh? read = reading.ReadModel(path);
+            ModelMesh? read = reading.ReadModel(file);
             return read is null ? null : ModelAssembly.Assemble(read, PicturesOf(reading, read), hanging, reading.Links.MeshPath, reading.ReadModel, model => PicturesOf(reading, model));
         });
         if (attempt != opening || renderer is null) return;
@@ -315,6 +317,7 @@ public partial class ModelViewer : UserControl
         renderer.Load(mesh, assembled.Pictures);
         hungLaunchers = assembled.Launchers;
         scene = new ModelScene(mesh, Values.Turrets, subject.Flies, shownDepiction, Values.Drive, hungLaunchers);
+        scene.ShowsBlur = !hideEffects;
         effects?.Clear();
         effects = new FxPlayer(files.Effects);
         movementEffects.Clear();
@@ -469,10 +472,10 @@ public partial class ModelViewer : UserControl
 
     // ---- how the model is shown ----
 
-    private bool turntable, showGrid = true, showFloor = true, showWireframe;
+    private bool turntable, showGrid = true, showFloor = true, showWireframe, hideEffects;
     private CheckBox? turntableSwitch;
 
-    /// <summary>View, under the rest: Turntable, Ground Grid, Floor and Wireframe.</summary>
+    /// <summary>View, under the rest: Turntable, Ground Grid, Floor, Wireframe and Hide Effects.</summary>
     private void AddViewSwitches()
     {
         SidePanel.Children.Add(Heading(Texts.Get("Units.Model.ViewHeading"), first: SidePanel.Children.Count == 0));
@@ -497,6 +500,21 @@ public partial class ModelViewer : UserControl
         {
             showWireframe = on;
             if (renderer is not null) renderer.ShowsWireframe = on;
+            Redraw();
+        });
+        // no dust, smoke, flashes or rotor blur: the blades show turning instead; sounds play on
+        AddSwitch("Units.Model.HideEffects", "Units.Model.HideEffects.Tip", hideEffects, on =>
+        {
+            hideEffects = on;
+            if (scene is not null) scene.ShowsBlur = !on;
+            if (on)
+            {
+                StopMovementEffects();
+                foreach (FxEffect blur in rotorBlurs.Values) effects?.Stop(blur);
+                rotorBlurs.Clear();
+                effects?.Clear();
+            }
+            else if (engineSwitch?.IsChecked == true) StartMovementEffects();
             Redraw();
         });
         GridScale.Visibility = showGrid ? Visibility.Visible : Visibility.Collapsed;
@@ -733,13 +751,20 @@ public partial class ModelViewer : UserControl
         SalvoPattern salvo = turret.Salvo;
         SoundChoice? sound = turret.Weapon?.Look?.Sound;
         bool stream = turret.Weapon?.FiresContinuously == true;
-        if (stream) sounds?.Play(sound);
+        // a stream of fire plays one recording of a burst: its flashes follow the shots heard in it (as many, as far
+        // apart, from the first), not the ammunition's count, nor the recording's length, which runs on with echo
+        double heardFrom = 0;
+        if (stream && sounds?.Play(sound) is PlayingSound burstSound && SoundShots.Of(burstSound.Sound) is SoundShots.Shots heard)
+        {
+            salvo = salvo with { Shots = heard.Count * salvo.AtOnce, SecondsBetweenShots = heard.Between / burstSound.Speed };
+            heardFrom = heard.First / burstSound.Speed;
+        }
         int volleys = Math.Max(1, salvo.Shots / salvo.AtOnce);
         // each shot's time: shots fired together go off a moment apart, as the time between their effects says
         var times = new List<double>();
         for (int volley = 0; volley < volleys; volley++)
             for (int shot = 0; shot < salvo.AtOnce; shot++)
-                times.Add(volley * salvo.SecondsBetweenShots + (salvo.AtOnce > 1 ? shot * salvo.SecondsBetweenEffects : 0));
+                times.Add(heardFrom + volley * salvo.SecondsBetweenShots + (salvo.AtOnce > 1 ? shot * salvo.SecondsBetweenEffects : 0));
         // the shots that start the weapon's effects, as the game starts them: once a burst, told how many shots it has
         // (the scripts repeat their flashes that many times): a stream of fire's whole salvo is one burst; other
         // weapons start one every TimeBetweenTwoFx, and shots fired together one each
@@ -755,7 +780,7 @@ public partial class ModelViewer : UserControl
             {
                 if (!stream) sounds?.Play(sound);
                 if (turret.RecoilNode >= 0) turret.RecoilTime = 0;
-                if (shots > 0) started.AddRange(PlayMuzzleEffects(turret, number, shots));
+                if (shots > 0) started.AddRange(PlayMuzzleEffects(turret, number, shots, salvo.SecondsBetweenShots));
             });
         }
         if (scene.GatlingNode >= 0 && scene.Mesh.Nodes[scene.GatlingNode].Name.EndsWith(turret.Number.ToString("00", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal))
@@ -763,7 +788,9 @@ public partial class ModelViewer : UserControl
         scene.Later(salvo.Seconds + 0.3, () => firing.Remove(turret));
         // the game stops a weapon's effects when it stops firing; the scripts end their own, so this only stops one
         // that would run on
-        scene.Later(salvo.Seconds + EffectsOutlastSalvo, () =>
+        // a stream of fire's effects stop with its last shot heard, as the game stops a weapon's when it stops firing:
+        // no flash after the sound, though smoke already made drifts on; others are left to end by themselves
+        scene.Later(stream ? heardFrom + salvo.Seconds + salvo.SecondsBetweenShots : salvo.Seconds + EffectsOutlastSalvo, () =>
         {
             foreach (FxEffect effect in started) effects?.Stop(effect);
         });
@@ -777,16 +804,16 @@ public partial class ModelViewer : UserControl
     /// A burst's muzzle effects, from the depiction's weapon: one of its firing effects at the muzzle the burst leaves
     /// from, following the gun, told how many shots the burst has and the time between them. Gives the effects started.
     /// </summary>
-    private List<FxEffect> PlayMuzzleEffects(ViewTurret turret, int shot, int shots)
+    private List<FxEffect> PlayMuzzleEffects(ViewTurret turret, int shot, int shots, double secondsBetweenShots)
     {
         var started = new List<FxEffect>();
-        if (effects is null || scene is null || turret.Weapon?.Look is not WeaponLook look || look.FiringEffects.Count == 0 || turret.Muzzles.Count == 0) return started;
+        if (hideEffects || effects is null || scene is null || turret.Weapon?.Look is not WeaponLook look || look.FiringEffects.Count == 0 || turret.Muzzles.Count == 0) return started;
         ModelScene shown = scene;
         int muzzle = turret.Muzzles[shot % turret.Muzzles.Count];
         var burst = new Dictionary<string, FxValue>
         {
             ["parShotCount"] = FxValue.Of(shots),
-            ["parWaitBetweenShot"] = FxValue.Of(turret.Salvo.SecondsBetweenShots),
+            ["parWaitBetweenShot"] = FxValue.Of(secondsBetweenShots),
             ["parInitialShotDelay"] = FxValue.Of(0),
             ["parShotOnGround"] = FxValue.Of(false),
         };
@@ -804,8 +831,10 @@ public partial class ModelViewer : UserControl
     private string? EngineSwitchText()
     {
         if (scene is null) return null;
-        if (scene.HasRotors) return Texts.Get("Units.Model.Rotors");
-        if (subject?.Flies == true) return depiction?.Engine?.Running is null ? null : Texts.Get("Units.Model.Engines");
+        // a propeller plane's switch starts its engines, which turn its propellers
+        if (scene.HasRotors && depiction?.Rotors.All(rotor => rotor.IsPropeller) != true) return Texts.Get("Units.Model.Rotors");
+        if (scene.HasRotors) return Texts.Get("Units.Model.Engines");
+        if (subject?.Flies == true) return Texts.Get("Units.Model.Engines");
         return scene.CanDrive ? Texts.Get("Units.Model.Drive") : null;
     }
 
@@ -823,7 +852,8 @@ public partial class ModelViewer : UserControl
     /// <summary>
     /// Starts or stops the engine as the game's movement-sound operator plays it: the start sound, then the running
     /// sound looped, rising over its fade-in; on stopping, the running sound fades out over its fade-out and the stop
-    /// sound plays. A vehicle drives once its engine has started; rotors spin up over the start sound.
+    /// sound plays. A vehicle drives once its engine has started, a plane flies off; rotors and propellers spin up over
+    /// the start sound.
     /// </summary>
     private void RunEngine(bool on)
     {
@@ -837,9 +867,11 @@ public partial class ModelViewer : UserControl
             sounds?.Play(engine?.Start);
             running = sounds?.Play(engine?.Running, loop: true, fadeIn: engine?.FadeIn ?? 0.5, delay: Math.Max(0, startSeconds - (engine?.FadeIn ?? 0.5)));
             if (scene.HasRotors) scene.TurnRotors(true, startSeconds > 0 ? startSeconds : 5);
-            else if (scene.CanDrive)
+            // a plane (jet or propeller) flies off at its speed once its engines run, wheels or not; a helicopter hovers
+            bool plane = subject?.Flies == true && depiction?.Rotors.Any(rotor => !rotor.IsPropeller) != true;
+            if (plane || (!scene.HasRotors && scene.CanDrive))
             {
-                scene.Later(startSeconds * 0.7, () =>
+                scene.Later(startSeconds * (plane ? 0.5 : 0.7), () =>
                 {
                     if (engineSwitch?.IsChecked != true) return;
                     scene?.Drive(true);
@@ -859,7 +891,7 @@ public partial class ModelViewer : UserControl
     }
 
     private readonly List<FxEffect> movementEffects = [];
-    private readonly List<FxEffect> rotorBlurs = [];
+    private readonly Dictionary<int, FxEffect> rotorBlurs = [];
 
     /// <summary>
     /// The rotors' blur, as the game draws it in place of their blades once they turn fast: each rotor's blur action
@@ -867,18 +899,22 @@ public partial class ModelViewer : UserControl
     /// </summary>
     private void ShowRotorBlur()
     {
-        if (scene is null || effects is null) return;
-        bool wanted = scene.RotorsBlurred;
-        if (wanted == (rotorBlurs.Count > 0)) return;
-        if (!wanted)
-        {
-            foreach (FxEffect blur in rotorBlurs) effects.Stop(blur);
-            rotorBlurs.Clear();
-            return;
-        }
+        if (scene is null || effects is null || hideEffects) return;
         ModelScene shown = scene;
-        foreach ((int hub, FxAttachment blur) in shown.RotorBlurs)
-            if (effects.Start(blur.Effect, new FxFrame(() => shown.NodeMatrix(hub)), blur.Given) is FxEffect started) rotorBlurs.Add(started);
+        // each rotor's blur, on while that rotor turns fast enough for it, off as it slows
+        for (int i = 0; i < shown.RotorBlurs.Count; i++)
+        {
+            bool wanted = shown.IsBlurred(i);
+            if (wanted == rotorBlurs.ContainsKey(i)) continue;
+            if (!wanted)
+            {
+                effects.Stop(rotorBlurs[i]);
+                rotorBlurs.Remove(i);
+                continue;
+            }
+            (int hub, FxAttachment blur) = shown.RotorBlurs[i];
+            if (effects.Start(blur.Effect, new FxFrame(() => shown.NodeMatrix(hub)), blur.Given) is FxEffect started) rotorBlurs[i] = started;
+        }
     }
 
     /// <summary>
@@ -887,7 +923,7 @@ public partial class ModelViewer : UserControl
     /// </summary>
     private void StartMovementEffects()
     {
-        if (effects is null || scene is null || files is null || depiction is null || movementEffects.Count > 0) return;
+        if (hideEffects || effects is null || scene is null || files is null || depiction is null || movementEffects.Count > 0) return;
         ModelScene shown = scene;
         foreach (FxAttachment attachment in FxAttachments.Read(files.GameFiles, depiction.MovementEffects))
         {
@@ -903,7 +939,7 @@ public partial class ModelViewer : UserControl
         movementEffects.Clear();
     }
 
-    /// <summary>A model's parts' pictures, from the atlas in its folder; a Steel Division 2 model's from the PNG files its materials name.</summary>
+    /// <summary>A model's parts' pictures, from the atlas in its pictures' folder; a Steel Division 2 model's from the PNG files its materials name.</summary>
     private static List<MaterialPictures> PicturesOf(OpenFiles reading, ModelMesh model)
     {
         if (reading.Packs.OfType<ModdingAssets>().FirstOrDefault() is ModdingAssets assets) return AssetPictures.Of(assets, model);
@@ -1252,8 +1288,8 @@ public partial class ModelViewer : UserControl
     private Point lastPoint;
 
     /// <summary>
-    /// A press on the view gives it the keys and starts a drag: the left button turns and tilts (and stops the
-    /// turntable), the right or the wheel button moves the camera.
+    /// A press on the view gives it the keys and starts a drag: the left button turns and tilts, the right or the
+    /// wheel button moves the camera. The turntable pauses while the view is dragged and carries on after.
     /// </summary>
     private void ViewPressed(object sender, MouseButtonEventArgs e)
     {
@@ -1264,11 +1300,6 @@ public partial class ModelViewer : UserControl
         panning = moves;
         dragging = ViewFrame.CaptureMouse();
         lastPoint = e.GetPosition(ViewFrame);
-        if (!moves && turntable)
-        {
-            turntable = false;
-            if (turntableSwitch is not null) turntableSwitch.IsChecked = false;
-        }
         StopGlide();
         ViewFrame.Cursor = moves ? Cursors.SizeAll : Cursors.Hand;
         e.Handled = true;
@@ -1441,9 +1472,9 @@ public partial class ModelViewer : UserControl
     /// <summary>"‹ Soldier 2 of 6 ›" for a squad with more than one soldier's model.</summary>
     private void ShowSoldierChoice()
     {
-        bool squad = modelPaths.Count > 1;
+        bool squad = modelFiles.Count > 1;
         SoldierChoice.Visibility = squad ? Visibility.Visible : Visibility.Collapsed;
-        if (squad) SoldierText.Text = Texts.Get("Units.Model.Soldier", ("number", shownModel + 1), ("count", modelPaths.Count));
+        if (squad) SoldierText.Text = Texts.Get("Units.Model.Soldier", ("number", shownModel + 1), ("count", modelFiles.Count));
     }
 
     private void PreviousSoldierClicked(object sender, RoutedEventArgs e) => ShowSoldier(-1);
@@ -1453,8 +1484,8 @@ public partial class ModelViewer : UserControl
     /// <summary>The next or previous soldier's model, round again.</summary>
     private void ShowSoldier(int step)
     {
-        if (modelPaths.Count < 2) return;
-        _ = ShowModel((shownModel + step + modelPaths.Count) % modelPaths.Count, opening);
+        if (modelFiles.Count < 2) return;
+        _ = ShowModel((shownModel + step + modelFiles.Count) % modelFiles.Count, opening);
     }
 
     // ---- fitting the window, closing ----
@@ -1599,7 +1630,7 @@ public partial class ModelViewer : UserControl
         effectRenderer = null;
         files?.Dispose();
         files = null;
-        modelPaths = [];
+        modelFiles = [];
     }
 
     /// <summary>

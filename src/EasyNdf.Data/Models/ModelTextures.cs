@@ -12,7 +12,8 @@ namespace EasyNdf.Data.Models;
 public sealed record MaterialPictures(Picture? Colour, Picture? Normal, Picture? Surface);
 
 /// <summary>
-/// Finds a model's pictures: the atlas in its folder (PC/Atlas/&lt;model's folder&gt;/TextureSmall.atlas) places each texture
+/// Finds a model's pictures: the atlas in its folder (PC/Atlas/&lt;model's folder&gt;/TextureSmall.atlas, or the folder its
+/// descriptor's Textures names, where one model is painted for several armies) places each texture
 /// its materials name inside bigger textures (.tgv), with the material's colours in a "daComb" texture, its normal map in
 /// an "NM" one and its surface map in one named after the colour texture with "_O$_$".
 /// </summary>
@@ -28,10 +29,10 @@ public sealed class ModelTextures
         this.atlas = atlas;
     }
 
-    /// <summary>The textures for a model: its folder's atlas; none when the folder has no atlas.</summary>
+    /// <summary>The textures for a model: its pictures' folder's atlas; none when the folder has no atlas.</summary>
     public static ModelTextures For(GameArchives archives, ModelMesh mesh)
     {
-        string folder = mesh.Path[..Math.Max(0, mesh.Path.LastIndexOf('/'))];
+        string folder = mesh.Textures?.TrimEnd('/') ?? mesh.Path[..Math.Max(0, mesh.Path.LastIndexOf('/'))];
         ArchiveFile? atlasFile = archives.Find("PC/Atlas/" + folder + "/TextureSmall.atlas");
         return new ModelTextures(archives, atlasFile is null ? [] : Textures.ReadAtlas(atlasFile.Read()));
     }

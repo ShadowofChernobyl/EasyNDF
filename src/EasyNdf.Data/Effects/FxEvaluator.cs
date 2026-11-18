@@ -87,9 +87,10 @@ public sealed class FxEvaluator(FxLibrary library)
     /// <summary>How deep calculations may call each other, so a name that refers to itself fails instead of hanging.</summary>
     private const int DeepestCall = 120;
 
-    private readonly Random random = new();
     private readonly FxScope outermost = new(null);
-    private int depth;
+
+    // particles are moved on several threads at once (FxPlayer.Step): each counts its own depth
+    [ThreadStatic] private static int depth;
 
     /// <summary>The effect files.</summary>
     public FxLibrary Library => library;
@@ -98,7 +99,7 @@ public sealed class FxEvaluator(FxLibrary library)
     public FxScope Outermost => outermost;
 
     /// <summary>A random number from 0 up to 1.</summary>
-    public float RandomUnit() => (float)random.NextDouble();
+    public float RandomUnit() => Random.Shared.NextSingle();
 
     /// <summary>Works out a calculation in a scope, at a moment.</summary>
     public FxValue Evaluate(FxNode node, FxScope scope, FxMoment moment)
@@ -272,8 +273,8 @@ public sealed class FxEvaluator(FxLibrary library)
     private Vector3 OnBox()
     {
         var point = new Vector3(RandomUnit() * 2 - 1, RandomUnit() * 2 - 1, RandomUnit() * 2 - 1);
-        int side = random.Next(3);
-        float sign = random.Next(2) == 0 ? -1 : 1;
+        int side = Random.Shared.Next(3);
+        float sign = Random.Shared.Next(2) == 0 ? -1 : 1;
         return side == 0 ? point with { X = sign } : side == 1 ? point with { Y = sign } : point with { Z = sign };
     }
 
@@ -321,7 +322,13 @@ public sealed class FxEvaluator(FxLibrary library)
         string name = callee.Last;
         IReadOnlyList<FxNode> arguments = call.Arguments;
         // a name bound in the scope stands for a declaration, as a table passed as a parameter
-        if (!callee.IsPath && scope.TryFind(name, out FxBinding bound) && bound.Value is FxName boundName) return Call(new FxCall(boundName, arguments), bound.Scope, moment);
+        if (!callee.IsPath && scope.TryFind(name, out FxBinding bound))
+        {
+            if (bound.Value is FxName boundName) return Call(new FxCall(boundName, arguments), bound.Scope, moment);
+            // a function an action declares among its own values (private currentRepeat is Template_FunctionDeclaration),
+            // working in that action's scope
+            if (bound.Value is FxObject { Type: "Template_FunctionDeclaration" } local) return CallFunction(local, arguments, scope, moment, bound.Scope);
+        }
         if (library.Find(callee) is FxDeclaration declaration && declaration.Value is FxObject function)
         {
             switch (function.Type)
@@ -341,7 +348,7 @@ public sealed class FxEvaluator(FxLibrary library)
     /// A function of @Evaluable.ndf: its parameters stand for the calculations it was given (worked out in the caller's
     /// scope each time they are used), its own local values for theirs; then its Code, or the built-in it names.
     /// </summary>
-    private FxValue CallFunction(FxObject function, IReadOnlyList<FxNode> arguments, FxScope caller, FxMoment moment)
+    private FxValue CallFunction(FxObject function, IReadOnlyList<FxNode> arguments, FxScope caller, FxMoment moment, FxScope? declaredIn = null)
     {
         if (function.Get("Intrinsic") is FxName intrinsic)
         {
@@ -354,15 +361,20 @@ public sealed class FxEvaluator(FxLibrary library)
         }
         if (function.Get("Code") is not FxNode code) return FxValue.Nil;
         // Tuned for speed: the scope is made once for each place the function is called from
-        caller.Calls ??= new(SameCall.Instance);
-        if (!caller.Calls.TryGetValue((function, arguments), out FxScope? own))
+        // (particles are moved on several threads at once, so the list is kept under a lock)
+        FxScope? own;
+        lock (caller)
         {
-            own = new FxScope(outermost);
-            if (function.Get("Params") is FxList parameters)
-                for (int i = 0; i < parameters.Items.Count && i < arguments.Count; i++)
-                    if (parameters.Items[i] is FxPair { Key: FxName parameter }) own.Bind(parameter.Value, arguments[i], caller);
-            foreach ((string name, FxNode value) in function.Members) own.Bind(name, value, own);
-            caller.Calls[(function, arguments)] = own;
+            caller.Calls ??= new(SameCall.Instance);
+            if (!caller.Calls.TryGetValue((function, arguments), out own))
+            {
+                own = new FxScope(declaredIn ?? outermost);
+                if (function.Get("Params") is FxList parameters)
+                    for (int i = 0; i < parameters.Items.Count && i < arguments.Count; i++)
+                        if (parameters.Items[i] is FxPair { Key: FxName parameter }) own.Bind(parameter.Value, arguments[i], caller);
+                foreach ((string name, FxNode value) in function.Members) own.Bind(name, value, own);
+                caller.Calls[(function, arguments)] = own;
+            }
         }
         return Evaluate(code, own, moment);
     }
@@ -378,8 +390,11 @@ public sealed class FxEvaluator(FxLibrary library)
 
     /// <summary>
     /// The game's built-in functions and the vector makers (float3[...]), done from their names: the scripts only name
-    /// them. Those whose working is a guess from the name: creneau, sinusoid, sawtooth and triangle (waves of period 1),
-    /// Attack, Decay and AttackDecay (straight ramps up to and down from the point given).
+    /// them. Those whose working is a guess from the name: creneau, sinusoid, sawtooth and triangle (waves of period 1).
+    /// Attack, Decay and AttackDecay repeat over each whole unit of their first number, as a life ratio or a time that
+    /// runs past 1 starts again: Attack rises from 0 to 1 over the share given, then holds; Decay holds at 1 until the
+    /// point given, then falls to 0 at the end; AttackDecay rises to 1 at the point given and falls back (0 rises all the
+    /// way, 1 falls all the way).
     /// </summary>
     private FxValue Intrinsic(string name, IReadOnlyList<FxNode> arguments, FxScope scope, FxMoment moment)
     {
@@ -453,10 +468,15 @@ public sealed class FxEvaluator(FxLibrary library)
             case "dot": return FxValue.Of(Vector4.Dot(a.Numbers, b.Numbers));
             case "cross": return FxValue.Of(Vector3.Cross(a.Vector, b.Vector));
             case "distance": return FxValue.Of(Vector4.Distance(a.Numbers, b.Numbers));
-            case "Attack": return FxValue.Of(b.Number <= 0 ? 1 : Math.Clamp(a.Number / b.Number, 0, 1));
-            case "Decay": return FxValue.Of(a.Number <= b.Number ? 1 : b.Number >= 1 ? 0 : Math.Clamp((1 - a.Number) / (1 - b.Number), 0, 1));
+            case "Attack": return FxValue.Of(b.Number <= 0 ? 1 : Math.Min(1, Fraction(a.Number) / b.Number));
+            case "Decay": return FxValue.Of(a.Number < b.Number ? 1 : b.Number >= 1 ? 0 : Math.Max(0, 1 - Fraction(a.Number - b.Number) / (1 - b.Number)));
             case "AttackDecay":
-                return FxValue.Of(a.Number < b.Number ? Math.Clamp(a.Number / Math.Max(b.Number, 1e-6f), 0, 1) : Math.Clamp((1 - a.Number) / Math.Max(1 - b.Number, 1e-6f), 0, 1));
+            {
+                float at = Fraction(a.Number), peak = b.Number;
+                if (peak == 0) return FxValue.Of(1 - at);
+                if (peak == 1 || at <= peak) return FxValue.Of(at / peak);
+                return FxValue.Of((1 - at) / (1 - peak));
+            }
             case "lerp":
                 FxValue to = Argument(2);
                 float t = a.Number;

@@ -41,11 +41,74 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     public IReadOnlyList<string> ModNames => [.. Data.Mods.Select(m => m.Name)];
 
     /// <summary>
-    /// The open mod's presets of its own, in name order as the HTML app sorts them; its Armory presets are listed apart
+    /// The open mod's presets of its own as listed: those in no group first, in name order as the HTML app sorts them,
+    /// then each group's (<see cref="Mod.PresetGroups"/>), the groups in name order; its Armory presets are listed apart
     /// (<see cref="ArmoryPresetsOfOpenMod"/>).
     /// </summary>
-    public IReadOnlyList<ModPreset> Presets =>
-        [.. OpenMod.Presets.Where(p => !p.IsArmoryPreset).OrderBy(p => p.Name, StringComparer.Create(CultureInfo.InvariantCulture, false))];
+    public IReadOnlyList<ModPreset> Presets
+    {
+        get
+        {
+            StringComparer byName = StringComparer.Create(CultureInfo.InvariantCulture, false);
+            HashSet<string> groups = [.. OpenMod.PresetGroups.Select(group => group.Name)];
+            List<ModPreset> own = [.. OpenMod.Presets.Where(p => !p.IsArmoryPreset).OrderBy(p => p.Name, byName)];
+            return [.. own.Where(p => p.Group is null || !groups.Contains(p.Group)), .. own.Where(p => p.Group is string group && groups.Contains(group)).OrderBy(p => p.Group, byName)];
+        }
+    }
+
+    /// <summary>The open mod's groups of rule sets, in name order, as listed.</summary>
+    public IReadOnlyList<PresetGroup> PresetGroups =>
+        [.. OpenMod.PresetGroups.OrderBy(group => group.Name, StringComparer.Create(CultureInfo.InvariantCulture, false))];
+
+    /// <summary>Whether the open mod has a group of rule sets of that name.</summary>
+    public bool PresetGroupExists(string name) => OpenMod.PresetGroups.Any(group => group.Name == name);
+
+    /// <summary>A new group of rule sets; the selected ones go in it when <paramref name="withSelected"/>. Undo takes it back.</summary>
+    public void NewPresetGroup(string name, bool withSelected)
+    {
+        if (PresetGroupExists(name)) return;
+        OpenMod.PresetGroups.Add(new PresetGroup { Name = name });
+        if (withSelected)
+            foreach (ModPreset preset in SelectedPresets.Where(p => !p.IsArmoryPreset)) preset.Group = name;
+        Data.Save(OpenMod);
+        Refresh();
+    }
+
+    /// <summary>Puts the selected rule sets in a group, or in none (null).</summary>
+    public void MovePresetsToGroup(string? name)
+    {
+        foreach (ModPreset preset in SelectedPresets.Where(p => !p.IsArmoryPreset)) preset.Group = name;
+        Data.Save(OpenMod);
+        Refresh();
+    }
+
+    /// <summary>Renames a group of rule sets; its rule sets follow.</summary>
+    public void RenamePresetGroup(string name, string newName)
+    {
+        if (OpenMod.PresetGroups.FirstOrDefault(group => group.Name == name) is not PresetGroup renamed || PresetGroupExists(newName)) return;
+        renamed.Name = newName;
+        foreach (ModPreset preset in OpenMod.Presets.Where(p => p.Group == name)) preset.Group = newName;
+        Data.Save(OpenMod);
+        Refresh();
+    }
+
+    /// <summary>Deletes a group of rule sets; its rule sets are kept, in no group.</summary>
+    public void DeletePresetGroup(string name)
+    {
+        OpenMod.PresetGroups.RemoveAll(group => group.Name == name);
+        foreach (ModPreset preset in OpenMod.Presets.Where(p => p.Group == name)) preset.Group = null;
+        Data.Save(OpenMod);
+        Refresh();
+    }
+
+    /// <summary>Folds a group of rule sets away under its heading, or unfolds it; kept in the mod, as a rule group's fold is.</summary>
+    public void FoldPresetGroup(string name, bool folded)
+    {
+        if (OpenMod.PresetGroups.FirstOrDefault(group => group.Name == name) is not PresetGroup group || group.IsFolded == folded) return;
+        group.IsFolded = folded;
+        Data.Save(OpenMod);
+        Refresh();
+    }
 
     /// <summary>The open mod's Armory presets, listed under Armory Changes, in the order they are listed and run.</summary>
     public IReadOnlyList<ModPreset> ArmoryPresetsOfOpenMod => ArmoryPresets.AllOf(OpenMod);
@@ -287,7 +350,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         var made = new List<ModPreset>();
         foreach (ModPreset preset in SelectedPresets)
         {
-            var copy = new ModPreset { Name = OpenMod.FreePresetName(Texts.Get("Rules.Preset.CopyName", ("name", preset.Name))), Rules = (JsonArray)preset.Rules.DeepClone(), AppliesTo = preset.AppliesTo is null ? null : [.. preset.AppliesTo] };
+            var copy = new ModPreset { Name = OpenMod.FreePresetName(Texts.Get("Rules.Preset.CopyName", ("name", preset.Name))), Rules = (JsonArray)preset.Rules.DeepClone(), AppliesTo = preset.AppliesTo is null ? null : [.. preset.AppliesTo], Group = preset.Group };
             ReseedClones(copy.Rules);
             OpenMod.Presets.Add(copy);
             made.Add(copy);
