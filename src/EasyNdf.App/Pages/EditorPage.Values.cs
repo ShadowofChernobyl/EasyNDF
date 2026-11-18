@@ -42,6 +42,20 @@ public partial class EditorPage
     }
 
     /// <summary>
+    /// Gives the check of a file put in a box the impact names its ammunition can take (<see cref="ImpactNames"/>): its
+    /// mod's, or the game's, read away from the screen's thread. A file opened on its own goes by its folder, as a row
+    /// of the Files tab does; one in no mod's folder is taken to be the game's.
+    /// </summary>
+    private static async Task UseImpactsFor(FileView v, ShownText? text)
+    {
+        if (text is not { IsFile: true } || !v.WantsGuide) return;
+        (string? path, string? source) = (text.Path, text.Entry?.Source);
+        Data.Game.GameTitle game = text.Entry?.Game ?? Data.Game.GameTitle.Warno;
+        IReadOnlySet<string>? names = await Task.Run(() => ImpactNames.For(game, path, source));
+        if (ReferenceEquals(v.Shown, text)) v.SyntaxProblems.Impacts = names;
+    }
+
+    /// <summary>
     /// The tip at a place of a file's text: what is wrong there (on a wavy line), then, on a name or its value, what the
     /// name takes; on any other coloured word, a tip of its own (<see cref="SyntaxTipAt"/>). Null for nothing to say;
     /// without a guide, the syntax check shows the problem alone.

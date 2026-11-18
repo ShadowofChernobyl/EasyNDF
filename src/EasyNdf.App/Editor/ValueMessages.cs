@@ -26,6 +26,8 @@ public static class ValueMessages
         ValueProblemKind.EmptyPack => Texts.Get("Editor.Value.EmptyPack", ("name", problem.Name), ("level", problem.Index + 1), ("value", problem.Value),
             ("units", problem.OtherValue)),
         ValueProblemKind.MountWithoutName => Texts.Get("Editor.Value.MountWithoutName"),
+        ValueProblemKind.NoSuchImpact => Texts.Get("Editor.Value.NoSuchImpact", ("value", problem.Value.Trim('\'', '"'))),
+        ValueProblemKind.MissingValue => Texts.Get("Editor.Value.MustBeSet", ("name", problem.Name)),
         _ => Texts.Get("Editor.Value.Negative", ("name", problem.Name)),
     };
 
@@ -41,14 +43,19 @@ public static class ValueMessages
             return Texts.Get("Editor.Value.NoSuchChoice.Short", ("list", member[0]), ("member", member[^1]));
         }
         string message = MessageOf(problem, firstLine);
-        if (!message.StartsWith(problem.Name, StringComparison.Ordinal)) return message;
+        // a value left out is marked on its object's type name, so the message keeps the name it is about
+        if (problem.Kind == ValueProblemKind.MissingValue || !message.StartsWith(problem.Name, StringComparison.Ordinal)) return message;
         string rest = message[problem.Name.Length..].TrimStart(' ', ':', '\u00A0', '\u202F');
         return rest == "" ? message : rest;
     }
 
-    /// <summary>What it does: generation fails on an error, and works with a warning, which says what the value becomes.</summary>
+    /// <summary>
+    /// What it does: generation fails on an error, or the game crashes on one generation lets through, and generation
+    /// works with a warning, which says what the value becomes.
+    /// </summary>
     public static string WhyOf(ValueProblem problem) =>
         Texts.Get(problem.IsWarning ? "Editor.Value.NegativeWhy"
+            : problem.CrashesGame ? "Editor.Value.GameCrashes"
             : problem.Kind is ValueProblemKind.NoAmmoBox or ValueProblemKind.EmptyAmmoBox or ValueProblemKind.EmptyPack or ValueProblemKind.MountWithoutName
                 ? "Editor.Value.GenerationFailsFrom210942"
             : "Editor.Value.GenerationFails");

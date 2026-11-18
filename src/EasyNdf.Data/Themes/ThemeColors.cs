@@ -125,7 +125,7 @@ public static partial class ThemeColors
 
     /// <summary>
     /// The Units tab's bar colour: the accent, as Slate, Paper and Cartridge show it; but where the accent is the "ok"
-    /// colour (Olivine), which marks the best unit, the caution colour, so a plain bar never looks like the best one.
+    /// colour, which marks the best unit, the caution colour, so a plain bar never looks like the best one.
     /// </summary>
     public static string Meter(IReadOnlyDictionary<string, string> colors) =>
         string.Equals(colors["accent"], colors["ok"], StringComparison.OrdinalIgnoreCase) ? colors["caution"] : colors["accent"];

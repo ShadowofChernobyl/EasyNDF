@@ -270,27 +270,6 @@ public static class DivisionExtras
     /// <summary>Whether a rule gives a picture of the user's own to copy.</summary>
     private static bool HasPicture(JsonNode? rule) => rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PictureFileKey] is not null;
 
-    /// <summary>
-    /// Deletes, under an export's GameData folder, the pictures of rules that are switched off (themselves, or under a
-    /// group switched off), where no rule that is on puts a picture too: an earlier export copied them, and they would
-    /// stay in the mod unseen. Returns how many were deleted.
-    /// </summary>
-    public static int RemovePicturesOfRulesOff(IEnumerable<JsonNode?> rules, string gameData)
-    {
-        List<JsonNode?> all = [.. rules];
-        HashSet<string> usedPaths = new(RulesThatAreOn(all).Select(rule => (string?)rule[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PicturePathKey]).OfType<string>(), StringComparer.OrdinalIgnoreCase);
-        HashSet<JsonNode> on = [.. RulesThatAreOn(all)];
-        int removed = 0;
-        foreach (JsonNode? rule in all)
-        {
-            if (rule is null || on.Contains(rule) || (string?)rule[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PicturePathKey] is not string path) continue;
-            if (usedPaths.Contains(path)) continue;
-            if (PictureTargetOf(gameData, path) is not string target || !File.Exists(target)) continue;
-            File.Delete(target);
-            removed++;
-        }
-        return removed;
-    }
 
     /// <summary>
     /// Copies the pictures of the user's own that the rules that are on give, where they say. Returns how many, and

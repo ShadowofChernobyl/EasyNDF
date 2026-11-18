@@ -93,8 +93,10 @@ public sealed partial class DepictionReader(GameDataFiles files)
                 weaponOperators.Add((fireTag, [.. ItemsOf(Own(operation, "Anchors")).Select(Text).OfType<string>()], TypeChain(operation).Any(t => t.Contains("ContinuousFire", StringComparison.Ordinal))));
             else if (RecoilName().Match(name) is { Success: true } recoilName && RecoilOf(operation) is GunRecoil recoil)
                 recoils[int.Parse(recoilName.Groups[1].Value, CultureInfo.InvariantCulture)] = recoil;
-            else if (operation.TypeName == "DepictionOperator_Rotors")
-                rotors.AddRange(ItemsOf(Own(operation, "HelixList")).OfType<ObjectValue>().Select(RotorOf).OfType<UnitRotor>());
+            // a helicopter's rotors, and a propeller plane's propellers, are written alike
+            else if (operation.TypeName is "DepictionOperator_Rotors" or "DepictionOperator_Propellers")
+                rotors.AddRange(ItemsOf(Own(operation, "HelixList")).OfType<ObjectValue>().Select(RotorOf).OfType<UnitRotor>()
+                    .Select(rotor => rotor with { IsPropeller = operation.TypeName == "DepictionOperator_Propellers" }));
             else if (TypeChain(operation).Any(t => t.StartsWith("DepictionOperator_TurretCannonGatling", StringComparison.Ordinal) || t == "TCosmeticCannonGatlingOperatorDesc"))
                 gatling = GatlingOf(operation);
             else if (name.StartsWith("DepictionOperator_MovementSound_", StringComparison.Ordinal))
@@ -363,7 +365,10 @@ public sealed partial class DepictionReader(GameDataFiles files)
     {
         string? node = Text(Own(helix, "HelixBoneName"));
         return node is null ? null : new UnitRotor(node, (int)(Number(Own(helix, "RotationAxis")) ?? 2), Number(Own(helix, "RotationSpeed")) ?? 0, Text(Own(helix, "Clockwise")) == "True",
-            Text(Own(helix, "BladesBoneName")), BlurAction: Text(Own(helix, "BlurActionId")));
+            Text(Own(helix, "BladesBoneName")), BlurAction: Text(Own(helix, "BlurActionId")))
+        {
+            BladeCount = Math.Max(2, (int)(Number(Own(helix, "BladeCount")) ?? 2)),
+        };
     }
 
     private EngineSounds EngineOf(ObjectValue operation)

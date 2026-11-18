@@ -33,10 +33,11 @@ public sealed partial class UsageReadout : Bevel
 
     /// <summary>
     /// The theme colours of the memory parts, in order, one each: files, rule sets, Armory data, pictures, editor, Undo,
-    /// mods' Armory changes, other .NET data, unused (grey) and outside .NET. A part past them has the last one.
+    /// mods' Armory changes, other .NET data, unused (grey) and outside .NET. A part past them has the last one. Files take
+    /// the success colour, not the accent, which can be as gold as the warnings' colour beside it (Olivine).
     /// </summary>
     private static readonly string[] PartColours =
-        ["accent", "side-a", "caution", "usage-modded", "side-b", "s-const", "s-number", "s-keyword", "s-func", "usage-waiting", "muted", "s-param"];
+        ["ok", "side-a", "caution", "usage-modded", "side-b", "s-const", "s-number", "s-keyword", "s-func", "usage-waiting", "muted", "s-param"];
 
     private readonly List<Figure> figures;
     private readonly TextBlock busyLabel = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };
@@ -174,8 +175,11 @@ public sealed partial class UsageReadout : Bevel
     /// <summary>How a figure stands against its aim: below it, over it, or well over it.</summary>
     private enum Level { Fine, Caution, Warning }
 
-    /// <summary>The theme colour of a level.</summary>
-    private static string ColourOf(Level level) => level switch { Level.Warning => "warn", Level.Caution => "caution", _ => "accent" };
+    /// <summary>
+    /// The theme colour of a level: success, warnings and errors, whatever the theme's accent is (Olivine's gold accent
+    /// would read as a warning).
+    /// </summary>
+    private static string ColourOf(Level level) => level switch { Level.Warning => "warn", Level.Caution => "caution", _ => "ok" };
 
     /// <summary>A text in a colour of the theme.</summary>
     private static TextBlock Coloured(string text, string colour)
@@ -344,7 +348,7 @@ public sealed partial class UsageReadout : Bevel
     {
         private double[] values = [];
         private double top = 1;
-        private string colour = "accent";
+        private string colour = "ok";
 
         /// <summary>Whether to draw faint lines across at a quarter, half and three quarters, as the tooltip's larger graph does.</summary>
         public bool Lines { get; init; }

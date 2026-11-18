@@ -59,6 +59,9 @@ public partial class EditorPage : UserControl
         /// <summary>The row on the Files tab it came from; null for a file opened on its own.</summary>
         public FileEntry? Entry;
 
+        /// <summary>Where a file opened on its own is, for what its folder says (its mod's own files); null otherwise.</summary>
+        public string? Path;
+
         /// <summary>Whether the file had Windows line ends, which saving puts back.</summary>
         public bool HasWindowsLineEnds;
 
@@ -257,7 +260,8 @@ public partial class EditorPage : UserControl
     /// </summary>
     /// <param name="folds">The blocks to fold, where a file let go of had them (see <see cref="BringBack"/>); null for none.</param>
     /// <param name="loading">The load the loading card shows (see <see cref="StartLoading"/>), or 0 for none.</param>
-    private async Task LoadAside(FileView into, string name, string text, FileEntry? entry, List<(int Start, int End)>? folds = null, int loading = 0)
+    /// <param name="path">Where a file opened on its own is (<see cref="ShownText.Path"/>); null for any other.</param>
+    private async Task LoadAside(FileView into, string name, string text, FileEntry? entry, List<(int Start, int End)>? folds = null, int loading = 0, string? path = null)
     {
         int load = ++into.Loads;
         // a file opened now takes the place of one let go of
@@ -271,6 +275,7 @@ public partial class EditorPage : UserControl
             if (load != into.Loads) return;
         }
         if (folds is not null) prepared.Folds = folds;
+        prepared.Path = path;
         into.Shown = prepared;
         ShowText(into);
     }
@@ -313,7 +318,7 @@ public partial class EditorPage : UserControl
             await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)), DialogIcon.Error);
             return;
         }
-        await LoadAside(NewTab(), Path.GetFileName(dialog.FileName), text, null);
+        await LoadAside(NewTab(), Path.GetFileName(dialog.FileName), text, null, path: dialog.FileName);
     }
 
     /// <summary>The dropdown's right-click menu.</summary>
@@ -336,7 +341,7 @@ public partial class EditorPage : UserControl
         FileView of = view;
         if (!await Messages.Confirm(Texts.Get("Editor.DiscardAll", ("file", open.Name)), Texts.Get("Editor.Discard"), DialogIcon.Warning)) return;
         if (of.Shown != open) return;
-        await LoadAside(of, open.Name, open.Original, open.Entry);
+        await LoadAside(of, open.Name, open.Original, open.Entry, path: open.Path);
         // another file put in that box while it was read keeps its own line ends
         if (of.Shown is not ShownText again || again.Name != open.Name || again.Entry != open.Entry) return;
         again.HasWindowsLineEnds = open.HasWindowsLineEnds;
@@ -428,6 +433,7 @@ public partial class EditorPage : UserControl
         bool isNdf = text is not null && !Data.Divisions.FileAndTextRules.IsDictionaryFile(text.Name);
         UseGuideFor(of, text, isNdf);
         of.SyntaxProblems.Watch(text is { IsFile: true } && isNdf ? text.Document : null, text is { IsFile: true } ? of.Guide : null);
+        _ = UseImpactsFor(of, text);
         if (text is null)
         {
             ShowWhatFollowsText(of);

@@ -20,6 +20,12 @@ public sealed class Mod
     /// <summary>The mod's presets. Each preset's rules apply to the files it is chosen for.</summary>
     public List<ModPreset> Presets { get; set; } = [];
 
+    /// <summary>
+    /// The groups the Rules tab lists the mod's rule sets in, by name, each folded or not; a rule set names its group
+    /// (<see cref="ModPreset.Group"/>). A group may have no rule sets yet.
+    /// </summary>
+    public List<PresetGroup> PresetGroups { get; set; } = [];
+
     /// <summary>The mod's divisions: its new ones, and its changes to the game's, made on the Divisions tab.</summary>
     public List<Divisions.ModDivision> Divisions { get; set; } = [];
 
@@ -85,6 +91,7 @@ public sealed class Mod
         Game = Game,
         Watermark = Watermark,
         Presets = [.. Presets.Select((p, i) => p.Copy(packRules, sameRulesAs?.Presets.ElementAtOrDefault(i)))],
+        PresetGroups = [.. PresetGroups.Select(group => new PresetGroup { Name = group.Name, IsFolded = group.IsFolded })],
         Divisions = [.. Divisions.Select(division => Data.Divisions.ModDivision.FromJson(division.ToJson()))],
         Units = [.. Units.Select(unit => unit.Copy())],
         UnitEdits = [.. UnitEdits.Select(edit => edit.Copy())],
@@ -207,7 +214,7 @@ public sealed class ModPreset
     /// <param name="sameRulesAs">A packed copy holding the same rules, whose packed rules the copy shares.</param>
     public ModPreset Copy(bool packed, ModPreset? sameRulesAs = null)
     {
-        var copy = new ModPreset { Name = Name, ArmoryPart = ArmoryPart, AppliesTo = AppliesTo is null ? null : [.. AppliesTo] };
+        var copy = new ModPreset { Name = Name, ArmoryPart = ArmoryPart, AppliesTo = AppliesTo is null ? null : [.. AppliesTo], Group = Group };
         FileList.PackedBytes? shared = null;
         if (packed && sameRulesAs is not null) lock (sameRulesAs.packing) shared = sameRulesAs.packedRules;
         lock (packing)
@@ -257,6 +264,19 @@ public sealed class ModPreset
     /// <see cref="FileList.RuleSetFiles"/>).
     /// </summary>
     public List<string>? AppliesTo { get; set; }
+
+    /// <summary>The name of the group the Rules tab lists it in (<see cref="Mod.PresetGroups"/>); null for none.</summary>
+    public string? Group { get; set; }
+}
+
+/// <summary>A group of a mod's rule sets, as the Rules tab lists them: a heading with its rule sets under it.</summary>
+public sealed class PresetGroup
+{
+    /// <summary>The group's name. Within one mod no two groups share a name.</summary>
+    public string Name { get; set; } = "";
+
+    /// <summary>Whether its rule sets are folded away under its heading.</summary>
+    public bool IsFolded { get; set; }
 }
 
 /// <summary>

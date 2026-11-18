@@ -992,6 +992,8 @@ public sealed class FileListModel : INotifyPropertyChanged
         var lines = new List<object>();
         if (!groupByFolder)
             foreach (FileRow row in matching) ShowRow(row, inFolder: false, shownRows, lines);
+        else if (ShowsFolderTree)
+            ShowTree("", 0, matching, shownRows, lines);
         else
         {
             // one line per folder, in name order, with its files under it when it is open; while searching, folders with matches are open
@@ -1012,11 +1014,69 @@ public sealed class FileListModel : INotifyPropertyChanged
         Changed();
     }
 
+    /// <summary>
+    /// Whether "Group by folder" shows a tree (Settings, "Show folders as a tree", on at first): the top folders first,
+    /// each opening to its own folders and files; off, a line for each folder's whole path.
+    /// </summary>
+    private static bool ShowsFolderTree => AppData.Current.Settings["folderTree"]?.GetValue<bool>() != false;
+
+    /// <summary>
+    /// The lines of the folders in a folder, as a tree: a line for each folder in it, in name order, with every file under
+    /// it in its count and tick; then, under an open one, its own folders and files, a step further in. Files added on
+    /// their own have a line of their own at the top. While searching, folders with matches are open.
+    /// </summary>
+    /// <param name="folder">The folder ("" for the top).</param>
+    /// <param name="depth">How many folders it is in.</param>
+    /// <param name="rows">The rows in it and under it.</param>
+    private void ShowTree(string folder, int depth, List<FileRow> rows, List<FileRow> shownRows, List<object> lines)
+    {
+        string inside = folder == "" ? "" : folder + "/";
+        var own = new List<FileRow>();
+        var below = new SortedDictionary<string, List<FileRow>>(StringComparer.CurrentCulture);
+        foreach (FileRow row in rows)
+        {
+            string path = row.Entry.Folder;
+            if (path == folder)
+            {
+                own.Add(row);
+                continue;
+            }
+            int slash = path.IndexOf('/', inside.Length);
+            string next = slash < 0 ? path : path[..slash];
+            if (!below.TryGetValue(next, out List<FileRow>? list)) below[next] = list = [];
+            list.Add(row);
+        }
+        // files added on their own: their line, as the flat list has it, above the folders
+        if (folder == "" && own.Count > 0)
+        {
+            bool isOpen = openFolders.Contains("") || Search != "";
+            lines.Add(new FolderRow("", own, isOpen));
+            if (isOpen)
+                foreach (FileRow row in own) ShowRow(row, inFolder: true, shownRows, lines);
+        }
+        foreach ((string path, List<FileRow> under) in below)
+        {
+            bool isOpen = openFolders.Contains(path) || Search != "";
+            lines.Add(new FolderRow(path, under, isOpen) { Depth = depth, Name = path[inside.Length..] });
+            if (isOpen) ShowTree(path, depth + 1, under, shownRows, lines);
+        }
+        if (folder != "")
+            foreach (FileRow row in own) ShowRow(row, inFolder: true, shownRows, lines, depth);
+    }
+
+    /// <summary>The setting "Show folders as a tree" changed: the list is shown again.</summary>
+    public void FolderTreeChanged()
+    {
+        if (groupByFolder) Refilter();
+    }
+
     /// <summary>Adds a file row to the lines to show, numbered in the order shown.</summary>
-    private static void ShowRow(FileRow row, bool inFolder, List<FileRow> shownRows, List<object> lines)
+    /// <param name="depth">In a folder tree, how many folders the file's folder is in, which sets it further in.</param>
+    private static void ShowRow(FileRow row, bool inFolder, List<FileRow> shownRows, List<object> lines, int depth = 0)
     {
         row.Number = shownRows.Count + 1;
         row.IsInFolder = inFolder;
+        row.FolderDepth = depth;
         row.Refresh();
         shownRows.Add(row);
         lines.Add(row);
@@ -1032,7 +1092,12 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// <summary>"Expand all": opens every folder.</summary>
     public void OpenAllFolders()
     {
-        foreach (FileEntry entry in entries) openFolders.Add(entry.Folder);
+        // every folder, and for a tree the folders each is in
+        foreach (FileEntry entry in entries)
+        {
+            openFolders.Add(entry.Folder);
+            for (int slash = entry.Folder.IndexOf('/'); slash > 0; slash = entry.Folder.IndexOf('/', slash + 1)) openFolders.Add(entry.Folder[..slash]);
+        }
         Refilter();
     }
 
@@ -1043,10 +1108,10 @@ public sealed class FileListModel : INotifyPropertyChanged
         Refilter();
     }
 
-    /// <summary>A folder line's checkbox: switches on or off every file of that folder the search and filter leave.</summary>
+    /// <summary>A folder line's checkbox: switches on or off every file of that folder (in a tree, under it) the search and filter leave.</summary>
     public void SetFolderOn(FolderRow folder, bool on)
     {
-        foreach (FileRow row in matching.Where(r => r.Entry.Folder == folder.Path)) row.Entry.On = on;
+        foreach (FileRow row in folder.Rows) row.Entry.On = on;
         Refilter();
     }
 

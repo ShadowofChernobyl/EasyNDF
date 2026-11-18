@@ -136,7 +136,8 @@ public sealed class FileRowView : Decorator
     {
         var name = new TextBlock { Style = (Style)FindResource("FileName") };
         name.SetBinding(TextBlock.TextProperty, nameof(FileRow.NameText));
-        var stack = new StackPanel { Margin = new Thickness(7, 3, 7, 3), VerticalAlignment = VerticalAlignment.Center };
+        var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        stack.SetBinding(MarginProperty, nameof(FileRow.NameMargin));
         stack.Children.Add(new DockPanel { Children = { ExportedTag(), name } });
         stack.Children.Add(SubLine(nameof(FileRow.FolderLine), nameof(FileRow.HasFolderLine)));
         stack.Children.Add(SubLine(nameof(FileRow.DuplicateLine), nameof(FileRow.HasDuplicateLine)));

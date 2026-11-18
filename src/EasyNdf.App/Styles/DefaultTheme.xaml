@@ -14,13 +14,13 @@
     <SolidColorBrush x:Key="ink" Color="#e3e8e2" />
     <SolidColorBrush x:Key="muted" Color="#98a39b" />
     <SolidColorBrush x:Key="line" Color="#333c35" />
-    <SolidColorBrush x:Key="accent" Color="#7fb88a" />
+    <SolidColorBrush x:Key="accent" Color="#b7a946" />
     <SolidColorBrush x:Key="ok" Color="#7fb88a" />
     <SolidColorBrush x:Key="warn" Color="#f0957a" />
     <SolidColorBrush x:Key="caution" Color="#bfac5f" />
     <SolidColorBrush x:Key="sel" Color="#27322a" />
     <SolidColorBrush x:Key="hover" Color="#42594a" />
-    <SolidColorBrush x:Key="toggle" Color="#364f3b" />
+    <SolidColorBrush x:Key="toggle" Color="#6a6e36" />
     <SolidColorBrush x:Key="hi" Color="#3f4a42" />
     <SolidColorBrush x:Key="lo" Color="#090b0a" />
     <SolidColorBrush x:Key="s-comment" Color="#6f7b71" />
@@ -40,7 +40,7 @@
     <SolidColorBrush x:Key="d-del" Color="#f0957a" />
     <SolidColorBrush x:Key="weapon-art" Color="#e3e8e2" />
     <!-- the Units tab's bars and side marks, worked out from the theme (see ThemeColors.Meter and ThemeColors.Sides) -->
-    <SolidColorBrush x:Key="meter" Color="#bfac5f" />
+    <SolidColorBrush x:Key="meter" Color="#b7a946" />
     <SolidColorBrush x:Key="side-a" Color="#6f93bd" />
     <SolidColorBrush x:Key="side-b" Color="#bd6f68" />
     <SolidColorBrush x:Key="usage-waiting" Color="#4cc4cc" />

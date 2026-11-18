@@ -28,7 +28,6 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
-        Designer.ThemesChanged += Show;
         ListCategories();
         MarkCategory("Results");
         Show();
@@ -99,7 +98,7 @@ public partial class SettingsPage : UserControl
 
     /// <summary>
     /// The search box: only the settings whose name, note or section holds every word typed are shown, with the sections
-    /// that have any, in the page and in the list. The Theme Designer counts as one setting of Appearance.
+    /// that have any, in the page and in the list.
     /// </summary>
     private void SearchChanged(object sender, TextChangedEventArgs e)
     {
@@ -111,15 +110,11 @@ public partial class SettingsPage : UserControl
             bool cardShown = false;
             foreach (Controls.SettingRow row in RowsOf(card))
             {
-                bool rowShown = Matches(HeadingOf(card).Text + " " + row.Label + " " + row.Note);
+                // the Theme row also holds the Theme Designer… button, so it is found by the designer's words too
+                string extra = row == ThemeRow ? " " + Texts.Get("Settings.Designer.SearchWords") : "";
+                bool rowShown = Matches(HeadingOf(card).Text + " " + row.Label + " " + row.Note + extra);
                 row.Visibility = rowShown ? Visibility.Visible : Visibility.Collapsed;
                 cardShown |= rowShown;
-            }
-            if (card.IsAncestorOf(DesignerBlock))
-            {
-                bool designerShown = Matches(HeadingOf(card).Text + " " + Text.Texts.Get("Settings.Designer.SearchWords"));
-                DesignerBlock.Visibility = designerShown ? Visibility.Visible : Visibility.Collapsed;
-                cardShown |= designerShown;
             }
             card.Visibility = cardShown ? Visibility.Visible : Visibility.Collapsed;
             foreach (var line in Categories.Children.OfType<System.Windows.Controls.Primitives.ToggleButton>().Where(l => (string)l.Tag == name))
@@ -164,7 +159,7 @@ public partial class SettingsPage : UserControl
             DecimalsBox.Text = Number("decimals", 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
             DecimalsRow.Note = Texts.Get("Settings.DecimalsRow.Note");
             DecimalsRow.NoteIsWarning = false;
-            foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
+            foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FolderTreeSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
                 ConfirmExportSwitch, AskFolderSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch, ArmoryMarksSwitch,
                 ArmoryFileNamesSwitch, MonitorScalingSwitch, UsageSwitch, LogSwitch })
                 toggle.IsChecked = IsOn((string)toggle.Tag);
@@ -176,7 +171,7 @@ public partial class SettingsPage : UserControl
             ShowTextSizes();
             ShowThemes();
             ShowLanguages();
-            Designer.Show();
+            Dialogs.ThemeDesignerWindow.Current?.Designer.Show();
             BevelSwitch.IsChecked = Settings["bevel"]?.GetValue<bool>() ?? true;
             TreadSwitch.IsChecked = Settings["treadScrollbars"]?.GetValue<bool>() ?? true;
             DataNote.Text = AppData.Current.Folders is { } folders
@@ -312,14 +307,7 @@ public partial class SettingsPage : UserControl
     /// <summary>The theme dropdown: Automatic, the built-in themes in the HTML app's order, then the user's own (the HTML app's "Your themes").</summary>
     private void ShowThemes()
     {
-        var options = new List<Rules.ChoiceOption> { new("system", Texts.Get("Settings.ThemeChoice.Automatic")) };
-        options.AddRange(BuiltInThemes.Order.Select(id => new Rules.ChoiceOption(id, BuiltInThemes.ById[id].Name)));
-        foreach (CustomTheme own in AppData.Current.Themes.Themes)
-            options.Add(new Rules.ChoiceOption(ThemeManager.CustomKey(own), own.Name != "" ? own.Name : Texts.Get("Settings.ThemeChoice.Untitled"), Texts.Get("Settings.ThemeChoice.YourTheme")));
-        ThemeChoice.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
-        ThemeChoice.ItemsSource = options;
-        string current = (string?)Settings["theme"] ?? BuiltInThemes.DefaultId;
-        ThemeChoice.SelectedItem = options.FirstOrDefault(o => o.Value == current) ?? options.First(o => o.Value == BuiltInThemes.DefaultId);
+        ThemeDesigner.FillThemeChoice(ThemeChoice);
     }
 
     private void ThemeChosen(object sender, SelectionChangedEventArgs e)
@@ -329,6 +317,17 @@ public partial class SettingsPage : UserControl
         AppData.Current.SaveSettings();
         ThemeManager.ApplySaved();
         Show();
+    }
+
+    /// <summary>
+    /// "Theme Designer…": its window, which stays open beside the app while the app is used. Themes it adds, renames or
+    /// deletes are shown in the Theme dropdown at once.
+    /// </summary>
+    private void DesignerClicked(object sender, RoutedEventArgs e)
+    {
+        var window = Dialogs.ThemeDesignerWindow.Open(Window.GetWindow(this), View.CaptionButtons.Visibility != Visibility.Visible);
+        window.Designer.ThemesChanged -= Show;
+        window.Designer.ThemesChanged += Show;
     }
 
     /// <summary>"Fonts...": the Fonts window; the note under the row names the fonts in use afterwards.</summary>

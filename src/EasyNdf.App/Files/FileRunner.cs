@@ -157,7 +157,6 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         if (write)
         {
             WriteDivisionExtras(finished);
-            RemoveModFilesNoLongerUsed(finished);
             SayModFilesWritten();
             MakeDictionaries(dictionariesToMake, finished);
             if (deckNumbersGiven.Count > 0)
@@ -178,16 +177,30 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     }
 
     /// <summary>
-    /// After a run: the files with values that would stop mod generation are named in one notice, which stays in the
-    /// recent list, with a button to see them.
+    /// After a run: the files with values that would stop mod generation (or crash the game) are named in one notice,
+    /// which stays in the recent list, with a button to see them. It says the game would crash only when that is all
+    /// they would do.
     /// </summary>
     private void SayValueErrors(List<FileEntry> finished, bool write)
     {
         List<FileEntry> withErrors = [.. finished.Where(entry => entry.LastRun?.ValueErrors.Count > 0)];
         if (withErrors.Count == 0) return;
+        bool crashOnly = withErrors.All(entry => entry.LastRun!.ValueErrors.All(error => error.Error.Problem.CrashesGame));
         string message = withErrors.Count == 1
-            ? Texts.Get(write ? "Files.Run.ValueErrors.NotExportedOne" : "Files.Run.ValueErrors.WouldNotExportOne", ("file", withErrors[0].Name))
-            : Texts.Get(write ? "Files.Run.ValueErrors.NotExported" : "Files.Run.ValueErrors.WouldNotExport", ("files", FileListModel.Files(withErrors.Count)));
+            ? Texts.Get((write, crashOnly) switch
+            {
+                (true, false) => "Files.Run.ValueErrors.NotExportedOne",
+                (true, true) => "Files.Run.ValueErrors.NotExportedOne.Crash",
+                (false, false) => "Files.Run.ValueErrors.WouldNotExportOne",
+                (false, true) => "Files.Run.ValueErrors.WouldNotExportOne.Crash",
+            }, ("file", withErrors[0].Name))
+            : Texts.Get((write, crashOnly) switch
+            {
+                (true, false) => "Files.Run.ValueErrors.NotExported",
+                (true, true) => "Files.Run.ValueErrors.NotExported.Crash",
+                (false, false) => "Files.Run.ValueErrors.WouldNotExport",
+                (false, true) => "Files.Run.ValueErrors.WouldNotExport.Crash",
+            }, ("files", FileListModel.Files(withErrors.Count)));
         NoticeAction? showThem = ShowFilesWithErrors is { } show ? new NoticeAction(Texts.Get(withErrors.Count == 1 ? "Files.Run.ValueErrors.ShowIt" : "Files.Run.ValueErrors.ShowThem"), () => show(withErrors[0])) : null;
         model.Say(message, NoticeKind.Problem, showThem);
     }
@@ -583,39 +596,6 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         lock (modFileProblems) modFileProblems.Clear();
     }
 
-    /// <summary>
-    /// Files an earlier export wrote for File rules now switched off, or of a mod now off (and written by no rule that is
-    /// on), are taken out of the mod's folder again, so they do not stay in the mod unseen. A file changed since, or put
-    /// there by the user, is left alone. The Files tab says how many.
-    /// </summary>
-    private void RemoveModFilesNoLongerUsed(List<FileEntry> run)
-    {
-        List<JsonNode?> rules = RuleSetRulesOfEveryMod(run);
-        if (!rules.Any(rule => FileAndTextRules.CarriedFileOf(rule) is not null)) return;
-        string? modFolder = run.Where(entry => entry.ExportFolder is not null)
-            .Select(entry => FileAndTextRules.ModFolderOf(ExportPathOf(entry))).FirstOrDefault(folder => folder is not null);
-        if (modFolder is null) return;
-        try
-        {
-            int removed = FileAndTextRules.RemoveFilesOfRulesOff(rules, modFolder);
-            if (removed > 0) model.Say(Texts.Count("Files.Run.ModFiles.Removed", removed));
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        {
-            model.Warn(Texts.Get("Files.Run.ModFiles.Failed", ("problem", error.Message)));
-        }
-    }
-
-    /// <summary>
-    /// The rules of every mod's rule sets, each rule set judged on its own (<see cref="FileAndTextRules.EachInItsOwnRuleSet"/>),
-    /// with those of the mods that do not run on these files (off, or for another game) copied as switched off.
-    /// </summary>
-    private static List<JsonNode?> RuleSetRulesOfEveryMod(List<FileEntry> run)
-    {
-        IReadOnlyList<Mod> running = ModStack.RunningOn(run);
-        return [.. ModStack.Ordered.SelectMany(mod => FileAndTextRules.EachInItsOwnRuleSet(
-            mod.Presets.Where(preset => preset.ArmoryPart is null).Select(preset => preset.Rules), allOff: !running.Contains(mod)))];
-    }
 
     // ---- the Armory presets ----
 
@@ -801,7 +781,6 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// </summary>
     private void WriteDivisionExtras(List<FileEntry> run)
     {
-        RemovePicturesNoLongerUsed(run);
         IReadOnlyList<JsonNode?> armoryRules = ArmoryRulesOf(ModStack.RunningOn(run));
         if (armoryRules.Count == 0) return;
         HashSet<string> filesWithPictures = DivisionExtras.FilesWithPictures(armoryRules);
@@ -833,61 +812,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         return Texts.Get("Files.Run.Pictures.Copied", ("what", what));
     }
 
-    /// <summary>
-    /// The Armory presets' rules of every mod, with those of the mods that do not run on these files (off, or for
-    /// another game) copied as switched off. Their group headings are left out, so they do not switch off the rules of
-    /// the mods that are on after them.
-    /// </summary>
-    private static List<JsonNode?> ArmoryRulesOfEveryMod(List<FileEntry> run)
-    {
-        var rules = new List<JsonNode?>();
-        IReadOnlyList<Mod> running = ModStack.RunningOn(run);
-        foreach (Mod mod in ModStack.Ordered)
-        {
-            bool isOn = running.Contains(mod);
-            foreach (JsonNode? rule in ArmoryPresets.RulesOf(mod))
-            {
-                if (isOn) rules.Add(rule);
-                else if (rule is not null && (string?)rule["Kind"] != "Group") rules.Add(SwitchedOff(rule));
-            }
-        }
-        return rules;
-    }
-
-    /// <summary>A copy of a rule, switched off.</summary>
-    private static JsonNode SwitchedOff(JsonNode rule)
-    {
-        JsonNode copy = rule.DeepClone();
-        copy["Enabled"] = false;
-        return copy;
-    }
-
     /// <summary>The folders the app keeps chosen pictures in: the only ones a mod's pictures are copied from.</summary>
     private static IReadOnlyList<string> PictureFolders =>
         AppFolders.PictureFoldersOf(AppContext.BaseDirectory, Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-
-    /// <summary>
-    /// Pictures an earlier export copied for rules now switched off, or of a mod now off (and used by no rule that is
-    /// on), are taken out of the export's GameData folder again, so they do not stay in the mod unseen. The Files tab
-    /// says how many.
-    /// </summary>
-    private void RemovePicturesNoLongerUsed(List<FileEntry> run)
-    {
-        List<JsonNode?> armoryRules = ArmoryRulesOfEveryMod(run);
-        if (armoryRules.Count == 0) return;
-        string? gameData = run.Where(entry => entry.Done && entry.ExportedPath is not null)
-            .Select(entry => DivisionExtras.GameDataFolderOf(entry.ExportedPath!)).FirstOrDefault(folder => folder is not null);
-        if (gameData is null) return;
-        try
-        {
-            int removed = DivisionExtras.RemovePicturesOfRulesOff(armoryRules, gameData);
-            if (removed > 0) model.Say(Texts.Count("Files.Run.PicturesRemoved", removed));
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        {
-            model.Warn(Texts.Get("Files.Run.Divisions.Failed", ("problem", error.Message)));
-        }
-    }
 
     /// <summary>
     /// The WARNO mod UNITS.csv is exported for, by its folder name: the game reads it only from
@@ -956,8 +883,10 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             // the check of the values needs the text a Preview would otherwise leave unkept
             bool checksValues = valueGuide is not null && ChecksValues(entry);
             (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write || checksValues, logLimit, work.OtherFiles, stages, ruleCounts);
+            // the impact names of the MimeticImpactMapping.ndf the game will load: the export folder's mod's, or else the source's
             List<RunValueError> valueErrors = checksValues && result.ParseError == "" && result.Edits > 0 && result.Text is string made
-                ? RunValueError.Place(result.Logs, ExportValueCheck.Find(work.Content.Text(), made, valueGuide!))
+                ? RunValueError.Place(result.Logs, ExportValueCheck.Find(work.Content.Text(), made, valueGuide!,
+                    ImpactNames.For(entry.Game, entry.ExportFolder is null ? null : ExportPathOf(entry), entry.Source)))
                 : [];
             clock.Stop();
             lock (conflictsFound) conflictsFound[entry.Key] = ConflictsIn(entry.Name, stack, result, stages ?? [], ruleCounts);
@@ -1007,7 +936,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             }
             else if (valueErrors.Count > 0)
             {
-                // held back too: mod generation would stop on these values
+                // held back too: mod generation would stop on these values, or the game would crash on them
                 entry.IsError = true;
                 if (write) entry.HeldOutput = text;
                 string errors = Texts.Count("Files.Run.ValueErrors.Count", valueErrors.Count, ("count", FileStatus.Count(valueErrors.Count)));

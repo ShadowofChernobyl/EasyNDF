@@ -27,20 +27,24 @@ public sealed class FxLibrary(GameDataFiles files)
     /// </summary>
     public FxDeclaration? Find(string nameOrPath)
     {
-        ReadBank();
-        string name = nameOrPath[(nameOrPath.LastIndexOf('/') + 1)..];
-        if (declarations.TryGetValue(name, out FxDeclaration? found)) return found;
-        if (generatedRead.Add(name)) ReadFile("GameData/Fx/Generated/" + name + ".ndf");
-        return declarations.GetValueOrDefault(name);
+        // particles are moved on several threads at once (FxPlayer.Step), and a file may be read on the way
+        lock (declarations)
+        {
+            ReadBank();
+            string name = nameOrPath[(nameOrPath.LastIndexOf('/') + 1)..];
+            if (declarations.TryGetValue(name, out FxDeclaration? found)) return found;
+            if (generatedRead.Add(name)) ReadFile("GameData/Fx/Generated/" + name + ".ndf");
+            return declarations.GetValueOrDefault(name);
+        }
     }
 
     /// <summary>The declaration a name stands for, kept on the name once found.</summary>
     public FxDeclaration? Find(FxName name)
     {
-        if (!name.IsLookedUp)
+        if (!Volatile.Read(ref name.LookedUp))
         {
             name.Declared = Find(name.Value);
-            name.IsLookedUp = true;
+            Volatile.Write(ref name.LookedUp, true);
         }
         return name.Declared;
     }

@@ -80,6 +80,7 @@ public static class ModFiles
                 if (i == 0) entry["Game"] = mod.Game.Id;
                 if (i == 0 && mod.Watermark is not null) entry["Watermark"] = mod.Watermark.ToJson();
                 // the divisions ride with the first preset, as the watermark does
+                if (i == 0 && mod.PresetGroups.Count > 0) entry["PresetGroups"] = PresetGroupsToJson(mod);
                 if (i == 0 && mod.Divisions.Count > 0) entry["Divisions"] = DivisionsToJson(mod);
                 if (i == 0 && mod.Units.Count > 0) entry["Units"] = UnitsToJson(mod);
                 if (i == 0 && mod.UnitEdits.Count > 0) entry["UnitEdits"] = UnitEditsToJson(mod);
@@ -131,6 +132,7 @@ public static class ModFiles
         Mod mod = ModWithPresets(name, presets);
         mod.Game = GameFromJson(modFile["Game"]);
         if (modFile["Watermark"] is JsonObject watermark) mod.Watermark = ModWatermark.FromJson(watermark);
+        mod.PresetGroups = PresetGroupsFromJson(modFile["PresetGroups"], mod);
         mod.Divisions = DivisionsFromJson(modFile["Divisions"]);
         mod.Units = UnitsFromJson(modFile["Units"]);
         mod.UnitEdits = UnitEditsFromJson(modFile["UnitEdits"]);
@@ -161,6 +163,7 @@ public static class ModFiles
             mod.Game = GameFromJson(byMod[name].Select(e => e["Game"]).FirstOrDefault(game => game is not null));
             JsonObject? withWatermark = byMod[name].FirstOrDefault(e => e["Watermark"] is JsonObject);
             if (withWatermark is not null) mod.Watermark = ModWatermark.FromJson((JsonObject)withWatermark["Watermark"]!);
+            mod.PresetGroups = PresetGroupsFromJson(byMod[name].Select(e => e["PresetGroups"]).FirstOrDefault(groups => groups is JsonArray), mod);
             JsonObject? withDivisions = byMod[name].FirstOrDefault(e => e["Divisions"] is JsonArray);
             if (withDivisions is not null) mod.Divisions = DivisionsFromJson(withDivisions["Divisions"]);
             JsonObject? withUnits = byMod[name].FirstOrDefault(e => e["Units"] is JsonArray);
@@ -202,6 +205,7 @@ public static class ModFiles
                 Rules = RuleLoading.LoadRules(preset["Rules"]),
                 ArmoryPart = ArmoryPartOf(preset),
                 AppliesTo = AppliesToOf(preset),
+                Group = JsText.Trim(JsonValues.AsText(preset["Group"])) is { Length: > 0 } group ? group : null,
             });
         }
         return mod;
@@ -233,6 +237,7 @@ public static class ModFiles
         var json = new JsonObject { ["ModName"] = mod.Name, ["FormatVersion"] = 1, ["Game"] = mod.Game.Id };
         if (mod.Watermark is not null) json["Watermark"] = mod.Watermark.ToJson();
         json["Presets"] = new JsonArray(mod.Presets.Select(p => (JsonNode)PresetToJson(p, nameRows ? RulesWithRowNames(p.Rules) : p.Rules.DeepClone())).ToArray());
+        if (mod.PresetGroups.Count > 0) json["PresetGroups"] = PresetGroupsToJson(mod);
         if (mod.Divisions.Count > 0) json["Divisions"] = DivisionsToJson(mod);
         if (mod.Units.Count > 0) json["Units"] = UnitsToJson(mod);
         if (mod.UnitEdits.Count > 0) json["UnitEdits"] = UnitEditsToJson(mod);
@@ -240,6 +245,33 @@ public static class ModFiles
         if (mod.Weapons.Count > 0) json["Weapons"] = WeaponsToJson(mod);
         if (mod.UnitDeckNumbers.Count > 0) json["DeckNumbers"] = DeckNumbersToJson(mod);
         return json;
+    }
+
+    /// <summary>The groups of a mod's rule sets as the mod file keeps them: <c>[{Name, Folded?}]</c>.</summary>
+    private static JsonArray PresetGroupsToJson(Mod mod) =>
+        new([.. mod.PresetGroups.Select(group =>
+        {
+            var json = new JsonObject { ["Name"] = group.Name };
+            if (group.IsFolded) json["Folded"] = true;
+            return (JsonNode?)json;
+        })]);
+
+    /// <summary>
+    /// The groups of a mod's rule sets from its file, each named once; a group a rule set names that the list leaves out
+    /// is added, so no rule set is left in a group that is not shown.
+    /// </summary>
+    private static List<PresetGroup> PresetGroupsFromJson(JsonNode? json, Mod mod)
+    {
+        var groups = new List<PresetGroup>();
+        if (json is JsonArray list)
+            foreach (JsonObject entry in list.OfType<JsonObject>())
+            {
+                string name = JsText.Trim(JsonValues.AsText(entry["Name"]));
+                if (name != "" && groups.All(group => group.Name != name)) groups.Add(new PresetGroup { Name = name, IsFolded = JsonValues.IsTruthy(entry["Folded"]) });
+            }
+        foreach (string name in mod.Presets.Select(preset => preset.Group).OfType<string>().Distinct())
+            if (groups.All(group => group.Name != name)) groups.Add(new PresetGroup { Name = name });
+        return groups;
     }
 
     /// <summary>
@@ -255,6 +287,7 @@ public static class ModFiles
             json["ArmoryPart"] = part.ToString();
         }
         if (preset.AppliesTo is List<string> files) json["AppliesTo"] = new JsonArray([.. files.Select(file => (JsonNode?)file)]);
+        if (preset.Group is string group) json["Group"] = group;
         return json;
     }
 

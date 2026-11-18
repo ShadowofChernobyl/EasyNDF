@@ -11,7 +11,7 @@ namespace EasyNdf.App.Models;
 /// </summary>
 internal sealed class ModelSounds : IDisposable
 {
-    private const int OutputRate = 48000;
+    internal const int OutputRate = 48000;
     private readonly WasapiOut? output;
     private readonly MixingSampleProvider mixer = new(WaveFormat.CreateIeeeFloatWaveFormat(OutputRate, 2)) { ReadFully = true };
     private readonly VolumeSampleProvider master;
@@ -73,6 +73,9 @@ internal sealed class ModelSounds : IDisposable
         return played;
     }
 
+    /// <summary>How long a sound playing plays once through, in seconds.</summary>
+    public static double Seconds(PlayingSound sound) => sound.Samples / OutputRate;
+
     /// <summary>Unpacks the sounds a unit uses ahead of time, so the first shot is not late.</summary>
     public void Prepare(IEnumerable<SoundChoice?> choices)
     {
@@ -124,6 +127,15 @@ internal sealed class ModelSounds : IDisposable
 /// </summary>
 internal sealed class PlayingSound : ISampleProvider
 {
+    /// <summary>How long it plays once through, in samples of the output (see <see cref="ModelSounds.Seconds"/>).</summary>
+    public double Samples { get; }
+
+    /// <summary>The recording it plays.</summary>
+    public GameSound Sound => sound;
+
+    /// <summary>How much faster than recorded it plays (its pitch): its own times divided by this are the times heard.</summary>
+    public double Speed => step * ModelSounds.OutputRate / Math.Max(1, sound.Rate);
+
     private readonly GameSound sound;
     private readonly float volume;
     private readonly double step;
@@ -144,6 +156,8 @@ internal sealed class PlayingSound : ISampleProvider
     /// <param name="wait">How many samples of the output to wait before starting.</param>
     public PlayingSound(GameSound sound, float volume, double step, bool loop, double fadeIn, int wait)
     {
+        // how long it plays once, in output samples, at its pitch
+        Samples = sound.Samples.Length / Math.Max(1, sound.Channels) / Math.Max(1e-6, step);
         this.sound = sound;
         this.volume = volume;
         this.step = step;

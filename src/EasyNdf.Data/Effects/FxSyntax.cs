@@ -28,8 +28,8 @@ public sealed record FxName(string Value) : FxNode
     /// <summary>The declaration the effect files have for it, once looked up (Tuned for speed: a name is looked up once, not each time it is worked out).</summary>
     internal FxDeclaration? Declared { get; set; }
 
-    /// <summary>Whether <see cref="Declared"/> has been looked up.</summary>
-    internal bool IsLookedUp { get; set; }
+    /// <summary>Whether <see cref="Declared"/> has been looked up (a field, read and written with Volatile, as particles are moved on several threads).</summary>
+    internal bool LookedUp;
 }
 
 /// <summary>A template's parameter, &lt;Name&gt;, worked out from the values the template was given.</summary>

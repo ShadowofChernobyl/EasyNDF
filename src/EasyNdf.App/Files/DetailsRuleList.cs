@@ -444,15 +444,16 @@ internal sealed partial class DetailsRuleList : DockPanel
         RunDetails run = details!;
         RuleStats stats = run.Stats[rule];
         bool isIdle = RunRecord.IsIdle(stats);
-        int errors = run.ErrorsOf(rule).Count;
-        // a rule that wrote values that would stop mod generation reads as an error: its icon and name in the error colour
+        IReadOnlyList<RunValueError> ruleErrors = run.ErrorsOf(rule);
+        int errors = ruleErrors.Count;
+        // a rule that wrote values that would stop mod generation (or crash the game) reads as an error: its icon and name in the error colour
         string nameColour = errors > 0 ? "warn" : isIdle ? "muted" : "ink";
         var line = new Border
         {
             // a rule in a group sits in from its group's line
             Padding = new Thickness(run.GroupOf(rule) >= 0 ? 26 : 8, 3, 8, 3),
             Cursor = Cursors.Hand,
-            ToolTip = errors > 0 ? DetailsCounts.RuleTip(stats) + "\n" + DetailsCounts.WouldStopGeneration(errors) : DetailsCounts.RuleTip(stats),
+            ToolTip = errors > 0 ? DetailsCounts.RuleTip(stats) + "\n" + DetailsCounts.WhatErrorsDo(ruleErrors) : DetailsCounts.RuleTip(stats),
         };
         ShowChosen(line, run.ChosenRule == rule);
         (string symbol, string colour) = Rules.RuleRow.SymbolOf(stats.Kind);

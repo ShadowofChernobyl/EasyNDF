@@ -116,13 +116,71 @@ public partial class RulesPage : UserControl
     /// </summary>
     private void ShowPresetLines(IReadOnlyList<ModPreset> presets, bool several)
     {
-        if (PresetLines.ItemsSource is not List<PresetLine> lines || lines.Count != presets.Count
-            || lines.Zip(presets).Any(pair => !ReferenceEquals(pair.First.Preset, pair.Second) || pair.First.Name != pair.Second.Name))
+        // the rule sets in no group, then each group's heading with its rule sets under it, unless it is folded
+        var wanted = new List<(ModPreset? Preset, PresetGroup? Group, int Hidden)>();
+        HashSet<string> groups = [.. Model.PresetGroups.Select(group => group.Name)];
+        foreach (ModPreset preset in presets.Where(p => p.Group is null || !groups.Contains(p.Group))) wanted.Add((preset, null, 0));
+        foreach (PresetGroup group in Model.PresetGroups)
         {
-            lines = [.. presets.Select(preset => new PresetLine(preset))];
+            List<ModPreset> members = [.. presets.Where(p => p.Group == group.Name)];
+            wanted.Add((null, group, group.IsFolded ? members.Count : 0));
+            if (!group.IsFolded) wanted.AddRange(members.Select(member => ((ModPreset?)member, (PresetGroup?)null, 0)));
+        }
+        if (PresetLines.ItemsSource is not List<object> lines || lines.Count != wanted.Count
+            || lines.Zip(wanted).Any(pair => pair.First switch
+            {
+                PresetLine line => !ReferenceEquals(line.Preset, pair.Second.Preset) || line.Name != pair.Second.Preset!.Name,
+                PresetGroupLine heading => pair.Second.Group is null || heading.Name != pair.Second.Group.Name || heading.IsFolded != pair.Second.Group.IsFolded || heading.Hidden != pair.Second.Hidden,
+                _ => true,
+            }))
+        {
+            lines = [.. wanted.Select(entry => entry.Group is PresetGroup group
+                ? (object)new PresetGroupLine(group.Name, group.IsFolded, entry.Hidden)
+                : new PresetLine(entry.Preset!) { IsInGroup = entry.Preset!.Group is string name && groups.Contains(name) })];
             PresetLines.ItemsSource = lines;
         }
-        foreach (PresetLine line in lines) line.Show(Model.IsSelected(line.Preset), several && ReferenceEquals(line.Preset, Model.OpenPreset));
+        foreach (PresetLine line in lines.OfType<PresetLine>()) line.Show(Model.IsSelected(line.Preset), several && ReferenceEquals(line.Preset, Model.OpenPreset));
+    }
+
+    /// <summary>A group's heading in the preset list: its name, whether folded, and how many rule sets that hides.</summary>
+    public sealed record PresetGroupLine(string Name, bool IsFolded, int Hidden)
+    {
+        /// <summary>Drawn as a rule group's heading is (RuleLine).</summary>
+        public bool IsGroup => true;
+
+        /// <summary>A heading is never selected.</summary>
+        public bool IsSelected => false;
+
+        /// <summary>A heading of rule sets is never off: rule sets have no switch.</summary>
+        public bool IsOff => false;
+
+        /// <summary>"3 rule sets hidden", beside a folded heading.</summary>
+        public string HiddenText => Texts.CountWide("Rules.PresetGroup.Hidden", Hidden);
+    }
+
+    /// <summary>A group's heading in the mod list: its name, whether on and folded, and how many mods folding hides.</summary>
+    public sealed record ModGroupLine(ModGroup Group, int Hidden)
+    {
+        /// <summary>The group's name.</summary>
+        public string Name => Group.Name;
+
+        /// <summary>Whether its mods may run.</summary>
+        public bool IsOn => Group.IsOn;
+
+        /// <summary>Whether it is off: its name is dim, as its mods are.</summary>
+        public bool IsOff => !Group.IsOn;
+
+        /// <summary>Whether its mods are folded away.</summary>
+        public bool IsFolded => Group.IsFolded;
+
+        /// <summary>Drawn as a rule group's heading is (RuleLine).</summary>
+        public bool IsGroup => true;
+
+        /// <summary>A heading is never selected.</summary>
+        public bool IsSelected => false;
+
+        /// <summary>"2 mods hidden", beside a folded heading.</summary>
+        public string HiddenText => Texts.CountWide("Rules.ModGroup.Hidden", Hidden);
     }
 
     /// <summary>A line of the preset list: its name, whether it is selected, and how many rules it has.</summary>
@@ -136,6 +194,9 @@ public partial class RulesPage : UserControl
 
         /// <summary>Whether the line is selected.</summary>
         public bool IsSelected { get; private set; }
+
+        /// <summary>Whether it is under a group's heading, a step further in.</summary>
+        public bool IsInGroup { get; init; }
 
         /// <summary>Whether it is the open one while several are selected (then drawn in bold).</summary>
         public bool IsOpenAmongSeveral { get; private set; }
@@ -215,6 +276,12 @@ public partial class RulesPage : UserControl
     /// </summary>
     public sealed record ModLine(Mod Mod, bool IsSelected, bool IsOn, IReadOnlyList<ModLetter> Letters, IReadOnlyList<ModConflict> Conflicts, bool HasNoFileOfItsGame)
     {
+        /// <summary>Whether it is under a group's heading, a step further in.</summary>
+        public bool IsInGroup { get; init; }
+
+        /// <summary>Whether its group is off: it does not run, and is dim.</summary>
+        public bool GroupIsOff { get; init; }
+
         /// <summary>The mod's name.</summary>
         public string Name => Mod.Name;
 
@@ -275,13 +342,27 @@ public partial class RulesPage : UserControl
     /// </summary>
     private void ShowMods()
     {
-        IReadOnlyList<Mod> mods = ModStack.Ordered;
+        IReadOnlyList<object> layout = ModStack.Layout;
+        IReadOnlyList<Mod> mods = [.. layout.OfType<Mod>()];
         // an empty Files tab says nothing of the games: no mod is dimmed for it
         IReadOnlySet<GameTitle> fileGames = FileGames();
-        ModLines.ItemsSource = mods
-            .Select(mod => new ModLine(mod, ReferenceEquals(mod, Model.OpenMod), ModStack.IsOn(mod), LettersOf(mod), ModConflictList.Of(mod),
-                fileGames.Count > 0 && !fileGames.Contains(mod.Game))).ToList();
-        ModsLine.Text = Texts.Get("Rules.ModsOn", ("on", Texts.Number(mods.Count(ModStack.IsOn))), ("all", Texts.Number(mods.Count)));
+        var lines = new List<object>();
+        ModGroup? group = null;
+        for (int i = 0; i < layout.Count; i++)
+        {
+            if (layout[i] is ModGroup heading)
+            {
+                group = heading;
+                int members = layout.Skip(i + 1).TakeWhile(entry => entry is Mod).Count();
+                lines.Add(new ModGroupLine(heading, heading.IsFolded ? members : 0));
+            }
+            else if (layout[i] is Mod mod && group?.IsFolded != true)
+                lines.Add(new ModLine(mod, ReferenceEquals(mod, Model.OpenMod), ModStack.IsOn(mod), LettersOf(mod), ModConflictList.Of(mod),
+                    fileGames.Count > 0 && !fileGames.Contains(mod.Game)) { IsInGroup = group is not null, GroupIsOff = group?.IsOn == false });
+        }
+        ModLines.ItemsSource = lines;
+        // "1 of 3 on": the mods that run, on and in a group that is on
+        ModsLine.Text = Texts.Get("Rules.ModsOn", ("on", Texts.Number(ModStack.Running.Count)), ("all", Texts.Number(mods.Count)));
         RuleSetsModName.Text = Model.OpenMod.Name;
     }
 
@@ -361,6 +442,101 @@ public partial class RulesPage : UserControl
             return new ModLetter(mod, part, rules > 0, rules);
         }),
     ];
+
+    /// <summary>A click on a group's heading in the mod list folds it, or unfolds it.</summary>
+    private void ModGroupClicked(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ModGroupLine line } || e.OriginalSource is DependencyObject source && IsInButton(source)) return;
+        FoldModGroup(line);
+    }
+
+    private void ModGroupFoldClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ModGroupLine line }) return;
+        e.Handled = true;
+        FoldModGroup(line);
+    }
+
+    private void FoldModGroup(ModGroupLine line)
+    {
+        ModStack.ChangeGroup(line.Name, line.Group with { IsFolded = !line.IsFolded });
+        ShowMods();
+    }
+
+    /// <summary>A group's switch: off, none of its mods run, though each keeps its own switch; on, those on run again.</summary>
+    private void ModGroupSwitchClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox { DataContext: ModGroupLine line } box) return;
+        e.Handled = true;
+        SessionLog.Write("Mods", (box.IsChecked == true ? "Switched on group " : "Switched off group ") + line.Name);
+        ModStack.ChangeGroup(line.Name, line.Group with { IsOn = box.IsChecked == true });
+        ShowMods();
+    }
+
+    /// <summary>A click on a group's heading in the rule set list folds it, or unfolds it.</summary>
+    private void PresetGroupClicked(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PresetGroupLine line } || e.OriginalSource is DependencyObject source && IsInButton(source)) return;
+        Model.FoldPresetGroup(line.Name, !line.IsFolded);
+    }
+
+    private void PresetGroupFoldClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PresetGroupLine line }) return;
+        e.Handled = true;
+        Model.FoldPresetGroup(line.Name, !line.IsFolded);
+    }
+
+    /// <summary>Whether an element is in a button or a switch, whose own click acts.</summary>
+    private static bool IsInButton(DependencyObject source)
+    {
+        for (DependencyObject? at = source; at is not null && at is not Border { DataContext: ModGroupLine or PresetGroupLine }; at = at is System.Windows.Media.Visual ? System.Windows.Media.VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
+            if (at is System.Windows.Controls.Primitives.ButtonBase) return true;
+        return false;
+    }
+
+    /// <summary>New ▾ under the rule sets: a rule set, or a group to put rule sets in.</summary>
+    private void NewPresetMenuClicked(object sender, RoutedEventArgs e) => Menus.ShowAbove(NewPresetButton,
+    [
+        new MenuChoice(Texts.Get("Rules.NewMenu.RuleSet"), () => NewPresetClicked(this, e)),
+        new MenuChoice(Texts.Get("Rules.NewMenu.Group"), () => NewPresetGroup(withSelected: false)),
+    ]);
+
+    /// <summary>Asks for a name, and makes a group of rule sets; the selected ones go in it when asked from them.</summary>
+    private async void NewPresetGroup(bool withSelected)
+    {
+        string name = await Messages.AskName(Texts.Get("Rules.Group.NewName"));
+        if (name == "") return;
+        if (Model.PresetGroupExists(name)) { await Messages.Tell(Texts.Get("Rules.Group.Exists"), DialogIcon.Error); return; }
+        Model.NewPresetGroup(name, withSelected);
+    }
+
+    private async void RenamePresetGroup(string name)
+    {
+        string newName = await Messages.AskName(Texts.Get("Rules.Group.Rename"), name);
+        if (newName == "" || newName == name) return;
+        if (Model.PresetGroupExists(newName)) { await Messages.Tell(Texts.Get("Rules.Group.Exists"), DialogIcon.Error); return; }
+        Model.RenamePresetGroup(name, newName);
+    }
+
+    /// <summary>Asks for a name, and makes a group in the mod list, its heading above a mod (or at the end).</summary>
+    private async void NewModGroup(Mod? above)
+    {
+        string name = await Messages.AskName(Texts.Get("Rules.Group.NewName"));
+        if (name == "") return;
+        if (ModStack.HasGroup(name)) { await Messages.Tell(Texts.Get("Rules.Group.Exists"), DialogIcon.Error); return; }
+        ModStack.AddGroup(name, above);
+        ShowMods();
+    }
+
+    private async void RenameModGroup(ModGroup group)
+    {
+        string name = await Messages.AskName(Texts.Get("Rules.Group.Rename"), group.Name);
+        if (name == "" || name == group.Name) return;
+        if (ModStack.HasGroup(name)) { await Messages.Tell(Texts.Get("Rules.Group.Exists"), DialogIcon.Error); return; }
+        ModStack.ChangeGroup(group.Name, group with { Name = name });
+        ShowMods();
+    }
 
     /// <summary>A click on a mod's line opens it.</summary>
     private void ModClicked(object sender, MouseButtonEventArgs e)

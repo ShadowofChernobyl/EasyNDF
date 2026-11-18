@@ -67,6 +67,15 @@ public sealed class ValueInfo
     /// <summary>The comparisons with other values of the same object that stop mod generation when broken, as tests confirmed.</summary>
     public IReadOnlyList<ValueComparison> Comparisons { get; init; } = [];
 
+    /// <summary>Whether mod generation fails when the value is left out or set to nil, as a test confirmed.</summary>
+    public bool IsRequired { get; init; }
+
+    /// <summary>
+    /// A True / False value of the same object that makes this one required while it is True, as a test confirmed
+    /// (UniformDrawer while HasBackground is True); null for none.
+    /// </summary>
+    public string? RequiredWhen { get; init; }
+
     /// <summary>The value type without " (differs in some types)", which the name has when it takes other values in other types.</summary>
     public string BaseValueType => ValueType.EndsWith(DiffersSuffix, StringComparison.Ordinal) ? ValueType[..^DiffersSuffix.Length] : ValueType;
 
@@ -82,7 +91,18 @@ public sealed class ValueGuide
 {
     private readonly Dictionary<string, Dictionary<string, ValueInfo>> types;
 
-    private ValueGuide(Dictionary<string, Dictionary<string, ValueInfo>> types) => this.types = types;
+    // Tuned for speed: each object checked asks for its type's required names, so they are listed once here instead of
+    // going through every name of the type each time.
+    private readonly Dictionary<string, string[]> required;
+
+    private ValueGuide(Dictionary<string, Dictionary<string, ValueInfo>> types)
+    {
+        this.types = types;
+        required = types
+            .Select(type => (type.Key, Names: type.Value.Where(name => name.Value.IsRequired || name.Value.RequiredWhen is not null).Select(name => name.Key).ToArray()))
+            .Where(type => type.Names.Length > 0)
+            .ToDictionary(type => type.Key, type => type.Names, StringComparer.Ordinal);
+    }
 
     /// <summary>A guide with nothing in it, for tests and for games it has no data for.</summary>
     public static ValueGuide Empty { get; } = new([]);
@@ -96,6 +116,9 @@ public sealed class ValueGuide
 
     /// <summary>The names a type takes, in the order of the data (by name).</summary>
     public IEnumerable<string> NamesOf(string type) => types.TryGetValue(type, out Dictionary<string, ValueInfo>? names) ? names.Keys : [];
+
+    /// <summary>The names of a type that are required, always or while another value is True (<see cref="ValueInfo.IsRequired"/>).</summary>
+    public IReadOnlyList<string> RequiredNamesOf(string type) => required.TryGetValue(type, out string[]? names) ? names : [];
 
     /// <summary>
     /// Reads the guide data, <c>{"types": {type: {name: {valueType, typeCertain, …}}}}</c>, a little at a time: the whole
@@ -137,6 +160,8 @@ public sealed class ValueGuide
         public string[]? Rules { get; set; }
         public LimitData[]? Limits { get; set; }
         public ComparisonData[]? Comparisons { get; set; }
+        public bool Required { get; set; }
+        public string? RequiredWhen { get; set; }
     }
 
     /// <summary>One comparison as the file writes it: its operator and the other value's name.</summary>
@@ -183,6 +208,8 @@ public sealed class ValueGuide
                     UnlessOtherIs = comparison.UnlessOtherIs,
                     UnlessSet = comparison.UnlessSet is null ? null : Shared(comparison.UnlessSet),
                 })],
+            IsRequired = entry.Required,
+            RequiredWhen = entry.RequiredWhen is null ? null : Shared(entry.RequiredWhen),
         };
 
         /// <summary>The copy of a text kept already, or this one, kept from now on.</summary>

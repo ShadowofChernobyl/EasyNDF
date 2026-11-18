@@ -22,16 +22,6 @@ namespace EasyNdf.App.Pages;
 /// </summary>
 public partial class ThemeDesigner : UserControl
 {
-    /// <summary>
-    /// Below this width the colours go above the preview instead of beside it: the colours' 432 pixels, the gap, and
-    /// room for a preview of about 375 pixels, whose sample controls wrap to fit (its widest, the dropdown, is 176). At
-    /// the Settings tab's widest, laid out as the Help tab, the Designer has about 830.
-    /// </summary>
-    private const double NarrowestSideBySide = 820;
-
-    /// <summary>The page's scroll box, which the preview keeps 8 pixels under the top of while the colours scroll past.</summary>
-    private ScrollViewer? pageScroller;
-
     /// <summary>Raised after a theme is added, renamed or deleted, so the Settings tab can show it in its Theme dropdown.</summary>
     public event Action? ThemesChanged;
 
@@ -39,11 +29,18 @@ public partial class ThemeDesigner : UserControl
     public ThemeDesigner()
     {
         InitializeComponent();
-        // the page's scroll box is found once the designer is in it (Loaded does not come when it is drawn without a window)
-        LayoutUpdated += (_, _) => FollowPageScrolling();
     }
 
     private MainView View => MainView.Of(this);
+
+    /// <summary>The designer's window, when it is in one (it always is, except in the workbench's pictures).</summary>
+    private ThemeDesignerWindow? OwnWindow => Window.GetWindow(this) as ThemeDesignerWindow;
+
+    /// <summary>The colour window: the designer window's own, which opens over the designer.</summary>
+    private ColourWindow ColourPicker => OwnWindow?.ColourWindow ?? View.ColourWindow;
+
+    /// <summary>The messages: the designer window's own, so a question appears where the button was clicked.</summary>
+    private MessageOverlay Messages => OwnWindow?.Messages ?? View.Messages;
 
     private static JsonObject Settings => AppData.Current.Settings;
 
@@ -53,14 +50,47 @@ public partial class ThemeDesigner : UserControl
     /// <summary>Shows the buttons, the note and the rows for the theme in use (the HTML app's <c>renderThemeEditor</c>).</summary>
     public void Show()
     {
+        filling = true;
+        try { FillThemeChoice(ThemeChoice); }
+        finally { filling = false; }
         CustomTheme? theme = EditedTheme;
         RenameButton.IsEnabled = DeleteButton.IsEnabled = ResetButton.IsEnabled = ExportButton.IsEnabled = theme is not null;
         ShowNote(theme is null
             ? Texts.Get("Settings.Designer.BuiltInNote")
             : Texts.Get("Settings.Designer.EditingNote", ("name", NameOf(theme))));
-        Colours.Visibility = theme is null ? Visibility.Collapsed : Visibility.Visible;
-        if (theme is not null) ShowRows(theme);
-        ArrangeColumns();
+        // a built-in theme's colours are shown too, but locked: "New from This Theme" makes the copy that can be changed
+        Colours.IsEnabled = theme is not null;
+        ShowRows(theme);
+    }
+
+    /// <summary>Whether the dropdown is being filled, which is not a choice.</summary>
+    private bool filling;
+
+    /// <summary>
+    /// Fills a Theme dropdown (the Settings tab's and the designer's): Automatic, the built-in themes, then the user's own,
+    /// with the theme in use chosen.
+    /// </summary>
+    public static void FillThemeChoice(ComboBox box)
+    {
+        var options = new List<Rules.ChoiceOption> { new("system", Texts.Get("Settings.ThemeChoice.Automatic")) };
+        options.AddRange(BuiltInThemes.Order.Select(id => new Rules.ChoiceOption(id, BuiltInThemes.ById[id].Name)));
+        foreach (CustomTheme own in AppData.Current.Themes.Themes)
+            options.Add(new Rules.ChoiceOption(ThemeManager.CustomKey(own), own.Name != "" ? own.Name : Texts.Get("Settings.ThemeChoice.Untitled"), Texts.Get("Settings.ThemeChoice.YourTheme")));
+        box.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
+        box.ItemsSource = options;
+        string current = (string?)AppData.Current.Settings["theme"] ?? BuiltInThemes.DefaultId;
+        box.SelectedItem = options.FirstOrDefault(o => o.Value == current) ?? options.First(o => o.Value == BuiltInThemes.DefaultId);
+    }
+
+    /// <summary>A theme chosen in the designer's dropdown: the app switches to it, and Settings shows it too.</summary>
+    private void ThemeChosen(object sender, SelectionChangedEventArgs e)
+    {
+        if (filling || ThemeChoice.SelectedItem is not Rules.ChoiceOption { Value: string id }) return;
+        Settings["theme"] = id;
+        AppData.Current.SaveSettings();
+        ThemeManager.ApplySaved();
+        Show();
+        ThemesChanged?.Invoke();
     }
 
     private void ShowNote(string text, bool isWarning = false)
@@ -77,9 +107,13 @@ public partial class ThemeDesigner : UserControl
     /// The colour rows, in two groups: the colours of the app itself, then (with its scrollbars between) the
     /// colours of the File Editor's text.
     /// </summary>
-    private void ShowRows(CustomTheme theme)
+    private void ShowRows(CustomTheme? edited)
     {
-        Dictionary<string, string> colours = ThemeColors.For(ThemeManager.CustomThemeFor(ThemeManager.CustomKey(theme))!, bevelSetting: null);
+        Dictionary<string, string> colours = edited is not null
+            ? ThemeColors.For(ThemeManager.CustomThemeFor(ThemeManager.CustomKey(edited))!, bevelSetting: null)
+            : ThemeColors.For(ThemeManager.Current, bevelSetting: null);
+        // the rows of a built-in theme are locked, so the theme they would change is never used
+        CustomTheme theme = edited ?? new CustomTheme();
         var interfaceRows = new RowGrid(InterfaceRows);
         var editorRows = new RowGrid(EditorRows);
         foreach ((string key, _) in BuiltInThemes.Keys)
@@ -115,7 +149,7 @@ public partial class ThemeDesigner : UserControl
         {
             string before = theme.Colors.GetValueOrDefault(key, hex.Text);
             // the theme follows the window as the colour changes, without saving; OK saves it, Cancel puts it back
-            string? picked = await View.ColourWindow.Pick(ThemeColourNames.Row(key), before, shown => PreviewColour(theme, key, shown), BesideThePreview(swatch));
+            string? picked = await ColourPicker.Pick(ThemeColourNames.Row(key), before, shown => PreviewColour(theme, key, shown));
             if (picked is not null) SetColour(theme, key, picked);
         };
         return (swatch, hex);
@@ -142,21 +176,6 @@ public partial class ThemeDesigner : UserControl
         SetColour(theme, key, valid);
     }
 
-    /// <summary>
-    /// Where the colour window's right edge goes, at the swatch's height: just left of the preview when the two sit side by
-    /// side, so the changes can be watched; otherwise at the right of the colours, with the preview below them.
-    /// </summary>
-    private Point BesideThePreview(FrameworkElement swatch)
-    {
-        UIElement window = View.ColourWindow;
-        double middle = swatch.TranslatePoint(new Point(0, swatch.ActualHeight / 2), window).Y;
-        bool sideBySide = Grid.GetColumn(Preview) == 2;
-        double edge = sideBySide
-            ? Preview.TranslatePoint(new Point(0, 0), window).X - 8
-            : Columns.TranslatePoint(new Point(Columns.ActualWidth, 0), window).X;
-        return new Point(edge, middle);
-    }
-
     /// <summary>A colour shown in the theme while it is being picked; it is saved only once it is kept.</summary>
     private static void PreviewColour(CustomTheme theme, string key, string colour)
     {
@@ -178,7 +197,7 @@ public partial class ThemeDesigner : UserControl
         try { AppData.Current.Themes.Save(theme); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)), DialogIcon.Error);
+            _ = Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)), DialogIcon.Error);
         }
         ThemeManager.ApplySaved();
     }
@@ -188,7 +207,7 @@ public partial class ThemeDesigner : UserControl
     /// <summary>"New from this theme": an editable copy of the theme in use, named by the user.</summary>
     private async void NewClicked(object sender, RoutedEventArgs e)
     {
-        DialogAnswer answer = await View.Messages.Ask(Texts.Get("Settings.Designer.NameAsk"), new DialogOptions { Input = FreeName(Texts.Get("Settings.Designer.MyTheme", ("theme", ThemeManager.Current.Name))) });
+        DialogAnswer answer = await Messages.Ask(Texts.Get("Settings.Designer.NameAsk"), new DialogOptions { Input = FreeName(Texts.Get("Settings.Designer.MyTheme", ("theme", ThemeManager.Current.Name))) });
         string name = answer.Choice == DialogChoice.Ok ? answer.Text.Trim() : "";
         if (name != "") AddCopyOfThemeInUse(name);
     }
@@ -216,7 +235,7 @@ public partial class ThemeDesigner : UserControl
     private async void RenameClicked(object sender, RoutedEventArgs e)
     {
         if (EditedTheme is not CustomTheme theme) return;
-        DialogAnswer answer = await View.Messages.Ask(Texts.Get("Settings.Designer.RenameAsk"), new DialogOptions { Input = theme.Name });
+        DialogAnswer answer = await Messages.Ask(Texts.Get("Settings.Designer.RenameAsk"), new DialogOptions { Input = theme.Name });
         string name = answer.Choice == DialogChoice.Ok ? answer.Text.Trim() : "";
         if (name == "" || name == theme.Name) return;
         theme.Name = FreeName(ClipName(name));
@@ -231,11 +250,11 @@ public partial class ThemeDesigner : UserControl
     {
         if (EditedTheme is not CustomTheme theme) return;
         string olivine = BuiltInThemes.ById[BuiltInThemes.DefaultId].Name;
-        if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.DeleteAsk", ("name", theme.Name), ("theme", olivine)), Texts.Get("Settings.Designer.Delete"), DialogIcon.Warning)) return;
+        if (!await Messages.Confirm(Texts.Get("Settings.Designer.DeleteAsk", ("name", theme.Name), ("theme", olivine)), Texts.Get("Settings.Designer.Delete"), DialogIcon.Warning)) return;
         try { AppData.Current.Themes.Delete(theme); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            await View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotDelete", ("problem", error.Message)), DialogIcon.Error);
+            await Messages.Tell(Texts.Get("Settings.Designer.CouldNotDelete", ("problem", error.Message)), DialogIcon.Error);
             return;
         }
         Settings["theme"] = BuiltInThemes.DefaultId;
@@ -249,7 +268,7 @@ public partial class ThemeDesigner : UserControl
     {
         if (EditedTheme is not CustomTheme theme) return;
         Theme from = BuiltInThemes.ById.GetValueOrDefault(theme.BaseId) ?? BuiltInThemes.ById[BuiltInThemes.DefaultId];
-        if (!await View.Messages.Confirm(Texts.Get("Settings.Designer.ResetAsk", ("name", theme.Name), ("theme", from.Name)), Texts.Get("Settings.Designer.ResetColors"), DialogIcon.Warning)) return;
+        if (!await Messages.Confirm(Texts.Get("Settings.Designer.ResetAsk", ("name", theme.Name), ("theme", from.Name)), Texts.Get("Settings.Designer.ResetColors"), DialogIcon.Warning)) return;
         theme.Colors = new Dictionary<string, string>(from.Colors);
         theme.Scheme = from.Scheme;
         theme.Font = CustomTheme.CleanFontName(from.Font);
@@ -266,7 +285,7 @@ public partial class ThemeDesigner : UserControl
         try { File.WriteAllText(dialog.FileName, ThemeStore.ExportText(theme)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _ = View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)), DialogIcon.Error);
+            _ = Messages.Tell(Texts.Get("Settings.Designer.CouldNotSave", ("problem", error.Message)), DialogIcon.Error);
         }
     }
 
@@ -279,7 +298,7 @@ public partial class ThemeDesigner : UserControl
         try { imported = ReadThemeFile(dialog.FileName); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         {
-            await View.Messages.Tell(Texts.Get("Settings.Designer.CouldNotImport", ("problem", error.Message)), DialogIcon.Error);
+            await Messages.Tell(Texts.Get("Settings.Designer.CouldNotImport", ("problem", error.Message)), DialogIcon.Error);
             return;
         }
         AddTheme(imported);
@@ -325,58 +344,6 @@ public partial class ThemeDesigner : UserControl
         int number = 2;
         while (used.Contains(name + " " + number)) number++;
         return name + " " + number;
-    }
-
-    // ---- layout ----
-
-    private void ColumnsResized(object sender, SizeChangedEventArgs e) => ArrangeColumns();
-
-    /// <summary>
-    /// The colours beside the preview, or above it when the page is narrow; the preview alone across the width for a
-    /// built-in theme.
-    /// </summary>
-    private void ArrangeColumns()
-    {
-        bool hasColours = Colours.Visibility == Visibility.Visible;
-        bool sideBySide = hasColours && Columns.ActualWidth >= NarrowestSideBySide;
-        ColoursColumn.Width = new GridLength(sideBySide ? 432 : 0);
-        GapColumn.Width = new GridLength(sideBySide ? 14 : 0);
-        GapRow.Height = new GridLength(hasColours && !sideBySide ? 14 : 0);
-        Grid.SetColumnSpan(Colours, sideBySide ? 1 : 3);
-        Grid.SetColumn(Preview, sideBySide ? 2 : 0);
-        Grid.SetColumnSpan(Preview, sideBySide ? 1 : 3);
-        Grid.SetRow(Preview, hasColours && !sideBySide ? 2 : 0);
-        KeepPreviewInView();
-    }
-
-    /// <summary>Follows the page's scrolling, to keep the preview in view (the HTML app's <c>position: sticky; top: 8px</c>).</summary>
-    private void FollowPageScrolling()
-    {
-        if (pageScroller is not null) return;
-        DependencyObject? parent = VisualTreeHelper.GetParent(this);
-        while (parent is not null and not ScrollViewer) parent = VisualTreeHelper.GetParent(parent);
-        pageScroller = parent as ScrollViewer;
-        if (pageScroller is not null) pageScroller.ScrollChanged += (_, _) => KeepPreviewInView();
-    }
-
-    /// <summary>
-    /// Beside the colours, the preview moves down with the page as it scrolls, so it stays 8 pixels under the top of the
-    /// page, but never past the bottom of the colours.
-    /// </summary>
-    private void KeepPreviewInView()
-    {
-        bool sideBySide = Grid.GetColumn(Preview) == 2;
-        double shift = 0;
-        if (sideBySide && pageScroller is not null && pageScroller.IsAncestorOf(Columns))
-        {
-            double top = Columns.TranslatePoint(new Point(0, 0), pageScroller).Y;
-            shift = Math.Clamp(8 - top, 0, Math.Max(0, Columns.ActualHeight - Preview.ActualHeight));
-        }
-        // set only when it changes: a new transform on every frame of a scroll would draw the preview again each time
-        double rounded = Math.Round(shift);
-        if (Preview.RenderTransform is TranslateTransform moved && moved.Y == rounded) return;
-        if (rounded == 0 && Preview.RenderTransform == Transform.Identity) return;
-        Preview.RenderTransform = rounded == 0 ? Transform.Identity : new TranslateTransform(0, rounded);
     }
 
     /// <summary>

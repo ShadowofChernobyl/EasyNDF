@@ -189,8 +189,29 @@ internal static class DetailsCounts
     /// <summary>"2 errors".</summary>
     public static string Errors(int count) => Texts.CountWide("Files.Run.ValueErrors.Count", count);
 
-    /// <summary>"2 errors would stop mod generation."</summary>
-    public static string WouldStopGeneration(int count) => Texts.Get("Files.Details.ValueErrors", ("errors", Errors(count)));
+    /// <summary>
+    /// What values do: "2 errors would stop mod generation.", "34 errors would crash the game.", or both, the errors
+    /// that stop generation first.
+    /// </summary>
+    public static string WhatErrorsDo(IReadOnlyCollection<RunValueError> errors)
+    {
+        int crashing = errors.Count(error => error.Error.Problem.CrashesGame), stopping = errors.Count - crashing;
+        string stop = stopping > 0 ? Texts.Get("Files.Details.ValueErrors", ("errors", Errors(stopping))) : "";
+        string crash = crashing > 0 ? Texts.Get("Files.Details.ValueErrors.Crash", ("errors", Errors(crashing))) : "";
+        return stop == "" ? crash : crash == "" ? stop : stop + " " + crash;
+    }
+
+    /// <summary>
+    /// What a file held back for its values says: "Not exported: 2 errors would stop mod generation.", "Not exported: 34
+    /// errors would crash the game.", or the first followed by what the others do.
+    /// </summary>
+    public static string NotExportedFor(IReadOnlyCollection<RunValueError> errors)
+    {
+        int crashing = errors.Count(error => error.Error.Problem.CrashesGame), stopping = errors.Count - crashing;
+        if (stopping == 0) return Texts.Get("Files.Details.ValueErrors.Held.Crash", ("errors", Errors(crashing)));
+        string held = Texts.Get("Files.Details.ValueErrors.Held", ("errors", Errors(stopping)));
+        return crashing == 0 ? held : held + " " + Texts.Get("Files.Details.ValueErrors.Crash", ("errors", Errors(crashing)));
+    }
 
     /// <summary>
     /// Where a value that would stop mod generation is, and what is wrong with it: "Ammo_X, line 120: AngleDispersion

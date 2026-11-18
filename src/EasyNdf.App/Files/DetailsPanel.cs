@@ -236,7 +236,7 @@ public sealed class DetailsPanel : DockPanel
         runLine.Children.Add(named);
 
         int errors = run.ValueErrors.Count;
-        string what = run.Held && errors > 0 ? Texts.Get("Files.Details.ValueErrors.Held", ("errors", DetailsCounts.Errors(errors)))
+        string what = run.Held && errors > 0 ? DetailsCounts.NotExportedFor(run.ValueErrors)
             : run.Held ? Texts.Get("Files.Details.NotExported")
             : run.Wrote ? (run.Unchanged ? Texts.Get("Files.Details.ExportedUnchanged") : Texts.Get("Files.Details.Exported"))
             : run.Unchanged ? Texts.Get("Files.Details.NothingChanged")
@@ -245,7 +245,7 @@ public sealed class DetailsPanel : DockPanel
         ended.Text = what;
         // a Preview says what an export would hold back, after saying it saved nothing
         if (!run.Held && errors > 0)
-            ended.Inlines.Add(DetailsText.Piece(" " + DetailsCounts.WouldStopGeneration(errors), "warn"));
+            ended.Inlines.Add(DetailsText.Piece(" " + DetailsCounts.WhatErrorsDo(run.ValueErrors), "warn"));
         if (run.Wrote && !run.Held)
         {
             FrameworkElement done = NoticeLayer.Icon(NoticeKind.Done, 14);
@@ -273,12 +273,15 @@ public sealed class DetailsPanel : DockPanel
             banners.Children.Add(Banner(NoticeKind.Problem, "warn",
                 (run.Held ? Texts.Get("Files.Details.InvalidHeld") : Texts.Get("Files.Details.InvalidWouldBeHeld"))
                 + "\n" + Texts.Get("Files.Details.InvalidProblem", ("problem", run.Result.ParseError)) + "\n" + Texts.Get("Files.Details.InvalidCause")));
-        IReadOnlyList<RunValueError> otherErrors = shown!.OtherErrors;
-        if (otherErrors.Count > 0)
+        // the values that would stop mod generation, then those that would crash the game, each kind in a box of its own
+        foreach (bool crashing in (bool[])[false, true])
         {
+            List<RunValueError> otherErrors = [.. shown!.OtherErrors.Where(error => error.Error.Problem.CrashesGame == crashing)];
+            if (otherErrors.Count == 0) continue;
             IEnumerable<string> lines = otherErrors.Take(ShownWarnings).Select(DetailsCounts.ErrorLine);
             if (otherErrors.Count > ShownWarnings) lines = lines.Append(Texts.Get("Files.Details.MoreWarnings", ("count", Texts.Number(otherErrors.Count - ShownWarnings))));
-            banners.Children.Add(Banner(NoticeKind.Problem, "warn", Texts.Get("Files.Details.ValueErrors.Other") + "\n" + string.Join("\n", lines)));
+            string heading = Texts.Get(crashing ? "Files.Details.ValueErrors.Other.Crash" : "Files.Details.ValueErrors.Other");
+            banners.Children.Add(Banner(NoticeKind.Problem, "warn", heading + "\n" + string.Join("\n", lines)));
         }
         IReadOnlyList<RunWarning> others = shown.OtherWarnings;
         if (others.Count > 0)

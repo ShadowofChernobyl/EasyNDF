@@ -117,15 +117,64 @@ public sealed class FxPlayer
         }
         stepping = null;
         moment.StepSeconds = (float)seconds;
-        for (int i = 0; i < particles.Count; i++)
+        // Tuned for speed: the particles there were move on all the processor's cores at once, each with its own moment
+        // (a dust trail and gun smoke reach a thousand, too many to work out one by one in a frame); then, on this thread
+        // and in their order, they spawn what they carry, and the ones spawned meanwhile move as they always did
+        int before = particles.Count;
+        if (gone.Length < before) gone = new bool[Math.Max(before, gone.Length * 2)];
+        float step = (float)seconds;
+        if (before >= 64)
+            Parallel.For(0, before, () => new FxMoment(), (i, _, own) => { gone[i] = !Moves(particles[i], step, own); return own; }, _ => { });
+        else
+            for (int i = 0; i < before; i++) gone[i] = !Moves(particles[i], step, moment);
+        for (int i = 0; i < before; i++)
+            if (!gone[i] && particles[i].Kind.CarriedSpawners.Count > 0)
+            {
+                FxParticle particle = particles[i];
+                SetMoment(particle.Frame ?? FxFrame.Fixed(Matrix4x4.Identity), particle.Spawner, particle);
+                if (!Guarded("a particle of " + particle.Kind.Texture, () => { for (int k = 0; k < particle.Kind.CarriedSpawners.Count; k++) Carry(particle, k, step); return true; })) gone[i] = true;
+            }
+        for (int i = before; i < particles.Count; i++)
         {
             FxParticle particle = particles[i];
-            if (Now >= particle.Dies || (particle.Kind.Infinite && particle.Effect?.IsStopped == true) || !Guarded("a particle of " + particle.Kind.Texture, () => Evolve(particle, (float)seconds)))
+            if (Now >= particle.Dies || (particle.Kind.Infinite && particle.Effect?.IsStopped == true) || !Guarded("a particle of " + particle.Kind.Texture, () => Evolve(particle, step)))
             {
                 particles[i] = particles[^1];
                 particles.RemoveAt(particles.Count - 1);
                 i--;
             }
+        }
+        int kept = 0;
+        for (int i = 0; i < particles.Count; i++)
+            if (i >= before || !gone[i]) particles[kept++] = particles[i];
+        particles.RemoveRange(kept, particles.Count - kept);
+    }
+
+    /// <summary>Which of the particles there were at the start of a step are gone by its end.</summary>
+    private bool[] gone = [];
+
+    /// <summary>
+    /// Moves a particle on, in its own moment (so particles can move on several threads at once); false when it has
+    /// died, or its script cannot be worked out.
+    /// </summary>
+    private bool Moves(FxParticle particle, float seconds, FxMoment own)
+    {
+        if (Now >= particle.Dies || (particle.Kind.Infinite && particle.Effect?.IsStopped == true)) return false;
+        own.Now = Now;
+        own.StepSeconds = seconds;
+        own.Camera = Camera;
+        own.Frame = particle.Frame ?? FxFrame.Fixed(Matrix4x4.Identity);
+        own.Spawner = particle.Spawner;
+        own.Particle = particle;
+        try
+        {
+            MoveOnly(particle, seconds, own);
+            return true;
+        }
+        catch (FxProblem problem)
+        {
+            lock (problems) problems.Add("a particle of " + particle.Kind.Texture + ": " + problem.Message);
+            return false;
         }
     }
 
@@ -146,7 +195,7 @@ public sealed class FxPlayer
         }
         catch (FxProblem problem)
         {
-            problems.Add(what + ": " + problem.Message);
+            lock (problems) problems.Add(what + ": " + problem.Message);
             return default;
         }
     }
@@ -455,8 +504,20 @@ public sealed class FxPlayer
     {
         public override bool Step(double seconds)
         {
+            // one part that cannot be worked out ends alone: the others (a gun's flashes beside its smoke) go on
             for (int i = 0; i < actions.Count; i++)
-                if (!actions[i].Step(seconds)) actions.RemoveAt(i--);
+            {
+                bool goesOn;
+                try
+                {
+                    goesOn = actions[i].Step(seconds);
+                }
+                catch (FxProblem)
+                {
+                    goesOn = false;
+                }
+                if (!goesOn) actions.RemoveAt(i--);
+            }
             return actions.Count > 0;
         }
 
@@ -974,8 +1035,17 @@ public sealed class FxPlayer
     /// </summary>
     private bool Evolve(FxParticle particle, float seconds)
     {
-        FxParticleKind kind = particle.Kind;
         SetMoment(particle.Frame ?? FxFrame.Fixed(Matrix4x4.Identity), particle.Spawner, particle);
+        MoveOnly(particle, seconds, moment);
+        for (int i = 0; i < particle.Kind.CarriedSpawners.Count; i++) Carry(particle, i, seconds);
+        return true;
+    }
+
+    /// <summary>Moves a particle on and works out its changing values, in a moment; spawns nothing.</summary>
+    private void MoveOnly(FxParticle particle, float seconds, FxMoment at)
+    {
+        FxParticleKind kind = particle.Kind;
+        FxValue Evaluate(FxBinding binding) => evaluator.Evaluate(binding.Value, binding.Scope, at);
         FxValue[] fields = particle.Fields;
         Vector3 before = fields[FxFields.Position].Vector;
         if (kind.Moves)
@@ -1001,8 +1071,6 @@ public sealed class FxPlayer
         if (kind.ComputesSpeed && seconds > 0) fields[FxFields.Speed] = FxValue.Of((fields[FxFields.Position].Vector - before) / seconds);
         if (!kind.SetsRotation && fields[FxFields.RotationSpeed].Number != 0)
             fields[FxFields.Rotation] = FxValue.Of(fields[FxFields.Rotation].Number + fields[FxFields.RotationSpeed].Number * seconds);
-        for (int i = 0; i < kind.CarriedSpawners.Count; i++) Carry(particle, i, seconds);
-        return true;
     }
 
     /// <summary>

@@ -435,6 +435,19 @@ public partial class RulesPage
             new MenuChoice(Texts.Get("Common.Menu.Paste"), () => PasteClicked(this, e), Key: "Ctrl+V"),
             .. UndoChoices(),
         ];
+        tail = [new MenuChoice(Texts.Get("Rules.Menu.NewGroup"), () => NewPresetGroup(withSelected: false)), .. tail];
+        if (UnderMouse<PresetGroupLine>(e.OriginalSource) is PresetGroupLine heading)
+        {
+            Menus.Show(owner,
+            [
+                new MenuChoice(Texts.Get(heading.IsFolded ? "Rules.Menu.UnfoldGroup" : "Rules.Menu.FoldGroup"), () => Model.FoldPresetGroup(heading.Name, !heading.IsFolded)),
+                new MenuChoice(Texts.Get("Rules.Menu.RenameGroup"), () => RenamePresetGroup(heading.Name)),
+                new MenuChoice(Texts.Get("Rules.Menu.DeleteGroup"), () => Model.DeletePresetGroup(heading.Name), Tip: Texts.Get("Rules.Menu.DeleteGroup.Tip")),
+                Menus.Line,
+                .. tail,
+            ]);
+            return;
+        }
         if (PresetUnder(e.OriginalSource) is not ModPreset preset) { Menus.Show(owner, tail); return; }
 
         if (!Model.IsSelected(preset)) Model.ClickPreset(preset, control: false, shift: false);
@@ -448,6 +461,16 @@ public partial class RulesPage
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CopySeveral", ("what", several)) : Texts.Get("Common.Menu.Copy"), () => CopyPresets(), Key: "Ctrl+C"),
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CutSeveral", ("what", several)) : Texts.Get("Common.Menu.Cut"), () => _ = CutPresets(), Key: "Ctrl+X"),
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.DeleteSeveral", ("what", several)) : Texts.Get("Common.Menu.Delete"), () => DeletePresetClicked(this, e), Key: "Delete"),
+            Menus.Line,
+            // the groups to move it to, its own ticked; a new one; or none
+            MenuChoice.Submenu(Texts.Get("Rules.Menu.MoveToGroup"),
+            [
+                .. Model.PresetGroups.Select(group => (MenuChoice?)new MenuChoice(group.Name, () => Model.MovePresetsToGroup(group.Name),
+                    IsEnabled: preset.Group != group.Name || count > 1, Symbol: preset.Group == group.Name ? "✓" : "")),
+                Model.PresetGroups.Count > 0 ? Menus.Line : null,
+                new MenuChoice(Texts.Get("Rules.Menu.NewGroup"), () => NewPresetGroup(withSelected: true)),
+                new MenuChoice(Texts.Get("Rules.Menu.NoGroup"), () => Model.MovePresetsToGroup(null), IsEnabled: preset.Group is not null || count > 1),
+            ]) with { IsEnabled = !preset.IsArmoryPreset },
             Menus.Line,
             .. tail,
         ]);
@@ -488,7 +511,23 @@ public partial class RulesPage
     {
         e.Handled = true;
         var onMod = new List<MenuChoice?>();
-        if (ModUnder(e.OriginalSource) is Mod mod)
+        if (UnderMouse<ModGroupLine>(e.OriginalSource) is ModGroupLine heading)
+        {
+            ModGroup group = heading.Group;
+            IReadOnlyList<ModGroup> groups = [.. ModStack.Layout.OfType<ModGroup>()];
+            onMod =
+            [
+                new MenuChoice(Texts.Get(group.IsOn ? "Rules.Menu.ModOff" : "Rules.Menu.ModOn"), () => { ModStack.ChangeGroup(group.Name, group with { IsOn = !group.IsOn }); ShowMods(); }),
+                new MenuChoice(Texts.Get(group.IsFolded ? "Rules.Menu.UnfoldGroup" : "Rules.Menu.FoldGroup"), () => { ModStack.ChangeGroup(group.Name, group with { IsFolded = !group.IsFolded }); ShowMods(); }),
+                new MenuChoice(Texts.Get("Rules.Menu.MoveModUp"), () => { ModStack.MoveGroup(group.Name, -1); ShowMods(); }, IsEnabled: groups[0].Name != group.Name),
+                new MenuChoice(Texts.Get("Rules.Menu.MoveModDown"), () => { ModStack.MoveGroup(group.Name, +1); ShowMods(); }, IsEnabled: groups[^1].Name != group.Name),
+                Menus.Line,
+                new MenuChoice(Texts.Get("Rules.Menu.RenameGroup"), () => RenameModGroup(group)),
+                new MenuChoice(Texts.Get("Rules.Menu.DeleteGroup"), () => { ModStack.DeleteGroup(group.Name); ShowMods(); }, Tip: Texts.Get("Rules.Menu.DeleteGroup.Tip")),
+                Menus.Line,
+            ];
+        }
+        else if (ModUnder(e.OriginalSource) is Mod mod)
         {
             Model.OpenModNamed(mod.Name);
             IReadOnlyList<Mod> ordered = ModStack.Ordered;
@@ -498,6 +537,15 @@ public partial class RulesPage
                 new MenuChoice(Texts.Get(isOn ? "Rules.Menu.ModOff" : "Rules.Menu.ModOn"), () => { ModStack.SetOn(mod, !isOn); ShowMods(); }),
                 new MenuChoice(Texts.Get("Rules.Menu.MoveModUp"), () => MoveOpenMod(-1), IsEnabled: !ReferenceEquals(ordered[0], mod), Key: "Ctrl+↑"),
                 new MenuChoice(Texts.Get("Rules.Menu.MoveModDown"), () => MoveOpenMod(+1), IsEnabled: !ReferenceEquals(ordered[^1], mod), Key: "Ctrl+↓"),
+                // the groups to move it to, its own ticked; a new one, its heading above the mod; or none
+                MenuChoice.Submenu(Texts.Get("Rules.Menu.MoveToGroup"),
+                [
+                    .. ModStack.Layout.OfType<ModGroup>().Select(group => (MenuChoice?)new MenuChoice(group.Name, () => { ModStack.MoveToGroup(mod, group.Name); ShowMods(); },
+                        IsEnabled: ModStack.GroupOf(mod)?.Name != group.Name, Symbol: ModStack.GroupOf(mod)?.Name == group.Name ? "✓" : "")),
+                    ModStack.Layout.OfType<ModGroup>().Any() ? Menus.Line : null,
+                    new MenuChoice(Texts.Get("Rules.Menu.NewGroup"), () => NewModGroup(mod)),
+                    new MenuChoice(Texts.Get("Rules.Menu.NoGroup"), () => { ModStack.MoveToGroup(mod, null); ShowMods(); }, IsEnabled: ModStack.GroupOf(mod) is not null),
+                ]),
                 // the games listed under it, the mod's own ticked: a list, not a switch, as more games may come
                 MenuChoice.Submenu(Texts.Get("Rules.Menu.Game"), [.. GameTitle.All.Select(game => (MenuChoice?)new MenuChoice(game.Name,
                     () => { Model.SetModGame(mod, game); ShowMods(); }, Tip: Texts.Get("Rules.Menu.Game.Tip", ("game", game.Name)), Symbol: mod.Game == game ? "✓" : ""))]),
@@ -515,7 +563,16 @@ public partial class RulesPage
             .. onMod,
             new MenuChoice(Texts.Get("Rules.Menu.CreateNewMod"), () => NewModClicked(this, e)),
             new MenuChoice(Texts.Get("Rules.ImportMod"), () => ImportModClicked(this, e)),
+            new MenuChoice(Texts.Get("Rules.Menu.NewGroup"), () => NewModGroup(null)),
         ]);
+    }
+
+    /// <summary>The line of a kind an element is on, such as a group's heading; null when it is on none.</summary>
+    private static T? UnderMouse<T>(object source) where T : class
+    {
+        for (DependencyObject? at = source as DependencyObject; at is not null; at = at is Visual ? VisualTreeHelper.GetParent(at) : LogicalTreeHelper.GetParent(at))
+            if (at is FrameworkElement { DataContext: T line }) return line;
+        return null;
     }
 
     /// <summary>The mod of the line an element is on, in the mod list; null when none is.</summary>
