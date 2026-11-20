@@ -880,7 +880,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     {
         var stack = new List<ModRules>();
         bool byName = RuleSetsApplyByName;
-        foreach (Mod mod in ModStack.RunningFor(entry.Game))
+        foreach (Mod mod in TutorialSample.Is(entry) ? [AppData.Current.OpenMod] : ModStack.RunningFor(entry.Game))
         {
             List<ModPreset> ruleSets = RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, byName);
             var rules = new JsonArray();
@@ -905,6 +905,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         foreach ((Mod mod, IReadOnlySet<string> files) in armoryFiles)
         {
             if (mod.Game != entry.Game) continue;
+            if (TutorialSample.Is(entry) && !ReferenceEquals(mod, AppData.Current.OpenMod)) continue;
             List<string> ruleSets = [.. RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, byName).Select(ruleSet => ruleSet.Name)];
             bool hasArmoryChanges = files.Contains(entry.Name) && (DivisionExtras.IsNamesFile(entry.Name, entry.Game) || DivisionChangeRules.WritesTo(entry));
             if (ruleSets.Count > 0 || hasArmoryChanges) mods.Add(new ModOnFile(mod.Name, ruleSets, hasArmoryChanges));

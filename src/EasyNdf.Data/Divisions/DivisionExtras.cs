@@ -242,7 +242,21 @@ public static class DivisionExtras
     /// <param name="pictureFolders">The folders the app keeps chosen pictures in (<see cref="AppFolders.PictureFoldersOf"/>).</param>
     public static IEnumerable<string> PictureFiles(IEnumerable<JsonNode?> rules, IReadOnlyList<string> pictureFolders) =>
         RulesThatAreOn(rules).Select(rule => (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PictureFileKey]).OfType<string>()
-            .Where(picture => IsInsideOneOf(picture, pictureFolders)).Distinct(StringComparer.OrdinalIgnoreCase);
+            .Select(picture => Located(picture, pictureFolders)).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Where a picture a rule names is on this computer: at its path, in one of the app's picture folders, or, once moved
+    /// into a mod's folder (or for a mod made on another computer), found there by its name; null when it is in none.
+    /// </summary>
+    internal static string? Located(string picture, IReadOnlyList<string> pictureFolders)
+    {
+        try
+        {
+            if (IsInsideOneOf(picture, pictureFolders) && File.Exists(picture)) return picture;
+            return ModFileViews.PictureFinder?.Invoke(Path.GetFileName(picture));
+        }
+        catch (Exception problem) when (problem is ArgumentException or NotSupportedException or PathTooLongException) { return null; }
+    }
 
     /// <summary>
     /// The rules that are on, as the engine runs them: switched on themselves, and not under a group heading that is
@@ -285,14 +299,14 @@ public static class DivisionExtras
             if ((string?)armory[DivisionChangeRules.PictureFileKey] is not string picture || (string?)armory[DivisionChangeRules.PicturePathKey] is not string path) continue;
             // a mod file shared by someone else names pictures on their computer: one outside the app's own picture
             // folders is never copied, so a mod file cannot put any file the user can read into the mod
-            if (!IsInsideOneOf(picture, pictureFolders) || !File.Exists(picture))
+            if (Located(picture, pictureFolders) is not string found)
             {
                 missing.Add(picture);
                 continue;
             }
             if (PictureTargetOf(gameData, path) is not string target) continue;
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(picture, target, overwrite: true);
+            File.Copy(found, target, overwrite: true);
             copied++;
             if (path.StartsWith(DivisionChangeRules.EmblemFolder, StringComparison.OrdinalIgnoreCase)
                 || path.StartsWith(DivisionChangeRules.SteelDivisionEmblemFolder, StringComparison.OrdinalIgnoreCase)) emblems++;

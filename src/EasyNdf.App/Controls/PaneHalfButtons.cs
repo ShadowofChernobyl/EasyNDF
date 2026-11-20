@@ -95,6 +95,12 @@ public sealed class PaneHalfButtons
         return cell;
     }
 
+    /// <summary>The left half's button, for the tutorial to point at.</summary>
+    internal FrameworkElement LeftButton => leftButton;
+
+    /// <summary>The right half's button, for the tutorial to point at.</summary>
+    internal FrameworkElement RightButton => rightButton;
+
     /// <summary>Whether the left half shows, folding of the whole pane aside: only while it can.</summary>
     public bool LeftShows => left.IsAvailable() && (!isLeftFolded || !right.IsAvailable());
 

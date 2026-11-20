@@ -23,7 +23,7 @@ public sealed class DivisionEmblem : Image
         Stretch = Stretch.Uniform;
         Visibility = keepsRoom ? Visibility.Hidden : Visibility.Collapsed;
         RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality);
-        if (file is not null) ReadFile(file, size);
+        if (file is not null) ReadFile(System.IO.File.Exists(file) ? file : ModFolders.FindPicture(file) ?? file, size);
         else if (source == "") ShowPlaceholder();
         else if (source is not null && UnitPictureLibrary.Current is { } library) Read(library, source, size);
     }

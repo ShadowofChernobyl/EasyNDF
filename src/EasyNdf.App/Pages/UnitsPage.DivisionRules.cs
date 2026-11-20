@@ -71,7 +71,7 @@ public partial class UnitsPage
         // and a generated battlegroup is chosen by its units' weapons, and written into Decks.ndf and DeckPacks.ndf
         if (GeneratedBattlegroups.AnyIn(changed)) files.AddRange(Files.GeneratedListsMaker.BattlegroupFiles);
         IEnumerable<string> needed = files.Distinct(StringComparer.OrdinalIgnoreCase);
-        var entries = MainView.Of(this).FilesTab.Model.Entries;
+        var entries = MainView.Of(this).FilesTab.Model.Entries.Where(entry => !Files.TutorialSample.Is(entry)).ToList();
         // a file of another game would not take the change: only the mods of its own game run on it
         return [.. needed.Where(file => !entries.Any(entry => entry.Source is not null && entry.Game == Game && UnitReader.SameFile(file, entry.Name)))];
     }

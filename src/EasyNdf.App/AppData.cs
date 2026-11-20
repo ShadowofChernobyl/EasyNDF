@@ -122,6 +122,8 @@ public sealed class AppData
         data.Themes = new ThemeStore(folders.Themes);
         data.Languages = new LanguageStore(folders.Languages);
         Current = data;
+        // each mod's folder beside its file, laid out from its rules (in the background)
+        ModFolders.Start(data);
     }
 
     /// <summary>The user's own themes; in memory only for data in memory only.</summary>
@@ -195,7 +197,18 @@ public sealed class AppData
     /// Where the files of File rules are kept: in the data folder, or a temporary folder when the app has none, as in
     /// the designer.
     /// </summary>
-    public ModFileStore ModFileStore => new(Folders?.ModFiles ?? Path.Combine(Path.GetTempPath(), "EasyNDF", "Mod Files"));
+    public ModFileStore ModFileStore
+    {
+        get
+        {
+            // one store, so it finds the files moved into the mods' folders (ModFolders gives it where)
+            string folder = Folders?.ModFiles ?? Path.Combine(Path.GetTempPath(), "EasyNDF", "Mod Files");
+            if (modFileStore?.Folder != folder) modFileStore = new ModFileStore(folder);
+            return modFileStore;
+        }
+    }
+
+    private ModFileStore? modFileStore;
 
     /// <summary>"Reset settings": every setting goes back to how it was at first. Mods, scans and what the app remembers are kept.</summary>
     public void ResetSettings()

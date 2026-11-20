@@ -40,16 +40,17 @@ public sealed partial class ModPictureSources
 
     /// <summary>The pictures and flags of these mods, in the order they run: a later mod's take the place of an earlier one's.</summary>
     /// <param name="mods">The mods shown.</param>
-    /// <param name="storeFolder">Where the app keeps the files mods carry (<see cref="ModFileStore.Folder"/>).</param>
-    public static ModPictureSources Of(IEnumerable<Mod> mods, string storeFolder)
+    /// <param name="store">Where the files mods carry are kept.</param>
+    public static ModPictureSources Of(IEnumerable<Mod> mods, ModFileStore store)
     {
         var files = new Dictionary<string, string>(StringComparer.Ordinal);
         var textures = new Dictionary<string, string>(StringComparer.Ordinal);
         var countries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (Mod mod in mods)
         {
-            Found found = FoundIn(mod, storeFolder);
-            foreach ((string place, string file) in found.Files) files[place] = file;
+            Found found = FoundIn(mod);
+            // found where it is now: a file kept a moment ago moves into its mod's folder
+            foreach ((string place, string file) in found.Files) files[place] = store.PathOf(file) ?? Path.Combine(store.Folder, file);
             foreach ((string name, string file) in found.Textures) textures[name] = file;
             foreach ((string code, string texture) in found.Countries) countries[code] = texture;
         }
@@ -70,10 +71,10 @@ public sealed partial class ModPictureSources
     /// (each Armory visit unpacked every rule set of the mods shown, some 200, only for the idle clean-up to put them
     /// away again), and kept while they all stay put away, as packed rules never change. Keep it that way when tidying.
     /// </summary>
-    private static Found FoundIn(Mod mod, string storeFolder)
+    private static Found FoundIn(Mod mod)
     {
-        object?[] key = [storeFolder, .. mod.Presets.Select(preset => preset.PackedRules)];
-        bool allPacked = key.Skip(1).All(packed => packed is not null);
+        object?[] key = [.. mod.Presets.Select(preset => preset.PackedRules)];
+        bool allPacked = key.All(packed => packed is not null);
         if (allPacked && foundByMod.TryGetValue(mod, out Tuple<object?[], Found>? known)
             && known.Item1.Length == key.Length && known.Item1.Zip(key).All(pair => Equals(pair.First, pair.Second)))
             return known.Item2;
@@ -84,7 +85,7 @@ public sealed partial class ModPictureSources
             if (!ModFileStore.IsStoredName(file.StoredName)) continue;
             string place = file.Destination.Replace('\\', '/').TrimStart('/');
             if (!place.StartsWith("GameData/", StringComparison.OrdinalIgnoreCase)) continue;
-            found.Files.Add((place["GameData/".Length..].ToLowerInvariant(), Path.Combine(storeFolder, file.StoredName)));
+            found.Files.Add((place["GameData/".Length..].ToLowerInvariant(), file.StoredName));
         }
         foreach (string text in TextsOf(rules))
         {

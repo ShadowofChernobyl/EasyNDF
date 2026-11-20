@@ -24,7 +24,7 @@
                     <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
                 <controls:SnappedRow DockPanel.Dock="Bottom" Gap="6" HorizontalAlignment="Right" Margin="0,10,0,0">
-                    <Button Style="{StaticResource GoButton}" Content="{t:Text Rules.AppliesTo.Done}" ToolTip="{t:Text Rules.AppliesTo.Done.Tip}" Click="DoneClicked" TabIndex="6" />
+                    <Button x:Name="DoneButton" Style="{StaticResource GoButton}" Content="{t:Text Rules.AppliesTo.Done}" ToolTip="{t:Text Rules.AppliesTo.Done.Tip}" Click="DoneClicked" TabIndex="6" />
                     <Button Content="{t:Text Common.Cancel}" ToolTip="{t:Text Rules.AppliesTo.Cancel.Tip}" Click="CloseClicked" TabIndex="7" />
                 </controls:SnappedRow>
                 <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Note}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{t:Text Rules.AppliesTo.Note}" />

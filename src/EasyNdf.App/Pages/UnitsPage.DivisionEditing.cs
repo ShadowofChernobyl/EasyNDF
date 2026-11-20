@@ -502,7 +502,8 @@ public partial class UnitsPage : IDivisionEditing
         // a name of its own: two pictures of the same name from different folders replaced each other, changing the
         // emblem of a division that used the first
         string kept = Path.Combine(folder, name + ".png");
-        for (int copy = 2; File.Exists(kept); copy++) kept = Path.Combine(folder, name + " (" + copy + ").png");
+        // a picture already moved into a mod's folder keeps its name too
+        for (int copy = 2; File.Exists(kept) || ModFolders.FindPicture(kept) is not null; copy++) kept = Path.Combine(folder, name + " (" + copy + ").png");
         try
         {
             Directory.CreateDirectory(folder);

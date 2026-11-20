@@ -15,6 +15,9 @@ public partial class UnitsPage
     /// <summary>The sub-tab shown.</summary>
     private ArmoryPart part = ArmoryPart.Units;
 
+    /// <summary>The sub-tab shown, for the tutorial.</summary>
+    internal ArmoryPart Part => part;
+
     /// <summary>The name of the sub-tab shown, as its button says it, for the usage readout's slow moments.</summary>
     internal string ShownPartName => (part switch
     {

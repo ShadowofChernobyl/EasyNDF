@@ -27,6 +27,9 @@ public sealed class PanePair : Grid
 
     /// <summary>The bar between the panes.</summary>
     internal FrameworkElement Bar => bar;
+
+    /// <summary>The button that opens the second pane while it is folded, for the tutorial to point at.</summary>
+    internal FrameworkElement OpenButton => openButton;
     private readonly DockPanel second = new();
     private readonly Bevel heading;
     private readonly DockPanel headingRow;

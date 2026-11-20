@@ -28,11 +28,26 @@
                 <controls:Bevel Style="{StaticResource Heading}" Margin="0,0,0,10">
                     <TextBlock Text="{t:Text Welcome.WelcomeToEasyNDF}" FontSize="15" LineHeight="21.75" LineStackingStrategy="BlockLineHeight" />
                 </controls:Bevel>
+                <!-- first, the language and the theme, each used as it is picked: the window itself changes (Paul, 2026-11-20) -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{t:Text Settings.Language}" Foreground="{DynamicResource ink}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <ComboBox x:Name="LanguageChoice" Grid.Column="1" SelectionChanged="LanguageChosen" />
+                    <TextBlock Grid.Column="3" Text="{t:Text Settings.Theme}" Foreground="{DynamicResource ink}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <ComboBox x:Name="ThemeChoice" Grid.Column="4" SelectionChanged="ThemeChosen" />
+                </Grid>
                 <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ink}" Margin="0,0,0,10" t:RichText.Markup="{t:Text Welcome.Intro}" />
                 <!--
-                  The app in miniature, drawn in the theme: a note for each of the main tabs above it, and one for Preview
-                  and Export below, each joined by a line to what it is about (the lines are drawn in code, from where the
-                  notes and tabs fall in this theme and language). Only to look at: nothing in it takes clicks or keys.
+                  The app's tabs in miniature, drawn in the theme: a note for each of the main tabs above it, joined by a
+                  line to its tab (the lines are drawn in code, from where the notes and tabs fall in this theme and
+                  language). Only to look at: nothing in it takes clicks or keys. No buttons under the tabs: they looked
+                  like ones to click (Paul, 2026-11-20).
                 -->
                 <Grid x:Name="Map" Margin="0,2,0,12" IsHitTestVisible="False" Focusable="False" KeyboardNavigation.TabNavigation="None"
                       SizeChanged="MapResized">
@@ -59,8 +74,6 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="34" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="20" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <UniformGrid Rows="1" Columns="4">
                         <Border x:Name="FilesNote" Style="{StaticResource MapNote}"><TextBlock t:RichText.Markup="{t:Text Welcome.Map.Files}" /></Border>
@@ -69,28 +82,14 @@
                         <Border x:Name="ArmoryNote" Style="{StaticResource MapNote}"><TextBlock t:RichText.Markup="{t:Text Welcome.Map.Armory}" /></Border>
                     </UniformGrid>
                     <TabControl Grid.Row="2" Focusable="False">
-                        <TabItem x:Name="FilesTab" Header="{t:Text Main.Files}" IsSelected="True" Focusable="False">
-                            <DockPanel Margin="6,6,6,6">
-                                <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
-                                    <Button x:Name="PreviewButton" Content="{t:Text Files.Preview}" Focusable="False" />
-                                    <Button x:Name="ExportButton" Content="{t:Text Files.RunExport}" Focusable="False" />
-                                </controls:SnappedRow>
-                                <controls:SnappedRow Gap="6" HorizontalAlignment="Left">
-                                    <Button Content="{t:Text Files.AddFiles}" Style="{StaticResource GoButton}" Focusable="False" />
-                                    <Button Content="{t:Text Files.AddFolder}" Focusable="False" />
-                                </controls:SnappedRow>
-                            </DockPanel>
-                        </TabItem>
+                        <TabItem x:Name="FilesTab" Header="{t:Text Main.Files}" IsSelected="True" Focusable="False" />
                         <TabItem x:Name="ModsTab" Header="{t:Text Main.Rules}" Focusable="False" />
                         <TabItem x:Name="EditorTab" Header="{t:Text Main.Editor}" Focusable="False" />
                         <TabItem x:Name="ArmoryTab" Header="{t:Text Main.Units}" Focusable="False" />
                         <TabItem Header="{t:Text Main.Settings}" Focusable="False" />
                         <TabItem Header="{t:Text Main.Help}" Focusable="False" />
                     </TabControl>
-                    <Border x:Name="ExportNote" Grid.Row="4" Style="{StaticResource MapNote}" HorizontalAlignment="Right" VerticalAlignment="Top" MaxWidth="260">
-                        <TextBlock t:RichText.Markup="{t:Text Welcome.Map.Export}" />
-                    </Border>
-                    <Canvas x:Name="Wires" Grid.RowSpan="5" />
+                    <Canvas x:Name="Wires" Grid.RowSpan="3" />
                 </Grid>
                 <TextBlock Style="{StaticResource Note}" Margin="0,0,0,10"
                            Text="{t:Text Welcome.YourFilesNeverLeave}" />

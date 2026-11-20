@@ -54,7 +54,7 @@
   "Editor.FileFilter.Reading": "Reading",
   "Editor.FileFilter.Shared": "Shared with the Files tab's search and Show only",
   "Editor.OpenFile": "Open File…",
-  "Editor.OpenFile.Tip": "Open a file without adding it to the Files tab",
+  "Editor.OpenFile.Tip": "Open a file here and add it to the Files tab",
   "Editor.Find": "Find",
   "Editor.FindToggle.Tip": "Find, replace, go to line and search all files (Ctrl+F)",
   "Editor.DiscardChanges": "Discard Changes",

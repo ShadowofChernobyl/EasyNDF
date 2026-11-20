@@ -134,6 +134,16 @@ public sealed class WikiRenderer(PageLook look)
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
         box.SetResourceReference(TextBoxBase.SelectionBrushProperty, "accent");
+        // right-click: the app's own menu (Copy), not Windows' Cut / Copy / Paste, which a read-only text can't use and
+        // which wasn't drawn in the theme
+        box.ContextMenuOpening += (_, e) =>
+        {
+            e.Handled = true;
+            Controls.Menus.Show(box,
+            [
+                new Controls.MenuChoice(Texts.Get("Common.Menu.Copy"), () => box.Copy(), IsEnabled: !box.Selection.IsEmpty, Key: "Ctrl+C"),
+            ]);
+        };
         // a text box's own look is a template with a border; the bare text is what the page wants
         box.Template = BareTemplate;
         return (box, top, bottom);

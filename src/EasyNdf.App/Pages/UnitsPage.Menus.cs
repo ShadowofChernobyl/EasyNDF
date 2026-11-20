@@ -146,7 +146,7 @@ public partial class UnitsPage : IUnitActions
 
     /// <summary>A file on the Files tab with this name that has been read; null when there is none.</summary>
     private FileEntry? LoadedFile(string file) =>
-        MainView.Find(this)?.FilesTab.Model.Entries.FirstOrDefault(entry => entry.Source is not null && string.Equals(entry.Name, file, StringComparison.OrdinalIgnoreCase));
+        MainView.Find(this)?.FilesTab.Model.Entries.FirstOrDefault(entry => entry.Source is not null && !Files.TutorialSample.Is(entry) && string.Equals(entry.Name, file, StringComparison.OrdinalIgnoreCase));
 
     /// <inheritdoc/>
     public bool CanShowInEditor(string file) => LoadedFile(file) is not null;

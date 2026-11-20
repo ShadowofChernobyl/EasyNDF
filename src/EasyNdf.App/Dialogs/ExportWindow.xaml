@@ -22,14 +22,14 @@
                 <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
                     <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
                         <Button x:Name="ExportButton" Style="{StaticResource GoButton}" Content="{t:Text Files.Export.Export}" Click="ExportClicked" />
-                        <Button Content="{t:Text Common.Cancel}" Click="CancelClicked" />
+                        <Button x:Name="CancelButton" Content="{t:Text Common.Cancel}" Click="CancelClicked" />
                     </controls:SnappedRow>
                     <TextBlock x:Name="Summary" Style="{StaticResource Note}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                     <StackPanel Margin="0,10,0,0">
                         <!-- where -->
-                        <Grid>
+                        <Grid x:Name="WherePart">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -61,7 +61,7 @@
                                 <ColumnDefinition Width="10" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel>
+                            <StackPanel x:Name="FilesPart">
                                 <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Files.Export.Files}" /></controls:Bevel>
                                 <controls:SnappedRow Gap="0" Margin="0,6,0,4" HorizontalAlignment="Left">
                                     <RadioButton x:Name="ScopeChanged" Style="{StaticResource PressedToggle}" GroupName="Scope" Content="{t:Text Files.Export.Scope.Changed}" ToolTip="{t:Text Files.Export.Scope.Changed.Tip}" Click="ScopeClicked" />
@@ -80,7 +80,7 @@
                                     </ComboBox>
                                 </DockPanel>
                             </StackPanel>
-                            <StackPanel Grid.Column="2">
+                            <StackPanel x:Name="OptionsPart" Grid.Column="2">
                                 <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Files.Export.Options}" /></controls:Bevel>
                                 <CheckBox x:Name="BackupTick" Style="{StaticResource Tick}" Content="{t:Text Settings.BackUpOverwrittenFiles}" ToolTip="{t:Text Settings.BackUpOverwrittenFiles.Note}" Margin="0,6,0,2" />
                                 <CheckBox x:Name="StampTick" Style="{StaticResource Tick}" Content="{t:Text Settings.EditedWithEasyNDFComment}" ToolTip="{t:Text Settings.EditedWithEasyNDFComment.Note}" Margin="0,2" />
@@ -101,7 +101,7 @@
                             <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Width="170" Margin="0,0,8,0" TextChanged="FilterChanged" ToolTip="{t:Text Files.Export.Filter.Tip}" />
                             <TextBlock Text="{t:Text Files.Export.WillWrite}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
                         </DockPanel>
-                        <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                        <controls:Bevel x:Name="ListPart" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
                             <DockPanel>
                                 <Grid x:Name="ListHeading" DockPanel.Dock="Top" Margin="6,3,22,3">
                                     <Grid.ColumnDefinitions>

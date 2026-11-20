@@ -266,6 +266,8 @@ ServiceFabricBackup/
 *.ldf
 *.ndf
 # ...which also keeps game files out.
+# the tutorial's small sample file is the app's own (embedded in it)
+!src/EasyNdf.App/Assets/Tutorial/*.ndf
 
 # Business Intelligence projects
 *.rdl.data

@@ -1700,6 +1700,9 @@ public partial class EditorPage
     /// <summary>The Descriptor Tree and Properties buttons in the pane's heading, each folding its own list away.</summary>
     private PaneHalfButtons halfButtons = null!;
 
+    /// <summary>For the tutorial: the Descriptor Tree and Properties buttons, and whether each list shows.</summary>
+    internal PaneHalfButtons Halves => halfButtons;
+
     private void PrepareHalfButtons()
     {
         var tree = new PaneHalf(TreeIcon, () => Texts.Get("Editor.Descriptors"), () => Texts.Get("Editor.Descriptors.Show"), "editorTree");

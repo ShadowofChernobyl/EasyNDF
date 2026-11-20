@@ -1,8 +1,8 @@
-Third-party software in EasyNDF
-================================
+Addendum: third-party software in EasyNDF
+==========================================
 
-EasyNDF itself is under the licence in LICENSE.txt. It includes the following software by others, under their own
-licences.
+EasyNDF itself is under the licence above (LICENSE.txt in the source). It also includes the
+following software by others, under their own licences.
 
 
 SharpCompress 0.50.4 (https://github.com/adamhathcock/sharpcompress)
@@ -159,9 +159,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE
 
 
-Vortice.Windows 3.6.2 (https://github.com/amerkoleci/Vortice.Windows) and Vortice.Mathematics 1.9.2 (https://github.com/amerkoleci/Vortice.Mathematics)
--------------------------------------------------------------------------------------------------------------------------------------------------------
-Used to draw the 3D model viewer's models with Direct3D 11, to compile its shaders, and to hand the picture drawn to WPF through Direct3D 9.
+Vortice.Windows 3.6.2 (https://github.com/amerkoleci/Vortice.Windows)
+and Vortice.Mathematics 1.9.2 (https://github.com/amerkoleci/Vortice.Mathematics)
+----------------------------------------------------------------------------------
+Used to draw the 3D model viewer's models with Direct3D 11, to compile its shaders, and to hand
+the picture drawn to WPF through Direct3D 9.
 
 MIT License
 
@@ -186,8 +188,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-SharpGen.Runtime and SharpGen.Runtime.COM 2.2.0-beta (https://github.com/SharpGenTools/SharpGenTools, used by Vortice.Windows)
--------------------------------------------------------------------------------------------------------------------------------
+SharpGen.Runtime and SharpGen.Runtime.COM 2.2.0-beta
+(https://github.com/SharpGenTools/SharpGenTools, used by Vortice.Windows)
+-------------------------------------------------------------------------
 
 MIT License
 
@@ -241,6 +244,6 @@ SOFTWARE.
 
 wgrd-cons-tools (https://github.com/ev1313/wgrd-cons-tools)
 ----------------------------------------------------------
-The way Eugen's packed sounds (.ess) are unpacked, in src/EasyNdf.Data/Models/EssSound.cs, follows its
-decode_ess.py, which is itself based on https://zenhax.com/viewtopic.php?f=6&t=3324. wgrd-cons-tools is under the
-GNU Affero General Public License v3, the same licence as EasyNDF (see LICENSE.txt).
+The way Eugen's packed sounds (.ess) are unpacked, in src/EasyNdf.Data/Models/EssSound.cs,
+follows its decode_ess.py, which is itself based on https://zenhax.com/viewtopic.php?f=6&t=3324.
+wgrd-cons-tools is under the GNU Affero General Public License v3, the same licence as EasyNDF.

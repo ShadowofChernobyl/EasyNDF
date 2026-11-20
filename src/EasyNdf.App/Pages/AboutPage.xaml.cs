@@ -38,8 +38,12 @@ public partial class AboutPage : UserControl
 
     private void LicenseClicked(object sender, RoutedEventArgs e) => ShowLicense();
 
-    /// <summary>"License": the license EasyNDF is under (LICENSE.txt).</summary>
-    public void ShowLicense() => View.TextWindow.Open(Texts.Get("About.License"), Dialogs.TextWindow.PlainText(ReadText("LICENSE.txt").TrimEnd()));
+    /// <summary>
+    /// "License": the license EasyNDF is under (LICENSE.txt), then, as an addendum, the software by others it includes and
+    /// their licenses (THIRD-PARTY-NOTICES.txt), so the app needs no file beside it.
+    /// </summary>
+    public void ShowLicense() => View.TextWindow.Open(Texts.Get("About.License"),
+        Dialogs.TextWindow.PlainText(ReadText("LICENSE.txt").TrimEnd() + "\n\n\n" + ReadText("THIRD-PARTY-NOTICES.txt").TrimEnd()));
 
     private void ChangeLogClicked(object sender, RoutedEventArgs e) => View.ShowChangeLog();
 

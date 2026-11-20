@@ -45,6 +45,7 @@ public partial class App : Application
         int frameAt = Array.IndexOf(e.Args, "--frame");
         MainWindow = new MainWindow(frameAt >= 0 && frameAt + 1 < e.Args.Length ? e.Args[frameAt + 1] : "");
         MainWindow.Show();
+        Updates.CheckSoon();
         // memory large work leaves behind is given back while the app sits idle
         Memory.TrimWhenIdle(Dispatcher);
     }

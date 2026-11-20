@@ -84,7 +84,7 @@
                     <!-- + in the heading, at its right and centred on it, the size of every tab's ? (the three headings are as tall) -->
                     <controls:Bevel Style="{StaticResource Heading}" MinHeight="31">
                         <DockPanel>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource HelpButton}" Content="+" ToolTip="{t:Text Rules.New.Tip}"
+                            <Button x:Name="NewModButton" DockPanel.Dock="Right" Style="{StaticResource HelpButton}" Content="+" ToolTip="{t:Text Rules.New.Tip}"
                                     AutomationProperties.Name="{t:Text Rules.New.Tip}" Click="NewModClicked" />
                             <TextBlock Text="{t:Text Rules.Mods}" VerticalAlignment="Center" />
                         </DockPanel>

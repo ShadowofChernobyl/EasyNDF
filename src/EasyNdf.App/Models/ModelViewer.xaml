@@ -48,7 +48,7 @@
                   Picture, the Sound switch with its volume, and Close
                 -->
                 <DockPanel DockPanel.Dock="Bottom" Margin="14,0,14,12">
-                    <Button DockPanel.Dock="Right" Content="{t:Text Units.Model.Close}" Margin="8,0,0,0" Click="CloseClicked" />
+                    <Button x:Name="CloseButton" DockPanel.Dock="Right" Content="{t:Text Units.Model.Close}" Margin="8,0,0,0" Click="CloseClicked" />
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" ToolTip="{t:Text Units.Model.Volume.Tip}">
                         <Slider x:Name="VolumeSlider" Style="{StaticResource WeightSlider}" Width="90" Minimum="0" Maximum="100" SmallChange="1" LargeChange="10"
                                 IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" AutomationProperties.Name="{t:Text Units.Model.Volume}"

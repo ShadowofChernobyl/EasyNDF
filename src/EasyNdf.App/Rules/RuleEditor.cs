@@ -31,6 +31,15 @@ public sealed class RuleEditor
     /// <summary>The lists of rows built, so the window can draw them again after a change.</summary>
     public List<RowListView> Lists { get; } = [];
 
+    /// <summary>The rule's name box, for the tutorial to point at.</summary>
+    internal TextBox? NameBox { get; private set; }
+
+    /// <summary>The "Applies to" line, for the tutorial to point at; null for a rule type without it.</summary>
+    internal FrameworkElement? ScopeRow { get; private set; }
+
+    /// <summary>The conditions' Any / All dropdown, for the tutorial to point at.</summary>
+    internal ComboBox? GateBox { get; private set; }
+
     /// <param name="model">The Rules tab's data.</param>
     /// <param name="scan">The property names, descriptor names and types of the scanned file, for the "Pick from scan..." dropdowns.</param>
     /// <param name="changed">Tells the window the rule was changed.</param>
@@ -65,6 +74,8 @@ public sealed class RuleEditor
         parameters = found;
         parts.Clear();
         Lists.Clear();
+        ScopeRow = null;
+        GateBox = null;
 
         string kind = KindOf(rule);
         AddHeader();
@@ -312,6 +323,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
 
         var name = new TextBox { Text = JsonValues.AsText(rule["Name"]), Tag = Texts.Get("Rules.Editor.RuleName.Hint"), ToolTip = null };
         name.TextChanged += (_, _) => { rule["Name"] = name.Text; changed(); };
+        NameBox = name;
         var header = new StackPanel();
         header.Children.Add(label);
         header.Children.Add(name);
@@ -336,6 +348,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
             if (Fill("ScopeType", scan.Types) is ComboBox fill) row.Children.Add(fill);
         }
         parts.Add(row);
+        ScopeRow = row;
         if (scope == "type")
             AddNote(Note(kind == "Remove" ? "Rules.Editor.Scope.RemoveTypeNote" : "Rules.Editor.Scope.TypeNote"));
         else if (scope == "constants")
@@ -368,6 +381,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         gate.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Gate.All"), Tag = "All" });
         gate.SelectedIndex = JsonValues.AsText(owner[field]) == "All" ? 1 : 0;
         gate.SelectionChanged += (_, _) => { owner[field] = (string)((ComboBoxItem)gate.SelectedItem).Tag; changed(); };
+        GateBox ??= gate;
         return gate;
     }
 

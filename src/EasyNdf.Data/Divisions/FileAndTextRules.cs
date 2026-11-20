@@ -143,14 +143,14 @@ public static class FileAndTextRules
                 problems.Add(badPlace.Replace("{path}", file.Destination, StringComparison.Ordinal));
                 continue;
             }
-            if (store.PathOf(file.StoredName) is not string source)
+            if (store.PathOf(file.StoredName) is null)
             {
                 problems.Add(missing.Replace("{path}", file.Destination, StringComparison.Ordinal));
                 continue;
             }
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(source, target, overwrite: true);
-            written++;
+            if (store.CopyTo(file.StoredName, target)) written++;
+            else problems.Add(missing.Replace("{path}", file.Destination, StringComparison.Ordinal));
         }
         return new Outcome(written, problems);
     }

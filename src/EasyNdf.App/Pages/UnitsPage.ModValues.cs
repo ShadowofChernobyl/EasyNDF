@@ -92,9 +92,10 @@ public partial class UnitsPage
         // (the open mod's always, as its divisions show either way)
         ModPictureSources modPictures = ModPictureSources.Of(ArmoryShowsModChanges
             ? Mods.ModStack.RunningFor(game.Source.Game).Append(OpenMod).Distinct()
-            : [OpenMod], AppData.Current.ModFileStore.Folder);
+            : [OpenMod], AppData.Current.ModFileStore);
         bool picturesChanged = UnitPictureLibrary.Current?.UseModPictures(modPictures) == true;
-        var entries = main.FilesTab.Model.Entries.ToList();
+        // the tutorial's sample Ammunition.ndf is not the game's: the Armory leaves it out
+        var entries = main.FilesTab.Model.Entries.Where(entry => !Files.TutorialSample.Is(entry)).ToList();
         var settings = RunSettings.From(AppData.Current.Settings);
         // with "Show mods' changes" off, the units are shown as the source has them
         string inputs = ArmoryShowsModChanges ? Fingerprint(OpenModUnits.InputsOf(entries, AppData.Current.OpenMod, game.Source.Game, settings)) : "as the source has them";
@@ -283,6 +284,7 @@ public partial class UnitsPage
     {
         if (string.IsNullOrEmpty(kept)) return null;
         if (System.IO.File.Exists(kept)) return kept;
+        if (ModFolders.FindPicture(kept) is string moved) return moved;
         string folder = AppData.Current.Folders?.Pictures ?? Data.AppFolders.TemporaryPictures;
         string here = System.IO.Path.Combine(folder, System.IO.Path.GetFileName(kept));
         return System.IO.File.Exists(here) ? here : null;

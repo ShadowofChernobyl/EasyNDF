@@ -34,6 +34,9 @@ public partial class RowWindow : UserControl
     private Func<string, IReadOnlyList<string>> namesFor = _ => [];
     private ScanLists scan = ScanLists.None;
     private string list = RulesModel.Conditions;
+
+    /// <summary>The list the window shows a row of (conditions or actions), for the tutorial.</summary>
+    internal string List => list;
     private int index;
     private JsonObject? row;
 
@@ -52,6 +55,11 @@ public partial class RowWindow : UserControl
 
     /// <summary>Whether the window is open.</summary>
     public bool IsOpen => Visibility == Visibility.Visible;
+
+    /// <summary>A box or dropdown of the row by its field ("Value", "Operand", "Target", "Operator"), for the tutorial.</summary>
+    internal FrameworkElement? Field(string field) =>
+        Form.Children.OfType<FrameworkElement>().SelectMany(part => part is Panel inner ? [part, .. inner.Children.OfType<FrameworkElement>()] : new[] { part })
+            .FirstOrDefault(part => part.Name == field);
 
     /// <summary>Raised when the window opens or closes, so the rule window can move aside or back.</summary>
     public event Action<bool>? OpenChanged;
@@ -267,6 +275,8 @@ public partial class RowWindow : UserControl
         options.AddRange(choices.Select(c => new ChoiceOption(c, c)));
         // the operator is named by its label; a property shows its own name, so a name too long for the box can be read in full
         var choice = new ComboBox { ItemsSource = options, Name = field, Margin = new Thickness(0, 3, 0, 0), ToolTip = field == "Operator" ? Texts.Get("Rules.Row.Operator") : NameOrNone(current) };
+        // typing a name's first letters goes to it, in a list of a file's hundred properties
+        TextSearch.SetTextPath(choice, nameof(ChoiceOption.Label));
         // a long property name is cut with "…" in the box and its list, which stays inside the window
         NarrowChoices.OfOptions(choice);
         if (mono)
@@ -316,7 +326,7 @@ public partial class RowWindow : UserControl
             Form.Children.Add(includes);
         }
         // .note: 10 pixels below what is above it, besides the 3 between every part
-        var note = new TextBlock { Margin = new Thickness(0, 13, 0, 0) };
+        var note = new TextBlock { Margin = new Thickness(0, 13, 0, 0), Name = "Note" };
         note.SetResourceReference(StyleProperty, "Note");
         note.Inlines.AddRange(Text.RichText.Pieces(Texts.Get("Rules.Row.ActionNote"),
             bold: text => new Run(text), code: CodeRun, plain: text => new Run(text)));

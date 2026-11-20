@@ -1,0 +1,1106 @@
+// A sample of WARNO's Ammunition.ndf for EasyNDF's tutorial: 29 ammunition objects in six families
+// (autocannons, tank guns, anti-tank missiles, anti-air missiles, howitzers, machine guns).
+
+
+Ammo_AutoCanon_AP_20mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{6513270e-269e-4d37-b2a7-4de452e6b438}
+    WeaponCursorType                  = Weapon_Cursor_FastCanon
+    MinMaxCategory                    = MinMax_AutocanonHE
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap Index=8)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonPetitM230AP'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 1575
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 106
+    DispersionAtMinRangeGRU           = 21
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 15.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 883
+    AimingTime                        = 2.5
+    TimeBetweenTwoSalvos              = 1.3
+    ShotsCountPerSalvo                = 10
+    SupplyCost                        = 10.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 10
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_AutoCanon_HE_20mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{d23f0824-128b-4f33-8c5c-7fd0a6a3a450}
+    WeaponCursorType                  = Weapon_Cursor_FastCanon
+    MinMaxCategory                    = MinMax_AutocanonHE
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he_autocanon Index=1)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonPetitFK20HEFI'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 1575
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 1575
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 106
+    DispersionAtMinRangeGRU           = 21
+    RadiusSplashPhysicalDamagesGRU    = 25
+    PhysicalDamages                   = 0.5
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 30.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 883
+    AimingTime                        = 2.5
+    TimeBetweenTwoSalvos              = 1.3
+    ShotsCountPerSalvo                = 10
+    SupplyCost                        = 10.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 10
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_AutoCanon_AP_25mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{9531985d-5d9d-49f8-9818-e811892f902b}
+    WeaponCursorType                  = Weapon_Cursor_FastCanon
+    MinMaxCategory                    = MinMax_AutocanonHE
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap Index=8)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonPetitM230AP'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 1750
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 106
+    DispersionAtMinRangeGRU           = 21
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 15.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 883
+    AimingTime                        = 2.5
+    TimeBetweenTwoSalvos              = 1.3
+    ShotsCountPerSalvo                = 10
+    SupplyCost                        = 10.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 10
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_AutoCanon_HE_25mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{36f675cc-81e7-4ef5-a8e2-5d940ed90475}
+    WeaponCursorType                  = Weapon_Cursor_FastCanon
+    MinMaxCategory                    = MinMax_AutocanonHE
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he_autocanon Index=1)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonPetitFK20HEFI'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 1750
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 1750
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 106
+    DispersionAtMinRangeGRU           = 21
+    RadiusSplashPhysicalDamagesGRU    = 25
+    PhysicalDamages                   = 0.5
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 30.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 883
+    AimingTime                        = 2.5
+    TimeBetweenTwoSalvos              = 1.3
+    ShotsCountPerSalvo                = 10
+    SupplyCost                        = 10.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 10
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_AutoCanon_AP_30mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{6b0d549b-6f03-475a-9600-a35a099950d8}
+    WeaponCursorType                  = Weapon_Cursor_FastCanon
+    MinMaxCategory                    = MinMax_AutocanonHE
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap Index=9)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonPetitM230AP'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2100
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 106
+    DispersionAtMinRangeGRU           = 21
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 15.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 883
+    AimingTime                        = 2.5
+    TimeBetweenTwoSalvos              = 1.3
+    ShotsCountPerSalvo                = 10
+    SupplyCost                        = 10.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 10
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_AutoCanon_HE_30mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{8d116ece-1738-47d9-bd9c-172411e20b8f}
+    WeaponCursorType                  = Weapon_Cursor_FastCanon
+    MinMaxCategory                    = MinMax_AutocanonHE
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he_autocanon Index=1)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonPetitFK20HEFI'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2100
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 2100
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 106
+    DispersionAtMinRangeGRU           = 21
+    RadiusSplashPhysicalDamagesGRU    = 25
+    PhysicalDamages                   = 0.5
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 30.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 883
+    AimingTime                        = 2.5
+    TimeBetweenTwoSalvos              = 1.3
+    ShotsCountPerSalvo                = 10
+    SupplyCost                        = 10.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 10
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_Canon_AP_105mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{90c192cf-d3ac-44af-8f21-ddb66cad4a26}
+    WeaponCursorType                  = Weapon_Cursor_Canon
+    MinMaxCategory                    = MinMax_CanonAP
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap Index=18)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonGrosAPFDSM1Abrams'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2275
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 44
+    DispersionAtMinRangeGRU           = 8
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 60.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1700
+    AimingTime                        = 4.0
+    TimeBetweenTwoSalvos              = 6.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 25.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_Canon_HE_105mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{a170b338-3926-4059-b28c-105d1fb17c23}
+    WeaponCursorType                  = Weapon_Cursor_Canon
+    MinMaxCategory                    = MinMax_CanonAP
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he Index=4)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonGrosHEM1Abrams'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2275
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 44
+    DispersionAtMinRangeGRU           = 8
+    RadiusSplashPhysicalDamagesGRU    = 25
+    PhysicalDamages                   = 2.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 120.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1700
+    AimingTime                        = 4.0
+    TimeBetweenTwoSalvos              = 6.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 25.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_Canon_AP_120mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{0fd630f1-f29d-4da9-953f-48f1a09f76b5}
+    WeaponCursorType                  = Weapon_Cursor_Canon
+    MinMaxCategory                    = MinMax_CanonAP
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap Index=22)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonGrosAPFDSM1Abrams'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2450
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 44
+    DispersionAtMinRangeGRU           = 8
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 60.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1700
+    AimingTime                        = 4.0
+    TimeBetweenTwoSalvos              = 6.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 25.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_Canon_HE_120mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{0cb1e29c-658c-4a14-95e6-0af593bd04cf}
+    WeaponCursorType                  = Weapon_Cursor_Canon
+    MinMaxCategory                    = MinMax_CanonAP
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he Index=4)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonGrosHEM1Abrams'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2450
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 44
+    DispersionAtMinRangeGRU           = 8
+    RadiusSplashPhysicalDamagesGRU    = 25
+    PhysicalDamages                   = 2.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 120.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1700
+    AimingTime                        = 4.0
+    TimeBetweenTwoSalvos              = 6.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 25.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_Canon_AP_125mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{8e81973e-0bec-47b0-b898-d190f9ebdacc}
+    WeaponCursorType                  = Weapon_Cursor_Canon
+    MinMaxCategory                    = MinMax_CanonAP
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap Index=21)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonGrosAPFDSM1Abrams'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2275
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 44
+    DispersionAtMinRangeGRU           = 8
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 60.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1700
+    AimingTime                        = 4.0
+    TimeBetweenTwoSalvos              = 6.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 25.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_Canon_HE_125mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{6b4cb242-4a23-4596-a217-beaddbc496cb}
+    WeaponCursorType                  = Weapon_Cursor_Canon
+    MinMaxCategory                    = MinMax_CanonAP
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he Index=4)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'CanonGrosHEM1Abrams'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2275
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 44
+    DispersionAtMinRangeGRU           = 8
+    RadiusSplashPhysicalDamagesGRU    = 25
+    PhysicalDamages                   = 2.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 120.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1700
+    AimingTime                        = 4.0
+    TimeBetweenTwoSalvos              = 6.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 25.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_ATGM_MILAN_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{92276658-1e27-41c0-8a6a-63ec24ede6a4}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_Roquette_AS
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap_missile Index=24)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2100
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 2100
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 100.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 390
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 9.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 40.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_ATGM_TOW2_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{ae97ba94-d0ed-482f-8f6d-05584ef8aa38}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_Roquette_AS
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap_missile Index=26)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2800
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 2800
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 100.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 390
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 9.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 40.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_ATGM_Konkurs_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{923a7369-94e3-4f91-9a61-dbe22e44158b}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_Roquette_AS
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap_missile Index=25)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2800
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 2800
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 100.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 390
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 9.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 40.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_ATGM_HOT2_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{18f135d2-5f55-4203-b018-50c5a38fd547}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_Roquette_AS
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap_missile Index=27)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 2975
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 2975
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 100.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 390
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 9.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 40.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_ATGM_Shturm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{907a70c3-1012-4037-b64c-e4228c38fb29}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_Roquette_AS
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_ap_missile Index=28)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 3150
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 3150
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 100.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 390
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 9.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 40.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = True
+)
+Ammo_SAM_Stinger_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{7f150524-34b9-45df-9e77-69b10f4205b4}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_DCA
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he_dca Index=2)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 0
+    MaximumRangeGRU                   = 0
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 2450
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 2450
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 3.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 50.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1500
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 10.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 30.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_SAM_Igla_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{c6f87718-6d76-407e-881e-d162ae2eb154}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_DCA
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he_dca Index=2)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 0
+    MaximumRangeGRU                   = 0
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 2275
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 2275
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 3.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 50.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1500
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 10.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 30.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_SAM_Mistral_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{ec66a787-95e7-41d1-b731-af10506bf2ef}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_DCA
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he_dca Index=2)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 0
+    MaximumRangeGRU                   = 0
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 2625
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 2625
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 3.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 50.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1500
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 10.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 30.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_SAM_Strela_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{3f98e277-4cbd-47ad-9c90-a9587403e430}
+    WeaponCursorType                  = Weapon_Cursor_UnguidedMissile
+    MinMaxCategory                    = MinMax_DCA
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_he_dca Index=2)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'RoquetteLAW'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 0
+    MaximumRangeGRU                   = 0
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 1925
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 1925
+    DispersionAtMaxRangeGRU           = 0
+    DispersionAtMinRangeGRU           = 0
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 3.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 50.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 1500
+    AimingTime                        = 1.0
+    TimeBetweenTwoSalvos              = 10.0
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 30.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_Howz_105mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{c7a2ea20-b2f1-4c94-ae05-319acb5c7427}
+    WeaponCursorType                  = Weapon_Cursor_CorrectedArtillery
+    MinMaxCategory                    = MinMax_obusier
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_howz Index=2)
+    ProjectileType                    = EProjectileType/Artillerie
+    ImpactHappening                   = 'ArtillerieM185155Mm'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 7000
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 300
+    DispersionAtMinRangeGRU           = 60
+    RadiusSplashPhysicalDamagesGRU    = 50
+    PhysicalDamages                   = 3.0
+    RadiusSplashSuppressDamagesGRU    = 50
+    SuppressDamages                   = 250.0
+    TirIndirect                       = True
+    TirReflexe                        = False
+    ProjectileSpeedGRU                = 600
+    AimingTime                        = 2.0
+    TimeBetweenTwoSalvos              = 8.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 45.0
+    CanShootOnPosition                = True
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_Howz_122mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{4cdd2055-930d-4eaf-94f4-733f3e7d1bfb}
+    WeaponCursorType                  = Weapon_Cursor_CorrectedArtillery
+    MinMaxCategory                    = MinMax_obusier
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_howz Index=2)
+    ProjectileType                    = EProjectileType/Artillerie
+    ImpactHappening                   = 'ArtillerieM185155Mm'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 8400
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 300
+    DispersionAtMinRangeGRU           = 60
+    RadiusSplashPhysicalDamagesGRU    = 50
+    PhysicalDamages                   = 3.0
+    RadiusSplashSuppressDamagesGRU    = 50
+    SuppressDamages                   = 250.0
+    TirIndirect                       = True
+    TirReflexe                        = False
+    ProjectileSpeedGRU                = 600
+    AimingTime                        = 2.0
+    TimeBetweenTwoSalvos              = 8.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 45.0
+    CanShootOnPosition                = True
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_Howz_152mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{57ee05cd-e009-42c7-bebf-f20686734721}
+    WeaponCursorType                  = Weapon_Cursor_CorrectedArtillery
+    MinMaxCategory                    = MinMax_obusier
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_howz Index=2)
+    ProjectileType                    = EProjectileType/Artillerie
+    ImpactHappening                   = 'ArtillerieM185155Mm'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 9450
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 300
+    DispersionAtMinRangeGRU           = 60
+    RadiusSplashPhysicalDamagesGRU    = 50
+    PhysicalDamages                   = 3.0
+    RadiusSplashSuppressDamagesGRU    = 50
+    SuppressDamages                   = 250.0
+    TirIndirect                       = True
+    TirReflexe                        = False
+    ProjectileSpeedGRU                = 600
+    AimingTime                        = 2.0
+    TimeBetweenTwoSalvos              = 8.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 45.0
+    CanShootOnPosition                = True
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_Howz_155mm_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{9be4bcfc-49b6-4a08-b2e6-cc3ababced20}
+    WeaponCursorType                  = Weapon_Cursor_CorrectedArtillery
+    MinMaxCategory                    = MinMax_obusier
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_howz Index=2)
+    ProjectileType                    = EProjectileType/Artillerie
+    ImpactHappening                   = 'ArtillerieM185155Mm'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.0
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 10150
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 0
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 300
+    DispersionAtMinRangeGRU           = 60
+    RadiusSplashPhysicalDamagesGRU    = 50
+    PhysicalDamages                   = 3.0
+    RadiusSplashSuppressDamagesGRU    = 50
+    SuppressDamages                   = 250.0
+    TirIndirect                       = True
+    TirReflexe                        = False
+    ProjectileSpeedGRU                = 600
+    AimingTime                        = 2.0
+    TimeBetweenTwoSalvos              = 8.5
+    ShotsCountPerSalvo                = 1
+    SupplyCost                        = 45.0
+    CanShootOnPosition                = True
+    CanShootWhileMoving               = False
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 1
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_MMG_M240_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{830e07bc-1e39-4f10-92bd-4acefaecbd38}
+    WeaponCursorType                  = Weapon_Cursor_MachineGun
+    MinMaxCategory                    = MinMax_MMG_HMG
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_fmballe Index=1)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'MitrailleuseM240Externe'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 1050
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 525
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 70
+    DispersionAtMinRangeGRU           = 14
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 20.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 900
+    AimingTime                        = 0.5
+    TimeBetweenTwoSalvos              = 1.0
+    ShotsCountPerSalvo                = 20
+    SupplyCost                        = 5.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 20
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_MMG_PKT_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{5790f82e-c1d3-4cff-aa3a-f4d46b0a18e8}
+    WeaponCursorType                  = Weapon_Cursor_MachineGun
+    MinMaxCategory                    = MinMax_MMG_HMG
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_fmballe Index=1)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'MitrailleuseM240Externe'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 1050
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 525
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 70
+    DispersionAtMinRangeGRU           = 14
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 1.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 20.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 900
+    AimingTime                        = 0.5
+    TimeBetweenTwoSalvos              = 1.0
+    ShotsCountPerSalvo                = 20
+    SupplyCost                        = 5.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 20
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_MMG_M2HB_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{6bf46c69-7d2c-4f82-aeea-cbe226e87555}
+    WeaponCursorType                  = Weapon_Cursor_MachineGun
+    MinMaxCategory                    = MinMax_MMG_HMG
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_fmballe Index=2)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'MitrailleuseM240Externe'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 1225
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 612
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 70
+    DispersionAtMinRangeGRU           = 14
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 2.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 20.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 900
+    AimingTime                        = 0.5
+    TimeBetweenTwoSalvos              = 1.0
+    ShotsCountPerSalvo                = 20
+    SupplyCost                        = 5.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 20
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
+Ammo_MMG_NSV_Sample is TAmmunitionDescriptor
+(
+    DescriptorId                      = GUID:{13deef86-ab10-41d0-b646-e1f40a097c97}
+    WeaponCursorType                  = Weapon_Cursor_MachineGun
+    MinMaxCategory                    = MinMax_MMG_HMG
+    Arme                              = TDamageTypeRTTI(Family=DamageFamily_fmballe Index=2)
+    ProjectileType                    = EProjectileType/Obus
+    ImpactHappening                   = 'MitrailleuseM240Externe'
+    FxPower                           = EFXPower/Moyen
+    TimeBetweenTwoShots               = 0.1
+    MinimumRangeGRU                   = 40
+    MaximumRangeGRU                   = 1225
+    MinimumRangeHelicopterGRU         = 0
+    MaximumRangeHelicopterGRU         = 612
+    MinimumRangeAirplaneGRU           = 0
+    MaximumRangeAirplaneGRU           = 0
+    DispersionAtMaxRangeGRU           = 70
+    DispersionAtMinRangeGRU           = 14
+    RadiusSplashPhysicalDamagesGRU    = 0
+    PhysicalDamages                   = 2.0
+    RadiusSplashSuppressDamagesGRU    = 30
+    SuppressDamages                   = 20.0
+    TirIndirect                       = False
+    TirReflexe                        = True
+    ProjectileSpeedGRU                = 900
+    AimingTime                        = 0.5
+    TimeBetweenTwoSalvos              = 1.0
+    ShotsCountPerSalvo                = 20
+    SupplyCost                        = 5.0
+    CanShootOnPosition                = False
+    CanShootWhileMoving               = True
+    SimultaneousShotsCount            = 1
+    AffichageMunitionParSalve         = 20
+    SmokeDescriptor                   = nil
+    FireDescriptor                    = nil
+    IsHarmlessForAllies               = True
+    PiercingWeapon                    = False
+)
