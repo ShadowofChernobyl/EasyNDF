@@ -58,5 +58,8 @@
   "Help.Reference.NothingFound": "No type or variable has \"{text}\" in its name.",
   "Help.Reference.TypesFound": "{count} Type|{count} Types",
   "Help.Reference.VariablesFound": "{count} Variable|{count} Variables",
-  "Help.Reference.InType": "in {type}"
+  "Help.Reference.InType": "in {type}",
+  "Help.Tutorials": "Tutorials",
+  "Help.Tutorials.Tip": "Pick a tutorial to start",
+  "Help.Tutorials.Start": "Start"
 }

@@ -29,6 +29,9 @@ public sealed class RowListView : Grid
     /// <summary>The sunken box the rows are in.</summary>
     internal FrameworkElement Box => box;
 
+    /// <summary>The + that adds a row, for the tutorial to point at.</summary>
+    internal Button? AddButton { get; private set; }
+
     /// <summary>Raised when a row asks to be opened (double-click, Enter, Configure), with its place.</summary>
     public event Action<string, int>? RowOpenAsked;
 
@@ -70,7 +73,8 @@ public sealed class RowListView : Grid
         }
         heading.Children.Add(IconButton("↑", Texts.Get("Rules.Rows.MoveUp.Tip"), () => model.MoveRows(list, -1), 6));
         heading.Children.Add(IconButton("↓", Texts.Get("Rules.Rows.MoveDown.Tip"), () => model.MoveRows(list, +1), 6));
-        heading.Children.Add(IconButton("+", Texts.Get("Rules.Rows.Add.Tip", ("what", what)), AddRow, 0));
+        AddButton = IconButton("+", Texts.Get("Rules.Rows.Add.Tip", ("what", what)), AddRow, 0);
+        heading.Children.Add(AddButton);
         Children.Add(heading);
 
         // .lv.sunken: the rows, 2 pixels in; the accent edge shows while the keys act on this list

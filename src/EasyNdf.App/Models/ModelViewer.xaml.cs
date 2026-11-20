@@ -116,6 +116,9 @@ public partial class ModelViewer : UserControl
 
     // ---- opening ----
 
+    /// <summary>Whether the viewer is open.</summary>
+    public bool IsOpen => Visibility == Visibility.Visible;
+
     /// <summary>
     /// Opens the viewer on a unit's model: its turrets are those of <paramref name="loadout"/>, as the open mod has it,
     /// each with its weapons' names; the game's own values are kept beside them, for Mod Changes turned off.

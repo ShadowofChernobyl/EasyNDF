@@ -66,6 +66,7 @@ public partial class MainView : UserControl
         RuleWindow.ListedFiles = () => FilesTab.Model.Entries;
         RuleWindow.ReadFile = FilesTab.ReadInBackground;
         FilesTab.Model.FilesChanged += RuleWindow.FilesChanged;
+        FilesTab.Model.RowReplaced += entry => _ = EditorTab.ReadAgain(entry);
         // a file added, removed, switched on or off, or given another preset changes the values the Armory shows
         FilesTab.Model.PropertyChanged += (_, _) => UnitsTab.ModValuesMayHaveChanged();
         VersionTag.Click += (_, _) => ShowLatestChanges();

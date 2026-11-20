@@ -291,7 +291,7 @@
                     </Grid>
                     <ComboBox x:Name="FilePick" ToolTip="{t:Text Editor.FilePick.Tip}" ItemTemplate="{StaticResource TrimmedFileChoice}" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
                 </DockPanel>
-                <Button Content="{t:Text Editor.OpenFile}" ToolTip="{t:Text Editor.OpenFile.Tip}" Click="OpenFileClicked" />
+                <Button x:Name="OpenFileButton" Content="{t:Text Editor.OpenFile}" ToolTip="{t:Text Editor.OpenFile.Tip}" Click="OpenFileClicked" />
                 <!-- the find bar stays out of the way until it is asked for, as in Sublime Text -->
                 <ToggleButton x:Name="FindToggle" Style="{StaticResource PressedToggle}" Content="{t:Text Editor.Find}" Click="FindToggleClicked"
                               ToolTip="{t:Text Editor.FindToggle.Tip}" />

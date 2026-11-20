@@ -42,6 +42,8 @@ public partial class HelpPage : UserControl
         InitializeComponent();
         PageScroller.ScrollChanged += (_, _) => MarkSectionInView();
         PageScroller.SizeChanged += (_, _) => headingPlaces = null;
+        // Back, Forward and Welcome Window end where the page does, the right column under them left clear (Paul's request)
+        Rail.IsVisibleChanged += (_, _) => TopBar.Margin = new Thickness(0, 0, Rail.IsVisible ? Rail.Width + Rail.Margin.Left : 0, 6);
         // scrolled by hand: the page keeps its place when its examples come in
         PageScroller.PreviewMouseWheel += (_, _) => shownVariable = null;
         PageScroller.PreviewMouseLeftButtonDown += (_, _) => shownVariable = null;
@@ -50,8 +52,21 @@ public partial class HelpPage : UserControl
         renderer.WelcomeClicked += () => WelcomeRequested?.Invoke();
         string last = (string?)AppData.Current.State["helpPage"] ?? "start";
         Go(last, remember: false);
+        // the first page shown drew, at the first look, another line's text over one of its own (the SteamCMD page's
+        // warning under step 3's "Paste this into it"); drawn once more as the tab first shows, it is right, as it is
+        // whenever a page is opened again
+        void FirstShown(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (!IsVisible) return;
+            IsVisibleChanged -= FirstShown;
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ContextIdle, () =>
+            {
+                if (shownVariable is null) Go(shownId, remember: false, offset: PageScroller.VerticalOffset);
+            });
+        }
+        IsVisibleChanged += FirstShown;
         // the page and the list are drawn again in the new language
-        Texts.LanguageChanged += () => Go(shownId, remember: false);
+        Texts.LanguageChanged += () => { if (shownId != "") Go(shownId, remember: false); };
     }
 
     /// <summary>Shows a page (the HTML app's <c>wkGo</c>); an unknown id shows the first page.</summary>
@@ -78,6 +93,7 @@ public partial class HelpPage : UserControl
         shownId = page.Id;
         shownVariable = offset is null ? variable : null;
         CrumbText.Text = page.Group;
+        ShowIndexCrumb(page.Id);
         PageTitle.Text = page.Title;
         // the related pages are listed in the right column
         (FrameworkElement body, double top, double bottom) = renderer.Render(page.Html);
@@ -464,7 +480,8 @@ public partial class HelpPage : UserControl
         {
             Style = (Style)FindResource("WikiNavItemTidy"),
             Content = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap },
-            IsChecked = id == shownId,
+            // Types and Variables is marked on every Documentation page, as they are reached from it
+            IsChecked = id == shownId || id == ReferencePages.IndexId && ReferencePages.IsReference(shownId),
             Tag = id,
             Cursor = Cursors.Hand,
         };
@@ -537,6 +554,19 @@ public partial class HelpPage : UserControl
         Go(id, remember: false, offset);
     }
 
+    /// <summary>
+    /// A Documentation page other than Types and Variables (a topic or a type) is reached from it: the trail names it, as
+    /// "Help › Documentation › Types and Variables", and the list marks it.
+    /// </summary>
+    private void ShowIndexCrumb(string id)
+    {
+        bool under = ReferencePages.IsReference(id) && id != ReferencePages.IndexId;
+        IndexCrumbText.Text = under ? Texts.Get("Help.Reference.Title") : "";
+        IndexArrow.Text = under ? " › " : "";
+    }
+
+    private void IndexCrumbClicked(object sender, RoutedEventArgs e) => Go(ReferencePages.IndexId);
+
     /// <summary>"Help" in the trail above the title opens Help's first page.</summary>
     private void HelpCrumbClicked(object sender, RoutedEventArgs e) => Go(WikiPages.All[0].Id);
 
@@ -558,4 +588,73 @@ public partial class HelpPage : UserControl
     }
 
     private void WelcomeClicked(object sender, RoutedEventArgs e) => WelcomeRequested?.Invoke();
+
+    /// <summary>
+    /// Tutorials: a list of the tutorials under the button, in the order they run, with Start and Cancel under it. A
+    /// double-click or Enter starts the one picked; Escape or a click elsewhere closes it.
+    /// </summary>
+    private void TutorialsClicked(object sender, RoutedEventArgs e)
+    {
+        // the list as the app's others: sunken, one line each (what it covers in its tooltip), the line picked in the
+        // selection colour, as the Mods tab's lines are
+        var list = new ListBox { Background = Brushes.Transparent, BorderThickness = new Thickness(0), Padding = new Thickness(0), FocusVisualStyle = null };
+        var line = new FrameworkElementFactory(typeof(Border), "Row");
+        line.SetValue(Border.PaddingProperty, new Thickness(6, 3, 6, 3));
+        line.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        line.AppendChild(new FrameworkElementFactory(typeof(ContentPresenter)));
+        var template = new ControlTemplate(typeof(ListBoxItem)) { VisualTree = line };
+        var hover = new Trigger { Property = IsMouseOverProperty, Value = true };
+        hover.Setters.Add(new Setter(Border.BackgroundProperty, new DynamicResourceExtension("hover"), "Row"));
+        var picked = new Trigger { Property = ListBoxItem.IsSelectedProperty, Value = true };
+        picked.Setters.Add(new Setter(Border.BackgroundProperty, new DynamicResourceExtension("sel"), "Row"));
+        template.Triggers.Add(hover);
+        template.Triggers.Add(picked);
+        var item = new Style(typeof(ListBoxItem));
+        item.Setters.Add(new Setter(TemplateProperty, template));
+        item.Setters.Add(new Setter(FocusVisualStyleProperty, null));
+        list.ItemContainerStyle = item;
+        foreach (Dialogs.Chapter chapter in Enum.GetValues<Dialogs.Chapter>())
+        {
+            var name = new TextBlock { Text = (int)chapter + 1 + ". " + Dialogs.TourOverlay.NameOf(chapter) };
+            name.SetResourceReference(TextBlock.ForegroundProperty, "ink");
+            list.Items.Add(new ListBoxItem { Content = name, Tag = chapter, ToolTip = Dialogs.TourOverlay.AboutOf(chapter) });
+        }
+        list.SelectedIndex = 0;
+        var well = new Controls.Bevel { MinWidth = 260, Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(2), Child = list };
+        well.SetResourceReference(Controls.Bevel.TopLeftProperty, "lo");
+        well.SetResourceReference(Controls.Bevel.BottomRightProperty, "hi");
+        well.SetResourceReference(Controls.Bevel.BackgroundProperty, "well");
+        var start = new Button { Content = Texts.Get("Help.Tutorials.Start"), Margin = new Thickness(0, 0, 6, 0) };
+        start.SetResourceReference(StyleProperty, "GoButton");
+        var cancel = new Button { Content = Texts.Get("Common.Cancel") };
+        var box = new Controls.Bevel { Padding = new Thickness(10), Child = new StackPanel { Children =
+        {
+            well,
+            new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Children = { start, cancel } },
+        } } };
+        box.SetResourceReference(Controls.Bevel.TopLeftProperty, "hi");
+        box.SetResourceReference(Controls.Bevel.BottomRightProperty, "lo");
+        box.SetResourceReference(Controls.Bevel.BackgroundProperty, "panel");
+        var popup = new System.Windows.Controls.Primitives.Popup
+        {
+            Child = box, PlacementTarget = TutorialsButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            VerticalOffset = 2, StaysOpen = false, AllowsTransparency = true,
+        };
+        void Go()
+        {
+            if (list.SelectedItem is not ListBoxItem { Tag: Dialogs.Chapter chosen }) return;
+            popup.IsOpen = false;
+            MainView.Of(this).Tour.Start(chosen);
+        }
+        start.Click += (_, _) => Go();
+        cancel.Click += (_, _) => popup.IsOpen = false;
+        list.MouseDoubleClick += (_, _) => Go();
+        box.PreviewKeyDown += (_, key) =>
+        {
+            if (key.Key == Key.Enter) { key.Handled = true; Go(); }
+            else if (key.Key == Key.Escape) { key.Handled = true; popup.IsOpen = false; }
+        };
+        popup.Opened += (_, _) => Dispatcher.BeginInvoke(() => (list.ItemContainerGenerator.ContainerFromIndex(0) as ListBoxItem)?.Focus(), System.Windows.Threading.DispatcherPriority.Input);
+        popup.IsOpen = true;
+    }
 }

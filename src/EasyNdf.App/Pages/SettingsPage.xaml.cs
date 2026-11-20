@@ -166,7 +166,7 @@ public partial class SettingsPage : UserControl
             DecimalsRow.NoteIsWarning = false;
             foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FolderTreeSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
                 AskFolderSwitch, StructureSwitch, ZipSwitch, HoldBackSwitch, WatermarkFirstSwitch, RememberFolderSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch, ArmoryMarksSwitch,
-                ArmoryFileNamesSwitch, MonitorScalingSwitch, UsageSwitch, LogSwitch })
+                ArmoryFileNamesSwitch, MonitorScalingSwitch, UsageSwitch, LogSwitch, UpdatesSwitch })
                 toggle.IsChecked = IsOn((string)toggle.Tag);
             foreach (ComboBox choice in new[] { LineEndChoice, ScopeChoice, FolderChoice, DuplicateChoice, UndoChoice, ScaleChoice, UsageEveryChoice, LogKeepChoice })
             {
@@ -379,6 +379,32 @@ public partial class SettingsPage : UserControl
     }
 
     // ---- data ----
+
+    /// <summary>
+    /// "Clean Up Mod Files...": the files no mod uses any more (the folders of deleted mods, files no File rule carries,
+    /// pictures no mod names), with the room they take, taken away once the user agrees. Nothing is ever cleaned up
+    /// without asking (Paul's choice).
+    /// </summary>
+    private async void CleanUpClicked(object sender, RoutedEventArgs e)
+    {
+        if (ModFolders.Views is not Data.ModFileViews views) return;
+        var mods = AppData.Current.Mods.Select(mod => (Stem: AppData.Current.ModStore.FileStemOf(mod), Text: ModFiles.StoredText(mod)))
+            .Where(mod => mod.Stem is not null).Select(mod => (mod.Stem!, mod.Text)).ToList();
+        Data.ModFileViews.CleanUp found = await Task.Run(() => views.FindUnused(mods));
+        if (found.IsEmpty)
+        {
+            DataNote.Text = Texts.Get("Settings.ModFiles.CleanUp.Nothing");
+            return;
+        }
+        List<string> what = [];
+        if (found.Files.Count > 0) what.Add(Texts.Count("Settings.ModFiles.CleanUp.Files", found.Files.Count, ("count", Texts.Number(found.Files.Count))));
+        if (found.Folders.Count > 0) what.Add(Texts.Count("Settings.ModFiles.CleanUp.Folders", found.Folders.Count, ("count", Texts.Number(found.Folders.Count))));
+        string question = Texts.Get("Settings.ModFiles.CleanUp.Ask", ("what", string.Join(Texts.Get("Settings.ModFiles.CleanUp.And"), what)),
+            ("size", Data.FileList.FileStatus.Size(found.Bytes)));
+        if (!await View.Messages.Confirm(question, Texts.Get("Settings.ModFiles.CleanUp.Delete"), DialogIcon.Warning)) return;
+        await Task.Run(() => views.Remove(found));
+        DataNote.Text = Texts.Get("Settings.ModFiles.CleanUp.Done", ("size", Data.FileList.FileStatus.Size(found.Bytes)));
+    }
 
     /// <summary>"Back up all mods": every preset of every mod in one file.</summary>
     private void BackupClicked(object sender, RoutedEventArgs e)

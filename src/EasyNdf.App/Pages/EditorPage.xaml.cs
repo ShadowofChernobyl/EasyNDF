@@ -212,6 +212,24 @@ public partial class EditorPage : UserControl
     /// Opens a file of the Files tab, in a new tab after the one in use and in its place, or shows its tab when it is open
     /// already (see <see cref="Bring"/>); with <paramref name="showTab"/>, the Editor tab comes to the front.
     /// </summary>
+    /// <summary>
+    /// A listed row now holds another file (Replace, when a file of the same name was added): a tab showing it reads the
+    /// new file, so the editor and the Files tab stay in step.
+    /// </summary>
+    public async Task ReadAgain(FileEntry entry)
+    {
+        if (TabOf(entry) is not FileView open || entry.Source is null) return;
+        try
+        {
+            string text = await Task.Run(() => FileContent.Text(entry));
+            if (TabOf(entry) == open) await LoadAside(open, entry.Name, text, entry);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", entry.Name), ("problem", error.Message)), DialogIcon.Error);
+        }
+    }
+
     private async Task Open(FileEntry entry, bool showTab)
     {
         if (entry.Source is null) return;
@@ -310,19 +328,15 @@ public partial class EditorPage : UserControl
 
     private async void OpenFileClicked(object sender, RoutedEventArgs e) => await OpenFileOnItsOwn();
 
-    /// <summary>"Open file...": a file that is not on the Files tab, in a new tab.</summary>
+    /// <summary>
+    /// "Open file...": the file is added to the Files tab as well (a file of the same name there asks Replace, Keep both
+    /// or Skip, as Add Files does), and opens here from its row, so the editor and the list stay in step.
+    /// </summary>
     private async Task OpenFileOnItsOwn()
     {
         var dialog = new OpenFileDialog { Title = Texts.Get("Editor.OpenFile.Title"), Filter = Texts.Get("Files.NdfFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        string text;
-        try { text = await File.ReadAllTextAsync(dialog.FileName); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        {
-            await Messages.Tell(Texts.Get("Editor.CouldNotRead", ("file", Path.GetFileName(dialog.FileName)), ("problem", error.Message)), DialogIcon.Error);
-            return;
-        }
-        await LoadAside(NewTab(), Path.GetFileName(dialog.FileName), text, null, path: dialog.FileName);
+        if (await MainView.Of(this).FilesTab.AddForEditor(dialog.FileName) is FileEntry row) await Open(row);
     }
 
     /// <summary>The dropdown's right-click menu.</summary>

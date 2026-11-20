@@ -44,6 +44,9 @@ public partial class RuleWindow : UserControl
     private RulesModel? model;
     private UndoHistory? history;
     private RuleEditor? editor;
+
+    /// <summary>The parts built for the open rule, for the tutorial to point at; null before a rule is open.</summary>
+    internal RuleEditor? Parts => editor;
     private JsonObject? shownRule;
 
     /// <summary>Builds the window, closed.</summary>

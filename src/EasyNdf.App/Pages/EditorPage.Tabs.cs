@@ -110,6 +110,15 @@ public partial class EditorPage
     /// <summary>The file in use; with no file open, a text box no tab shows yet, which the next file opened takes.</summary>
     private FileView view = null!;
 
+    /// <summary>Whether a file is shown, for the tutorial.</summary>
+    internal bool HasFile => view?.Shown is not null;
+
+    /// <summary>The name of the file shown, for the tutorial; "" with none.</summary>
+    internal string ShownName => view?.Shown?.Name ?? "";
+
+    /// <summary>Whether the file shown is its export (Show Export), for the tutorial.</summary>
+    internal bool ShowsExport => view?.Shown?.IsExport == true;
+
     // ---- what the rest of the page knows as the editor: the file in use ----
 
     /// <summary>The text box of the file in use.</summary>

@@ -33,7 +33,7 @@
             <!-- .bar: Done and Cancel at the right -->
             <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
                 <Button DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" ToolTip="{t:Text Common.Cancel.Tip}" Margin="6,0,0,0" Click="CancelClicked" />
-                <Button DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="{t:Text Rules.Row.Done}" ToolTip="{t:Text Rules.Row.Done.Tip}" Click="DoneClicked" />
+                <Button x:Name="DoneButton" DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="{t:Text Rules.Row.Done}" ToolTip="{t:Text Rules.Row.Done.Tip}" Click="DoneClicked" />
             </DockPanel>
 
             <!-- #subForm: sunken, in the panel colour, 10 by 12 pixels in; it scrolls when the row does not fit -->

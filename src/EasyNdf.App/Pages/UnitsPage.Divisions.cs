@@ -37,6 +37,9 @@ public partial class UnitsPage
     /// <summary>The division chosen in the list, whose units the centre shows; null for All units.</summary>
     private Division? chosenDivision;
 
+    /// <summary>Whether a division is chosen in the division list, for the tutorial.</summary>
+    internal bool HasChosenDivision => chosenDivision is not null;
+
     /// <summary>The categories folded away in a division's Cards view, by code.</summary>
     private readonly HashSet<string> foldedCategories = [];
 

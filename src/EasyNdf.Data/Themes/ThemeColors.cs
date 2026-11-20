@@ -112,6 +112,7 @@ public static partial class ThemeColors
         (colors["side-a"], colors["side-b"]) = Sides(colors);
         colors["usage-waiting"] = Waiting(colors);
         colors["usage-modded"] = Modded(colors);
+        colors["usage-outside"] = Outside(colors);
     }
 
     /// <summary>
@@ -119,6 +120,9 @@ public static partial class ThemeColors
     /// a light theme.
     /// </summary>
     public static string Waiting(IReadOnlyDictionary<string, string> colors) => IsLight(colors["bg"]) ? "#1b8189" : "#4cc4cc";
+
+    /// <summary>The usage readout's colour for memory outside .NET: a blue no other part of the Memory card uses.</summary>
+    public static string Outside(IReadOnlyDictionary<string, string> colors) => IsLight(colors["bg"]) ? "#2f55b8" : "#5a7ee0";
 
     /// <summary>The usage readout's colour for the Armory's units as the mods make them: an indigo no other part uses.</summary>
     public static string Modded(IReadOnlyDictionary<string, string> colors) => IsLight(colors["bg"]) ? "#5a46c4" : "#8f7bea";

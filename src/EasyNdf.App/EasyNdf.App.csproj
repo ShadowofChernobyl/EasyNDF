@@ -10,6 +10,8 @@
     <RootNamespace>EasyNdf.App</RootNamespace>
     <Version>1.0.0</Version>
     <ApplicationIcon>Assets\EasyNDF.ico</ApplicationIcon>
+    <!-- Startup.cs: the installer's steps (Velopack) before the app; a build that names its own start keeps it -->
+    <StartupObject Condition="'$(StartupObject)' == ''">EasyNdf.App.Startup</StartupObject>
     <!-- lets the app build on Linux too; it only runs on Windows -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!--
@@ -30,6 +32,8 @@
     <Resource Include="Assets\EasyNDF.ico" />
     <!-- WARNO Tactical Overhaul, the mod the app comes with: the HTML app's #defaultMod -->
     <EmbeddedResource Include="Assets\DefaultMod.json" LogicalName="DefaultMod.json" />
+    <!-- the tutorial's sample Ammunition.ndf (Files\TutorialSample.cs) -->
+    <EmbeddedResource Include="Assets\Tutorial\Ammunition.ndf" LogicalName="TutorialAmmunition.ndf" />
     <!-- the File Editor's guide to WARNO's names: value types, descriptions, choices and limits (see Editor\EditorGuide.cs) -->
     <EmbeddedResource Include="Assets\EditorGuide.json.gz" LogicalName="EditorGuide.json.gz" />
     <EmbeddedResource Include="Assets\ReferenceTopics.json" LogicalName="ReferenceTopics.json" />
@@ -45,7 +49,8 @@
     <EmbeddedResource Include="Help\about.html" LogicalName="about.html" />
     <EmbeddedResource Include="Help\changelog.html" LogicalName="changelog.html" />
     <EmbeddedResource Include="..\..\LICENSE.txt" Link="LICENSE.txt" LogicalName="LICENSE.txt" />
-    <Content Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" />
+    <!-- the notices of the software by others, shown after the license by About > License: inside the app, so it can be one file -->
+    <EmbeddedResource Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" LogicalName="THIRD-PARTY-NOTICES.txt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -57,6 +62,7 @@
     <!-- opens .rar archives (MIT; its notice is in THIRD-PARTY-NOTICES.txt, which ships beside the app) -->
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
     <!-- draw the 3D model viewer's models with Direct3D 11, and compile its shaders (MIT, as above) -->
     <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
     <PackageReference Include="Vortice.D3DCompiler" Version="3.6.2" />

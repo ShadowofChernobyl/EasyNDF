@@ -47,6 +47,9 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// </summary>
     public event Action? FilesChanged;
 
+    /// <summary>Raised for each listed row a newly added file replaced: a File Editor tab showing it reads it again.</summary>
+    public event Action<FileEntry>? RowReplaced;
+
     /// <summary>
     /// Takes the view the app saved last time: columns, order and sort from the settings (the HTML app's <c>cols</c>,
     /// <c>sort</c> and <c>groupFolders</c>, and the "Show only" choice, <c>showOnly</c>), and column widths from what it
@@ -602,6 +605,7 @@ public sealed class FileListModel : INotifyPropertyChanged
             if (choice == DuplicateChoice.Replace)
             {
                 Replace(existing!, file);
+                RowReplaced?.Invoke(existing!);
                 MarkModsOnFiles([existing!], armoryFiles);
                 fresh.Add(existing!);
                 replaced++;
@@ -784,6 +788,12 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// A click on a row: selects only it; with Ctrl, adds it to the selection or takes it out; with Shift, selects every
     /// row from the one clicked last to this one.
     /// </summary>
+    /// <summary>Selects a file's row alone, as a click on it does (the tutorial); nothing when it is not shown.</summary>
+    public void SelectEntry(FileEntry entry)
+    {
+        if (matching.FirstOrDefault(row => row.Entry == entry) is FileRow row) Click(row, control: false, shift: false);
+    }
+
     public void Click(FileRow row, bool control, bool shift)
     {
         if (shift && lastClicked is not null && Shown.Contains(lastClicked))

@@ -353,6 +353,12 @@ public partial class ExportWindow : UserControl
 
     private void CancelClicked(object sender, RoutedEventArgs e) => Close(null);
 
+    /// <summary>Closes the window as Cancel does (the tutorial, going to a step outside it).</summary>
+    internal void CancelNow()
+    {
+        if (IsOpen) Close(null);
+    }
+
     private void Close(ExportChoice? choice)
     {
         Visibility = Visibility.Collapsed;

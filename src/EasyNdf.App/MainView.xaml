@@ -146,11 +146,11 @@
         <!-- a panel shown beside its button, such as a unit's transports in the Armory -->
         <dialogs:FloatingPanel x:Name="Floating" />
         <!-- the welcome window, the first time the app starts -->
-        <!-- the tutorial: under the welcome window and the questions, which it steps aside for -->
-        <dialogs:TourOverlay x:Name="Tour" />
         <dialogs:WelcomeWindow x:Name="Welcome" />
         <!-- the message window, over everything else while it is open -->
         <dialogs:MessageOverlay x:Name="Messages" />
+        <!-- the tutorial: over the app's windows and questions, so a step can point inside them; it steps aside for one it is not about -->
+        <dialogs:TourOverlay x:Name="Tour" />
         <!-- the popup of the ? buttons, over the windows too -->
         <dialogs:HelpPopup x:Name="HelpPopup" />
         <!-- the notifications, over everything: what the last action did -->

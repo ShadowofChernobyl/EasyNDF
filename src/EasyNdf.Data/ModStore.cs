@@ -4,8 +4,9 @@ using EasyNdf.Data.Languages;
 namespace EasyNdf.Data;
 
 /// <summary>
-/// The mods, kept in the Mods folder: one file per mod, in the same format as "Export mod", so a mod file can also be
-/// copied in or out of the folder by hand.
+/// The mods, kept in the Mods folder: each in a folder of its own named after it, with its file ("WTO\WTO.mod.json", in
+/// the same format as "Export mod", so it can also be copied in or out by hand) beside the files it carries
+/// (<see cref="ModFileViews"/>). A mod file kept the earlier way, loose in the Mods folder, moves into its folder at start.
 /// </summary>
 public sealed class ModStore
 {
@@ -24,10 +25,55 @@ public sealed class ModStore
     {
         folder = modsFolder;
         Directory.CreateDirectory(folder);
-        foreach (string path in Directory.GetFiles(folder, "*.mod.json").Order(StringComparer.OrdinalIgnoreCase))
+        MoveIntoFolders();
+        foreach (string path in ModFilesOnDisk().Order(StringComparer.OrdinalIgnoreCase))
             ReadFile(path);
         Mods.Sort(ByName);
     }
+
+    private const string Extension = ".mod.json";
+
+    /// <summary>Held while a mod's folder moves, and while its files are laid out (<see cref="ModFileViews"/>), so the two never meet.</summary>
+    public object FolderLock { get; } = new();
+
+    /// <summary>Where the file of a mod whose file is named so is kept: in its own folder.</summary>
+    private string PathFor(string stem) => Path.Combine(folder!, stem, stem + Extension);
+
+    /// <summary>Mod files kept loose in the Mods folder (as earlier versions did) move into a folder of their own.</summary>
+    private void MoveIntoFolders()
+    {
+        foreach (string loose in Directory.GetFiles(folder!, "*" + Extension))
+        {
+            string target = PathFor(StemOf(loose));
+            try
+            {
+                if (File.Exists(target)) continue;
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Move(loose, target);
+            }
+            // one that can't move (held by another program) is read where it is, and moves another time
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    /// <summary>Every mod file: each in its folder, and any still loose in the Mods folder.</summary>
+    private IEnumerable<string> ModFilesOnDisk() =>
+        Directory.GetFiles(folder!, "*" + Extension)
+            .Concat(Directory.GetDirectories(folder!).Select(inner => Path.Combine(inner, Path.GetFileName(inner) + Extension)).Where(File.Exists));
+
+    /// <summary>The path a mod file would have loose in the Mods folder: how names are kept apart ("WTO", "WTO (2)").</summary>
+    private string FlatPathOf(string path) => Path.Combine(folder!, Path.GetFileName(path));
+
+    /// <summary>A mod was saved: the name of its file without ".mod.json", and the text written. Raised on the saving thread.</summary>
+    public event Action<string, string>? Saved;
+
+    /// <summary>A mod's file was renamed: the old and the new name, without ".mod.json".</summary>
+    public event Action<string, string>? FileRenamed;
+
+    /// <summary>The name of a mod's file without ".mod.json"; null for a mod not saved, or kept in memory only.</summary>
+    public string? FileStemOf(Mod mod) => pathOf.TryGetValue(mod, out string? path) ? StemOf(path) : null;
+
+    private static string StemOf(string path) => Path.GetFileName(path)[..^Extension.Length];
 
     /// <summary>The mods, sorted by name.</summary>
     public List<Mod> Mods { get; } = [];
@@ -62,11 +108,11 @@ public sealed class ModStore
     /// </summary>
     private List<string> PathsTakenBesides(Mod mod)
     {
-        List<string> taken = [.. pathOf.Where(p => p.Key != mod).Select(p => p.Value)];
+        List<string> taken = [.. pathOf.Where(p => p.Key != mod).Select(p => FlatPathOf(p.Value))];
         pathOf.TryGetValue(mod, out string? own);
         try
         {
-            taken.AddRange(Directory.GetFiles(folder!, "*.mod.json").Where(file => !string.Equals(file, own, StringComparison.OrdinalIgnoreCase)));
+            taken.AddRange(ModFilesOnDisk().Where(file => !string.Equals(file, own, StringComparison.OrdinalIgnoreCase)).Select(FlatPathOf));
         }
         catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
         {
@@ -76,10 +122,10 @@ public sealed class ModStore
     }
 
     /// <summary>
-    /// Saves a mod after a change, in the file named after it: "WTO.mod.json", or "WTO (2).mod.json" while another
-    /// file has that name (a mod "WTO?", whose file name is "WTO" too, or a file the app could not read). A renamed
-    /// mod moves to a file named after its new name, and one kept as "WTO (2)" moves to "WTO" once that is free, so
-    /// its file never keeps a name it no longer has.
+    /// Saves a mod after a change, in the file named after it: "WTO\WTO.mod.json", or "WTO (2)\WTO (2).mod.json" while
+    /// another has that name (a mod "WTO?", whose file name is "WTO" too, or a file the app could not read). A renamed
+    /// mod's folder and file take its new name, and one kept as "WTO (2)" moves to "WTO" once that is free, so they
+    /// never keep a name it no longer has.
     /// </summary>
     /// <remarks>
     /// Tuned for speed, as every change saves the open mod on the window's thread: the mod's text is written as it is
@@ -90,18 +136,63 @@ public sealed class ModStore
     {
         if (folder is null) { Mods.Sort(ByName); return; }
         pathOf.TryGetValue(mod, out string? oldPath);
-        string path = FileNames.FreePath(folder, mod.Name, ".mod.json", PathsTakenBesides(mod));
-        // Windows names files without minding case: a name changed in case only is the same file, renamed after
-        bool sameFile = string.Equals(oldPath, path, StringComparison.OrdinalIgnoreCase);
+        string path = PathFor(StemOf(FileNames.FreePath(folder, mod.Name, Extension, PathsTakenBesides(mod))));
 
-        JsonFiles.WriteText(sameFile ? oldPath! : path, JsonFiles.AsMadeAgain(ModFiles.StoredText(mod)));
-        if (sameFile && oldPath != path) File.Move(oldPath!, path);
-        else if (oldPath is not null && !sameFile) File.Delete(oldPath);
+        string text = JsonFiles.AsMadeAgain(ModFiles.StoredText(mod));
+        if (oldPath is null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            JsonFiles.WriteText(path, text);
+        }
+        else
+        {
+            // written where it is first, so a move that fails loses nothing
+            JsonFiles.WriteText(oldPath, text);
+            if (oldPath != path) path = Move(oldPath, path);
+        }
         pathOf[mod] = path;
+        if (oldPath is not null && oldPath != path) FileRenamed?.Invoke(StemOf(oldPath), StemOf(path));
+        Saved?.Invoke(StemOf(path), text);
         Mods.Sort(ByName);
     }
 
-    /// <summary>Deletes a mod and its file.</summary>
+    /// <summary>
+    /// Moves a mod's file to where its new name puts it, with its folder (and the files in it) when it has one; when the
+    /// folder can't move (open in another program) or one of the new name is there, the file alone moves. Returns where
+    /// it is now.
+    /// </summary>
+    private string Move(string oldPath, string path)
+    {
+        string oldFolder = Path.GetDirectoryName(oldPath)!, newFolder = Path.GetDirectoryName(path)!;
+        bool hasFolder = string.Equals(Path.GetFileName(oldFolder), StemOf(oldPath), StringComparison.OrdinalIgnoreCase)
+            && string.Equals(Path.GetDirectoryName(oldFolder), folder, StringComparison.OrdinalIgnoreCase);
+        lock (FolderLock)
+        {
+            try
+            {
+                if (hasFolder && oldFolder != newFolder)
+                {
+                    if (string.Equals(oldFolder, newFolder, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // a change in case only: through a name of its own, as Windows sees both as the same folder
+                        string between = oldFolder + ".renaming";
+                        Directory.Move(oldFolder, between);
+                        Directory.Move(between, newFolder);
+                    }
+                    else if (!Directory.Exists(newFolder)) Directory.Move(oldFolder, newFolder);
+                    if (Directory.Exists(newFolder) && File.Exists(Path.Combine(newFolder, Path.GetFileName(oldPath))))
+                        oldPath = Path.Combine(newFolder, Path.GetFileName(oldPath));
+                }
+            }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
+            Directory.CreateDirectory(newFolder);
+            // Windows names files without minding case: a name changed in case only is the same file, renamed
+            if (oldPath != path) File.Move(oldPath, path);
+        }
+        return path;
+    }
+
+    /// <summary>Deletes a mod's file; its folder, with the files it carries, stays until "Clean Up Mod Files".</summary>
     public void Delete(Mod mod)
     {
         if (pathOf.Remove(mod, out string? path)) File.Delete(path);

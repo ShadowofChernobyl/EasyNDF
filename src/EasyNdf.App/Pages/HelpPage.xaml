@@ -30,12 +30,14 @@
 
         <!-- #wkPage: Back, Forward and Welcome window stay put; the page under them scrolls -->
         <DockPanel Grid.Column="2">
-            <DockPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+            <!-- ends at the page's right edge: the right column's width is kept clear (HelpPage.xaml.cs) -->
+            <DockPanel x:Name="TopBar" DockPanel.Dock="Top" Margin="0,0,0,6">
                 <Button x:Name="BackButton" Style="{StaticResource IconButton}" Content="‹" ToolTip="{t:Text Help.Back.Tip}" Click="BackClicked" VerticalAlignment="Center"
                         AutomationProperties.Name="{t:Text Help.Back.Tip}" controls:OffReason.Text="{t:Text Help.Back.Off}" />
                 <Button x:Name="ForwardButton" Style="{StaticResource IconButton}" Content="›" ToolTip="{t:Text Help.Forward.Tip}" Click="ForwardClicked" Margin="6,0,0,0" VerticalAlignment="Center"
                         AutomationProperties.Name="{t:Text Help.Forward.Tip}" controls:OffReason.Text="{t:Text Help.Forward.Off}" />
                 <Button DockPanel.Dock="Right" Content="{t:Text Help.WelcomeWindow}" ToolTip="{t:Text Help.WelcomeWindow.Tip}" HorizontalAlignment="Right" Click="WelcomeClicked" />
+                <Button x:Name="TutorialsButton" DockPanel.Dock="Right" Content="{t:Text Help.Tutorials}" ToolTip="{t:Text Help.Tutorials.Tip}" HorizontalAlignment="Right" Margin="0,0,6,0" Click="TutorialsClicked" />
             </DockPanel>
             <!-- the page's contents and related pages in a column on the right, which stays put as the page scrolls -->
             <!-- no taller than the page beside it: a long list (a Reference page's dozens of files) scrolls on its own -->
@@ -60,6 +62,9 @@
                         <Hyperlink Style="{StaticResource CrumbLink}" Click="HelpCrumbClicked" ToolTip="{t:Text Help.Crumb.Help.Tip}"><Run Text="{t:Text Help.Crumb.Help}" /></Hyperlink>
                         <Run Text=" › " Foreground="{DynamicResource muted}" />
                         <Hyperlink x:Name="Crumb" Style="{StaticResource CrumbLink}" Click="CrumbClicked" ToolTip="{t:Text Help.Crumb.Tip}"><Run x:Name="CrumbText" /></Hyperlink>
+                        <!-- a Documentation page under Types and Variables: that page too, between the group and the title -->
+                        <Run x:Name="IndexArrow" Text=" › " Foreground="{DynamicResource muted}" />
+                        <Hyperlink x:Name="IndexCrumb" Style="{StaticResource CrumbLink}" Click="IndexCrumbClicked"><Run x:Name="IndexCrumbText" /></Hyperlink>
                     </TextBlock>
                     <TextBlock x:Name="PageTitle" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource ink}" TextWrapping="Wrap"
                                LineHeight="24.65" LineStackingStrategy="BlockLineHeight" />

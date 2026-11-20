@@ -108,6 +108,15 @@ public sealed class UnitsPerCardMark : FrameworkElement
         var typeface = new Typeface(FontFamily, FontStyles.Normal, FontWeight, FontStretches.Normal);
         FormattedText cross = Text("×", typeface, CrossSize, pixelsPerDip);
         FormattedText number = Text(Number, typeface, NumberSize, pixelsPerDip);
+        try { _ = number.Baseline; }
+        catch (System.IO.IOException)
+        {
+            // Windows could not open the font's file for that weight (seen once in the VM, 2026-11-19, which closed the
+            // app while a battlegroup was drawn): the system font's regular weight instead
+            typeface = new Typeface(SystemFonts.MessageFontFamily, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+            cross = Text("×", typeface, CrossSize, pixelsPerDip);
+            number = Text(Number, typeface, NumberSize, pixelsPerDip);
+        }
         // the two on the number's baseline, with a small gap between them
         var shape = new GeometryGroup();
         shape.Children.Add(cross.BuildGeometry(new Point(0, number.Baseline - cross.Baseline)));

@@ -83,10 +83,14 @@ public sealed class AppFolders
     /// <summary>Where chosen pictures are kept when the app has no data folder, as in the designer.</summary>
     public static string TemporaryPictures => Path.Combine(Path.GetTempPath(), "EasyNDF", "Pictures");
 
-    /// <summary>Makes sure all seven folders exist.</summary>
+    /// <summary>
+    /// Makes sure the folders exist; Pictures and Mod Files only when something is kept in them, as their files move
+    /// into the mods' folders (<see cref="ModFileViews"/>).
+    /// </summary>
     public void CreateAll()
     {
-        foreach (string folder in All) Directory.CreateDirectory(folder);
+        foreach (string folder in All)
+            if (folder != Pictures && folder != ModFiles) Directory.CreateDirectory(folder);
     }
 
     /// <summary>
@@ -151,6 +155,16 @@ public sealed class AppFolders
             Directory.CreateDirectory(to.All[i]);
             foreach (string file in Directory.GetFiles(from.All[i]))
                 File.Copy(file, Path.Combine(to.All[i], Path.GetFileName(file)), overwrite: true);
+            // each mod's files are in a folder of its own beside it
+            if (from.All[i] == from.Mods)
+                foreach (string folder in Directory.GetDirectories(from.Mods)) CopyTree(folder, Path.Combine(to.Mods, Path.GetFileName(folder)));
         }
+    }
+
+    private static void CopyTree(string from, string to)
+    {
+        Directory.CreateDirectory(to);
+        foreach (string file in Directory.GetFiles(from)) File.Copy(file, Path.Combine(to, Path.GetFileName(file)), overwrite: true);
+        foreach (string folder in Directory.GetDirectories(from)) CopyTree(folder, Path.Combine(to, Path.GetFileName(folder)));
     }
 }

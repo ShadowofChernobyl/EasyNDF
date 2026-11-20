@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 
 namespace EasyNdf.App.Controls;
@@ -45,6 +46,7 @@ public static class Menus
         menu.PlacementTarget = owner;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
         menu.IsOpen = true;
+        last = menu;
         return menu;
     }
 
@@ -56,6 +58,7 @@ public static class Menus
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
         menu.VerticalOffset = 2;
         menu.IsOpen = true;
+        last = menu;
         return menu;
     }
 
@@ -67,7 +70,24 @@ public static class Menus
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
         menu.VerticalOffset = -2;
         menu.IsOpen = true;
+        last = menu;
     }
+
+    /// <summary>The menu opened last.</summary>
+    private static ContextMenu? last;
+
+    /// <summary>Whether a menu opened here is open.</summary>
+    public static bool IsOpen => last?.IsOpen == true;
+
+    /// <summary>Closes the menu opened here, if it is open (the tutorial, going to a step outside it).</summary>
+    public static void CloseOpen()
+    {
+        if (last is { IsOpen: true } menu) menu.IsOpen = false;
+    }
+
+    /// <summary>An item of the open menu by its text, for the tutorial to point at; null when no menu is open or none has it.</summary>
+    public static MenuItem? OpenItem(string label) =>
+        last is { IsOpen: true } menu ? menu.Items.OfType<MenuItem>().FirstOrDefault(item => AutomationProperties.GetName(item) == label) : null;
 
     /// <summary>Makes a menu without opening it.</summary>
     public static ContextMenu Build(IEnumerable<MenuChoice?> items)
@@ -85,6 +105,7 @@ public static class Menus
             if (ReferenceEquals(item, Line)) { into.Add(new Separator()); continue; }
             if (item.IsHeading) { into.Add(HeadingItem(item.Label)); continue; }
             var entry = new MenuItem { Header = HeaderOf(item), IsEnabled = item.IsEnabled, InputGestureText = Text.KeyNames.Of(item.Key) };
+            AutomationProperties.SetName(entry, item.Label);
             if (item.Tip != "") entry.ToolTip = item.Tip;
             // a dim item's tip says why it is dim, such as which file to add first
             ToolTipService.SetShowOnDisabled(entry, true);

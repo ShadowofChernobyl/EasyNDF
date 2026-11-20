@@ -274,6 +274,22 @@ public partial class RulesPage : UserControl
     /// values another mod that is on also changes, and whether it runs on no file, as none on the Files tab is for its
     /// game.
     /// </summary>
+    /// <summary>The open mod's on/off switch in the list, for the tutorial to outline; null while its line is not drawn.</summary>
+    internal FrameworkElement? OpenModSwitch()
+    {
+        foreach (object item in ModLines.Items)
+            if (item is ModLine { IsSelected: true } && ModLines.ItemContainerGenerator.ContainerFromItem(item) is DependencyObject line)
+                return FirstSwitch(line);
+        return null;
+        static CheckBox? FirstSwitch(DependencyObject at)
+        {
+            if (at is CheckBox found) return found;
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(at); i++)
+                if (FirstSwitch(System.Windows.Media.VisualTreeHelper.GetChild(at, i)) is CheckBox inside) return inside;
+            return null;
+        }
+    }
+
     public sealed record ModLine(Mod Mod, bool IsSelected, bool IsOn, IReadOnlyList<ModLetter> Letters, IReadOnlyList<ModConflict> Conflicts, bool HasNoFileOfItsGame)
     {
         /// <summary>Whether it is under a group's heading, a step further in.</summary>

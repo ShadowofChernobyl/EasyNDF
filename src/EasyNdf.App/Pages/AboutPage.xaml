@@ -1,5 +1,5 @@
 <!--
-  The About tab (the HTML app's #pageAbout): Change log, License and Support on Ko-fi above the text of Help/about.html, which
+  The About tab (the HTML app's #pageAbout): Change log, License (with the third-party licenses after it) and Support on Ko-fi above the text of Help/about.html, which
   AboutPage.xaml.cs draws, and which scrolls under them.
 -->
 <UserControl x:Class="EasyNdf.App.Pages.AboutPage"

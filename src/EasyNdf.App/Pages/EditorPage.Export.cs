@@ -131,6 +131,17 @@ public partial class EditorPage
     /// when it was edited by hand, against the file as first loaded, so both kinds of edit show). Pressed again, it goes
     /// back to the whole export.
     /// </summary>
+    /// <summary>For the tutorial: shows the file, its export, or the export's changed lines ("file", "export" or "changes").</summary>
+    internal async Task ShowForTour(string kind)
+    {
+        if (shown is null || ShownKind == kind) return;
+        // from the changed lines, first back to the whole export
+        if (ShownKind == "changes") await ShowChangesOnly();
+        if (kind == "changes" || kind == "export" && ShownKind == "file" || kind == "file" && ShownKind == "export")
+            await (kind == "changes" ? ShowChangesOnly() : ShowExportOrSource());
+        Show();
+    }
+
     private async void ChangesClicked(object sender, RoutedEventArgs e)
     {
         await ShowChangesOnly();

@@ -496,6 +496,45 @@ public partial class FilesPage : UserControl
     /// A file added on its own, with the folders it sits in from GameData on when it is a dictionary file such as
     /// UNITS.csv, so the export puts it in the mod's Localisation folder as the game wants it.
     /// </summary>
+    /// <summary>
+    /// The File Editor's Open File: the file is added to the list too, so the two stay in step (Paul's request). A file of
+    /// the same name already listed asks as Add Files does (Replace, Keep both, Skip, or the setting's answer). Gives back
+    /// the row to open: the one added or replaced, or the listed one when this file was skipped; null when nothing was
+    /// added (its game question cancelled, or a run going).
+    /// </summary>
+    /// <summary>
+    /// The tutorial's Ammunition.ndf: the one listed already, else the built-in sample, added and read (it is the game's,
+    /// in the game's folder for it). Null while a run is going.
+    /// </summary>
+    internal async Task<FileEntry?> EnsureTutorialFile()
+    {
+        FileEntry? Listed() => Model.Entries.FirstOrDefault(entry => string.Equals(entry.Name, TutorialSample.Name, StringComparison.OrdinalIgnoreCase));
+        if (Listed() is null && !Model.IsBusy)
+            await AddAndRead([FileToAdd.OnDisk(TutorialSample.FilePath()) with { Game = GameTitle.Warno }], fromFolder: false);
+        // a search or "Has rules" left from before would hide it (no rules apply to it yet): the list shows everything
+        if (Listed() is FileEntry sample && !Model.Shown.Any(row => row.Entry == sample))
+        {
+            Model.Search = "";
+            Model.ShowOnly = ShowOnly.All;
+        }
+        return Listed();
+    }
+
+    internal async Task<FileEntry?> AddForEditor(string path)
+    {
+        FileToAdd file = LooseFile(path);
+        string full = Path.GetFullPath(path);
+        HashSet<FileEntry> before = [.. Model.Entries];
+        await AddAndRead([file], fromFolder: false);
+        // the row the file went into: new, or the listed one it replaced
+        FileEntry? row = Model.Entries.LastOrDefault(entry => !before.Contains(entry) && string.Equals(entry.Source, full, StringComparison.OrdinalIgnoreCase))
+            ?? Model.Entries.LastOrDefault(entry => string.Equals(entry.Source, full, StringComparison.OrdinalIgnoreCase));
+        if (row is not null) return row;
+        // skipped: the file already listed under that name
+        string key = EasyNdf.Engine.Export.FileReferences.Key(file.Folder, file.Name);
+        return Model.Entries.FirstOrDefault(entry => entry.Key == key);
+    }
+
     private static FileToAdd LooseFile(string path)
     {
         if (!Data.Divisions.FileAndTextRules.IsDictionaryFile(path) || Data.Divisions.DivisionExtras.GameDataFolderOf(path) is not string gameData)
@@ -690,6 +729,9 @@ public partial class FilesPage : UserControl
     /// of their own first, in the folders the .zip keeps, then packed into the folder chosen. With "Remember this folder
     /// for these files" off (and always for a .zip) the files keep the folders they had.
     /// </summary>
+    /// <summary>Opens the Export window as the Export button does (the tutorial, going to a step inside it).</summary>
+    internal void OpenExportNow() => RunClicked(this, new RoutedEventArgs());
+
     private async void RunClicked(object sender, RoutedEventArgs e)
     {
         if (Model.IsBusy) return;

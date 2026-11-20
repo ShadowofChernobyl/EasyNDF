@@ -29,6 +29,7 @@ public partial class WelcomeWindow : UserControl
     /// <summary>Opens the window, with the keyboard on Get started.</summary>
     public void Open()
     {
+        FillChoices();
         Visibility = Visibility.Visible;
         Dispatcher.BeginInvoke(() => OkButton.Focus());
         // once laid out, where the notes and tabs fall is known
@@ -46,18 +47,66 @@ public partial class WelcomeWindow : UserControl
 
     private void OkClicked(object sender, RoutedEventArgs e) => Close();
 
+    // ---- the language and the theme ----
+
+    /// <summary>Set while the dropdowns are filled, so filling them changes nothing.</summary>
+    private bool filling;
+
+    /// <summary>The dropdowns as the Settings tab has them: English and every language the app has, and the themes.</summary>
+    private void FillChoices()
+    {
+        filling = true;
+        var languages = new List<Rules.ChoiceOption> { new(Data.Languages.LanguagePack.EnglishCode, Text.Texts.Get("Settings.LanguageChoice.English")) };
+        foreach (Data.Languages.LanguagePack pack in Text.Texts.Languages().OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
+            languages.Add(new Rules.ChoiceOption(pack.Code, pack.Name,
+                Text.Texts.Get("Settings.LanguageChoice.Progress", ("percent", pack.ProgressAgainst(Text.Texts.Catalog.English).Percent))));
+        LanguageChoice.SetResourceReference(ItemsControl.ItemTemplateProperty, "DimmedChoice");
+        LanguageChoice.ItemsSource = languages;
+        LanguageChoice.SelectedItem = languages.FirstOrDefault(o => o.Value == Text.Texts.Catalog.LanguageCode) ?? languages[0];
+        Pages.ThemeDesigner.FillThemeChoice(ThemeChoice);
+        filling = false;
+    }
+
+    /// <summary>A language picked: the app uses it at once, this window too, and keeps it.</summary>
+    private void LanguageChosen(object sender, SelectionChangedEventArgs e)
+    {
+        if (filling || LanguageChoice.SelectedItem is not Rules.ChoiceOption { Value: string code }) return;
+        AppData.Current.Settings["lang"] = code;
+        AppData.Current.SaveSettings();
+        Text.Texts.Use(code);
+        MainView.Find(this)?.SettingsChanged("lang");
+        // the names in the dropdowns, and where the notes' lines run, change with the words
+        Dispatcher.BeginInvoke(FillChoices, System.Windows.Threading.DispatcherPriority.Loaded);
+        Dispatcher.BeginInvoke(DrawWires, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    /// <summary>A theme picked: the app wears it at once, this window too, and keeps it.</summary>
+    private void ThemeChosen(object sender, SelectionChangedEventArgs e)
+    {
+        if (filling || ThemeChoice.SelectedItem is not Rules.ChoiceOption { Value: string id }) return;
+        AppData.Current.Settings["theme"] = id;
+        AppData.Current.SaveSettings();
+        Theming.ThemeManager.ApplySaved();
+        MainView.Find(this)?.SettingsChanged("theme");
+        Dispatcher.BeginInvoke(DrawWires, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
     /// <summary>"Start the Tutorial": the window closes and the tour starts.</summary>
+    /// <summary>Tutorials ▾: the tutorials, each with what it covers; one chosen starts as the window closes.</summary>
+    /// <summary>
+    /// Start the Tutorial: from its first chapter (the Help tab's Tutorials starts any chapter).
+    /// </summary>
     private void TourClicked(object sender, RoutedEventArgs e)
     {
         Close();
-        MainView.Find(this)?.Tour.Start();
+        MainView.Find(this)?.Tour.Start(Chapter.Files);
     }
 
     private void MapResized(object sender, SizeChangedEventArgs e) => DrawWires();
 
     /// <summary>
     /// The lines from each note to what it is about: down from a note above, across at a height of its own, and down to
-    /// the middle of its tab; up from the note below to Preview and Export. The notes above keep the tabs' order, so
+    /// the middle of its tab. The notes keep the tabs' order, so
     /// lines turning further left run higher and none cross.
     /// </summary>
     private void DrawWires()
@@ -82,12 +131,6 @@ public partial class WelcomeWindow : UserControl
             double y = Math.Round(notesBottom + (tabsTop - notesBottom) * (lane + 1) / (above.Length + 1)) + 0.5;
             Line(new Point(from.X, from.Y), new Point(from.X, y), new Point(to.X, y), new Point(to.X, to.Y));
         }
-        Point preview = At(PreviewButton, 0.5, 1), export = At(ExportButton, 0.5, 1), noteTop = At(ExportNote, 0.5, 0);
-        double across = Math.Round((preview.Y + noteTop.Y) / 2) + 0.5;
-        // up from the note, then across to the bracket over the two buttons when the note sits beside it
-        double joinX = Math.Clamp(noteTop.X, preview.X, export.X);
-        Line(new Point(noteTop.X, noteTop.Y), new Point(noteTop.X, across), new Point(joinX, across));
-        Line(new Point(preview.X, preview.Y), new Point(preview.X, across), new Point(export.X, across), new Point(export.X, export.Y));
     }
 
     private void KeyPressed(object sender, KeyEventArgs e)
