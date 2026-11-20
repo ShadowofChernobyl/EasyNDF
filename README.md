@@ -45,7 +45,7 @@ At the code level, the repository is also a general NDF parsing project. The `ND
 ### Rule-based editing
 
 Rules are applied to each descriptor in an NDF file in the order shown in the main list (top-to-bottom)
-![Insert Rule List Description.](https://github.com/ShadowofChernobyl/EasyNDF/blob/master/images/RuleListPreview.png?raw=true)
+![Insert Rule List Description.](images/RuleListPreview.png)
 
 Each rule contains:
 
@@ -55,7 +55,7 @@ Each rule contains:
 * a list of **conditions**
 * a list of **actions**
 
-![Insert Rule Description](https://github.com/ShadowofChernobyl/EasyNDF/blob/master/images/RulePreview.png?raw=true)
+![Insert Rule Description](images/RulePreview.png)
 
 Each condition contains
 
@@ -63,7 +63,7 @@ Each condition contains
 * **Operators**  - Starts With, Contains, Is Less Than, Is Greater Than, etc.
 *  **Values** - Ammo_AutoCanon, Ammo_RocketArt, TEntityDescriptor, etc,
 
-![Insert Condition Description](https://github.com/ShadowofChernobyl/EasyNDF/blob/master/images/ConditionPreview.png?raw=true)
+![Insert Condition Description](images/ConditionPreview.png)
 
 
 Each action contains:
@@ -72,17 +72,17 @@ Each action contains:
 * **Operators**  - Add, Subtract, Multiply, Divide, Set To, etc.
 *  **Values** - 1.5, 2, 10, etc.
 
-![Insert Action Description](https://github.com/ShadowofChernobyl/EasyNDF/blob/master/images/ActionPreview.png?raw=true)
+![Insert Action Description](images/ActionPreview.png)
 
 Actions can also append an optional generated comment, with optional timestamp and original-value text.
 
-![Insert Comment Description](https://github.com/ShadowofChernobyl/EasyNDF/blob/master/images/CommentPreview.png?raw=true)
+![Insert Comment Description](images/CommentPreview.png)
 
 ### Rule Presets
 
 A list of rules can be saved as JSON presets and reloaded later.
 
-![Insert Preset Description](https://github.com/ShadowofChernobyl/EasyNDF/blob/master/images/RulePresetPreview.png?raw=true)
+![Insert Preset Description](images/RulePresetPreview.png)
 
 Saved presets can be found here:
 `%USERPROFILE%\AppData\Local\EasyNDF\RulePresets\`
