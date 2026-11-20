@@ -406,6 +406,7 @@
   "Files.Export.Source.Ok": "I understand: overwrite my source files",
   "Files.Export.Source.TickFirst": "Tick the box above to overwrite your source files",
   "Files.Export.NeedsFolder": "Choose a folder first",
+  "Files.Export.TourOnly": "Tour: nothing is exported. Cancel closes the window.",
   "Files.Export.Files": "Files",
   "Files.Export.Scope.Changed": "Changed only",
   "Files.Export.Scope.Changed.Tip": "Only the files the rules change",

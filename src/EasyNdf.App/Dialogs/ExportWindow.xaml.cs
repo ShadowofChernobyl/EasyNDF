@@ -64,6 +64,12 @@ public partial class ExportWindow : UserControl
     /// <summary>Whether the window is open.</summary>
     public bool IsOpen => Visibility == Visibility.Visible;
 
+    /// <summary>
+    /// While the tutorial runs: the window only shows what an export would write. Its Export button stays off, and the
+    /// summary says so; nothing is exported during the tour (Paul's choice).
+    /// </summary>
+    public bool TourOnly { get; set; }
+
     /// <summary>Opens the window; gives back what to export, or null when cancelled.</summary>
     /// <param name="all">The file list's rows.</param>
     /// <param name="selectedRows">The rows selected, for "Selected".</param>
@@ -180,9 +186,11 @@ public partial class ExportWindow : UserControl
             : zips ? Texts.Get("Files.Export.Summary.Zip", ("files", FileListModel.Files(lines.Count)), ("zip", ZipNameNow()))
             : Texts.Get("Files.Export.Summary", ("files", FileListModel.Files(lines.Count)), ("new", Texts.Number(lines.Count(line => line.Kind == "new"))), ("replaces", Texts.Number(replacing)));
         ShowLines();
-        ExportButton.IsEnabled = lines.Count > 0 && (needFolder.Count == 0 || folder is not null) && (overSource == 0 || SourceOk.IsChecked == true);
-        ExportButton.ToolTip = overSource > 0 && SourceOk.IsChecked != true ? Texts.Get("Files.Export.Source.TickFirst")
+        ExportButton.IsEnabled = !TourOnly && lines.Count > 0 && (needFolder.Count == 0 || folder is not null) && (overSource == 0 || SourceOk.IsChecked == true);
+        ExportButton.ToolTip = TourOnly ? Texts.Get("Files.Export.TourOnly")
+            : overSource > 0 && SourceOk.IsChecked != true ? Texts.Get("Files.Export.Source.TickFirst")
             : needFolder.Count > 0 && folder is null ? Texts.Get("Files.Export.NeedsFolder") : null;
+        if (TourOnly) Summary.Text = Texts.Get("Files.Export.TourOnly");
     }
 
     /// <summary>The lines of the list, and how many would overwrite the files they were added from; run in the background.</summary>

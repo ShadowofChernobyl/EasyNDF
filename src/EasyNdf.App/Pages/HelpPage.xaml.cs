@@ -30,12 +30,6 @@ public partial class HelpPage : UserControl
     /// <summary>Raised when a Welcome window button is clicked.</summary>
     public event Action? WelcomeRequested;
 
-    /// <summary>
-    /// Whether the Tidy layout shows (the page's contents and related pages in a column on the right, a tighter list),
-    /// or the Original one (contents in a line under the title, See Also at the end). Kept as "helpLayout".
-    /// </summary>
-    private bool tidy = (string?)AppData.Current.State["helpLayout"] != "original";
-
     /// <summary>Where each heading of the page shown is, down the page, worked out when first needed after it is drawn.</summary>
     private List<double>? headingPlaces;
 
@@ -46,7 +40,6 @@ public partial class HelpPage : UserControl
     public HelpPage()
     {
         InitializeComponent();
-        LayoutChoice.SelectedIndex = tidy ? 0 : 1;
         PageScroller.ScrollChanged += (_, _) => MarkSectionInView();
         PageScroller.SizeChanged += (_, _) => headingPlaces = null;
         // scrolled by hand: the page keeps its place when its examples come in
@@ -86,14 +79,14 @@ public partial class HelpPage : UserControl
         shownVariable = offset is null ? variable : null;
         CrumbText.Text = page.Group;
         PageTitle.Text = page.Title;
-        // Original lists the related pages at the end of the page; Tidy in its right column
-        (FrameworkElement body, double top, double bottom) = renderer.Render(page.Html + (tidy ? "" : SeeAlsoHtml(page)));
+        // the related pages are listed in the right column
+        (FrameworkElement body, double top, double bottom) = renderer.Render(page.Html);
         headingPlaces = null;
         // the marker is placed again once the new page has been laid out, when its headings have their places
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () => { headingPlaces = null; railMarked = -1; MarkSectionInView(); });
-        TextColumn.MaxWidth = tidy ? 880 : 736;
-        // Tidy has room for its right column as well as a wider page
-        Wiki.MaxWidth = tidy ? 1440 : 1152;
+        TextColumn.MaxWidth = 880;
+        // room for the right column as well as the page
+        Wiki.MaxWidth = 1440;
         // the larger of the title's 6 pixels and the first block's margin, and of the last block's and the pager's 22
         body.Margin = new Thickness(0, Math.Max(6, top), 0, 0);
         Body.Content = body;
@@ -105,7 +98,7 @@ public partial class HelpPage : UserControl
         ShowList();
         ReferenceFind.Visibility = page.Id == ReferencePages.IndexId ? Visibility.Visible : Visibility.Collapsed;
         if (page.Id == ReferencePages.IndexId && ReferenceFind.Text.Trim() != "") ShowReferenceIndex();
-        ShowOnThisPage();
+        ShowRail();
         if (page.Id.StartsWith("ref:", StringComparison.Ordinal) && ReferenceExamples.IfRead is null && EditorGuide.IfRead is ValueGuide forExamples)
             _ = ShowExamplesOnceRead(forExamples);
         AppData.Current.State["helpPage"] = page.Id;
@@ -161,7 +154,7 @@ public partial class HelpPage : UserControl
         PageTitle.Text = Texts.Get("Help.Reference.Title");
         CrumbText.Text = Texts.Get("Help.Group.Reference");
         Body.Content = new TextBlock { Text = Texts.Get("Help.Loading"), Margin = new Thickness(0, 6, 0, 0) };
-        OnThisPage.Visibility = Visibility.Collapsed;
+        Rail.Visibility = Visibility.Collapsed;
         ReferenceFind.Visibility = Visibility.Collapsed;
         Pager.Visibility = Visibility.Collapsed;
     }
@@ -172,20 +165,6 @@ public partial class HelpPage : UserControl
         catch (InvalidOperationException) { }
         if (EditorGuide.IfRead is null) Go("start", remember);
         else Go(id, remember, offset);
-    }
-
-    /// <summary>
-    /// "See Also": the Help pages that link to this one and that its text does not link to already, at most six; none
-    /// on the Reference's pages, whose links are their own.
-    /// </summary>
-    private static string SeeAlsoHtml(WikiPage page)
-    {
-        List<WikiPage> related = RelatedPages(page);
-        if (related.Count == 0) return "";
-        var html = new System.Text.StringBuilder("<h3>" + System.Net.WebUtility.HtmlEncode(Texts.Get("Help.SeeAlso")) + "</h3><ul>");
-        foreach (WikiPage other in related)
-            html.Append("<li><a href=\"#\" data-p=\"").Append(other.Id).Append("\">").Append(System.Net.WebUtility.HtmlEncode(RelatedTitle(other))).Append("</a></li>");
-        return html.Append("</ul>").ToString();
     }
 
     /// <summary>A related page's name: a tab's Overview with the tab's name, as "Mods &amp; Rules Overview", so the Overviews are told apart.</summary>
@@ -211,34 +190,9 @@ public partial class HelpPage : UserControl
         return [.. linked.Take(6)];
     }
 
-    /// <summary>"On this page:" and the page's headings, each a link to its place; only when the page has three or more.</summary>
-    private void ShowOnThisPage()
-    {
-        OnThisPage.Inlines.Clear();
-        ShowRail();
-        OnThisPage.Visibility = !tidy && renderer.Headings.Count >= 3 ? Visibility.Visible : Visibility.Collapsed;
-        if (tidy || renderer.Headings.Count < 3) return;
-        var label = new System.Windows.Documents.Run(Texts.Get("Help.OnThisPage") + " ");
-        label.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "muted");
-        OnThisPage.Inlines.Add(label);
-        for (int k = 0; k < renderer.Headings.Count; k++)
-        {
-            if (k > 0)
-            {
-                var dot = new System.Windows.Documents.Run(" · ");
-                dot.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "muted");
-                OnThisPage.Inlines.Add(dot);
-            }
-            System.Windows.Documents.Paragraph block = renderer.Headings[k].Block;
-            var link = new System.Windows.Documents.Hyperlink(new System.Windows.Documents.Run(renderer.Headings[k].Text)) { Style = (Style)FindResource("CrumbLink") };
-            link.Click += (_, _) => ScrollTo(block);
-            OnThisPage.Inlines.Add(link);
-        }
-    }
-
     /// <summary>
-    /// Tidy's right column: the page's headings, each a link to its place (the one in view marked), then the related
-    /// pages. Hidden with the Original layout, or when the page has neither.
+    /// The right column: the page's headings, each a link to its place (the one in view marked), then the related
+    /// pages. Hidden when the page has neither.
     /// </summary>
     private void ShowRail()
     {
@@ -247,10 +201,9 @@ public partial class HelpPage : UserControl
         railMarked = -1;
         RailScroller.ScrollToTop();
         WikiPage? page = shownId == "" ? null : PageById(shownId);
-        List<WikiPage> related = tidy && page is not null ? RelatedPages(page) : [];
-        bool hasContents = tidy && renderer.Headings.Count >= 1;
-        Rail.Visibility = tidy && (hasContents || related.Count > 0) ? Visibility.Visible : Visibility.Collapsed;
-        if (!tidy) return;
+        List<WikiPage> related = page is not null ? RelatedPages(page) : [];
+        bool hasContents = renderer.Headings.Count >= 1;
+        Rail.Visibility = hasContents || related.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         RailContentsHeading.Text = Texts.Get("Help.Rail.OnThisPage").ToUpperInvariant();
         RailRelatedHeading.Text = Texts.Get("Help.Rail.Related").ToUpperInvariant();
         RailContentsHeading.Visibility = RailContents.Visibility = hasContents ? Visibility.Visible : Visibility.Collapsed;
@@ -287,7 +240,7 @@ public partial class HelpPage : UserControl
     /// <summary>Marks, in the right column, the heading of the section at the top of the page as it scrolls.</summary>
     private void MarkSectionInView()
     {
-        if (!tidy || RailContents.Children.Count == 0 || Body.Content is not RichTextBox box || PageScroller.Content is not UIElement content) return;
+        if (RailContents.Children.Count == 0 || Body.Content is not RichTextBox box || PageScroller.Content is not UIElement content) return;
         if (headingPlaces is null)
         {
             // Tuned for speed: the places are worked out once per page and size, not at every step of the scroll
@@ -325,21 +278,6 @@ public partial class HelpPage : UserControl
             if (at.Top < 0) RailScroller.ScrollToVerticalOffset(RailScroller.VerticalOffset + at.Top - 24);
             else if (at.Bottom > RailScroller.ViewportHeight) RailScroller.ScrollToVerticalOffset(RailScroller.VerticalOffset + at.Bottom - RailScroller.ViewportHeight + 24);
         }
-    }
-
-    /// <summary>Tidy or Original chosen in the toolbar: kept, and the page shown again in it, where it was.</summary>
-    private void LayoutChosen(object sender, SelectionChangedEventArgs e)
-    {
-        bool wanted = LayoutChoice.SelectedIndex != 1;
-        if (wanted == tidy || shownId == "")
-        {
-            tidy = wanted;
-            return;
-        }
-        tidy = wanted;
-        AppData.Current.State["helpLayout"] = tidy ? "tidy" : "original";
-        AppData.Current.SaveState();
-        Go(shownId, remember: false, offset: PageScroller.VerticalOffset);
     }
 
     /// <summary>Scrolls the page so a heading is at its top, a few pixels under it.</summary>
@@ -422,7 +360,7 @@ public partial class HelpPage : UserControl
             }
             var item = new ToggleButton
             {
-                Style = (Style)FindResource(tidy ? "WikiNavItemTidy" : "WikiNavItem"),
+                Style = (Style)FindResource("WikiNavItemTidy"),
                 Content = new TextBlock { Text = page.Title, TextWrapping = TextWrapping.Wrap },
                 IsChecked = page.Id == shownId,
                 Tag = page.Id,
@@ -455,18 +393,12 @@ public partial class HelpPage : UserControl
     }
 
     /// <summary>
-    /// A group's heading in the list. Original: its name in bold, in the accent colour. Tidy: in small capitals, with
-    /// how many pages it has, a line above it, and the accent colour only for the group of the page shown.
+    /// A group's heading in the list: in small capitals, with how many pages it has, a line above it, and the accent
+    /// colour only for the group of the page shown.
     /// </summary>
     private FrameworkElement GroupHeading(string group, int count, bool isShown)
     {
         bool first = PageList.Children.Count == 0;
-        if (!tidy)
-        {
-            var heading = new TextBlock { Text = group, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(6, first ? 2 : 12, 6, 3) };
-            heading.SetResourceReference(TextBlock.ForegroundProperty, "accent");
-            return heading;
-        }
         var name = new TextBlock { Text = group.ToUpperInvariant(), FontSize = 10.5, TextTrimming = TextTrimming.CharacterEllipsis };
         var number = new TextBlock { Text = Texts.Number(count), FontSize = 10.5 };
         name.SetResourceReference(TextBlock.ForegroundProperty, isShown ? "accent" : "muted");
@@ -522,7 +454,7 @@ public partial class HelpPage : UserControl
         body.Margin = new Thickness(0, Math.Max(6, top), 0, 0);
         Body.Content = body;
         StayPut(body);
-        ShowOnThisPage();
+        ShowRail();
     }
 
     /// <summary>A line of the list that opens a page; marked when it is the page shown.</summary>
@@ -530,7 +462,7 @@ public partial class HelpPage : UserControl
     {
         var item = new ToggleButton
         {
-            Style = (Style)FindResource(tidy ? "WikiNavItemTidy" : "WikiNavItem"),
+            Style = (Style)FindResource("WikiNavItemTidy"),
             Content = new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap },
             IsChecked = id == shownId,
             Tag = id,

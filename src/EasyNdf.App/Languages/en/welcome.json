@@ -18,7 +18,7 @@
   "Welcome.Tour.Skip": "Skip Step",
   "Welcome.Tour.Finish": "Finish",
   "Welcome.Tour.End": "End Tour",
-  "Welcome.Tour.Start": "**This tour makes a mod with you in a few steps:** pick its rules, add the game's files, preview the changes, then export. Each step asks for one thing, **in bold**, inside the outline; a dashed outline is only to look at. Left and Right arrows move through the steps.",
+  "Welcome.Tour.Start": "**This tour walks through making a mod:** pick its rules, add the game's files, preview the changes, and see what an export would write. **Nothing is exported or saved**, and your game's files stay as they are. Each step asks for one thing, **in bold**, inside the outline; a dashed outline is only to look at. Left and Right arrows move through the steps.",
   "Welcome.Tour.ModsTab": "**Click the Mods tab.** Mods hold your rules: each rule describes one change, such as \"double the range of every autocannon\".",
   "Welcome.Tour.PickMod": "**Click {mod}** in the list. It comes with EasyNDF, as a ready-made example.",
   "Welcome.Tour.RuleSets": "Its rule sets. Each one runs on the file its name gives, such as **WTO (Ammunition.ndf)**; the rules of the one selected show at the right.",
@@ -27,6 +27,6 @@
   "Welcome.Tour.AddItsFiles": "**Click Add Its Files.** It adds the game's files that the mods that are on change. If asked, choose **Only those with rules**.",
   "Welcome.Tour.Preview": "**Click Preview.** The rules run, and nothing is saved.",
   "Welcome.Tour.Results": "Each row says what the rules did to its file. **Details**, at the right, lists every change in the file selected.",
-  "Welcome.Tour.Export": "**Click Export.** The Export window shows where your files go and every file it will write. Export them, or Cancel to finish the tour.",
-  "Welcome.Tour.Done": "**That's the whole loop:** rules, files, Preview, Export. Make a mod of your own with **+** on the Mods tab, and see the Help tab for more. Every window has a **?** button."
+  "Welcome.Tour.Export": "**Click Export.** The Export window shows where your files would go and every file it would write. During the tour its Export button stays off, so nothing is written: **click Cancel** to go on.",
+  "Welcome.Tour.Done": "**That's the whole loop:** rules, files, Preview, Export. Nothing was exported. To make a mod the game loads, export into a WARNO mod folder and run its GenerateMod.bat (Help › WARNO Modding › Guide). Make a mod of your own with **+** on the Mods tab. Every window has a **?** button."
 }
