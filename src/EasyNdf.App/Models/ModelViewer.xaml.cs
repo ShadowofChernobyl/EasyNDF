@@ -34,8 +34,9 @@ public partial class ModelViewer : UserControl
     /// <param name="Flies">Whether it is an aircraft, whose turrets do not move on the model.</param>
     /// <param name="Yaw">Which way round the camera starts, in degrees.</param>
     /// <param name="DepictionKey">Its depiction's BlackHoleKey, for its sounds and its moving parts; null for none.</param>
+    /// <param name="NoModelText">What the viewer says when no model is found; null for the general text.</param>
     private sealed record Subject(string Name, UnitSource Source, Func<ModelLinks, IReadOnlyList<ModelFile>> FindModels,
-        SubjectValues Changed, SubjectValues? Original, bool Flies, double Yaw, string? DepictionKey);
+        SubjectValues Changed, SubjectValues? Original, bool Flies, double Yaw, string? DepictionKey, string? NoModelText = null);
 
     /// <summary>The values of a unit the viewer shows: its turrets with their weapons, and how it drives.</summary>
     /// <param name="Turrets">Its turrets; none for a missile.</param>
@@ -184,9 +185,15 @@ public partial class ModelViewer : UserControl
         return new DriveMotion(speed, unit.AccelerationGru is > 0 and double up ? up * UnitsAGru : speed / 2, unit.DecelerationGru is > 0 and double down ? down * UnitsAGru : speed);
     }
 
-    /// <summary>Opens the viewer on a missile's model, by its descriptor in MissileDescriptors.ndf.</summary>
-    public void OpenMissile(string name, string missile, UnitSource source) =>
-        Open(new Subject(name, source, links => links.MissileModel(missile) is ModelFile file ? [file] : [], SubjectValues.None, null, Flies: false, Yaw: 310, DepictionKey: null));
+    /// <summary>
+    /// Opens the viewer on a weapon's own model: a missile's, by its descriptor in MissileDescriptors.ndf; otherwise a
+    /// weapon soldiers hold or a bomb or rocket pod an aircraft carries, by its ammunition. Guns have none: they are part
+    /// of the model of the unit carrying them, and the viewer says no model is available.
+    /// </summary>
+    public void OpenWeapon(string name, string ammunition, string? missile, UnitSource source) =>
+        Open(new Subject(name, source,
+            links => ((missile is not null ? links.MissileModel(missile) : null) ?? links.CarriedModel(ammunition)) is ModelFile file ? [file] : [],
+            SubjectValues.None, null, Flies: false, Yaw: 310, DepictionKey: null, NoModelText: Texts.Get("Units.Model.NoWeaponModel")));
 
     /// <summary>
     /// Whether models of this game can be shown: WARNO's from its mesh pack, Steel Division 2's from its Modding Assets
@@ -226,8 +233,14 @@ public partial class ModelViewer : UserControl
     {
         try
         {
+            // the game as the source, with the mods' changes shown: the files as the mods that run make them, and their
+            // export folders' generated models (see ModdedModelFiles)
+            string? cache = AppData.Current.Folders?.Cache;
+            ModdedModelFiles.Work? modded = shown.Source.Mod is null && Pages.UnitsPage.ArmoryShowsModChanges && MainView.Find(this) is MainView main
+                ? ModdedModelFiles.Prepare([.. main.FilesTab.Model.Entries], shown.Source.Game, cache) : null;
             (OpenFiles opened, IReadOnlyList<ModelFile> models) = await Task.Run(() =>
             {
+                ModdedModelFiles.Found? found = modded is null || cache is null ? null : ModdedModelFiles.Run(modded, cache);
                 static bool Wanted(ArchiveFile file) =>
                     MeshPack.IsPackFile(file.Name) || ModelTextures.IsModelTextureFile(file.Name) || IsSoundFile(file.Name) || FxTextures.IsEffectTextureFile(file.Name);
                 bool steelDivision = shown.Source.Game == GameTitle.SteelDivision2;
@@ -240,10 +253,11 @@ public partial class ModelViewer : UserControl
                 {
                     // a game mod's own models and textures, as the game's mod tools build them into its Gen folder
                     if (shown.Source.Mod?.Folder is string modFolder) archives.AddLooseFiles(Path.Combine(modFolder, "Gen"), Wanted);
+                    foreach (string gen in found?.GenFolders ?? []) archives.AddLooseFiles(gen, Wanted);
                     MeshPack pack = MeshPack.Open(archives) ?? throw new InvalidDataException(Texts.Get("Units.Model.NoPack"));
                     packs = [.. MeshPack.OpenModPacks(archives), pack];
                 }
-                var gameFiles = new GameDataFiles(GameInstall.BaseZipOf(shown.Source.GameFolder), shown.Source.Mod?.Folder);
+                var gameFiles = new GameDataFiles(GameInstall.BaseZipOf(shown.Source.GameFolder), shown.Source.Mod?.Folder, changedOnDisk: found?.Files);
                 var open = new OpenFiles(archives, packs, gameFiles);
                 return (open, shown.FindModels(open.Links));
             });
@@ -261,7 +275,7 @@ public partial class ModelViewer : UserControl
             sounds = new ModelSounds(opened.Sound) { IsOn = SoundSwitch.IsChecked == true, Loudness = LoudnessOf(VolumeSlider.Value) };
             if (models.Count == 0)
             {
-                StatusText.Text = Texts.Get("Units.Model.NoModel");
+                StatusText.Text = shown.NoModelText ?? Texts.Get("Units.Model.NoModel");
                 return;
             }
             string? problem = null;
@@ -314,6 +328,14 @@ public partial class ModelViewer : UserControl
     {
         if (files is null || renderer is null || subject is null) return;
         ModelMesh mesh = assembled.Mesh;
+        // a model with nothing in it, such as main_nue.fbx (an empty hand) that grenades name: the game draws nothing
+        if (mesh.TriangleCount == 0)
+        {
+            FileText.Text = Path.GetFileName(path);
+            TriangleText.Text = SizeText.Text = "";
+            StatusText.Text = Texts.Get("Units.Model.EmptyModel", ("model", Path.GetFileName(path)));
+            return;
+        }
         renderer.Load(mesh, assembled.Pictures);
         hungLaunchers = assembled.Launchers;
         scene = new ModelScene(mesh, Values.Turrets, subject.Flies, shownDepiction, Values.Drive, hungLaunchers);

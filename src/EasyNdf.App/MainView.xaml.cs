@@ -327,15 +327,22 @@ public partial class MainView : UserControl
         if (Messages.IsOpen || Watermark.IsOpen || (Tabs.SelectedItem != FilesTabItem && Tabs.SelectedItem != RulesTabItem && !onArmory && !onEditor)) return;
         // nor under the Add Units window or a unit's pop-up: they act on the division as it was when they opened, so
         // an Undo beneath them would be overwritten by their Done, or leave them adding to a division gone
-        if (AddUnits.IsOpen || NewUnit.IsOpen || Floating.IsOpen || GenerateDivisions.IsOpen || GenerationSettings.IsOpen) return;
+        if (AddUnits.IsOpen || NewUnit.IsOpen || Floating.IsOpen || GenerateDivisions.IsOpen || GenerationSettings.IsOpen || ExportWindow.IsOpen) return;
         // Undo and redo work on the Files, Rules and Editor tabs and the Armory outside a text box (the File Editor's text
         // too), which keeps its own, and not while the rule window is open: its changes are not saved yet, and its × is
         // the way to take them back.
-        bool inTextBox = Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem or ICSharpCode.AvalonEdit.Editing.TextArea;
         ModifierKeys keys = Keyboard.Modifiers;
+        bool shift = keys.HasFlag(ModifierKeys.Shift), redoKey = e.Key == Key.Y || (e.Key == Key.Z && shift);
+        // a text box takes the keys only while it has typing of its own to undo or redo (the Armory's find box keeps the
+        // keyboard after a search, and would otherwise swallow every Ctrl+Z); the File Editor's text keeps its own
+        bool inTextBox = Keyboard.FocusedElement switch
+        {
+            TextBox box => redoKey ? box.CanRedo : box.CanUndo,
+            ICSharpCode.AvalonEdit.Editing.TextArea => true,
+            _ => false,
+        };
         if (!inTextBox && !RuleWindow.IsOpen && keys.HasFlag(ModifierKeys.Control) && !keys.HasFlag(ModifierKeys.Alt))
         {
-            bool shift = keys.HasFlag(ModifierKeys.Shift);
             if (e.Key == Key.Z && !shift) { e.Handled = true; Undo(); return; }
             if (e.Key == Key.Y || (e.Key == Key.Z && shift)) { e.Handled = true; Redo(); return; }
         }

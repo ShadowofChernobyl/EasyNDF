@@ -52,6 +52,12 @@ public sealed class SourceBar : Bevel
         ShowChosen();
     }
 
+    /// <summary>The list of sources, for the tutorial to outline.</summary>
+    internal FrameworkElement SourceList => list;
+
+    /// <summary>Add Its Files, for the tutorial to outline.</summary>
+    internal Button AddItsFilesButton => addButton;
+
     /// <summary>Raised by Add Its Files.</summary>
     public event Action? AddFilesRequested;
 

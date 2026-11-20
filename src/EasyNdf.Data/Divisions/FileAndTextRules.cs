@@ -82,16 +82,17 @@ public static class FileAndTextRules
     }
 
     /// <summary>The files the File rules that are on write, each place once (the last rule to name it wins).</summary>
+    /// <remarks>
+    /// Tuned for speed: each place is looked up by its key rather than compared with every file before it (a mod
+    /// with thousands of File rules took seconds); the order is as before, each file where its last rule put it.
+    /// </remarks>
     public static List<CarriedFile> FilesOf(IEnumerable<JsonNode?> rules)
     {
-        var files = new List<CarriedFile>();
+        var files = new Dictionary<string, (int At, CarriedFile File)>(StringComparer.OrdinalIgnoreCase);
+        int at = 0;
         foreach (JsonNode rule in DivisionExtras.RulesThatAreOn(rules))
-        {
-            if (CarriedFileOf(rule) is not CarriedFile file) continue;
-            files.RemoveAll(other => SamePlace(other.Destination, file.Destination));
-            files.Add(file);
-        }
-        return files;
+            if (CarriedFileOf(rule) is CarriedFile file) files[PlaceKey(file.Destination)] = (at++, file);
+        return [.. files.Values.OrderBy(each => each.At).Select(each => each.File)];
     }
 
     /// <summary>The file a File rule writes; null for another rule, or one with no file or no place chosen yet.</summary>
@@ -181,6 +182,8 @@ public static class FileAndTextRules
     }
 
     /// <summary>Whether two places name the same file, as Windows reads them: "/" or "\", in any case.</summary>
-    private static bool SamePlace(string one, string other) =>
-        string.Equals(one.Replace('\\', '/').Trim('/'), other.Replace('\\', '/').Trim('/'), StringComparison.OrdinalIgnoreCase);
+    private static bool SamePlace(string one, string other) => string.Equals(PlaceKey(one), PlaceKey(other), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>A place as compared: forward slashes, none at either end; compared ignoring case.</summary>
+    private static string PlaceKey(string place) => place.Replace('\\', '/').Trim('/');
 }

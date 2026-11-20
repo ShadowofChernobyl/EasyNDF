@@ -157,6 +157,10 @@ public partial class EditorPage : UserControl
         view = MakeView();
         StartDescriptors();
         PreviewKeyDown += FindBarKeys;
+        PreviewKeyDown += (_, e) => { if (!e.Handled && SearchOptionKey(e)) e.Handled = true; };
+        PreviewKeyDown += (_, e) => { if (!e.Handled && e.Key == Key.F1 && Keyboard.Modifiers == ModifierKeys.None && OpenHelpAtCaret()) e.Handled = true; };
+        Editor.SearchOptions.Changed += ShowSearchOptions;
+        Loaded += (_, _) => ShowSearchOptions();
         foreach (TextBox box in new[] { FindBox, GoBox, SearchAllBox }) box.TextChanged += FindBoxChanged;
         // the results of Search all files take at most 40% of the tab, so the panes under them keep their room
         SizeChanged += (_, _) => ResultsBox.MaxHeight = Math.Max(ResultsBox.MinHeight, 0.4 * ActualHeight);
@@ -476,6 +480,7 @@ public partial class EditorPage : UserControl
     /// <summary>Shows the buttons that can be used, and the note (the HTML app's <c>edBar</c>).</summary>
     private void Show()
     {
+        ClearSearchScope();
         bool has = shown is not null, isFile = shown is { IsFile: true }, anyOpen = openViews.Count > 0;
         EmptyBox.Visibility = anyOpen ? Visibility.Collapsed : Visibility.Visible;
         SideBySide.Visibility = anyOpen ? Visibility.Visible : Visibility.Collapsed;

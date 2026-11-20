@@ -20,6 +20,7 @@
                 <DockPanel DockPanel.Dock="Top">
                     <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Rules.AppliesTo.Close.Tip}"
                             AutomationProperties.Name="{t:Text Rules.AppliesTo.Close.Tip}" Click="CloseClicked" TabIndex="8" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource HelpButton}" Margin="0,0,6,0" controls:QuickHelp.Page="applies" ToolTip="{t:Text Common.HelpButton.Window.Tip}" />
                     <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 </DockPanel>
                 <controls:SnappedRow DockPanel.Dock="Bottom" Gap="6" HorizontalAlignment="Right" Margin="0,10,0,0">

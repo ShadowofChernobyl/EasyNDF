@@ -136,6 +136,7 @@
         <!-- the Armory's Division Generator -->
         <dialogs:GenerateDivisionsWindow x:Name="GenerateDivisions" />
         <dialogs:GenerationSettingsWindow x:Name="GenerationSettings" />
+        <dialogs:ExportWindow x:Name="ExportWindow" />
         <!-- the Armory's New Unit window -->
         <dialogs:NewUnitWindow x:Name="NewUnit" />
         <!-- the Armory's Swap window, over the New Unit window when it is opened from there -->
@@ -145,6 +146,8 @@
         <!-- a panel shown beside its button, such as a unit's transports in the Armory -->
         <dialogs:FloatingPanel x:Name="Floating" />
         <!-- the welcome window, the first time the app starts -->
+        <!-- the tutorial: under the welcome window and the questions, which it steps aside for -->
+        <dialogs:TourOverlay x:Name="Tour" />
         <dialogs:WelcomeWindow x:Name="Welcome" />
         <!-- the message window, over everything else while it is open -->
         <dialogs:MessageOverlay x:Name="Messages" />

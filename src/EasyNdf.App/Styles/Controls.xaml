@@ -498,6 +498,45 @@
     </Style>
 
     <!-- input.mono: a text box in the code font, 12 pixels, in a line of 1.45 times that (as a web page rounds it) -->
+    <!--
+      A search option inside a search box (the File Editor's Find and Search all files: Match Case, Whole Word, Regular
+      Expression, In Selection): a small square, dim; under the mouse on the selection colour; on, in the accent colour
+      with an accent edge.
+    -->
+    <Style x:Key="SearchOption" TargetType="ToggleButton">
+        <Setter Property="Width" Value="21" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="Margin" Value="1,0,0,0" />
+        <Setter Property="FontFamily" Value="{DynamicResource mono}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Box" Background="Transparent" BorderBrush="Transparent" BorderThickness="1">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="False" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource sel}" />
+                            <Setter Property="Foreground" Value="{DynamicResource ink}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource sel}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource accent}" />
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="MonoBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="FontFamily" Value="{DynamicResource mono}" />
         <Setter Property="FontSize" Value="12" />
@@ -758,6 +797,47 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!--
+      A page in the Help list with the Tidy layout: tighter, on a thin guide line down its group; the page shown has an
+      accent bar on that line
+    -->
+    <Style x:Key="WikiNavItemTidy" TargetType="ToggleButton" BasedOn="{StaticResource WikiNavItem}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid x:Name="Back" Background="Transparent" Margin="4,0,0,0">
+                        <Rectangle Width="1" HorizontalAlignment="Left" Fill="{DynamicResource line}" />
+                        <ContentPresenter Margin="10,1,6,1" />
+                        <Rectangle x:Name="Stripe" Width="2" HorizontalAlignment="Left" Fill="{DynamicResource accent}" Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Back" Property="Background" Value="{DynamicResource sel}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Back" Property="Background" Value="{DynamicResource sel}" />
+                            <Setter TargetName="Stripe" Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="{DynamicResource accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A heading in the Help page's right column, or a group's in the Tidy list: small capitals, muted -->
+    <Style x:Key="WikiRailHeading" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10.5" />
+        <Setter Property="Foreground" Value="{DynamicResource muted}" />
+        <Setter Property="Margin" Value="0,0,0,3" />
+    </Style>
+
+    <!-- A link in the Help page's right column (On This Page, Related): on a thin line; the section in view has an accent bar -->
+    <Style x:Key="WikiRailLink" TargetType="ToggleButton" BasedOn="{StaticResource WikiNavItemTidy}">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Focusable" Value="False" />
     </Style>
 
     <!-- .wkpl: "Previous:" or "Next:" in a Help page's pager, dim unless the button is under the mouse -->

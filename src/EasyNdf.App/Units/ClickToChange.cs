@@ -17,6 +17,20 @@ namespace EasyNdf.App.Units;
 public static class ClickToChange
 {
     /// <summary>
+    /// Takes the keyboard from a box being typed in (which then keeps or puts back its value) and gives it to the app's
+    /// window. Not Keyboard.ClearFocus: that leaves the keyboard on nothing at all, and the window then gets no keys,
+    /// so Ctrl+Z, Ctrl+Y and every other shortcut did nothing after a value was changed in the Armory.
+    /// </summary>
+    public static void GiveKeysToWindow(DependencyObject from)
+    {
+        // the nearest place around it that takes the keyboard and is not a box (a value's cell): the window itself would
+        // hand the keyboard back to the box that had it before, such as the Armory's find box, which takes Ctrl+Z
+        for (DependencyObject? at = VisualTreeHelper.GetParent(from); at is not null; at = VisualTreeHelper.GetParent(at))
+            if (at is UIElement { Focusable: true, IsVisible: true } place and not System.Windows.Controls.Primitives.TextBoxBase and not ComboBox && place.Focus()) return;
+        Keyboard.ClearFocus();
+    }
+
+    /// <summary>
     /// Makes a cell's value changeable in a box: a click on the cell shows the box, with the value selected.
     /// </summary>
     /// <param name="cell">The cell, whose child is the value's text block.</param>
@@ -45,7 +59,7 @@ public static class ClickToChange
             box.AddHandler(UIElement.KeyDownEvent, new KeyEventHandler((_, e) =>
             {
                 // the box keeps the value, or puts it back, on these keys first; then the cell reads as text again
-                if (e.Key is Key.Enter or Key.Escape) Keyboard.ClearFocus();
+                if (e.Key is Key.Enter or Key.Escape) GiveKeysToWindow(box);
             }), handledEventsToo: true);
             return box;
         });

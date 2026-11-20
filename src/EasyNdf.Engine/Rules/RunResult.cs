@@ -64,6 +64,12 @@ public sealed class RunOptions
     /// </summary>
     public IReadOnlyDictionary<string, string> OtherFiles { get; init; } = new Dictionary<string, string>();
 
+    /// <summary>
+    /// The game's own version of the file, asked for only when a Clone's source is not in the file (an earlier mod
+    /// removed it): the copy is then made from the game's. Null, or giving null, for none.
+    /// </summary>
+    public Func<string?>? GameOriginal { get; init; }
+
     /// <summary>"Keep source comments". When false, rules run on the file as it reads without its comments.</summary>
     public bool KeepSourceComments { get; init; } = true;
 

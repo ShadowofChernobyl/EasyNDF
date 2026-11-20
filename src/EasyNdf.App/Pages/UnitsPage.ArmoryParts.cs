@@ -112,8 +112,9 @@ public partial class UnitsPage
         OnlyInDivision.Visibility = part == ArmoryPart.Units ? Visibility.Visible : Visibility.Collapsed;
         // a battlegroup shows its cards whatever the filters
         OnlyModded.Visibility = part == ArmoryPart.Battlegroups ? Visibility.Collapsed : Visibility.Visible;
-        // a new division is made from the Divisions sub-tab
-        NewDivisionButton.Visibility = part == ArmoryPart.Divisions ? Visibility.Visible : Visibility.Collapsed;
+        // "+" makes a new division from any sub-tab that shows the division list, beside the generator's ⚙; the new
+        // division is then shown on Divisions (or Battlegroups, when that is open)
+        NewDivisionButton.Visibility = Visibility.Visible;
         ShowListsSplit();
     }
 

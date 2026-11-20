@@ -317,7 +317,7 @@
   "Rules.Row.EditedBy.Tip": "Adds \"Edited by {mod}\" to the comment",
   "Rules.Row.OriginalValue": "Original value",
   "Rules.Row.Timestamp": "Timestamp",
-  "Rules.Row.ActionNote": "A target is a property name at any depth, or a pair key such as a MAP entry. Insert and Replace take `index:value`; index is a number, FirstIndex, LastIndex, or an offset like LastIndex-1. \\n is a line break. {Name} inserts a variable.",
+  "Rules.Row.ActionNote": "A target is a property name at any depth, or the key of a MAP pair. Insert and Replace take `index:value`; index is a number, FirstIndex, LastIndex, or an offset like LastIndex-1. \\n is a line break. {Name} inserts a variable.",
   "Rules.Row.Comment.Tip": "Add a comment after each edited value",
   "Rules.Row.OriginalValue.Tip": "Add the value before the edit",
   "Rules.Row.Timestamp.Tip": "Add the date and time",

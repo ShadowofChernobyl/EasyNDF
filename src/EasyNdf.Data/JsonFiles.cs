@@ -92,7 +92,30 @@ public static class JsonFiles
             file.Write(System.Text.Encoding.UTF8.GetBytes(text));
             file.Flush(flushToDisk: true);
         }
-        File.Move(temporary, path, overwrite: true);
+        PutInPlace(temporary, path);
+    }
+
+    /// <summary>
+    /// Moves the written file over the old one. Another program (a virus scanner, a backup or search tool) may hold the
+    /// old file for a moment, which Windows refuses as "access denied": the move is tried again for about a second
+    /// before giving up. A read-only old file is made writable first: the app's own files are its to replace.
+    /// </summary>
+    private static void PutInPlace(string temporary, string path)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                if (File.Exists(path) && File.GetAttributes(path).HasFlag(FileAttributes.ReadOnly))
+                    File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly);
+                File.Move(temporary, path, overwrite: true);
+                return;
+            }
+            catch (Exception error) when (attempt < 10 && error is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(100);
+            }
+        }
     }
 
     /// <summary>
@@ -109,6 +132,6 @@ public static class JsonFiles
                 write(writer);
             file.Flush(flushToDisk: true);
         }
-        File.Move(temporary, path, overwrite: true);
+        PutInPlace(temporary, path);
     }
 }

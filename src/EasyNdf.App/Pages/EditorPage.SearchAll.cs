@@ -63,6 +63,13 @@ public partial class EditorPage
     {
         string wanted = SearchAllBox.Text;
         if (wanted.Trim() == "") return;
+        if (Editor.SearchOptions.Pattern(wanted, out string? problem) is null)
+        {
+            SearchResults.Visibility = Visibility.Visible;
+            ResultList.ItemsSource = null;
+            SearchNote.Text = Texts.Get("Editor.Find.BadPattern", ("problem", problem ?? ""));
+            return;
+        }
         int mine = ++searchNumber;
         List<FileEntry> files = [.. (Files?.Entries ?? []).Where(f => f.Source is not null)
             .OrderBy(FileListModel.ScanKey, Comparer<string>.Create(PropertyScans.CompareByFileName))];
@@ -121,23 +128,25 @@ public partial class EditorPage
     /// </summary>
     private static int FindLines(string text, string wanted, Action<int, string> foundLine)
     {
-        int count = 0, line = 1, lineStart = 0;
-        int at = text.IndexOf(wanted, StringComparison.OrdinalIgnoreCase);
-        while (at >= 0)
+        if (Editor.SearchOptions.Pattern(wanted, out _) is not System.Text.RegularExpressions.Regex pattern) return 0;
+        int count = 0, line = 1, lineStart = 0, lastLine = 0;
+        foreach (System.Text.RegularExpressions.Match match in Editor.SearchOptions.Matches(pattern, text, 0, text.Length))
         {
             int lineEnd = text.IndexOf('\n', lineStart);
-            while (lineEnd >= 0 && lineEnd < at)
+            while (lineEnd >= 0 && lineEnd < match.Index)
             {
                 line++;
                 lineStart = lineEnd + 1;
                 lineEnd = text.IndexOf('\n', lineStart);
             }
+            // a line with several matches is listed once
+            if (line == lastLine) continue;
+            lastLine = line;
             int end = lineEnd < 0 ? text.Length : lineEnd;
             string lineText = text[lineStart..end];
             if (lineText.EndsWith('\r')) lineText = lineText[..^1];
             foundLine(line, lineText.Length > LongestResult ? lineText[..LongestResult] : lineText);
             count++;
-            at = end >= text.Length ? -1 : text.IndexOf(wanted, end, StringComparison.OrdinalIgnoreCase);
         }
         return count;
     }

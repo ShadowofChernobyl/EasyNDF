@@ -451,8 +451,10 @@ public partial class WeaponsArmory : UserControl
     {
         if (CardAt(e.OriginalSource) is not { Weapon: Weapon weapon } card) return;
         e.Handled = true;
-        Select(weapon);
+        // the menu first: selecting builds the Weapon pane, which takes a while for a weapon many units carry, and a menu
+        // opened after it showed in the screen's corner until the pane was done
         OpenWeaponMenu(weapon, card);
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => Select(weapon));
     }
 
     /// <summary>The card an element clicked is on; null for none.</summary>

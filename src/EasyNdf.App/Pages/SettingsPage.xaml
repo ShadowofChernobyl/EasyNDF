@@ -81,11 +81,23 @@
                             <TextBox x:Name="DecimalsBox" Style="{StaticResource MonoBox}" Width="172"
                                      LostKeyboardFocus="DecimalsLeft" KeyDown="BoxKeyDown" />
                         </controls:SettingRow>
-                        <controls:SettingRow Label="{t:Text Settings.ConfirmBeforeRunExport}" Note="{t:Text Settings.ConfirmBeforeRunExport.Note}">
-                            <CheckBox x:Name="ConfirmExportSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="confirmExport" />
-                        </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.AskExportFolder}" Note="{t:Text Settings.AskExportFolder.Note}">
                             <CheckBox x:Name="AskFolderSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="askExportFolder" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.KeepFolderStructure}" Note="{t:Text Settings.KeepFolderStructure.Note}">
+                            <CheckBox x:Name="StructureSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="keepFolderStructure" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.ExportZip}" Note="{t:Text Settings.ExportZip.Note}">
+                            <CheckBox x:Name="ZipSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="exportZip" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.HoldBackFailing}" Note="{t:Text Settings.HoldBackFailing.Note}">
+                            <CheckBox x:Name="HoldBackSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="holdBackFailing" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.UpdateWatermarkFirst}" Note="{t:Text Settings.UpdateWatermarkFirst.Note}">
+                            <CheckBox x:Name="WatermarkFirstSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="updateWatermarkFirst" />
+                        </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.RememberExportFolder}" Note="{t:Text Settings.RememberExportFolder.Note}">
+                            <CheckBox x:Name="RememberFolderSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="rememberExportFolder" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.BackUpOverwrittenFiles}" Note="{t:Text Settings.BackUpOverwrittenFiles.Note}">
                             <CheckBox x:Name="BackupSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="backupOverwritten" />
@@ -131,7 +143,7 @@
                             <CheckBox x:Name="AssignSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="autoAssign" />
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ReopenTheLastFiles}" Note="{t:Text Settings.ReopenTheLastFiles.Note}">
-                            <CheckBox x:Name="SessionSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="restoreSession" />
+                            <CheckBox x:Name="SessionSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="reopenLastFiles" />
                         </controls:SettingRow>
                     </controls:SettingGrid>
                 </StackPanel>

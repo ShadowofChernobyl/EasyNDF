@@ -187,13 +187,14 @@ public static class DivisionReader
     private static Dictionary<string, List<DivisionUnit>> ReadRules(GameDataFiles files, List<string> problems, Dictionary<string, Dictionary<string, int>> transportCaps)
     {
         var rules = new Dictionary<string, List<DivisionUnit>>(StringComparer.Ordinal);
+        var shared = new SharedTexts();
         foreach (Declaration declaration in UnitReader.Declarations(files, DecksFolder + "DivisionRules.ndf", _ => true, problems))
         {
-            if (declaration.Value is ObjectValue { TypeName: "TDeckDivisionRule" } rule) rules[declaration.Name] = UnitsOf(rule);
+            if (declaration.Value is ObjectValue { TypeName: "TDeckDivisionRule" } rule) rules[declaration.Name] = UnitsOf(rule, shared);
             foreach (var (key, value) in PairsOf(Find(declaration.Value, "DivisionRules")))
                 if (Text(key) is string division)
                 {
-                    rules[division] = UnitsOf(value);
+                    rules[division] = UnitsOf(value, shared);
                     transportCaps[division] = TransportCapsOf(value);
                 }
         }
@@ -210,8 +211,37 @@ public static class DivisionReader
         return caps;
     }
 
+    /// <summary>
+    /// Tuned for memory: the names of units and transports read once, shared by every division that names them, and
+    /// units with the same transports share one list of them. Each unit had its own copy of each transport's name: War
+    /// in Flames gives thousands of units over a hundred transports each, some 3.6 million texts and 320 MB held by
+    /// the Armory, shown as "Other .NET data" (Paul's 1 GB at rest, 2026-11-19). Keep it that way when tidying.
+    /// </summary>
+    private sealed class SharedTexts
+    {
+        private readonly Dictionary<string, string> names = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, IReadOnlyList<string>> lists = new(StringComparer.Ordinal);
+
+        public string Name(string name)
+        {
+            if (names.TryGetValue(name, out string? kept)) return kept;
+            names[name] = name;
+            return name;
+        }
+
+        public IReadOnlyList<string> List(List<string> texts)
+        {
+            if (texts.Count == 0) return [];
+            string key = string.Join('\n', texts);
+            if (lists.TryGetValue(key, out IReadOnlyList<string>? kept)) return kept;
+            IReadOnlyList<string> list = [.. texts.Select(Name)];
+            lists[key] = list;
+            return list;
+        }
+    }
+
     /// <summary>The units of one rule: each TDeckUniteRule in its UnitRuleList.</summary>
-    private static List<DivisionUnit> UnitsOf(NdfValue rule)
+    private static List<DivisionUnit> UnitsOf(NdfValue rule, SharedTexts shared)
     {
         var units = new List<DivisionUnit>();
         foreach (NdfValue item in ItemsOf(Find(rule, "UnitRuleList")))
@@ -219,13 +249,13 @@ public static class DivisionReader
             if (item is not ObjectValue unitRule || Text(Own(unitRule, "UnitDescriptor")) is not string unit) continue;
             units.Add(new DivisionUnit
             {
-                Unit = unit,
+                Unit = shared.Name(unit),
                 Cards = WholeNumber(Own(unitRule, "MaxPackNumber")) ?? 0,
                 UnitsPerCard = WholeNumber(Own(unitRule, "NumberOfUnitInPack")),
                 UnitsPerCardByPhase = ItemsOf(Own(unitRule, "NumberOfUnitInPackByPhase")).Select(n => WholeNumber(n) ?? 0).ToList(),
                 VeterancyMultipliers = ItemsOf(Own(unitRule, "NumberOfUnitInPackXPMultiplier")).Select(n => Number(n) ?? 0).ToList(),
                 AvailableWithoutTransport = Text(Own(unitRule, "AvailableWithoutTransport")) == "True",
-                Transports = TextsOf(Own(unitRule, "AvailableTransportList")),
+                Transports = shared.List(TextsOf(Own(unitRule, "AvailableTransportList"))),
             });
         }
         return units;

@@ -30,6 +30,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// <summary>"Show Them" on the notice of files with values that would stop mod generation: shows them, the first one given.</summary>
     public Action<FileEntry>? ShowFilesWithErrors { get; init; }
 
+    /// <summary>The Export window's "overwrite my source files" was ticked: a file may be written over the one it was added from.</summary>
+    public bool OverwriteSource { get; init; }
+
+    /// <summary>Every file goes into the folder chosen, whatever folder it has (the .zip's files, gathered first in a folder of their own).</summary>
+    public bool EveryFileToChosenFolder { get; init; }
+
     /// <summary>The WARNO mod this export's UNITS.csv goes into, by its folder name; null when it writes none.</summary>
     private string? namesFileMod;
 
@@ -50,6 +56,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         if (model.IsBusy) return;
         bool everyFile = write && settings.ExportEveryFile;
         List<FileEntry> list = FilesThatRun(model.Entries, everyFile).Where(e => skipped?.Contains(e) != true).ToList();
+        // MimeticImpactMapping.ndf first: the ammunition is checked against the impacts this run gives it, as a mod adds
+        // its own impacts there (YSM's nukes)
+        list = [.. list.OrderBy(entry => entry.Name.Equals(FxImpactsFile, StringComparison.OrdinalIgnoreCase) ? 0 : 1)];
         if (list.Count == 0)
         {
             model.Warn(model.Entries.Any(e => e.On && e.Source is null)
@@ -62,7 +71,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             // Every file gets the folder chosen now, when the user wants to be asked each time; otherwise the files with
             // no export folder get one, chosen once for all of them.
-            List<FileEntry> withoutFolder = settings.AskExportFolder ? list : list.Where(e => e.ExportFolder is null).ToList();
+            List<FileEntry> withoutFolder = settings.AskExportFolder || EveryFileToChosenFolder ? list : list.Where(e => e.ExportFolder is null).ToList();
             if (withoutFolder.Count > 0)
             {
                 string? folder = await chooseExportFolder();
@@ -70,7 +79,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 model.SetExportFolder(withoutFolder, folder);
                 // files added from other folders of the same GameData (its Generated folder, and GameData itself for
                 // MODDING.csv) each go into their own folder beside the others, as in the game's mod, not all into one
-                if (withoutFolder.Select(ExportGameDataOf).FirstOrDefault(found => found is not null) is string gameData)
+                if (settings.KeepFolderStructure && withoutFolder.Select(ExportGameDataOf).FirstOrDefault(found => found is not null) is string gameData)
                     foreach (FileEntry entry in withoutFolder)
                         if (AddedFromInGameData(entry) is string added && Path.Combine(gameData, added) is string own
                             && !string.Equals(Path.TrimEndingDirectorySeparator(own), Path.TrimEndingDirectorySeparator(entry.ExportFolder!), StringComparison.OrdinalIgnoreCase))
@@ -117,6 +126,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             // the files generated divisions are made from are worked out once for each game, for every file that makes them
             var generatedInputs = new Dictionary<Data.Game.GameTitle, List<GeneratedListsMaker.Input>>();
             foreach (FileEntry entry in list) works[entry] = WorkFor(entry, model.Entries, generatedInputs);
+            LeaveOutCardsOfMissingUnits(works);
             foreach (FileEntry entry in list) entry.ClearMessage();
             // A row with no rules that is not part of this run drops the message left by an earlier "every file" export.
             foreach (FileEntry entry in model.Entries.Except(list))
@@ -161,9 +171,14 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             MakeDictionaries(dictionariesToMake, finished);
             if (deckNumbersGiven.Count > 0)
                 model.Say(Texts.Get("Files.Run.DeckNumbersGiven", ("units", string.Join(", ", deckNumbersGiven))));
+            if (cardsLeftOut.Count > 0)
+                model.Say(Texts.Get("Files.Run.CardsLeftOut", ("units", string.Join(", ", cardsLeftOut.Order(StringComparer.Ordinal).Select(unit => Divisions.BattlegroupView.ShortName(unit))))), NoticeKind.Caution);
+            if (deckNumbersMoved.Count > 0)
+                model.Say(Texts.Get("Files.Run.DeckNumbersMoved", ("units", string.Join("; ", deckNumbersMoved))));
         }
         // last, so the export's other notices do not push it out of sight
         SayValueErrors(finished, write);
+        CheckDeckNames(finished, write);
     }
 
     /// <summary>Whether a file's export is checked for values that would stop mod generation: WARNO's files are, as the guide is WARNO's.</summary>
@@ -205,6 +220,166 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         model.Say(message, NoticeKind.Problem, showThem);
     }
 
+    /// <summary>The file that maps the impacts, whose name is all the run needs of its place.</summary>
+    private static readonly string FxImpactsFile = Path.GetFileName(Data.Effects.FxImpacts.ImpactsFile);
+
+    /// <summary>DeckSerializer.ndf, the files the divisions and units it names are made in, and the impacts' file, which this run makes before the ammunition is checked.</summary>
+    private static readonly HashSet<string> DeckNameFiles = new(StringComparer.OrdinalIgnoreCase)
+        { "DeckSerializer.ndf", "Divisions.ndf", "TacticalUnits.ndf", "UniteDescriptor.ndf", "BuildingDescriptors.ndf", FxImpactsFile };
+
+    /// <summary>The impact names of the MimeticImpactMapping.ndf this run made (run first, see <see cref="Run"/>); null when it made none.</summary>
+    private IReadOnlySet<string>? ImpactsMade()
+    {
+        lock (madeTexts)
+            return madeTexts.TryGetValue(FxImpactsFile, out string? mapping) && Data.Effects.FxImpacts.NamesIn(mapping) is { Count: > 0 } names ? names : null;
+    }
+
+    /// <summary>The texts this run made of <see cref="DeckNameFiles"/>, by file name.</summary>
+    private readonly Dictionary<string, string> madeTexts = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// After a WARNO run: every division and unit DeckSerializer.ndf names (its DivisionIds and UnitIds) must be made in
+    /// Divisions.ndf and the unit files, or mod generation stops ("object not found"), as when a mod's divisions copy
+    /// one an earlier mod removed. The files not in this run are read as the game has them. Said on DeckSerializer's row
+    /// and in a notice; on Export the files are written already.
+    /// </summary>
+    private void CheckDeckNames(List<FileEntry> finished, bool write)
+    {
+        FileEntry? deck = finished.FirstOrDefault(entry => entry.Name.Equals("DeckSerializer.ndf", StringComparison.OrdinalIgnoreCase) && entry.Game == Data.Game.GameTitle.Warno);
+        string? deckText;
+        lock (madeTexts) madeTexts.TryGetValue("DeckSerializer.ndf", out deckText);
+        if (deck is null || deckText is null) return;
+        // a file on the list but not in this run (a Preview of one file): what it would make isn't known
+        bool Unknown(string file)
+        {
+            lock (madeTexts) if (madeTexts.ContainsKey(file)) return false;
+            return model.Entries.Any(entry => entry.On && entry.Name.Equals(file, StringComparison.OrdinalIgnoreCase));
+        }
+        string? TextOf(string file)
+        {
+            lock (madeTexts) if (madeTexts.TryGetValue(file, out string? made)) return made;
+            return GameFileText(file, deck);
+        }
+        var missing = new List<string>();
+        foreach ((string list, string[] files) in new[] { ("DivisionIds", new[] { "Divisions.ndf" }), ("UnitIds", new[] { "TacticalUnits.ndf", "UniteDescriptor.ndf", "BuildingDescriptors.ndf" }) })
+        {
+            List<string> named = DeckNames.Keys(deckText, list);
+            // a list whose files can't all be known is not checked, rather than judged on some of them
+            if (named.Count == 0 || files.Any(Unknown)) continue;
+            List<string?> texts = [.. files.Select(TextOf)];
+            if (texts.All(text => text is null)) continue;
+            var made = new HashSet<string>(texts.OfType<string>().SelectMany(DeckNames.Declared), StringComparer.Ordinal);
+            missing.AddRange(named.Where(name => !made.Contains(name)));
+        }
+        if (missing.Count == 0) return;
+        string names = string.Join(", ", missing.Take(5)) + (missing.Count > 5 ? " " + Texts.Get("Files.Run.DeckNames.More", ("count", missing.Count - 5)) : "");
+        deck.IsError = true;
+        deck.Message = Texts.Count("Files.Run.DeckNames.Row", missing.Count, ("count", FileStatus.Count(missing.Count)), ("names", names));
+        model.RowChanged(deck);
+        model.Say(Texts.Count(write ? "Files.Run.DeckNames.Exported" : "Files.Run.DeckNames.Preview", missing.Count, ("count", FileStatus.Count(missing.Count))), NoticeKind.Problem,
+            ShowFilesWithErrors is { } show ? new NoticeAction(Texts.Get("Files.Run.ValueErrors.ShowIt"), () => show(deck)) : null);
+    }
+
+    /// <summary>
+    /// A file as the game has it (its base.zip, by the folders it was added with, else by its name alone), for a Clone
+    /// whose source an earlier mod removed; null when not found, and for Steel Division 2.
+    /// </summary>
+    private static string? GameFileText(FileEntry entry)
+    {
+        if (entry.Game != Data.Game.GameTitle.Warno) return null;
+        string inGameData = entry.Folder == "" ? entry.Name : entry.Folder + "/" + entry.Name;
+        return GameFileText(inGameData, entry);
+    }
+
+    /// <summary>A WARNO file as the game has it (its base.zip), for a file the run did not make; null when not found.</summary>
+    private static string? GameFileText(string fileName, FileEntry near)
+    {
+        try
+        {
+            if (Editor.ImpactNames.GameFolder([near.ExportFolder is null ? null : ExportPathOf(near), near.Source]) is not string gameFolder
+                || Data.Game.GameInstall.BaseZipOf(gameFolder) is not string baseZip || !File.Exists(baseZip)) return null;
+            using var files = new Data.Units.GameDataFiles(baseZip);
+            // by the folders it was added with ("Generated/Gameplay/Decks/Divisions.ndf"), else by its name alone
+            List<string> paths = [.. files.PathsWhere(path => path.EndsWith("/" + Path.GetFileName(fileName), StringComparison.OrdinalIgnoreCase))];
+            string? path = paths.FirstOrDefault(each => ("/" + each).EndsWith("/" + fileName.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase)) ?? (paths.Count == 1 ? paths[0] : null);
+            return path is null ? null : files.ReadPath(path);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Every unit the files make after the mods' rules, read for the deck numbers; null when they were not read (Preview, or no mod with divisions).</summary>
+    private HashSet<string>? knownUnits;
+
+    /// <summary>The units whose battlegroup cards this export left out, as no file makes them.</summary>
+    private HashSet<string> cardsLeftOut = [];
+
+    /// <summary>
+    /// A battlegroup card (a DeckPackDescriptor an Armory rule adds to DeckPacks.ndf) for a unit, or with a transport,
+    /// that no file makes stops mod generation ("object not found"): a mod's battlegroups saved before a game update
+    /// renamed or removed the unit (YSM's Mi_8MT_POL, now Mi_8T_POL). This export leaves such cards out, and their
+    /// places in the battlegroups (Decks.ndf's DeckPackList); the mod itself keeps them. Only the rules' copies for this
+    /// run are changed.
+    /// </summary>
+    private void LeaveOutCardsOfMissingUnits(Dictionary<FileEntry, FileWork> works)
+    {
+        if (knownUnits is not { Count: > 0 } known) return;
+        var packsLeftOut = new HashSet<string>(StringComparer.Ordinal);
+        foreach ((FileEntry entry, FileWork work) in works)
+            if (entry.Name.Equals("DeckPacks.ndf", StringComparison.OrdinalIgnoreCase))
+                foreach (ModRules part in work.Stack) LeaveOutCards(part.Rules, known, packsLeftOut);
+        if (packsLeftOut.Count == 0) return;
+        foreach ((FileEntry entry, FileWork work) in works)
+            if (entry.Name.Equals("Decks.ndf", StringComparison.OrdinalIgnoreCase))
+                foreach (ModRules part in work.Stack) LeaveOutPlaces(part.Rules, packsLeftOut);
+    }
+
+    /// <summary>Takes out the Add rules whose card's unit or transport no file makes; their cards' names go into <paramref name="packsLeftOut"/>.</summary>
+    private void LeaveOutCards(JsonArray rules, HashSet<string> known, HashSet<string> packsLeftOut)
+    {
+        for (int at = rules.Count - 1; at >= 0; at--)
+        {
+            JsonNode? rule = rules[at];
+            if (rule?["Rules"] is JsonArray inside)
+            {
+                LeaveOutCards(inside, known, packsLeftOut);
+                continue;
+            }
+            if ((string?)rule?["Kind"] != "Add" || (string?)rule?["Params"]?["Text"] is not string text
+                || !text.Contains("DeckPackDescriptor", StringComparison.Ordinal)) continue;
+            List<string> missing = [.. DeckNames.UnitsIn(text).Where(unit => !known.Contains(unit))];
+            if (missing.Count == 0) continue;
+            packsLeftOut.UnionWith(DeckNames.Declared(text));
+            cardsLeftOut.UnionWith(missing);
+            rules.RemoveAt(at);
+        }
+    }
+
+    /// <summary>Takes the cards left out of the battlegroups the Add rules write: their lines in each DeckPackList.</summary>
+    private static void LeaveOutPlaces(JsonArray rules, HashSet<string> packsLeftOut)
+    {
+        foreach (JsonNode? rule in rules)
+        {
+            if (rule?["Rules"] is JsonArray inside)
+            {
+                LeaveOutPlaces(inside, packsLeftOut);
+                continue;
+            }
+            if ((string?)rule?["Kind"] != "Add" || rule["Params"] is not JsonObject parameters || (string?)parameters["Text"] is not string text
+                || !text.Contains("DeckPackList", StringComparison.Ordinal)) continue;
+            string kept = DeckNames.WithoutPacks(text, packsLeftOut);
+            if (kept != text) parameters["Text"] = kept;
+        }
+    }
+
+    /// <summary>The highest number for deck codes given, as deck codes keep them in 16 bits.</summary>
+    private const int MostDeckNumber = 65535;
+
+    /// <summary>The mods' units this export gave another number, as another unit had theirs: "YN Nuke: 4679 → 5022 (F5E Tiger II CLU has 4679)".</summary>
+    private List<string> deckNumbersMoved = [];
+
     /// <summary>The units this export gave a number for deck codes (<see cref="GiveDeckNumbers"/>), by name, for the note after it.</summary>
     private List<string> deckNumbersGiven = [];
 
@@ -223,6 +398,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     {
         model.ShowStep(Texts.Get("Files.Run.Card.DeckNumbers"));
         deckNumbersGiven = [];
+        deckNumbersMoved = [];
+        knownUnits = null;
+        cardsLeftOut = [];
         List<Mod> mods = [.. ModStack.RunningOn(run).Where(mod => mod.Divisions.Count > 0 || mod.UnitDeckNumbers.Count > 0)];
         if (mods.Count == 0) return;
         // numbers a mod file carries without their rules get them first, so the units are read with those numbers
@@ -248,12 +426,44 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             made = await Task.Run(() => GeneratedListsMaker.ResultsFor(rules, inputs, TextAfterRules, cache));
 
         Dictionary<string, GeneratedListsMaker.KnownUnit> units = made.Units;
+        (knownUnits ??= new HashSet<string>(StringComparer.Ordinal)).UnionWith(units.Keys);
         List<Mod> gameMods = [.. AppData.Current.Mods.Where(mod => mod.Game == game)];
         bool Numbered(string unit) => gameMods.Any(mod => mod.UnitDeckNumbers.ContainsKey(unit) || mod.Units.Any(own => own.Descriptor == unit));
-        int next = units.Values.Select(unit => unit.DeckNumber ?? 0)
-            .Concat(gameMods.SelectMany(mod => mod.Units.Select(unit => unit.DeckNumber ?? 0).Concat(mod.UnitDeckNumbers.Values)))
-            .DefaultIfEmpty(0).Max() + 1;
+        // above the highest number in use, leaving out a mod's far-off one (WiF's Stinger NG has 99999): the numbers go
+        // into deck codes, so they stay within 16 bits; each one given is skipped over by the next
+        HashSet<int> inUse = [.. units.Values.Select(unit => unit.DeckNumber ?? 0)
+            .Concat(gameMods.SelectMany(mod => mod.Units.Select(unit => unit.DeckNumber ?? 0).Concat(mod.UnitDeckNumbers.Values)))];
+        int nextFree = inUse.Where(number => number < MostDeckNumber).DefaultIfEmpty(0).Max();
+        int TakeNext()
+        {
+            do nextFree++; while (inUse.Contains(nextFree));
+            inUse.Add(nextFree);
+            return nextFree;
+        }
         string NameOf(string unit) => units.TryGetValue(unit, out GeneratedListsMaker.KnownUnit? known) && known.Name != "" ? known.Name : Divisions.BattlegroupView.ShortName(unit);
+        // A number a mod keeps for its unit that another unit has too stops mod generation ("Unit ID conflict in
+        // DeckSerializer"): a game update gives its new units numbers a mod took before (YSM's nukes, 4679 and 4681).
+        // The mod's unit gets a free number; decks with the old number lose that unit.
+        var takenBy = new Dictionary<int, string>();
+        foreach ((string unit, GeneratedListsMaker.KnownUnit known) in units)
+            if (known.DeckNumber is int number && !gameMods.Any(mod => mod.UnitDeckNumbers.ContainsKey(unit))) takenBy.TryAdd(number, unit);
+        foreach (Mod mod in mods)
+        {
+            List<string> clashing = [.. mod.UnitDeckNumbers.Where(pair => takenBy.TryGetValue(pair.Value, out string? other) && other != pair.Key)
+                .Select(pair => pair.Key).Order(StringComparer.Ordinal)];
+            foreach (string unit in clashing)
+            {
+                int was = mod.UnitDeckNumbers[unit];
+                mod.UnitDeckNumbers[unit] = TakeNext();
+                ArmoryPresets.RemoveDeckNumberRules(mod, unit);
+                deckNumbersMoved.Add(Texts.Get("Files.Run.DeckNumberMoved", ("unit", NameOf(unit)), ("was", was), ("now", mod.UnitDeckNumbers[unit]), ("other", NameOf(takenBy[was]))));
+            }
+            // numbers kept by two mods' units: the later mod's moves
+            foreach ((string unit, int number) in mod.UnitDeckNumbers) takenBy.TryAdd(number, unit);
+            if (clashing.Count == 0) continue;
+            AddDeckNumberRules(mod, NameOf);
+            AppData.Current.Save(mod);
+        }
         foreach (Mod mod in mods)
         {
             // the units and their transports; in name order, so the numbers given do not depend on the divisions' order
@@ -264,7 +474,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 .Where(unit => units.TryGetValue(unit, out GeneratedListsMaker.KnownUnit? known) && known.DeckNumber is null && !Numbered(unit))
                 .Order(StringComparer.Ordinal)];
             if (needing.Count == 0) continue;
-            foreach (string unit in needing) mod.UnitDeckNumbers[unit] = next++;
+            foreach (string unit in needing) mod.UnitDeckNumbers[unit] = TakeNext();
             AddDeckNumberRules(mod, NameOf);
             deckNumbersGiven.AddRange(needing.Select(NameOf));
         }
@@ -882,12 +1092,16 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             var ruleCounts = new List<int>();
             // the check of the values needs the text a Preview would otherwise leave unkept
             bool checksValues = valueGuide is not null && ChecksValues(entry);
-            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write || checksValues, logLimit, work.OtherFiles, stages, ruleCounts);
+            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write || checksValues, logLimit, work.OtherFiles, stages, ruleCounts,
+                () => GameFileText(entry));
             // the impact names of the MimeticImpactMapping.ndf the game will load: the export folder's mod's, or else the source's
             List<RunValueError> valueErrors = checksValues && result.ParseError == "" && result.Edits > 0 && result.Text is string made
                 ? RunValueError.Place(result.Logs, ExportValueCheck.Find(work.Content.Text(), made, valueGuide!,
-                    ImpactNames.For(entry.Game, entry.ExportFolder is null ? null : ExportPathOf(entry), entry.Source)))
+                    ImpactsMade() ?? ImpactNames.For(entry.Game, entry.ExportFolder is null ? null : ExportPathOf(entry), entry.Source),
+                    Editor.GameClasses.For(entry.Game, entry.ExportFolder is null ? null : ExportPathOf(entry), entry.Source)))
                 : [];
+            // the files DeckSerializer.ndf's names are looked up in, as this run makes them, for the check after it
+            if (DeckNameFiles.Contains(entry.Name)) lock (madeTexts) madeTexts[entry.Name] = result.Text ?? work.Content.Text();
             clock.Stop();
             lock (conflictsFound) conflictsFound[entry.Key] = ConflictsIn(entry.Name, stack, result, stages ?? [], ruleCounts);
 
@@ -917,7 +1131,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 Milliseconds = clock.ElapsedMilliseconds,
                 RuleSets = work.RuleSets,
                 RuleSources = SourcesOf(stack),
-                Held = write && (result.ParseError != "" || valueErrors.Count > 0),
+                Held = write && settings.HoldBackFailing && (result.ParseError != "" || valueErrors.Count > 0),
                 ValueErrors = valueErrors,
                 Unchanged = write && result.ParseError == "" && result.Edits == 0,
             };
@@ -927,7 +1141,16 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             entry.IdleRuleCount = result.Edits > 0 ? result.Stats.Count(RunRecord.IsIdle) : 0;
 
             string edits = Texts.Count("Files.Run.Edits", result.Edits, ("count", FileStatus.Count(result.Edits)));
-            if (result.ParseError != "")
+            // "Hold back files that fail the safety check" off: written anyway, the row still red with what is wrong
+            if (write && !settings.HoldBackFailing && text is not null && (result.ParseError != "" || valueErrors.Count > 0))
+            {
+                entry.IsError = true;
+                string errors = Texts.Count("Files.Run.ValueErrors.Count", valueErrors.Count, ("count", FileStatus.Count(valueErrors.Count)));
+                Deliver(entry, System.Text.Encoding.UTF8.GetBytes(text), result.ParseError != ""
+                    ? Texts.Get("Files.Run.ExportedInvalid", ("problem", result.ParseError))
+                    : Texts.Get("Files.Run.ExportedWithErrors", ("edits", edits), ("errors", errors)));
+            }
+            else if (result.ParseError != "")
             {
                 // held back: not written to the export folder
                 entry.IsError = true;
@@ -967,8 +1190,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// file as it is goes over it, as when a mod's rules are all switched off (<see cref="HoldsEarlierExport"/>).
     /// </summary>
     /// <param name="content">The file, as it was when the run started.</param>
-    private static void RunWithModsOff(FileEntry entry, FileContent.Snapshot content, bool write, bool everyFile, string openModName)
+    private void RunWithModsOff(FileEntry entry, FileContent.Snapshot content, bool write, bool everyFile, string openModName)
     {
+        if (DeckNameFiles.Contains(entry.Name)) lock (madeTexts) madeTexts[entry.Name] = content.Text();
         if (write && everyFile) Deliver(entry, content.Bytes(), Texts.Get("Files.Run.UnchangedCopy"));
         else if (write && HoldsEarlierExport(entry)) Deliver(entry, content.Bytes(), Texts.Get("Files.Run.Restored"));
         else entry.Message = Texts.Get("Files.Run.ModOff", ("mod", openModName));
@@ -992,8 +1216,9 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// the last mod then makes its text even for a Preview.
     /// </param>
     /// <param name="ruleCounts">When given, filled with how many rules the engine ran for each mod that ran, in order.</param>
+    /// <param name="gameOriginal">The game's own version of the file, for a Clone whose source an earlier mod removed; null for none.</param>
     private (RunResult Result, LoadSummary Info) RunStack(List<ModRules> stack, string text, bool wantText, int logLimit, Dictionary<string, string> otherFiles,
-        List<string>? stages = null, List<int>? ruleCounts = null)
+        List<string>? stages = null, List<int>? ruleCounts = null, Func<string?>? gameOriginal = null)
     {
         LoadSummary? info = null;
         var results = new List<RunResult>();
@@ -1016,6 +1241,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 CheckOutput = true,
                 ModName = ExportFinishing.ModNameForComments(part.Mod.Name, WatermarkOf(part.Mod)),
                 DecimalPlaces = settings.DecimalPlaces,
+                GameOriginal = gameOriginal,
             });
             results.Add(result);
             if (result.ParseError != "" || result.Text is null) break;
@@ -1119,7 +1345,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// <param name="gameMod">The WARNO mod it is for, by its folder name: it goes into Localisation\&lt;that name&gt;; null keeps its folders.</param>
     /// <param name="dictionaryTexts">The texts it is given (<see cref="DictionaryTextsFor"/>).</param>
     /// <param name="content">The file, as it was when the run started.</param>
-    private static void RunNamesFile(FileEntry entry, FileContent.Snapshot content, bool write, string? gameMod, IReadOnlyList<DictionaryText> dictionaryTexts)
+    private void RunNamesFile(FileEntry entry, FileContent.Snapshot content, bool write, string? gameMod, IReadOnlyList<DictionaryText> dictionaryTexts)
     {
         byte[] source = content.Bytes();
         (string text, int count) = DivisionExtras.WithTexts(content.Text(), dictionaryTexts, entry.Game);
@@ -1165,7 +1391,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// </summary>
     /// <param name="what">What the status says was written, such as "12 edits" or "unchanged copy".</param>
     /// <param name="gameMod">For UNITS.csv, the WARNO mod it is for: it goes into Localisation\&lt;that name&gt;.</param>
-    private static void Deliver(FileEntry entry, byte[] content, string what, string? gameMod = null)
+    private void Deliver(FileEntry entry, byte[] content, string what, string? gameMod = null)
     {
         string exportFolder = entry.ExportFolder!;
         string path = ExportPathOf(entry, gameMod);
@@ -1173,7 +1399,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         string shownName = FileListView.FolderName(exportFolder);
         // a file in an archive has no file on disk to overwrite; one sent from the File Editor's "Use in file list" still does
         bool isOnDisk = !entry.Source!.Contains(" > ", StringComparison.Ordinal);
-        if (isOnDisk && string.Equals(Path.GetFullPath(path), Path.GetFullPath(entry.Source), StringComparison.OrdinalIgnoreCase))
+        if (isOnDisk && !OverwriteSource && string.Equals(Path.GetFullPath(path), Path.GetFullPath(entry.Source), StringComparison.OrdinalIgnoreCase))
         {
             entry.Message = Texts.Get("Files.Run.FolderHoldsSource");
             entry.IsError = true;
@@ -1240,10 +1466,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// into; else, when the export folder stands for a folder under GameData (its Generated folder, say, exported to
     /// "…\Generated"), the folder the same steps up from the exported file reach. Null when neither shows it.
     /// </summary>
-    public static string? ExportGameDataOf(FileEntry entry)
+    public static string? ExportGameDataOf(FileEntry entry) => entry.ExportFolder is null ? null : ExportGameDataOf(entry, entry.ExportFolder);
+
+    /// <summary>As <see cref="ExportGameDataOf(FileEntry)"/>, for the file exported to a folder it does not have yet.</summary>
+    private static string? ExportGameDataOf(FileEntry entry, string exportFolder)
     {
-        if (entry.ExportFolder is null) return null;
-        string path = Path.GetFullPath(ExportPathOf(entry));
+        string path = Path.GetFullPath(PathIn(entry, exportFolder));
         if (DivisionExtras.GameDataFolderOf(path) is string found) return found;
         if (InGameData(entry) is not string inside) return null;
         string end = Path.DirectorySeparatorChar + inside;
@@ -1266,12 +1494,84 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
 
     /// <summary>Where a file is exported: its export folder, in the folders it sat in when it was added from a folder.</summary>
     /// <param name="gameMod">For UNITS.csv, the WARNO mod it is for: it goes into Localisation\&lt;that name&gt;.</param>
-    private static string ExportPathOf(FileEntry entry, string? gameMod = null)
+    internal static string ExportPathOf(FileEntry entry, string? gameMod = null)
     {
-        string exportFolder = entry.ExportFolder!;
-        string folder = entry.Folder == "" ? exportFolder : Path.Combine([exportFolder, .. entry.Folder.Split('/')]);
-        string path = Path.Combine(folder, entry.Name);
+        string path = PathIn(entry, entry.ExportFolder!);
         return gameMod is null ? path : DivisionExtras.NamesFilePathFor(path, gameMod);
+    }
+
+    /// <summary>
+    /// Where Run export will write each file, for the Export window, without changing any: the folder chosen for those
+    /// that take it (every file when it asks each time, else those with none), in their GameData's own folders as the
+    /// run puts them; the others where their own folder says. Null for a file with no folder yet.
+    /// </summary>
+    /// <param name="keepStructure">"Keep folder structure", as the window has it now.</param>
+    internal static List<(FileEntry Entry, string? Path)> PlannedPaths(IReadOnlyList<FileEntry> list, string? chosen, bool asksEachTime, bool keepStructure)
+    {
+        var folders = list.ToDictionary(entry => entry, entry => asksEachTime ? null : entry.ExportFolder);
+        List<FileEntry> without = [.. list.Where(entry => folders[entry] is null)];
+        if (chosen is not null && without.Count > 0 && !keepStructure)
+            foreach (FileEntry entry in without) folders[entry] = chosen;
+        else if (chosen is not null && without.Count > 0)
+        {
+            foreach (FileEntry entry in without) folders[entry] = chosen;
+            // as Run: files added from other folders of the same GameData each go into their own folder beside the others
+            string? gameData = null;
+            try { gameData = without.Select(entry => ExportGameDataOf(entry, chosen)).FirstOrDefault(found => found is not null); }
+            catch (Exception error) when (error is ArgumentException or NotSupportedException or PathTooLongException) { }
+            if (gameData is not null)
+                foreach (FileEntry entry in without)
+                    if (AddedFromInGameData(entry) is string added) folders[entry] = Path.Combine(gameData, added);
+        }
+        return [.. list.Select(entry => (entry, folders[entry] is string folder ? PathIn(entry, folder, keepStructure) : null))];
+    }
+
+    /// <summary>
+    /// The files the File rules of the files exported write, as the run writes them (<see cref="WriteModFiles"/>): into
+    /// the mod folder holding the GameData each file goes into, a WARNO dictionary in the mod's own Localisation folder,
+    /// each place once. For the Export window, before the run.
+    /// </summary>
+    /// <param name="planned">Each file exported, with where it goes.</param>
+    /// <param name="known">Each file's carried files worked out before, kept between calls (they don't depend on the folder).</param>
+    internal static List<(string Path, string StoredName)> PlannedModFiles(IEnumerable<(FileEntry Entry, string? Path)> planned, Dictionary<FileEntry, List<FileAndTextRules.CarriedFile>> known)
+    {
+        var places = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach ((FileEntry entry, string? path) in planned)
+        {
+            if (path is null || FileAndTextRules.ModFolderOf(path) is not string modFolder) continue;
+            if (!known.TryGetValue(entry, out List<FileAndTextRules.CarriedFile>? files))
+            {
+                List<ModRules> stack = StackFor(entry);
+                known[entry] = files = FileAndTextRules.FilesOf(
+                    FileAndTextRules.EachInItsOwnRuleSet(stack.SelectMany(part => part.RuleSets.Select(ruleSet => ruleSet.Rules))));
+            }
+            foreach (FileAndTextRules.CarriedFile carried in files)
+            {
+                FileAndTextRules.CarriedFile file = entry.Game == Data.Game.GameTitle.Warno ? InTheModsLocalisation(carried, Path.GetFileName(modFolder)) : carried;
+                string place = Path.Combine([modFolder, .. file.Destination.Split('/', '\\')]);
+                places.TryAdd(place, file.StoredName);
+            }
+        }
+        return [.. places.Select(place => (place.Key, place.Value))];
+    }
+
+    /// <summary>
+    /// The folder a .zip's paths start from, for files exported to a folder: the folder holding the mod when it is in
+    /// a mod's GameData (the .zip then holds the mod's folder, with the File rules' files), else that folder itself.
+    /// </summary>
+    internal static string ZipRootFor(string chosen) =>
+        FileAndTextRules.ModFolderOf(Path.Combine(chosen, "file")) is string modFolder && Path.GetDirectoryName(modFolder) is string above ? above : chosen;
+
+    /// <summary>
+    /// A file's place in an export folder, in the folders it sat in when it was added from a folder; straight in it
+    /// when "Keep folder structure" is off.
+    /// </summary>
+    /// <param name="keepStructure">"Keep folder structure"; null for the setting.</param>
+    private static string PathIn(FileEntry entry, string exportFolder, bool? keepStructure = null)
+    {
+        bool keep = keepStructure ?? AppData.Current.Settings["keepFolderStructure"]?.GetValue<bool>() != false;
+        string folder = entry.Folder == "" || !keep ? exportFolder : Path.Combine([exportFolder, .. entry.Folder.Split('/')]);
+        return Path.Combine(folder, entry.Name);
     }
 
     /// <summary>

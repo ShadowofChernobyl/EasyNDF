@@ -451,7 +451,7 @@ public sealed class FileListModel : INotifyPropertyChanged
     /// <summary>Cancel on the card: the file being worked on is finished, and the rest are left as they are.</summary>
     public void CancelRun()
     {
-        if (!isBusy) return;
+        if (!isBusy && !isPreparing) return;
         IsCancelRequested = true;
         RunDoing = runFile == "" ? Texts.Get("Files.Run.Card.Stopping") : Texts.Get("Files.Run.Progress.Stopping", ("file", runFile));
         RunNote = Texts.Get("Files.Run.Card.StoppingNote");
@@ -466,7 +466,18 @@ public sealed class FileListModel : INotifyPropertyChanged
     }
 
     /// <summary>Whether the buttons that change the list can be used now.</summary>
-    public bool IsIdle => !isBusy;
+    public bool IsIdle => !isBusy && !isPreparing;
+
+    /// <summary>
+    /// Between Export in the Export window and the run itself (the divisions' check, the questions, reading what the
+    /// run needs), which can take seconds: the run's card shows at once, "Getting ready…", and Cancel stops the export.
+    /// </summary>
+    public bool IsPreparing
+    {
+        get => isPreparing;
+        set { isPreparing = value; Changed(); }
+    }
+    private bool isPreparing;
 
     /// <summary>Whether Remove and Export folder... can be used: there is a selection, and no run is going.</summary>
     public bool CanChangeSelected => !isBusy && SelectedCount > 0;

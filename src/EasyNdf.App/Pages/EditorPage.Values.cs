@@ -1,3 +1,6 @@
+using System.Windows;
+using System.Windows.Controls;
+using EasyNdf.App.Text;
 using EasyNdf.App.Editor;
 using EasyNdf.Engine.Editing;
 
@@ -60,6 +63,53 @@ public partial class EditorPage
     /// name takes; on any other coloured word, a tip of its own (<see cref="SyntaxTipAt"/>). Null for nothing to say;
     /// without a guide, the syntax check shows the problem alone.
     /// </summary>
+    /// <summary>
+    /// The Help page about the word at a place: a variable's place on its type's page ("ref:TType#Name"), or a type's page;
+    /// null when the Reference has none.
+    /// </summary>
+    private static string? HelpIdAt(FileView v, int offset)
+    {
+        if (v.Guide is not { } guide || v.Editor.Document is not { } document) return null;
+        NdfPlace? place = EditorPlaces.At(document, offset);
+        if (place is not null && place.IsName && offset >= place.WordStart && offset < place.WordEnd && guide.Find(place.ObjectType, place.Name) is not null)
+            return Help.ReferencePages.IdOf(place.ObjectType) + "#" + place.Name;
+        if (ColouredWordAt(v, document, offset) is { Word: var word } && guide.Knows(word) && word != "meta")
+            return Help.ReferencePages.IdOf(word);
+        return null;
+    }
+
+    /// <summary>A tip with "Open in Help ›" under it, when the word has a page in the Help tab's Reference.</summary>
+    private object? WithHelpLink(FileView v, object? tip, string? helpId)
+    {
+        if (tip is null || helpId is null) return tip;
+        var panel = new StackPanel { MaxWidth = ValueTips.Width };
+        panel.Children.Add(tip as UIElement ?? new TextBlock { Text = tip.ToString(), TextWrapping = TextWrapping.Wrap });
+        var link = new System.Windows.Documents.Hyperlink(new System.Windows.Documents.Run(Texts.Get("Editor.Tip.OpenInHelp")))
+        {
+            Style = (Style)FindResource("CrumbLink"),
+            ToolTip = Texts.Get("Editor.Tip.OpenInHelp.Tip"),
+        };
+        link.Click += (_, _) =>
+        {
+            v.SyntaxProblems.CloseTip();
+            MainView.Of(this).ShowHelpPage(helpId);
+        };
+        var line = new TextBlock { Margin = new Thickness(0, 6, 0, 0), FontSize = 11.5 };
+        line.Inlines.Add(link);
+        var foot = new Border { Child = line, BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(0, 2, 0, 0), Margin = new Thickness(0, 5, 0, 0) };
+        foot.SetResourceReference(Border.BorderBrushProperty, "line");
+        panel.Children.Add(foot);
+        return panel;
+    }
+
+    /// <summary>F1 in the text: the Help page of the word at the caret, as the tip's link opens it.</summary>
+    internal bool OpenHelpAtCaret()
+    {
+        if (view.Shown is null || HelpIdAt(view, view.Editor.CaretOffset) is not string id) return false;
+        MainView.Of(this).ShowHelpPage(id);
+        return true;
+    }
+
     private object? TipAt(FileView v, int offset, ProblemMark? problem)
     {
         if (v.Guide is not { } guide || v.Editor.Document is not { } document) return null;
@@ -69,8 +119,8 @@ public partial class EditorPage
         (string, string, bool)? wrong = problem is null ? null : (SyntaxProblems.Capitalised(problem.Message), problem.Why, problem.IsWarning);
         if (ColouredWordAt(v, document, offset) is { } coloured && HasOwnTip(coloured.Part.Colour, onWord && place!.IsInValue)
             && SyntaxTipAt(v, guide, document, offset, coloured.Part, coloured.Word, wrong) is { } own)
-            return own;
+            return WithHelpLink(v, own, HelpIdAt(v, offset));
         ValueInfo? info = onWord ? guide.Find(place!.ObjectType, place.Name) : null;
-        return ValueTips.For(wrong, place?.Name ?? "", info, info is null ? null : place!.ValueText);
+        return WithHelpLink(v, ValueTips.For(wrong, place?.Name ?? "", info, info is null ? null : place!.ValueText), HelpIdAt(v, offset));
     }
 }

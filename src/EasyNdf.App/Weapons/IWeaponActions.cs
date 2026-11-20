@@ -33,10 +33,10 @@ public interface IWeaponActions
     /// <summary>Lists only the units that carry a weapon, on the Units sub-tab.</summary>
     void ShowUnitsUsing(Weapon weapon);
 
-    /// <summary>Why a weapon's 3D model cannot be shown (only missiles have models of their own); null when it can.</summary>
+    /// <summary>Why the 3D viewer cannot open for a weapon (a game whose models cannot be read); null when it can.</summary>
     string? WhyNoModel(Weapon weapon);
 
-    /// <summary>Opens a missile's 3D model in the model viewer.</summary>
+    /// <summary>Opens a weapon's own 3D model in the model viewer, which says so when it has none.</summary>
     void ShowModel(Weapon weapon);
 
     /// <summary>The game of the weapons shown, whose own properties the Weapon pane names and changes.</summary>

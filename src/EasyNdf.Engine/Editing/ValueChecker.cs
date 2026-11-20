@@ -53,6 +53,13 @@ public enum ValueProblemKind
     /// a test confirmed; for some, only while another value of the object is True.
     /// </summary>
     MissingValue,
+
+    /// <summary>
+    /// An object of an older or other form of a class the game's files use, such as TUIResourceTexture_Common, which
+    /// WARNO renamed TUIResourceTexture: mod generation stops on it ("Unknown class"). Only Export's check finds it, from
+    /// the classes of the game's own files; Value is the game's class.
+    /// </summary>
+    UnknownClass,
 }
 
 /// <summary>A value the File Editor marks, and what is wrong with it.</summary>

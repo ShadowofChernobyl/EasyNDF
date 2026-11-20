@@ -294,6 +294,7 @@
                             <controls:SnappedRow Gap="6" HorizontalAlignment="Center">
                                 <Button ToolTip="{t:Text Files.AddFiles.Tip}" Click="AddFilesClicked" Content="{t:Text Files.AddFiles}" Style="{StaticResource GoButton}" IsEnabled="{Binding IsIdle}" />
                                 <Button ToolTip="{t:Text Files.AddFolder.Tip}" Click="AddFolderClicked" Content="{t:Text Files.AddFolder}" IsEnabled="{Binding IsIdle}" />
+                                <Button x:Name="ReopenButton" ToolTip="{t:Text Files.Reopen.Tip}" Click="ReopenClicked" Content="{t:Text Files.Reopen}" IsEnabled="{Binding IsIdle}" Visibility="Collapsed" />
                             </controls:SnappedRow>
                         </StackPanel>
                         <Rectangle x:Name="DropHint" Stroke="{DynamicResource accent}" StrokeThickness="2" StrokeDashArray="3 3"

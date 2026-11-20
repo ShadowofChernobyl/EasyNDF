@@ -115,7 +115,11 @@ public sealed class ModStore
     public void Restore(IReadOnlyList<Mod> mods)
     {
         foreach (Mod old in Mods.ToList())
-            if (!mods.Any(m => m.Name == old.Name)) Delete(old);
+            if (!mods.Any(m => m.Name == old.Name))
+            {
+                try { Delete(old); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { Mods.Remove(old); }
+            }
         foreach (Mod mod in mods)
         {
             Mod? old = Find(mod.Name);
@@ -126,7 +130,13 @@ public sealed class ModStore
                 Mods.Remove(old);
             }
             Mods.Add(mod);
-            if (old is null || ModFiles.StoredText(old) != ModFiles.StoredText(mod)) Save(mod);
+            // as every save of the app: one that fails (a file held by another program) leaves the mod as it is in
+            // the app, and the next change saves it again
+            try
+            {
+                if (old is null || ModFiles.StoredText(old) != ModFiles.StoredText(mod)) Save(mod);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         }
         Mods.Sort(ByName);
     }

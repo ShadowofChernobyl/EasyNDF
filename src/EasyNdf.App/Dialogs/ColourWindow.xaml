@@ -24,6 +24,7 @@
                            MouseLeftButtonDown="TitlePressed" MouseMove="TitleDragged" MouseLeftButtonUp="TitleReleased">
                     <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Settings.Colour.CancelEscape.Tip}" Click="CancelClicked"
                             AutomationProperties.Name="{t:Text Settings.Colour.CancelEscape.Tip}" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource HelpButton}" Margin="0,0,6,0" controls:QuickHelp.Page="themes" ToolTip="{t:Text Common.HelpButton.Window.Tip}" />
                     <TextBlock x:Name="Title" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
                 </DockPanel>
