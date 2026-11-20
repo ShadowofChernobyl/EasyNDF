@@ -96,6 +96,8 @@ public sealed class TourOverlay : Grid
             new(Texts.Get("Welcome.Tour.Done"), () => null),
         ];
         exportWindowSeen = false;
+        // nothing is exported during the tour: the Export window only shows what would be written
+        v.ExportWindow.TourOnly = true;
         if (Window.GetWindow(this) is Window window)
         {
             window.PreviewKeyDown -= KeyPressed;
@@ -111,6 +113,7 @@ public sealed class TourOverlay : Grid
     {
         timer.Stop();
         Visibility = Visibility.Collapsed;
+        if (view is not null) view.ExportWindow.TourOnly = false;
         if (Window.GetWindow(this) is Window window) window.PreviewKeyDown -= KeyPressed;
     }
 

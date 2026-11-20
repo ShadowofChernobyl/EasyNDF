@@ -32,12 +32,13 @@ public sealed partial class UsageReadout : Bevel
     private const double Megabyte = 1024 * 1024;
 
     /// <summary>
-    /// The theme colours of the memory parts, in order, one each: files, rule sets, Armory data, pictures, editor, Undo,
-    /// mods' Armory changes, other .NET data, unused (grey) and outside .NET. A part past them has the last one. Files take
+    /// The theme colours of the memory parts, in order, one each: files, rule sets, Armory's game data and modded units, pictures, editor, Undo,
+    /// mods' Armory changes, 3D model viewer, other .NET data, waiting to be freed (grey), unused and outside .NET (a blue
+    /// of its own: it had the unused part's pink, as a part past the list takes the last colour). Files take
     /// the success colour, not the accent, which can be as gold as the warnings' colour beside it (Olivine).
     /// </summary>
     private static readonly string[] PartColours =
-        ["ok", "side-a", "caution", "usage-modded", "side-b", "s-const", "s-number", "s-keyword", "s-func", "usage-waiting", "muted", "s-param"];
+        ["ok", "side-a", "caution", "usage-modded", "side-b", "s-const", "s-number", "s-keyword", "s-func", "usage-waiting", "muted", "s-param", "usage-outside"];
 
     private readonly List<Figure> figures;
     private readonly TextBlock busyLabel = new() { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };

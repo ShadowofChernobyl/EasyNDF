@@ -8,8 +8,8 @@ namespace EasyNdf.App.Files;
 
 /// <summary>
 /// The Source bar at the top of the Files tab: a raised strip with the game or mod the app works with (the same Source
-/// list as on the Units tab, so choosing here chooses there), its folder, how many of its files the list holds, and Add
-/// Its Files.
+/// list as on the Units tab, so choosing here chooses there), Add Its Files beside it, its folder, and how many of its
+/// files the list holds.
 /// </summary>
 public sealed class SourceBar : Bevel
 {
@@ -34,11 +34,13 @@ public sealed class SourceBar : Bevel
         listedCount.SetResourceReference(TextBlock.ForegroundProperty, "ok");
         addButton.Click += (_, _) => AddFilesRequested?.Invoke();
 
-        var right = new StackPanel { Orientation = Orientation.Horizontal, Children = { listedCount, addButton } };
-        DockPanel.SetDock(right, Dock.Right);
+        // Add Its Files right beside the list it adds from (Paul's request), the folder after it
+        addButton.Margin = new Thickness(0, 0, 10, 0);
+        DockPanel.SetDock(listedCount, Dock.Right);
         DockPanel.SetDock(label, Dock.Left);
         DockPanel.SetDock(list, Dock.Left);
-        Child = new DockPanel { Children = { right, label, list, path } };
+        DockPanel.SetDock(addButton, Dock.Left);
+        Child = new DockPanel { Children = { listedCount, label, list, addButton, path } };
         ShowTexts();
         Texts.LanguageChanged += ShowTexts;
     }
