@@ -23,6 +23,13 @@ public sealed class GameDataFiles : IDisposable
     private readonly IReadOnlyList<ChangedFile> changedFiles;
 
     /// <summary>
+    /// Files as an EasyNDF mod's rules make them, kept on the disk rather than in memory, each read when asked for: its
+    /// path (as <see cref="ChangedFile.Path"/>) and where its text is. Tuned for memory: the model viewer's changed
+    /// files run to tens of megabytes. Keep it that way when tidying.
+    /// </summary>
+    private readonly IReadOnlyList<(string Path, string OnDisk)> changedOnDisk;
+
+    /// <summary>
     /// base.zip's files by path (with forward slashes) and by file name, made once: looking through every entry for each
     /// file read made reading the units again, at each change of the mod, take seconds.
     /// </summary>
@@ -33,11 +40,14 @@ public sealed class GameDataFiles : IDisposable
     /// <param name="baseZipPath">The game's base.zip.</param>
     /// <param name="modFolder">A game mod's folder, or null.</param>
     /// <param name="changedFiles">Files as an EasyNDF mod's rules make them, which come first of all; none by default.</param>
-    public GameDataFiles(string baseZipPath, string? modFolder = null, IReadOnlyList<ChangedFile>? changedFiles = null)
+    /// <param name="changedOnDisk">Changed files kept on the disk, read when asked for (see <see cref="changedOnDisk"/>); none by default.</param>
+    public GameDataFiles(string baseZipPath, string? modFolder = null, IReadOnlyList<ChangedFile>? changedFiles = null,
+        IReadOnlyList<(string Path, string OnDisk)>? changedOnDisk = null)
     {
         baseZip = ZipFile.OpenRead(baseZipPath);
         this.modFolder = modFolder;
         this.changedFiles = changedFiles ?? [];
+        this.changedOnDisk = changedOnDisk ?? [];
         foreach (ZipArchiveEntry entry in baseZip.Entries)
         {
             string path = entry.FullName.Replace('\\', '/');
@@ -58,6 +68,7 @@ public sealed class GameDataFiles : IDisposable
         baseZip = null;
         modFolder = null;
         changedFiles = files;
+        changedOnDisk = [];
     }
 
     /// <summary>The first of base.zip's files whose path ends with <paramref name="endOfPath"/>; null when there is none.</summary>
@@ -75,11 +86,14 @@ public sealed class GameDataFiles : IDisposable
     /// </summary>
     private ChangedFile? ChangedFileFor(string endOfPath)
     {
-        if (changedFiles.Count == 0) return null;
+        if (changedFiles.Count == 0 && changedOnDisk.Count == 0) return null;
         string wanted = "/" + endOfPath.Replace('\\', '/').TrimStart('/');
         static string Slashed(string path) => "/" + path.Replace('\\', '/').TrimStart('/');
         ChangedFile? samePath = changedFiles.FirstOrDefault(file => Slashed(file.Path).EndsWith(wanted, StringComparison.OrdinalIgnoreCase));
         if (samePath is not null) return samePath;
+        // one kept on the disk is read now, and let go once read
+        (string Path, string OnDisk) onDisk = changedOnDisk.FirstOrDefault(file => Slashed(file.Path).EndsWith(wanted, StringComparison.OrdinalIgnoreCase));
+        if (onDisk.Path is not null && File.Exists(onDisk.OnDisk)) return new ChangedFile(onDisk.Path, File.ReadAllText(onDisk.OnDisk, Encoding.UTF8));
         string name = System.IO.Path.GetFileName(wanted);
         var sameName = changedFiles.Where(file => string.Equals(System.IO.Path.GetFileName(file.Path), name, StringComparison.OrdinalIgnoreCase)).ToList();
         return sameName.Count == 1 ? sameName[0] : null;
@@ -145,7 +159,21 @@ public sealed class GameDataFiles : IDisposable
     /// after the game's, in base.zip's form ("GameData/Gameplay/..."). A mod's new unit names its model in a file the
     /// game does not have.
     /// </summary>
-    public IEnumerable<string> PathsWithModWhere(Func<string, bool> picked) => PathsWhere(picked).Concat(ModOnlyPaths().Where(picked));
+    /// <remarks>The new files an EasyNDF mod's File rules bring (changed files on the disk that base.zip lacks) are listed too.</remarks>
+    public IEnumerable<string> PathsWithModWhere(Func<string, bool> picked) =>
+        PathsWhere(picked).Concat(ModOnlyPaths().Where(picked)).Concat(NewChangedPaths().Where(picked));
+
+    /// <summary>The changed files on the disk that base.zip does not have, in base.zip's form ("GameData/...").</summary>
+    private IEnumerable<string> NewChangedPaths()
+    {
+        foreach ((string path, _) in changedOnDisk)
+        {
+            string slashed = path.Replace('\\', '/');
+            int at = slashed.IndexOf("GameData/", StringComparison.OrdinalIgnoreCase);
+            string inZip = at < 0 ? slashed : slashed[at..];
+            if (!entryByPath.ContainsKey(inZip)) yield return inZip;
+        }
+    }
 
     private List<string>? modOnlyPaths;
 

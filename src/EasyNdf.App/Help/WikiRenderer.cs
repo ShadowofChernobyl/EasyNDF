@@ -89,11 +89,15 @@ public sealed class WikiRenderer(PageLook look)
     /// <summary>Raised when the "Open the welcome window" button in a page is clicked.</summary>
     public event Action? WelcomeClicked;
 
+    /// <summary>The headings (h3) of the page last drawn, in order: their text and their block, for "On this page".</summary>
+    public List<(string Text, Paragraph Block)> Headings { get; } = [];
+
     /// <summary>A page's body: its blocks one under the other, in a text box that can be selected but not typed in.</summary>
     /// <param name="html">The page's HTML.</param>
     /// <returns>The body, and the margins of its first and last blocks, which the space around it takes into account.</returns>
     public (FrameworkElement Body, double Top, double Bottom) Render(string html)
     {
+        Headings.Clear();
         var document = new FlowDocument { PagePadding = new Thickness(0), FontSize = 12.5 };
         document.SetResourceReference(FlowDocument.FontFamilyProperty, "ui-font");
         document.SetResourceReference(FlowDocument.ForegroundProperty, "ink");
@@ -208,6 +212,7 @@ public sealed class WikiRenderer(PageLook look)
         heading.BorderThickness = new Thickness(0, 0, 0, 1);
         heading.SetResourceReference(TextElement.ForegroundProperty, "accent");
         heading.SetResourceReference(Block.BorderBrushProperty, "line");
+        Headings.Add((new TextRange(heading.ContentStart, heading.ContentEnd).Text, heading));
         return heading;
     }
 
@@ -291,10 +296,37 @@ public sealed class WikiRenderer(PageLook look)
     {
         var text = new Paragraph { FontSize = 12, Margin = new Thickness(0) };
         string[] lines = PlainText(element).Trim('\n').Split('\n');
+        // NDF (the Reference's examples, a Help page's sample) in the File Editor's colours, each line going on from
+        // where the one before ended; each coloured word has the File Editor's tip
+        bool ndf = element.HasClass("ndf");
+        int inside = EasyNdf.Engine.Editing.NdfColouring.Outside;
+        string whole = string.Join("\n", lines.Select(each => each.TrimEnd('\r')));
+        int lineStart = 0;
         for (int i = 0; i < lines.Length; i++)
         {
             if (i > 0) text.Inlines.Add(new LineBreak());
-            text.Inlines.Add(new Run(lines[i].TrimEnd('\r')));
+            string line = lines[i].TrimEnd('\r');
+            if (!ndf)
+            {
+                text.Inlines.Add(new Run(line));
+                lineStart += line.Length + 1;
+                continue;
+            }
+            (List<EasyNdf.Engine.Editing.ColouredPart> parts, int endsInside) = EasyNdf.Engine.Editing.NdfColouring.ColourLine(line, inside);
+            int at = 0;
+            foreach (EasyNdf.Engine.Editing.ColouredPart part in parts.OrderBy(part => part.Start))
+            {
+                if (part.Start < at) continue;
+                if (part.Start > at) text.Inlines.Add(new Run(line[at..part.Start]));
+                var coloured = new Run(line[part.Start..part.End]);
+                coloured.SetResourceReference(TextElement.ForegroundProperty, "s-" + part.Colour);
+                CodeTips.Attach(coloured, whole, lineStart + part.Start, part.Colour, line[part.Start..part.End], line);
+                text.Inlines.Add(coloured);
+                at = part.End;
+            }
+            if (at < line.Length) text.Inlines.Add(new Run(line[at..]));
+            inside = endsInside;
+            lineStart += line.Length + 1;
         }
         text.SetResourceReference(TextElement.FontFamilyProperty, "mono");
         text.SetResourceReference(TextElement.ForegroundProperty, "ink");

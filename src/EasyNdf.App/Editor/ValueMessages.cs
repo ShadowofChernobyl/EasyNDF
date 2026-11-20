@@ -28,6 +28,7 @@ public static class ValueMessages
         ValueProblemKind.MountWithoutName => Texts.Get("Editor.Value.MountWithoutName"),
         ValueProblemKind.NoSuchImpact => Texts.Get("Editor.Value.NoSuchImpact", ("value", problem.Value.Trim('\'', '"'))),
         ValueProblemKind.MissingValue => Texts.Get("Editor.Value.MustBeSet", ("name", problem.Name)),
+        ValueProblemKind.UnknownClass => Texts.Get("Editor.Value.UnknownClass", ("name", problem.Name), ("game", problem.Value)),
         _ => Texts.Get("Editor.Value.Negative", ("name", problem.Name)),
     };
 

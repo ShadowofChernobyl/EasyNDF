@@ -1,0 +1,160 @@
+<!--
+  The Export window, opened by Export on the Files tab: where the files go (Browse…, the folders used last), a warning
+  when that would write over the files they were added from, the export's options, and the files it will write.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.ExportWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             Visibility="Collapsed" KeyDown="KeyPressed">
+    <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed" SizeChanged="BackdropResized">
+        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                        Padding="12,10,12,12" Width="860" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
+            <DockPanel>
+                <DockPanel DockPanel.Dock="Top">
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.Cancel}" AutomationProperties.Name="{t:Text Common.Cancel}" Click="CancelClicked" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource HelpButton}" Margin="0,0,6,0" controls:QuickHelp.Page="export" ToolTip="{t:Text Common.HelpButton.Window.Tip}" />
+                    <TextBlock Text="{t:Text Files.Export.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
+                </DockPanel>
+                <!-- the summary, Export and Cancel always show -->
+                <DockPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                    <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
+                        <Button x:Name="ExportButton" Style="{StaticResource GoButton}" Content="{t:Text Files.Export.Export}" Click="ExportClicked" />
+                        <Button Content="{t:Text Common.Cancel}" Click="CancelClicked" />
+                    </controls:SnappedRow>
+                    <TextBlock x:Name="Summary" Style="{StaticResource Note}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <StackPanel Margin="0,10,0,0">
+                        <!-- where -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{t:Text Files.Export.To}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <TextBox x:Name="FolderBox" Grid.Column="1" Style="{StaticResource MonoBox}" TextChanged="FolderChanged" ToolTip="{t:Text Files.Export.To.Tip}" />
+                            <Button x:Name="BrowseButton" Grid.Column="2" Content="{t:Text Files.Export.Browse}" Margin="6,0,0,0" Click="BrowseClicked" />
+                            <TextBlock x:Name="RecentLabel" Grid.Row="1" Text="{t:Text Files.Export.Recent}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="0,6,10,0" />
+                            <WrapPanel x:Name="RecentFolders" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,6,0,0" />
+                        </Grid>
+                        <TextBlock x:Name="OwnFolders" Style="{StaticResource Note}" Margin="0,6,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
+                        <!-- writing over the files they were added from -->
+                        <Border x:Name="SourceWarning" BorderBrush="{DynamicResource warn}" BorderThickness="1" Padding="8,6" Margin="0,8,0,0" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock x:Name="SourceWarningText" Foreground="{DynamicResource warn}" FontWeight="Bold" TextWrapping="Wrap" />
+                                <TextBlock Text="{t:Text Files.Export.Source.Why}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                <CheckBox x:Name="SourceOk" Style="{StaticResource Tick}" Content="{t:Text Files.Export.Source.Ok}" Margin="0,6,0,0" Click="SourceOkClicked" />
+                            </StackPanel>
+                        </Border>
+                        <!-- the options: the Settings tab's Export settings, kept when Export is clicked -->
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Files.Export.Files}" /></controls:Bevel>
+                                <controls:SnappedRow Gap="0" Margin="0,6,0,4" HorizontalAlignment="Left">
+                                    <RadioButton x:Name="ScopeChanged" Style="{StaticResource PressedToggle}" GroupName="Scope" Content="{t:Text Files.Export.Scope.Changed}" ToolTip="{t:Text Files.Export.Scope.Changed.Tip}" Click="ScopeClicked" />
+                                    <RadioButton x:Name="ScopeAll" Style="{StaticResource PressedToggle}" GroupName="Scope" Content="{t:Text Files.Export.Scope.All}" ToolTip="{t:Text Files.Export.Scope.All.Tip}" Click="ScopeClicked" />
+                                    <RadioButton x:Name="ScopeSelected" Style="{StaticResource PressedToggle}" GroupName="Scope" Content="{t:Text Files.Export.Scope.Selected}" ToolTip="{t:Text Files.Export.Scope.Selected.Tip}" Click="ScopeClicked" />
+                                </controls:SnappedRow>
+                                <CheckBox x:Name="StructureTick" Style="{StaticResource Tick}" Content="{t:Text Settings.KeepFolderStructure}" ToolTip="{t:Text Settings.KeepFolderStructure.Note}" Margin="0,2" Click="OptionClicked" />
+                                <CheckBox x:Name="ZipTick" Style="{StaticResource Tick}" Content="{t:Text Settings.ExportZip}" ToolTip="{t:Text Settings.ExportZip.Note}" Margin="0,2" Click="OptionClicked" />
+                                <CheckBox x:Name="CommentsTick" Style="{StaticResource Tick}" Content="{t:Text Settings.KeepSourceComments}" ToolTip="{t:Text Settings.KeepSourceComments.Note}" Margin="0,2" />
+                                <DockPanel Margin="0,4,0,2">
+                                    <TextBlock Text="{t:Text Settings.LineEndings}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <ComboBox x:Name="LineEndChoice" MinWidth="140" HorizontalAlignment="Left" ToolTip="{t:Text Settings.LineEndings.Note}">
+                                        <ComboBoxItem Content="LF" Tag="lf" />
+                                        <ComboBoxItem Content="{t:Text Settings.CRLFWindows}" Tag="crlf" />
+                                        <ComboBoxItem Content="{t:Text Settings.SameAsSource}" Tag="keep" />
+                                    </ComboBox>
+                                </DockPanel>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Files.Export.Options}" /></controls:Bevel>
+                                <CheckBox x:Name="BackupTick" Style="{StaticResource Tick}" Content="{t:Text Settings.BackUpOverwrittenFiles}" ToolTip="{t:Text Settings.BackUpOverwrittenFiles.Note}" Margin="0,6,0,2" />
+                                <CheckBox x:Name="StampTick" Style="{StaticResource Tick}" Content="{t:Text Settings.EditedWithEasyNDFComment}" ToolTip="{t:Text Settings.EditedWithEasyNDFComment.Note}" Margin="0,2" />
+                                <CheckBox x:Name="HoldBackTick" Style="{StaticResource Tick}" Content="{t:Text Settings.HoldBackFailing}" ToolTip="{t:Text Settings.HoldBackFailing.Note}" Margin="0,2" />
+                                <CheckBox x:Name="WatermarkTick" Style="{StaticResource Tick}" Content="{t:Text Settings.UpdateWatermarkFirst}" ToolTip="{t:Text Settings.UpdateWatermarkFirst.Note}" Margin="0,2" />
+                                <CheckBox x:Name="OpenTick" Style="{StaticResource Tick}" Content="{t:Text Settings.OpenTheFolderAfter}" ToolTip="{t:Text Settings.OpenTheFolderAfter.Note}" Margin="0,2" />
+                                <CheckBox x:Name="AskTick" Style="{StaticResource Tick}" Content="{t:Text Files.Export.SameFolder}" ToolTip="{t:Text Files.Export.SameFolder.Tip}" Margin="0,2" Click="OptionClicked" />
+                                <CheckBox x:Name="RememberTick" Style="{StaticResource Tick}" Content="{t:Text Settings.RememberExportFolder}" ToolTip="{t:Text Settings.RememberExportFolder.Note}" Margin="0,2" />
+                            </StackPanel>
+                        </Grid>
+                        <!-- what will be written -->
+                        <DockPanel Margin="0,10,0,4">
+                            <controls:SnappedRow DockPanel.Dock="Right" Gap="0">
+                                <RadioButton x:Name="ShowAll" Style="{StaticResource PressedToggle}" GroupName="Show" Content="{t:Text Files.Export.Show.All}" IsChecked="True" Click="ShowClicked" Padding="8,1" />
+                                <RadioButton x:Name="ShowNew" Style="{StaticResource PressedToggle}" GroupName="Show" Content="{t:Text Files.Export.Show.New}" Click="ShowClicked" Padding="8,1" />
+                                <RadioButton x:Name="ShowReplaces" Style="{StaticResource PressedToggle}" GroupName="Show" Content="{t:Text Files.Export.Show.Replaces}" Click="ShowClicked" Padding="8,1" />
+                            </controls:SnappedRow>
+                            <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Width="170" Margin="0,0,8,0" TextChanged="FilterChanged" ToolTip="{t:Text Files.Export.Filter.Tip}" />
+                            <TextBlock Text="{t:Text Files.Export.WillWrite}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+                            <DockPanel>
+                                <Grid x:Name="ListHeading" DockPanel.Dock="Top" Margin="6,3,22,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*" />
+                                        <ColumnDefinition Width="3*" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="130" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{t:Text Files.Export.Column.File}" Foreground="{DynamicResource muted}" FontSize="11.5" />
+                                    <TextBlock Grid.Column="1" Text="{t:Text Files.Export.Column.Folder}" Foreground="{DynamicResource muted}" FontSize="11.5" />
+                                    <TextBlock Grid.Column="2" Text="{t:Text Files.Export.Column.Size}" Foreground="{DynamicResource muted}" FontSize="11.5" />
+                                    <TextBlock Grid.Column="3" Text="{t:Text Files.Export.Column.Status}" Foreground="{DynamicResource muted}" FontSize="11.5" />
+                                </Grid>
+                                <Rectangle DockPanel.Dock="Top" Height="1" Fill="{DynamicResource line}" />
+                                <ListBox x:Name="FileList" Height="240" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource ink}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="6,1" />
+                                            <Setter Property="Focusable" Value="False" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter />
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ToolTip="{Binding Path}">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="2*" />
+                                                    <ColumnDefinition Width="3*" />
+                                                    <ColumnDefinition Width="70" />
+                                                    <ColumnDefinition Width="130" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Name}" FontFamily="{DynamicResource mono}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Folder}" FontFamily="{DynamicResource mono}" Foreground="{DynamicResource muted}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                                                <TextBlock Grid.Column="2" Text="{Binding Size}" />
+                                                <TextBlock Grid.Column="3" Text="{Binding Status}" Foreground="{Binding StatusBrush}" TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+                        </controls:Bevel>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </controls:Bevel>
+    </Grid>
+</UserControl>

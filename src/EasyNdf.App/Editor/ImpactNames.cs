@@ -66,7 +66,7 @@ public static class ImpactNames
     /// WARNO's folder: the one a file is in (a mod's GameData sits in the game's Mods folder), else the one Steam has,
     /// else one chosen in the Armory's "Choose a Game Folder…".
     /// </summary>
-    private static string? GameFolder(string?[] files)
+    internal static string? GameFolder(string?[] files)
     {
         foreach (string? file in files)
             if (file is not null && DivisionExtras.GameDataFolderOf(file) is string gameData

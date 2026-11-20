@@ -36,21 +36,50 @@
                 <Button x:Name="ForwardButton" Style="{StaticResource IconButton}" Content="›" ToolTip="{t:Text Help.Forward.Tip}" Click="ForwardClicked" Margin="6,0,0,0" VerticalAlignment="Center"
                         AutomationProperties.Name="{t:Text Help.Forward.Tip}" controls:OffReason.Text="{t:Text Help.Forward.Off}" />
                 <Button DockPanel.Dock="Right" Content="{t:Text Help.WelcomeWindow}" ToolTip="{t:Text Help.WelcomeWindow.Tip}" HorizontalAlignment="Right" Click="WelcomeClicked" />
+                <!-- Tidy (the page's contents in a column on the right) or Original (as Help first was) -->
+                <ComboBox x:Name="LayoutChoice" DockPanel.Dock="Right" Width="96" Margin="0,0,8,0" VerticalAlignment="Center" HorizontalAlignment="Right"
+                          ToolTip="{t:Text Help.Layout.Tip}" AutomationProperties.Name="{t:Text Help.Layout}" SelectionChanged="LayoutChosen">
+                    <ComboBoxItem Content="{t:Text Help.Layout.Tidy}" />
+                    <ComboBoxItem Content="{t:Text Help.Layout.Original}" />
+                </ComboBox>
+                <TextBlock DockPanel.Dock="Right" Text="{t:Text Help.Layout}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="0,0,6,0" HorizontalAlignment="Right" />
             </DockPanel>
+            <!-- Tidy: the page's contents and related pages in a column on the right, which stays put as the page scrolls -->
+            <!-- no taller than the page beside it: a long list (a Reference page's dozens of files) scrolls on its own -->
+            <Border x:Name="Rail" DockPanel.Dock="Right" Width="210" Margin="12,0,0,0" VerticalAlignment="Top" Visibility="Collapsed"
+                    MaxHeight="{Binding ActualHeight, ElementName=PageArea}"
+                    BorderBrush="{DynamicResource line}" BorderThickness="1">
+                <ScrollViewer x:Name="RailScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <StackPanel Margin="10,8,10,10">
+                        <TextBlock x:Name="RailContentsHeading" Style="{StaticResource WikiRailHeading}" />
+                        <StackPanel x:Name="RailContents" />
+                        <TextBlock x:Name="RailRelatedHeading" Style="{StaticResource WikiRailHeading}" Margin="0,12,0,3" />
+                        <StackPanel x:Name="RailRelated" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
             <!-- the page scrolls in a sunken box, so its edge shows where the text is cut off -->
-            <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
+            <controls:Bevel x:Name="PageArea" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
             <ScrollViewer x:Name="PageScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                 <StackPanel Margin="12,6,12,10">
-                    <!-- #wkCrumb: the page's group, a link to its first page -->
+                    <!-- #wkCrumb: Help › the page's group, each a link to its first page -->
                     <TextBlock HorizontalAlignment="Left" Margin="0,2,0,2" FontSize="11.5" LineHeight="16.675" LineStackingStrategy="BlockLineHeight">
+                        <Hyperlink Style="{StaticResource CrumbLink}" Click="HelpCrumbClicked" ToolTip="{t:Text Help.Crumb.Help.Tip}"><Run Text="{t:Text Help.Crumb.Help}" /></Hyperlink>
+                        <Run Text=" › " Foreground="{DynamicResource muted}" />
                         <Hyperlink x:Name="Crumb" Style="{StaticResource CrumbLink}" Click="CrumbClicked" ToolTip="{t:Text Help.Crumb.Tip}"><Run x:Name="CrumbText" /></Hyperlink>
                     </TextBlock>
                     <TextBlock x:Name="PageTitle" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource ink}" TextWrapping="Wrap"
                                LineHeight="24.65" LineStackingStrategy="BlockLineHeight" />
+                    <!-- the Variables and Entries page's own search: types and variables by name -->
+                    <TextBox x:Name="ReferenceFind" Width="360" HorizontalAlignment="Left" Margin="0,8,0,0" Visibility="Collapsed"
+                             Tag="{t:Text Help.Reference.Find.Hint}" ToolTip="{t:Text Help.Reference.Find.Tip}" TextChanged="ReferenceFindChanged" KeyDown="ReferenceFindKeyDown" />
+                    <!-- "On this page:" and the page's headings, each a link to its place, on a page with three or more -->
+                    <TextBlock x:Name="OnThisPage" Margin="0,4,0,0" FontSize="11.5" TextWrapping="Wrap" MaxWidth="736" HorizontalAlignment="Left"
+                               LineHeight="17" LineStackingStrategy="BlockLineHeight" Visibility="Collapsed" />
                     <!-- the page's text and Previous and Next are at most 46rem wide -->
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" MaxWidth="736" />
+                            <ColumnDefinition x:Name="TextColumn" Width="*" MaxWidth="736" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>

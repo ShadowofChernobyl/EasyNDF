@@ -604,6 +604,15 @@ public sealed partial class RuleRunner
             var found = w.AddedDeclarations.FirstOrDefault(d => !d.IsUnnamed && d.Name == from);
             if (found is not null) { source = found; sourceAt = k; }
         }
+        // removed by an earlier mod (or never in this file's version): copied from the game's own version of the file,
+        // as a tool that writes the descriptor whole would make it; placed at the end of the file
+        bool fromGame = false;
+        if (source is null && GameOriginalDeclaration(from) is Declaration original)
+        {
+            source = original;
+            sourceAt = work.Count - 1;
+            fromGame = true;
+        }
         if (source is null) { NotCloned("\"" + from + "\" was not found."); return; }
 
         // The copy keeps only these parts of the source declaration, as in the HTML app.
@@ -645,7 +654,9 @@ public sealed partial class RuleRunner
             NewIds(copy.Value);
         }
 
-        NameLog(to, "Clone", "Cloned from \"" + from + "\".");
+        NameLog(to, "Clone", fromGame
+            ? "Cloned from the game's \"" + from + "\": it is not in the file, as an earlier mod removed it."
+            : "Cloned from \"" + from + "\".");
         var c = NewContext();
         if (copy.Value is ObjectValue)
             foreach (var a in PrepareActions(rule)) ActionApplier.Apply(copy, a, c);
@@ -653,6 +664,25 @@ public sealed partial class RuleRunner
         current.Matched++;
         current.Edits += 1 + c.Edits;
         current.Skipped += c.Skipped;
+    }
+
+    /// <summary>The game's version of the file, read once if a Clone needs it; null when there is none or it doesn't read.</summary>
+    private NdfDocument? gameOriginal;
+    private bool gameOriginalRead;
+
+    /// <summary>A named declaration of the game's own version of the file (<see cref="RunOptions.GameOriginal"/>); null when it has none.</summary>
+    private Declaration? GameOriginalDeclaration(string name)
+    {
+        if (!gameOriginalRead)
+        {
+            gameOriginalRead = true;
+            if (options.GameOriginal?.Invoke() is string text)
+            {
+                try { gameOriginal = Parser.Parse(text); }
+                catch (NdfParseException) { gameOriginal = null; }
+            }
+        }
+        return gameOriginal?.Declarations.FirstOrDefault(declaration => !declaration.IsUnnamed && declaration.Name == name);
     }
 
     /// <summary>Find and replace: replaces a value everywhere in the descriptor, whole values or any part of them.</summary>

@@ -132,6 +132,25 @@ public static class ArmoryPresets
     /// <param name="texts">The language the rules are named in.</param>
     /// <param name="unitName">A unit's name, by its descriptor.</param>
     /// <param name="presetName">The name the Units preset gets when the mod has none.</param>
+    /// <summary>Takes out the rules that give a unit its number for deck codes, so <see cref="AddDeckNumberRules"/> writes them again with a new number.</summary>
+    public static void RemoveDeckNumberRules(Mod mod, string unit)
+    {
+        foreach (ModPreset preset in mod.Presets.Where(preset => preset.ArmoryPart is not null))
+            RemoveDeckNumberRules(preset.Rules, unit);
+    }
+
+    private static void RemoveDeckNumberRules(JsonArray rules, string unit)
+    {
+        for (int at = rules.Count - 1; at >= 0; at--)
+        {
+            JsonNode? rule = rules[at];
+            if ((string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ChangeKey] == Units.UnitChangeRules.DeckNumberChange
+                && (string?)rule?[DivisionChangeRules.ArmoryKey]?[Units.UnitChangeRules.UnitKey] == unit)
+                rules.RemoveAt(at);
+            else if (rule?["Rules"] is JsonArray inside) RemoveDeckNumberRules(inside, unit);
+        }
+    }
+
     public static void AddDeckNumberRules(Mod mod, TextCatalog texts, Func<string, string> unitName, string presetName)
     {
         HashSet<string> written = [.. RulesOf(mod)

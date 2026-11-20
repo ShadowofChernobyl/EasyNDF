@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace EasyNdf.App.Dialogs;
 
@@ -15,7 +17,7 @@ public partial class WelcomeWindow : UserControl
     {
         InitializeComponent();
         // narrower and no taller than a small app window, its buttons always showing
-        Backdrop.SizeChanged += (_, _) => DialogFit.Keep(Box, Backdrop, 544);
+        Backdrop.SizeChanged += (_, _) => DialogFit.Keep(Box, Backdrop, 640);
     }
 
     /// <summary>Whether the window is open.</summary>
@@ -29,6 +31,8 @@ public partial class WelcomeWindow : UserControl
     {
         Visibility = Visibility.Visible;
         Dispatcher.BeginInvoke(() => OkButton.Focus());
+        // once laid out, where the notes and tabs fall is known
+        Dispatcher.BeginInvoke(DrawWires, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     /// <summary>Closes the window, and remembers which version showed it (as the HTML app keeps its VERSION).</summary>
@@ -41,6 +45,50 @@ public partial class WelcomeWindow : UserControl
     }
 
     private void OkClicked(object sender, RoutedEventArgs e) => Close();
+
+    /// <summary>"Start the Tutorial": the window closes and the tour starts.</summary>
+    private void TourClicked(object sender, RoutedEventArgs e)
+    {
+        Close();
+        MainView.Find(this)?.Tour.Start();
+    }
+
+    private void MapResized(object sender, SizeChangedEventArgs e) => DrawWires();
+
+    /// <summary>
+    /// The lines from each note to what it is about: down from a note above, across at a height of its own, and down to
+    /// the middle of its tab; up from the note below to Preview and Export. The notes above keep the tabs' order, so
+    /// lines turning further left run higher and none cross.
+    /// </summary>
+    private void DrawWires()
+    {
+        Wires.Children.Clear();
+        if (!IsOpen || Map.ActualWidth <= 0) return;
+        Brush ink = TryFindResource("muted") as Brush ?? Brushes.Gray;
+        Point At(FrameworkElement element, double x, double y) => element.TransformToAncestor(Map).Transform(new Point(x * element.ActualWidth, y * element.ActualHeight));
+        void Line(params Point[] points)
+        {
+            var line = new Polyline { Stroke = ink, StrokeThickness = 1, SnapsToDevicePixels = true, Points = new PointCollection(points) };
+            Wires.Children.Add(line);
+        }
+        (FrameworkElement Note, FrameworkElement Tab)[] above = [(FilesNote, FilesTab), (ModsNote, ModsTab), (EditorNote, EditorTab), (ArmoryNote, ArmoryTab)];
+        double notesBottom = above.Max(pair => At(pair.Note, 0.5, 1).Y), tabsTop = At(FilesTab, 0.5, 0).Y;
+        for (int index = 0; index < above.Length; index++)
+        {
+            (FrameworkElement note, FrameworkElement tab) = above[index];
+            Point from = At(note, 0.5, 1), to = At(tab, 0.5, 0);
+            // left-going lines: the first runs highest; right-going ones the other way round
+            int lane = from.X >= to.X ? index : above.Length - 1 - index;
+            double y = Math.Round(notesBottom + (tabsTop - notesBottom) * (lane + 1) / (above.Length + 1)) + 0.5;
+            Line(new Point(from.X, from.Y), new Point(from.X, y), new Point(to.X, y), new Point(to.X, to.Y));
+        }
+        Point preview = At(PreviewButton, 0.5, 1), export = At(ExportButton, 0.5, 1), noteTop = At(ExportNote, 0.5, 0);
+        double across = Math.Round((preview.Y + noteTop.Y) / 2) + 0.5;
+        // up from the note, then across to the bracket over the two buttons when the note sits beside it
+        double joinX = Math.Clamp(noteTop.X, preview.X, export.X);
+        Line(new Point(noteTop.X, noteTop.Y), new Point(noteTop.X, across), new Point(joinX, across));
+        Line(new Point(preview.X, preview.Y), new Point(preview.X, across), new Point(export.X, across), new Point(export.X, export.Y));
+    }
 
     private void KeyPressed(object sender, KeyEventArgs e)
     {

@@ -1,6 +1,6 @@
 <!--
   The welcome window (the HTML app's #welcome): shown the first time the app starts, and again after Clear all data; the
-  Help tab opens it too. 34rem wide, 16 pixels in at the top and bottom and 18 at the sides.
+  Help tab opens it too. 640 pixels wide, 16 pixels in at the top and bottom and 18 at the sides.
 -->
 <UserControl x:Class="EasyNdf.App.Dialogs.WelcomeWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -11,15 +11,14 @@
     <!-- the dimmed backdrop; a click on it closes the window -->
     <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed">
         <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
-                        Padding="18,16" Width="544" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Padding="18,16" Width="640" HorizontalAlignment="Center" VerticalAlignment="Center"
                         MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
             <!-- the buttons always show; in a small app window the text above them scrolls -->
             <DockPanel>
                 <!-- the note above keeps its 10 pixels, which win over the bar's 4 -->
                 <DockPanel DockPanel.Dock="Bottom">
                     <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
-                        <Button x:Name="TourButton" Content="{t:Text Welcome.StartTheTutorial}" ToolTip="{t:Text Welcome.Tour.Tip}"
-                                IsEnabled="False" controls:OffReason.Text="{t:Text Welcome.Tour.Off}" />
+                        <Button x:Name="TourButton" Content="{t:Text Welcome.StartTheTutorial}" ToolTip="{t:Text Welcome.Tour.Tip}" Click="TourClicked" />
                         <Button x:Name="OkButton" Content="{t:Text Welcome.GetStarted}" Style="{StaticResource GoButton}" ToolTip="{t:Text Welcome.Ok.Tip}" Click="OkClicked" />
                     </controls:SnappedRow>
                     <TextBlock Style="{StaticResource Note}" Text="{t:Text Welcome.ThisWindowIsOn}" VerticalAlignment="Center" TextWrapping="Wrap" />
@@ -30,25 +29,68 @@
                     <TextBlock Text="{t:Text Welcome.WelcomeToEasyNDF}" FontSize="15" LineHeight="21.75" LineStackingStrategy="BlockLineHeight" />
                 </controls:Bevel>
                 <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ink}" Margin="0,0,0,10" t:RichText.Markup="{t:Text Welcome.Intro}" />
-                <!-- the three steps, 22 pixels in, 4 pixels apart -->
-                <Grid Margin="0,0,0,10" TextElement.Foreground="{DynamicResource ink}">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="22" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                <!--
+                  The app in miniature, drawn in the theme: a note for each of the main tabs above it, and one for Preview
+                  and Export below, each joined by a line to what it is about (the lines are drawn in code, from where the
+                  notes and tabs fall in this theme and language). Only to look at: nothing in it takes clicks or keys.
+                -->
+                <Grid x:Name="Map" Margin="0,2,0,12" IsHitTestVisible="False" Focusable="False" KeyboardNavigation.TabNavigation="None"
+                      SizeChanged="MapResized">
+                    <Grid.Resources>
+                        <Style x:Key="MapNote" TargetType="Border">
+                            <Setter Property="BorderBrush" Value="{DynamicResource line}" />
+                            <Setter Property="BorderThickness" Value="1" />
+                            <Setter Property="Background" Value="{DynamicResource well}" />
+                            <Setter Property="Padding" Value="6,3" />
+                            <Setter Property="Margin" Value="5,0" />
+                            <Setter Property="VerticalAlignment" Value="Bottom" />
+                            <Setter Property="TextElement.FontFamily" Value="{DynamicResource mono}" />
+                            <Setter Property="TextElement.FontSize" Value="11" />
+                            <Setter Property="TextElement.Foreground" Value="{DynamicResource accent}" />
+                            <Style.Resources>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="TextWrapping" Value="Wrap" />
+                                    <Setter Property="TextAlignment" Value="Center" />
+                                </Style>
+                            </Style.Resources>
+                        </Style>
+                    </Grid.Resources>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="4" />
+                        <RowDefinition Height="34" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="4" />
+                        <RowDefinition Height="20" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBlock Text="1." HorizontalAlignment="Right" Margin="0,0,4,0" />
-                    <TextBlock Grid.Column="1" TextWrapping="Wrap" t:RichText.Markup="{t:Text Welcome.Step1}" />
-                    <TextBlock Grid.Row="2" Text="2." HorizontalAlignment="Right" Margin="0,0,4,0" />
-                    <TextBlock Grid.Row="2" Grid.Column="1" TextWrapping="Wrap" t:RichText.Markup="{t:Text Welcome.Step2}" />
-                    <TextBlock Grid.Row="4" Text="3." HorizontalAlignment="Right" Margin="0,0,4,0" />
-                    <TextBlock Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" t:RichText.Markup="{t:Text Welcome.Step3}" />
+                    <UniformGrid Rows="1" Columns="4">
+                        <Border x:Name="FilesNote" Style="{StaticResource MapNote}"><TextBlock t:RichText.Markup="{t:Text Welcome.Map.Files}" /></Border>
+                        <Border x:Name="ModsNote" Style="{StaticResource MapNote}"><TextBlock t:RichText.Markup="{t:Text Welcome.Map.Mods}" /></Border>
+                        <Border x:Name="EditorNote" Style="{StaticResource MapNote}"><TextBlock t:RichText.Markup="{t:Text Welcome.Map.Editor}" /></Border>
+                        <Border x:Name="ArmoryNote" Style="{StaticResource MapNote}"><TextBlock t:RichText.Markup="{t:Text Welcome.Map.Armory}" /></Border>
+                    </UniformGrid>
+                    <TabControl Grid.Row="2" Focusable="False">
+                        <TabItem x:Name="FilesTab" Header="{t:Text Main.Files}" IsSelected="True" Focusable="False">
+                            <DockPanel Margin="6,6,6,6">
+                                <controls:SnappedRow DockPanel.Dock="Right" Gap="6">
+                                    <Button x:Name="PreviewButton" Content="{t:Text Files.Preview}" Focusable="False" />
+                                    <Button x:Name="ExportButton" Content="{t:Text Files.RunExport}" Focusable="False" />
+                                </controls:SnappedRow>
+                                <controls:SnappedRow Gap="6" HorizontalAlignment="Left">
+                                    <Button Content="{t:Text Files.AddFiles}" Style="{StaticResource GoButton}" Focusable="False" />
+                                    <Button Content="{t:Text Files.AddFolder}" Focusable="False" />
+                                </controls:SnappedRow>
+                            </DockPanel>
+                        </TabItem>
+                        <TabItem x:Name="ModsTab" Header="{t:Text Main.Rules}" Focusable="False" />
+                        <TabItem x:Name="EditorTab" Header="{t:Text Main.Editor}" Focusable="False" />
+                        <TabItem x:Name="ArmoryTab" Header="{t:Text Main.Units}" Focusable="False" />
+                        <TabItem Header="{t:Text Main.Settings}" Focusable="False" />
+                        <TabItem Header="{t:Text Main.Help}" Focusable="False" />
+                    </TabControl>
+                    <Border x:Name="ExportNote" Grid.Row="4" Style="{StaticResource MapNote}" HorizontalAlignment="Right" VerticalAlignment="Top" MaxWidth="260">
+                        <TextBlock t:RichText.Markup="{t:Text Welcome.Map.Export}" />
+                    </Border>
+                    <Canvas x:Name="Wires" Grid.RowSpan="5" />
                 </Grid>
                 <TextBlock Style="{StaticResource Note}" Margin="0,0,0,10"
                            Text="{t:Text Welcome.YourFilesNeverLeave}" />

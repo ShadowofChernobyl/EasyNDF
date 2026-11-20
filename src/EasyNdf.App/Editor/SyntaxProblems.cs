@@ -1,9 +1,11 @@
+using System.Windows.Documents;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using EasyNdf.Engine.Editing;
+using EasyNdf.App.Controls;
 using ICSharpCode.AvalonEdit;
 using ICSharpCode.AvalonEdit.Document;
 using ICSharpCode.AvalonEdit.Rendering;
@@ -43,7 +45,23 @@ public sealed class SyntaxProblems : IBackgroundRenderer
 
     private readonly TextEditor editor;
     private readonly DispatcherTimer waiting;
-    private readonly ToolTip hoverTip = new() { Placement = System.Windows.Controls.Primitives.PlacementMode.Mouse };
+    /// <summary>
+    /// The tip under the mouse: drawn as the app's tooltips are, but in a popup that stays open while the mouse is on
+    /// it (as VS Code's), so its "Open in Help" link can be clicked. It closes a moment after the mouse leaves both.
+    /// </summary>
+    private readonly System.Windows.Controls.Primitives.Popup hoverTip = new()
+    {
+        Placement = System.Windows.Controls.Primitives.PlacementMode.Mouse,
+        AllowsTransparency = true,
+        StaysOpen = true,
+        Focusable = false,
+    };
+
+    /// <summary>The tip's box, with the tooltips' look.</summary>
+    private readonly Controls.Bevel hoverBox = new() { Padding = new Thickness(7, 4, 7, 4), MaxWidth = 384 };
+
+    /// <summary>Closes the tip a moment after the mouse leaves the word and the tip.</summary>
+    private readonly DispatcherTimer closeTip = new(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(350) };
     private TextDocument? document;
     private TextSegmentCollection<ProblemMark>? marks;
 
@@ -61,7 +79,29 @@ public sealed class SyntaxProblems : IBackgroundRenderer
         waiting.Tick += (_, _) => { waiting.Stop(); _ = CheckNow(); };
         editor.TextArea.TextView.BackgroundRenderers.Add(this);
         editor.TextArea.TextView.MouseHover += ShowTipAtMouse;
-        editor.TextArea.TextView.MouseHoverStopped += (_, _) => hoverTip.IsOpen = false;
+        editor.TextArea.TextView.MouseHoverStopped += (_, _) => closeTip.Start();
+        hoverBox.SetResourceReference(Controls.Bevel.TopLeftProperty, "hi");
+        hoverBox.SetResourceReference(Controls.Bevel.BottomRightProperty, "lo");
+        hoverBox.SetResourceReference(Controls.Bevel.BackgroundProperty, "panel");
+        hoverBox.SetResourceReference(TextElement.FontFamilyProperty, "ui-font");
+        hoverBox.SetResourceReference(TextElement.ForegroundProperty, "ink");
+        TextElement.SetFontSize(hoverBox, 12);
+        TextBlock.SetLineHeight(hoverBox, 17);
+        TextBlock.SetLineStackingStrategy(hoverBox, LineStackingStrategy.BlockLineHeight);
+        TextOptions.SetTextFormattingMode(hoverBox, TextFormattingMode.Ideal);
+        hoverBox.MouseEnter += (_, _) => closeTip.Stop();
+        hoverBox.MouseLeave += (_, _) => closeTip.Start();
+        hoverTip.Child = hoverBox;
+        closeTip.Tick += (_, _) =>
+        {
+            closeTip.Stop();
+            if (!hoverBox.IsMouseOver) hoverTip.IsOpen = false;
+        };
+        // typing, scrolling or leaving the window closes it at once
+        editor.TextArea.PreviewKeyDown += (_, _) => CloseTip();
+        editor.TextArea.TextView.ScrollOffsetChanged += (_, _) => CloseTip();
+        // the tip's "Open in Help" link takes the focus as it is clicked: the tip stays for its click
+        editor.LostKeyboardFocus += (_, e) => { if (!hoverBox.Holds(e.NewFocus as DependencyObject)) CloseTip(); };
         editor.TextArea.Caret.PositionChanged += (_, _) => ForgetPickedLineWhenLeft();
     }
 
@@ -375,10 +415,20 @@ public sealed class SyntaxProblems : IBackgroundRenderer
     {
         TextView view = editor.TextArea.TextView;
         if (TipsWait() || TipContentAt(e.GetPosition(view)) is not { } content) return;
-        hoverTip.Content = content;
+        // text alone wraps, as in a tooltip
+        hoverBox.Child = content is string text ? new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap } : content as UIElement ?? new TextBlock { Text = content.ToString() };
+        closeTip.Stop();
+        hoverTip.IsOpen = false;
         hoverTip.PlacementTarget = view;
         hoverTip.IsOpen = true;
         e.Handled = true;
+    }
+
+    /// <summary>Closes the tip under the mouse, such as when its link was clicked.</summary>
+    public void CloseTip()
+    {
+        closeTip.Stop();
+        hoverTip.IsOpen = false;
     }
 
     /// <summary>What the tip at a point of the text (from the text view's top left) shows; null for nothing.</summary>

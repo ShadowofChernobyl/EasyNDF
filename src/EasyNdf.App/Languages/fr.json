@@ -1872,26 +1872,6 @@
       "text": "{files} et {more} autres",
       "machine": true
     },
-    "Files.ConfirmExport.Ask": {
-      "english": "Export {files} to {folders}?",
-      "text": "Exporter {files} vers {folders} ?",
-      "machine": true
-    },
-    "Files.ConfirmExport.Folders": {
-      "english": "{count} folder|{count} folders",
-      "text": "{{count}} dossier|{count} dossiers",
-      "machine": true
-    },
-    "Files.ConfirmExport.SomeHaveNone": {
-      "english": "You will be asked for the folder of the files that have none.",
-      "text": "On vous demandera le dossier contenant les fichiers qui n’en ont pas.",
-      "machine": true
-    },
-    "Files.ConfirmExport.Export": {
-      "english": "Export",
-      "text": "Exporter",
-      "machine": true
-    },
     "Files.ExportFolder.Title": {
       "english": "Choose the export folder",
       "text": "Choisissez le dossier d’exportation",
@@ -4712,16 +4692,6 @@
       "text": "Décimales",
       "machine": true
     },
-    "Settings.ConfirmBeforeRunExport": {
-      "english": "Confirm before Export",
-      "text": "Confirmer avant de lancer l’export",
-      "machine": true
-    },
-    "Settings.ConfirmBeforeRunExport.Note": {
-      "english": "Says how many files will be written, and where, before writing them.",
-      "text": "Indique le nombre de fichiers qui seront enregistrés, ainsi que leur emplacement, avant de les enregistrer.",
-      "machine": true
-    },
     "Settings.BackUpOverwrittenFiles": {
       "english": "Back up overwritten files",
       "text": "Sauvegarder les fichiers écrasés",
@@ -4858,8 +4828,8 @@
       "machine": true
     },
     "Settings.ReopenTheLastFiles.Note": {
-      "english": "When the app starts, the file list comes back as it was left, with the files that are still where they were.",
-      "text": "Au démarrage de l’application, la liste des fichiers s’affiche telle qu’elle avait été laissée, avec les fichiers toujours à leur emplacement d’origine.",
+      "english": "When the app starts, the file list comes back as it was left. Off: the list starts empty, with Reopen Last List.",
+      "text": "Au démarrage, la liste des fichiers revient telle qu’elle a été laissée. Désactivé : la liste démarre vide, avec Rouvrir la dernière liste.",
       "machine": true
     },
     "Settings.Editing": {
@@ -5772,21 +5742,6 @@
       "text": "**Moddez WARNO et Steel Division 2 sans copier-coller.** Décrivez une modification une seule fois, par exemple « doubler la portée de tous les canons automatiques », et EasyNDF l'applique à toutes les entrées correspondantes dans les fichiers `.ndf` du jeu.",
       "machine": true
     },
-    "Welcome.Step1": {
-      "english": "**Mods:** import a mod, or build your own rules.",
-      "text": "**Mods :** importez un mod ou créez vos propres règles.",
-      "machine": true
-    },
-    "Welcome.Step2": {
-      "english": "**Files:** drop your mod folder on the window.",
-      "text": "**Fichiers :** déposez votre dossier de mod dans la fenêtre.",
-      "machine": true
-    },
-    "Welcome.Step3": {
-      "english": "**Preview** what would change, then **Export**.",
-      "text": "**Prévisualisez** les modifications, puis **lancez l’export**.",
-      "machine": true
-    },
     "Welcome.YourFilesNeverLeave": {
       "english": "Your files never leave this computer, and your originals are never changed. Export your mod to keep a copy of your rules.",
       "text": "Vos fichiers ne quittent jamais cet ordinateur et vos fichiers d'origine ne sont jamais modifiés. Exportez votre mod pour conserver une copie de vos règles.",
@@ -5817,29 +5772,9 @@
       "text": "Cette fenêtre se trouve dans l'onglet Aide.",
       "machine": true
     },
-    "Help.Group.GettingStarted": {
-      "english": "Getting Started",
+    "Help.Group.Start": {
+      "english": "Start",
       "text": "Premiers pas",
-      "machine": true
-    },
-    "Help.Page.start.Title": {
-      "english": "Start Here",
-      "text": "Commencez ici",
-      "machine": true
-    },
-    "Help.Page.start.Html": {
-      "english": "<p class=\"wklead\"><b>EasyNDF changes numbers in WARNO's and Steel Division 2's game files for you,</b> like a weapon's range or how fast it reloads.</p><p>You describe each change once, as a <a href=\"#\" data-p=\"rules\">rule</a>. EasyNDF applies your rules to the files you add and gives you edited copies. The files you add are never changed, and nothing leaves your computer.</p><h3>New Here?</h3><ol><li><a href=\"#\" data-p=\"steps\">Four steps</a>: the whole job, start to finish.</li><li><a href=\"#\" data-p=\"words\">Words used here</a>: what a mod, preset or descriptor is.</li></ol><h3>Never Made a WARNO Mod?</h3><p><a href=\"#\" data-p=\"mod-find\">Making a WARNO mod</a> covers the game's side: making a mod folder, building it and turning it on in the game.</p><div class=\"wkcall\"><b>Tip</b><span>Every window in the app has a <b>?</b> button. The search box on the left finds any page.</span></div>",
-      "text": "<p class=\"wklead\"><b>EasyNDF modifie pour vous les valeurs numériques contenues dans les fichiers de jeu de WARNO et de Steel Division 2,</b> telles que la portée d’une arme ou sa vitesse de rechargement.</p><p>Vous décrivez chaque modification une seule fois, sous forme de <a href=\"#\" data-p=\"rules\">règle</a>. EasyNDF applique vos règles aux fichiers que vous ajoutez et vous fournit des copies modifiées. Les fichiers que vous ajoutez ne sont jamais modifiés, et aucune donnée ne quitte votre ordinateur.</p><h3>Vous êtes nouveau ici ?</h3><ol><li><a href=\"#\" data-p=\"steps\">Quatre étapes</a> : le processus complet, du début à la fin.</li><li><a href=\"#\" data-p=\"words\">Termes utilisés ici</a> : qu’est-ce qu’un mod, un préréglage ou un descripteur ?</li></ol><h3>Vous n’avez jamais créé de mod ?</h3><p><a href=\"#\" data-p=\"mod-find\">La création d’un mod</a> concerne le côté « jeu » : créer un dossier de mod, le compiler et l’activer dans le jeu.</p><div class=\"wkcall\"><b>Astuce :</b><span> chaque fenêtre de l’application comporte un bouton <b>« ?</b> ». Le champ de recherche situé à gauche vous permet de trouver n’importe quelle page.</span></div>",
-      "machine": true
-    },
-    "Help.Page.steps.Title": {
-      "english": "Four Steps",
-      "text": "Quatre étapes",
-      "machine": true
-    },
-    "Help.Page.steps.Html": {
-      "english": "<ol class=\"wksteps\"><li><b>Pick your rules.</b> On the Rules tab, choose a mod in the <b>Mod</b> box. <i>WARNO Tactical Overhaul</i> is a ready-made example. <b>Import mod...</b> loads a mod file someone shared.</li><li><b>Add the files.</b> On the Files tab, press <b>Add folder...</b> and choose a GameData folder, ideally <a href=\"#\" data-p=\"mod-clean\">the game's clean files</a>.</li><li><b>Try it.</b> Press <b>Preview</b>. Nothing is saved. Click a file to see what changed in <b>Details</b>.</li><li><b>Export.</b> Press <b>Export</b> and choose a folder; your edited files are written there. Choose your mod's folder to <a href=\"#\" data-p=\"mod-export\">put them straight in your mod</a>.</li></ol><div class=\"wkcall\"><b>Note</b><span>Clean files work best. Rules apply to whatever you add, so a file you already exported gets them again: \"multiply by 2\" becomes \"multiply by 4\". Export asks before it does that to a file EasyNDF exported before.</span></div><div class=\"wkcall\"><b>Tip</b><span>Not sure what to press next? The green button is always the next step.</span></div>",
-      "text": "<ol class=\"wksteps\"><li><b>Sélectionnez vos règles.</b> Dans l’onglet « Mods », choisissez un mod dans la zone « <b>Mod</b> ». <i>« WARNO Tactical Overhaul »</i> est un exemple prêt à l’emploi. « <b>Importer un mod… »</b> permet de charger un fichier de mod partagé par un utilisateur.</li><li><b>Ajoutez les fichiers.</b> Dans l’onglet « Fichiers », cliquez sur « <b>Ajouter un dossier… »</b> et sélectionnez un dossier « GameData », de préférence <a href=\"#\" data-p=\"mod-clean\">les fichiers d’origine du jeu</a>.</li><li><b>Essayez.</b> Cliquez sur « <b>Aperçu</b> ». Rien n’est enregistré. Cliquez sur un fichier pour voir ce qui a changé dans « <b>Détails</b> ».</li><li><b>Exporter.</b> Cliquez sur <b>« Exporter »</b> et choisissez un dossier ; vos fichiers modifiés y seront enregistrés. Choisissez le dossier de votre mod pour <a href=\"#\" data-p=\"mod-export\">les placer directement dans celui-ci</a>.</li></ol><div class=\"wkcall\"><b>Remarque :</b><span>Les fichiers d’origine donnent les meilleurs résultats. Les règles s’appliquent à tout ce que vous ajoutez : un fichier déjà exporté les reçoit une seconde fois, et « multiplier par 2 » devient « multiplier par 4 ». « Exporter » vous le demande avant de le faire sur un fichier qu’EasyNDF a déjà exporté.</span></div><div class=\"wkcall\"><b>Astuce :</b><span> vous ne savez pas sur quoi cliquer ensuite ? Le bouton vert correspond toujours à l’étape suivante.</span></div>",
       "machine": true
     },
     "Help.Page.words.Title": {
@@ -5862,16 +5797,6 @@
       "text": "<p class=\"wklead\"><b>Un fichier .ndf est un fichier texte qui décrit une partie des données du jeu</b> dans WARNO et Steel Division 2 : unités, armes, munitions, divisions, interface et paramètres généraux du jeu.</p><p>NDF est un langage permettant de décrire les données d’un jeu. Un fichier définit des objets, leurs propriétés et leurs relations les uns avec les autres ; le jeu lit ces fichiers au démarrage et construit ses données à partir de ceux-ci. Ainsi, toute modification d’un chiffre dans un fichier entraîne une modification dans le jeu.</p><p>Ces fichiers sont au format texte brut. N’importe quel éditeur de texte permet de les ouvrir, et l’<a href=\"#\" data-p=\"tab-editor\">onglet « Éditeur »</a> les affiche en couleur.</p><h3>Où les trouver</h3><p>Chaque mod dispose d’un dossier <span class=\"mono\">GameData</span> contenant les fichiers .ndf du jeu, classés par thème dans des sous-dossiers. <span class=\"mono\">WARNO\\Mods\\ModData</span> (ou <span class=\"mono\">Steel Division 2\\Mods\\ModData</span>) est un mod complet contenant les données actuelles du jeu, que Steam maintient à jour. Ne modifiez pas ce dossier : copiez-en le contenu afin de toujours disposer de fichiers vierges.</p><p>Voici quelques fichiers à connaître, tous situés dans <span class=\"mono\">GameData\\Generated\\Gameplay\\Gfx</span> :</p><ul><li><span class=\"mono\">UniteDescriptor.ndf</span> : toutes les unités.</li><li><span class=\"mono\">WeaponDescriptor.ndf</span> : les tourelles de chaque unité et les armes qui y sont montées.</li><li><span class=\"mono\">Ammunition.ndf</span> : les caractéristiques de chaque arme, telles que sa portée et ses dégâts.</li></ul><p><a href=\"#\" data-p=\"mod-find\">Créer un mod</a> revient à créer votre propre mod.</p><h3>Contenu</h3><p>Un fichier se compose principalement d’une longue liste de <b>descripteurs</b> (les manuels les appellent « objets »). Chacun d’entre eux décrit un élément : une unité, une arme ou un type de munitions. En voici un bref exemple :</p><pre>// Made-up example, simplified\nexport Ammo_Example_Cannon is TAmmunitionDescriptor\n(\n    DescriptorId    = GUID:{6f1c2a9e-0000-4000-8000-000000000001}\n    Caliber         = &quot;105mm&quot;\n    MaximumRangeGRU = 2450\n    PhysicalDamages = 2.5\n    IsGuided        = False\n    Traits          = [&#x27;HE&#x27;, &#x27;AP&#x27;]\n    Weapon          = $/GFX/Weapon/Weapon_Example_Cannon\n)</pre><h3>Lecture d’un descripteur</h3><ul><li><span class=\"mono\">Ammo_Example_Cannon</span> correspond à son <b>nom</b>. Les autres descripteurs utilisent ce nom pour y faire référence.</li><li><span class=\"mono\">is TAmmunitionDescriptor</span> correspond à son <b>type</b> : de quel genre d’élément s’agit-il ? Les types commencent presque toujours par un T et sont définis au sein du jeu ; il est donc impossible de consulter la liste complète des propriétés d’un type. Les descripteurs d’un même type possèdent les mêmes types de propriétés.</li><li>Tout ce qui se trouve entre <span class=\"mono\">(</span> et <span class=\"mono\">)</span> fait partie du descripteur.</li><li>Chaque ligne à l’intérieur, comme <span class=\"mono\">MaximumRangeGRU = 2450</span>, est une <b>propriété</b> : un nom, un signe égal et sa valeur. Modifier ces valeurs, c’est ce que fait un mod. Une propriété omise prend une valeur par défaut : généralement 0, « false » ou vide.</li><li><span class=\"mono\">//</span> marque le début d’un <b>commentaire</b>, que le jeu ignore jusqu’à la fin de la ligne. Les commentaires peuvent également s’étendre sur plusieurs lignes, entre <span class=\"mono\">/*</span> et <span class=\"mono\">*/</span>, ou entre <span class=\"mono\">{</span> et <span class=\"mono\">}</span>, ce que Steel Division 2 utilise pour désactiver d’anciennes lignes.</li><li>De nombreux descripteurs commencent par <span class=\"mono\">export</span>. Ne les modifiez pas.</li></ul><h3>Types de valeurs</h3><ul><li><b>Nombre :</b> entier, comme <span class=\"mono\">2450</span> ou <span class=\"mono\">-1</span>, ou avec une virgule décimale, comme <span class=\"mono\">2.5</span>. Les nombres entiers peuvent également être écrits en hexadécimal, comme <span class=\"mono\">0xFF00A8</span>.</li><li><b>Texte :</b> entre guillemets simples ou doubles, comme <span class=\"mono\">\"105mm\"</span>.</li><li><b>Vrai ou faux :</b> <span class=\"mono\">True</span> ou <span class=\"mono\">False</span> (<span class=\"mono\">true</span> et <span class=\"mono\">false</span> fonctionnent également).</li><li><b>Liste :</b> des valeurs entre crochets, séparées par des virgules, comme <span class=\"mono\">['HE', 'AP']</span>. Une liste peut contenir n’importe quel type de valeur, y compris des objets.</li><li><b>Paire :</b> deux valeurs entre crochets, comme <span class=\"mono\">(22, 7)</span>.</li><li><b>Table de correspondance :</b> une liste de paires, chacune composée d’une clé et de sa valeur, écrite sous la forme <span class=\"mono\">MAP [ (1, 'one'), (2, 'two') ]</span>.</li><li><b>Objet :</b> un type suivi de ses propres propriétés entre crochets : un petit descripteur à l’intérieur d’une propriété. Les détails d’une unité, par exemple, se trouvent dans des objets appelés modules.</li><li><b>Référence :</b> le nom d’un autre descripteur, souvent situé dans un autre fichier. Il peut s’agir du nom seul, d’un chemin complet tel que <span class=\"mono\">$/GFX/Weapon/Weapon_Example_Cannon</span>, ou d’un chemin tel que <span class=\"mono\">~/Weapon_Example_Cannon</span> qui commence à l’emplacement où le jeu charge le fichier. <span class=\"mono\">nil</span> signifie qu’il ne fait référence à rien.</li><li><b>GUID :</b> <span class=\"mono\">GUID:{...}</span>, un identifiant pour le descripteur. EasyNDF attribue des identifiants aux descripteurs qu’il ajoute ou en clone un nouveau, de sorte que chacun conserve le sien.</li></ul><p>Une valeur peut également être calculée, comme <span class=\"mono\">3 + 0.5</span> ou <span class=\"mono\">35 div 8</span> (le NDF effectue une division avec le mot <span class=\"mono\">div</span>, également écrit <span class=\"mono\">DIV</span>).</p><p>Les fichiers d’effet, d’interface et de modèle utilisent également des conditions, comme <span class=\"mono\">HasSound ? Sound : nil</span>, des comparaisons telles que <span class=\"mono\">!=</span> et <span class=\"mono\">&lt;</span>, ainsi que des parties d’autres objets, comme <span class=\"mono\">Panel.Width[0]</span>. EasyNDF les lit et les conserve exactement tels qu’ils sont écrits ; ce sont les règles qui modifient les valeurs brutes qui les entourent.</p><p>Une ligne telle que <span class=\"mono\">Gravity is -9.81</span>, comportant une valeur à la place d’un type et des crochets, attribue un nom à une valeur unique : une <b>constante</b> que d’autres éléments peuvent utiliser.</p><h3>Comment les fichiers s’articulent</h3><p>Les descripteurs se réfèrent les uns aux autres, souvent d’un fichier à l’autre : une unité fait référence à ses armes, et une arme à ses munitions. Modifiez un descripteur et tout ce qui y fait référence est mis à jour. La <a href=\"#\" data-p=\"editor-desc\">liste des descripteurs</a> de l’onglet « Éditeur » suit ces liens.</p><h3>Le rôle d’EasyNDF</h3><p>Une <a href=\"#\" data-p=\"rules\">règle</a> sélectionne des descripteurs par nom, type ou propriété, puis modifie leurs propriétés. Tout ce qu’une règle ne modifie pas, y compris l’espacement et les commentaires, reste exactement tel quel (voir <a href=\"#\" data-p=\"export-look\">À quoi ressemble un fichier exporté</a>).</p><div class=\"wkcall\"><b>Astuce :</b><span> pour voir un véritable descripteur, ouvrez un fichier dans l’onglet « Éditeur » et double-cliquez sur un nom dans la liste située sous le texte.</span></div>",
       "machine": true
     },
-    "Help.Page.tutorial.Title": {
-      "english": "The Tutorial",
-      "text": "Le tutoriel",
-      "machine": true
-    },
-    "Help.Page.tutorial.Html": {
-      "english": "<p class=\"wklead\">The tutorial isn't in this version yet: <b>Start the tutorial</b> in the welcome window is greyed out. It will walk you through the app with a small sample file, needing no game files and saving nothing to your computer.</p><p>Until then, <a href=\"#\" data-p=\"steps\">Four steps</a> covers the whole job.</p><h3>How It Will Work</h3><ul><li>Each step asks you to do one thing, shown in bold. When you do it, the tour moves on.</li><li>A step with a dashed outline is just for looking. Press <b>Next</b>.</li><li>While the tour runs, only the outlined part responds to clicks, so you can't get lost.</li><li><b>Back</b> and <b>Skip step</b>, or the Left and Right arrow keys, move through it. The page changes to match the step you land on.</li><li><b>End tour</b> stops it at any time. <kbd>Escape</kbd> does not.</li></ul><div class=\"wkcall\"><b>Tip</b><span>The sample file is removed when the tour ends. Changes you made yourself, like a watermark, are kept.</span></div>",
-      "text": "<p class=\"wklead\">Le tutoriel n’est pas encore disponible dans cette version : l’option « <b>Démarrer le tutoriel »</b> dans la fenêtre d’accueil est grisée. Il vous guidera à travers l’application à l’aide d’un petit fichier d’exemple, sans nécessiter de fichiers de jeu et sans rien enregistrer sur votre ordinateur.</p><p>En attendant, <a href=\"#\" data-p=\"steps\">quatre étapes</a> suffisent pour mener à bien l’opération.</p><h3>Comment cela fonctionne</h3><ul><li>Chaque étape vous demande d’effectuer une action, indiquée en gras. Une fois celle-ci effectuée, la visite guidée se poursuit.</li><li>Une étape dont le contour est en pointillés est uniquement destinée à la consultation. Cliquez sur « <b>Suivant</b> ».</li><li>Pendant la visite guidée, seule la partie encadrée réagit aux clics ; vous ne risquez donc pas de vous perdre.</li><li><b>Les boutons « Retour »</b> et <b>« Passer l&#x27;étape</b> », ou les touches fléchées gauche et droite, vous permettent de naviguer dans la visite. La page s&#x27;adapte à l&#x27;étape sur laquelle vous vous trouvez.</li><li>Le bouton « <b>Fin de la visite</b> » l’arrête à tout moment, mais pas la touche <kbd>Échap</kbd>.</li></ul><div class=\"wkcall\"><b>Astuce :</b> <span>le fichier d&#x27;exemple est supprimé à la fin de la visite guidée. Les modifications que vous avez apportées vous-même, comme un filigrane, sont conservées.</span></div>",
-      "machine": true
-    },
     "Help.Page.important.Title": {
       "english": "Important to Know",
       "text": "À savoir",
@@ -5892,19 +5817,9 @@
       "text": "<div class=\"list sunken helptbl\"><table><thead><tr><th>Je souhaite</th><th>Aller ici</th></tr></thead><tbody><tr><td>Choisir les règles qui s’appliquent à un fichier</td><td>Onglet « Fichiers », la case <b>« Préréglage »</b> sur la ligne du fichier</td></tr><tr><td>Voir ce qui a changé</td><td>Onglet « Fichiers » : cliquez sur le fichier, puis consultez la rubrique « <b>Détails »</b></td></tr><tr><td>Créer ou modifier une règle</td><td>Onglet « Mods », double-cliquez sur la règle</td></tr><tr><td>Consultez le contenu d’un fichier</td><td>Onglet « Fichiers », double-cliquez sur le fichier</td></tr><tr><td>Attribuer un préréglage à un autre mod</td><td>Onglet « Mods », sélectionnez-le, <kbd>Ctrl</kbd> + <kbd>C</kbd>, puis <kbd>Ctrl</kbd> + <kbd>V</kbd> dans l&#x27;autre mod</td></tr><tr><td>Rechercher un fichier dans une longue liste</td><td>Onglet « Fichiers », champ de recherche</td></tr><tr><td>Effectuer une action sur une ligne</td><td>Cliquez dessus avec le bouton droit</td></tr><tr><td>Annuler une modification</td><td><kbd>Ctrl</kbd> + <kbd>Z</kbd>, ou cliquez avec le bouton droit et sélectionnez <b>« Annuler »</b></td></tr><tr><td>Sauvegarder mes règles</td><td>Onglet « Mods », « <b>Exporter les mods »</b></td></tr><tr><td>Modifier les couleurs</td><td>Onglet « Paramètres », « <b>Thème »</b></td></tr><tr><td>Découvrez les nouveautés</td><td>Cliquez sur le numéro de version à côté du titre</td></tr></tbody></table></div>",
       "machine": true
     },
-    "Help.Group.FilesandExport": {
-      "english": "Files and Export",
+    "Help.Group.Files": {
+      "english": "Files",
       "text": "Fichiers et exportation",
-      "machine": true
-    },
-    "Help.Page.tab-files.Title": {
-      "english": "The Files Tab",
-      "text": "L’onglet « Fichiers »",
-      "machine": true
-    },
-    "Help.Page.tab-files.Html": {
-      "english": "<p class=\"wklead\">Add the game files you want to change, check which rules each one gets, then press <b>Preview</b> to try it and <b>Export</b> to get the edited files.</p><h3>Pages About This Tab</h3><ul><li><a href=\"#\" data-p=\"files-add\">Adding files</a></li><li><a href=\"#\" data-p=\"files-list\">The file list</a></li><li><a href=\"#\" data-p=\"files-search\">Search, filter and folders</a></li><li><a href=\"#\" data-p=\"export\">Preview and Export</a></li><li><a href=\"#\" data-p=\"export-look\">What an exported file looks like</a></li><li><a href=\"#\" data-p=\"details\">Details</a></li></ul>",
-      "text": "<p class=\"wklead\">Ajoutez les fichiers du jeu que vous souhaitez modifier, vérifiez les règles attribuées à chacun d’entre eux, puis cliquez sur <b>« Aperçu »</b> pour tester le résultat et sur « <b>Lancer l&#x27;export »</b> pour obtenir les fichiers modifiés.</p><h3>Pages relatives à cet onglet</h3><ul><li><a href=\"#\" data-p=\"files-add\">Ajout de fichiers</a></li><li><a href=\"#\" data-p=\"files-list\">La liste des fichiers</a></li><li><a href=\"#\" data-p=\"files-search\">Recherche, filtrage et dossiers</a></li><li><a href=\"#\" data-p=\"export\">Aperçu et « Lancer l&#x27;export »</a></li><li><a href=\"#\" data-p=\"export-look\">À quoi ressemble un fichier exporté</a></li><li><a href=\"#\" data-p=\"details\">Détails</a></li></ul>",
       "machine": true
     },
     "Help.Page.files-add.Title": {
@@ -5967,19 +5882,9 @@
       "text": "<p class=\"wklead\">Cliquez sur un fichier dans la liste pour voir ce qu’il est advenu de celui-ci la dernière fois.</p><p>La section « Détails » est repliée lors de la première ouverture de l’application : cliquez sur son en-tête pour la déplier. L’application se souvient si vous l’avez laissée ouverte.</p><ul><li>Chaque règle occupe une ligne : le nombre de descripteurs avec lesquels elle a trouvé une correspondance, le nombre de valeurs qu’elle a modifiées et le nombre de celles qu’elle a ignorées.</li><li>Cliquez sur une règle pour voir toutes les valeurs qu’elle a modifiées, avant et après.</li><li>Double-cliquez sur une modification pour la visualiser dans le fichier, dans l’onglet Éditeur.</li><li><b>« Ignoré »</b> signifie que la règle a trouvé la valeur mais n’a pas pu la modifier, par exemple en cas de multiplication de texte.</li><li>Une règle qui n’a rien modifié est signalée. Ce n’est pas une erreur, mais après une mise à jour du jeu, cela signifie souvent qu’un élément a été renommé.</li></ul><h3>Le tableau des règles</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Colonne</th><th>Signification</th></tr></thead><tbody><tr><td>Descripteurs correspondants</td><td>Nombre de descripteurs répondant aux conditions de la règle.</td></tr><tr><td>Modifications</td><td>Nombre de valeurs modifiées.</td></tr><tr><td>Ignorés</td><td>Nombre de valeurs détectées mais n’ayant pas pu être modifiées.</td></tr></tbody></table></div><h3>Plus de détails</h3><ul><li>Le nombre de modifications répertoriées par règle est défini par le paramètre « <b>Modifications répertoriées par règle »</b> dans les Paramètres. Cela ne limite pas le nombre de modifications effectuées.</li><li>La rubrique « Ignorés » inclut également les éléments situés au-delà de la fin d’une liste.</li></ul><h3>Avertissements</h3><p>Affichés au-dessus des règles :</p><ul><li>Un numéro qui n&#x27;a pas pu être lu.</li><li>Une règle de vérification qui a échoué.</li><li>Un descripteur renommé avec un nom déjà utilisé par un autre.</li><li>Une règle de table comportant deux lignes pour le même descripteur. C’est la dernière ligne qui est utilisée.</li></ul>",
       "machine": true
     },
-    "Help.Group.ModsandRules": {
-      "english": "Mods and Rules",
+    "Help.Group.ModsRules": {
+      "english": "Mods & Rules",
       "text": "Mods et règles",
-      "machine": true
-    },
-    "Help.Page.tab-rules.Title": {
-      "english": "The Rules Tab",
-      "text": "L’onglet « Mods »",
-      "machine": true
-    },
-    "Help.Page.tab-rules.Html": {
-      "english": "<p class=\"wklead\">Your mods, presets and rules. Pick a mod, click a preset, and double-click a rule to change it.</p><h3>Pages About This Tab</h3><ul><li><a href=\"#\" data-p=\"mods\">Mods and presets</a></li><li><a href=\"#\" data-p=\"watermark\">Watermark</a></li><li><a href=\"#\" data-p=\"rules\">Rules</a></li><li><a href=\"#\" data-p=\"types\">Rule types</a></li><li><a href=\"#\" data-p=\"applies\">What a rule applies to</a></li><li><a href=\"#\" data-p=\"conditions\">Conditions</a></li><li><a href=\"#\" data-p=\"actions\">Actions</a></li><li><a href=\"#\" data-p=\"variables\">Variables and formulas</a></li><li><a href=\"#\" data-p=\"scan\">Property scan</a></li></ul>",
-      "text": "<p class=\"wklead\">Vos mods, préréglages et règles. Sélectionnez un mod, cliquez sur un préréglage, puis double-cliquez sur une règle pour la modifier.</p><h3>Pages relatives à cet onglet</h3><ul><li><a href=\"#\" data-p=\"mods\">Mods et préréglages</a></li><li><a href=\"#\" data-p=\"watermark\">Filigrane</a></li><li><a href=\"#\" data-p=\"rules\">Règles</a></li><li><a href=\"#\" data-p=\"types\">Types de règles</a></li><li><a href=\"#\" data-p=\"applies\">À quoi s&#x27;applique une règle</a></li><li><a href=\"#\" data-p=\"conditions\">Conditions</a></li><li><a href=\"#\" data-p=\"actions\">Actions</a></li><li><a href=\"#\" data-p=\"variables\">Variables et formules</a></li><li><a href=\"#\" data-p=\"scan\">Analyse des propriétés</a></li></ul>",
       "machine": true
     },
     "Help.Page.mods.Title": {
@@ -6077,16 +5982,6 @@
       "text": "Éditeur",
       "machine": true
     },
-    "Help.Page.tab-editor.Title": {
-      "english": "The Editor Tab",
-      "text": "L’onglet Éditeur",
-      "machine": true
-    },
-    "Help.Page.tab-editor.Html": {
-      "english": "<p class=\"wklead\">Read or edit any .ndf file, and see exactly what your rules change in it.</p><h3>Pages About This Tab</h3><ul><li><a href=\"#\" data-p=\"editor-open\">Opening a file</a></li><li><a href=\"#\" data-p=\"editor-edit\">Finding and editing</a></li><li><a href=\"#\" data-p=\"editor-compare\">Seeing your changes</a></li><li><a href=\"#\" data-p=\"editor-desc\">Descriptors</a></li></ul>",
-      "text": "<p class=\"wklead\">Lisez ou modifiez n’importe quel fichier .ndf pour voir exactement ce que vos règles y modifient.</p><h3>Pages relatives à cet onglet</h3><ul><li><a href=\"#\" data-p=\"editor-open\">Ouverture d’un fichier</a></li><li><a href=\"#\" data-p=\"editor-edit\">Rechercher et modifier</a></li><li><a href=\"#\" data-p=\"editor-compare\">Visualisation de vos modifications</a></li><li><a href=\"#\" data-p=\"editor-desc\">Descripteurs</a></li></ul>",
-      "machine": true
-    },
     "Help.Page.editor-open.Title": {
       "english": "Opening a File",
       "text": "Ouverture d’un fichier",
@@ -6127,19 +6022,9 @@
       "text": "<p class=\"wklead\">Sous le texte figure une liste des descripteurs du fichier, avec leurs propriétés à droite.</p><ul><li>Ouvrez un descripteur pour voir ce qu’il contient et vers quoi il renvoie, par exemple une unité, ses armes et leurs munitions.</li><li><b>La rubrique « Utilisé par »</b> affiche tout ce qui y fait référence. Toute modification apportée à cet élément s’applique à l’ensemble de ces éléments.</li><li>Double-cliquez sur un descripteur pour le localiser dans le texte.</li><li>Le champ situé au-dessus de la liste permet de rechercher n’importe quel descripteur par son nom.</li><li>Le bouton en forme d’entonnoir situé à côté permet de filtrer par propriété, par exemple tous les descripteurs dont la valeur « MaximumRangeGRU » est supérieure à 2 000. Le chiffre qui y figure indique le nombre de conditions activées.</li></ul><h3>Le filtre</h3><ul><li>Chaque condition est composée d’une propriété, d’un critère et d’une valeur. Les options « <b>toutes »</b> ou « <b>n’importe laquelle »</b> situées au-dessus de la liste indiquent le nombre de conditions qui doivent être remplies.</li><li>La liste « Propriétés » contient les propriétés présentes dans les descripteurs affichés : ce fichier ou tous les fichiers lus sous « Tous les fichiers ». Les champs (Nom) et (Type) y figurent systématiquement.</li><li>Une condition peut avoir un « <b>Nom</b> », affiché dans la liste à la place de ses détails.</li><li>La case à cocher permet d’activer ou de désactiver une condition. Cliquez avec le bouton droit sur une condition pour la désactiver, la dupliquer, la déplacer, la couper, la copier, la coller ou la supprimer ; les raccourcis clavier sont les mêmes que ceux de l’onglet « Mods ».</li><li>Les guillemets entourant les valeurs sont ignorés, et la comparaison du texte s’effectue sans distinction entre majuscules et minuscules. « est supérieur à » et « est inférieur à » permettent de comparer des nombres.</li><li>Un filtre fonctionne sans qu’il soit nécessaire de l’enregistrer et reste actif jusqu’à ce que vous le désactiviez. L’option « <b>Enregistrer sous… »</b> permet de l’enregistrer sous un nom ; les options « <b>Exporter »</b> et <b>« Importer… »</b> permettent de partager les filtres enregistrés sous forme de fichier.</li></ul><h3>Plus de détails</h3><ul><li>Un descripteur provenant d’un autre fichier est détecté dès que ce fichier a été lu. <b>L’option « Actualiser »</b> lit tous les fichiers de l’onglet « Fichiers ».</li><li><b>Ce fichier</b> répertorie les descripteurs de ce fichier. <b>« Tous les fichiers »</b> affiche les chaînes qui relient un fichier à un autre, comme une unité menant à son arme.</li><li>Appuyez sur Alt + clic sur un descripteur pour le localiser également dans le texte. Cela ouvre son fichier s’il se trouve dans un autre fichier.</li></ul><h3>Modification d’une valeur</h3><ul><li>Lorsque le descripteur se trouve dans le fichier ouvert et que le texte est modifiable, remplacez une valeur par une autre et appuyez sur Entrée.</li><li>Une valeur susceptible de corrompre le descripteur est refusée.</li><li>Les valeurs s&#x27;étendant sur plusieurs lignes sont modifiées directement dans le texte.</li></ul><div class=\"wkcall\"><span>Astuce : faites glisser la barre située entre les deux listes pour répartir la largeur différemment.</span></div>",
       "machine": true
     },
-    "Help.Group.SettingsandMore": {
-      "english": "Settings and More",
+    "Help.Group.Settings": {
+      "english": "Settings",
       "text": "Paramètres et plus",
-      "machine": true
-    },
-    "Help.Page.tab-settings.Title": {
-      "english": "The Settings Tab",
-      "text": "L’onglet « Paramètres »",
-      "machine": true
-    },
-    "Help.Page.tab-settings.Html": {
-      "english": "<p class=\"wklead\">Options for exporting, the look of the app, and your saved data.</p><h3>Pages About This Tab</h3><ul><li><a href=\"#\" data-p=\"settings\">Settings</a></li><li><a href=\"#\" data-p=\"themes\">Themes</a></li><li><a href=\"#\" data-p=\"data\">Backups and clearing data</a></li><li><a href=\"#\" data-p=\"keys\">Keyboard shortcuts</a></li><li><a href=\"#\" data-p=\"tips\">Handy tricks</a></li></ul>",
-      "text": "<p class=\"wklead\">Options d’exportation, apparence de l’application et vos données enregistrées.</p><h3>Pages À propos de cet onglet</h3><ul><li><a href=\"#\" data-p=\"settings\">Paramètres</a></li><li><a href=\"#\" data-p=\"themes\">Thèmes</a></li><li><a href=\"#\" data-p=\"data\">Sauvegardes et suppression des données</a></li><li><a href=\"#\" data-p=\"keys\">Raccourcis clavier</a></li><li><a href=\"#\" data-p=\"tips\">Astuces pratiques</a></li></ul>",
       "machine": true
     },
     "Help.Page.settings.Title": {
@@ -6212,79 +6097,9 @@
       "text": "<p class=\"wklead\">L’onglet « À propos » contient la version, les crédits, les liens, le journal des modifications et la licence.</p><p>EasyNDF est un logiciel libre sous licence GNU Affero General Public License, version 3 : vous pouvez l’utiliser à toutes fins, le modifier et le partager, à condition que ce que vous partagez, ou laissez d’autres utiliser par un réseau, reste sous la même licence, avec son code source. Les dérivés ne doivent pas s’appeler EasyNDF ni suggérer qu’ils le sont.</p><h3>Plus de détails</h3><ul><li>L’onglet « À propos » indique également qui a développé l’outil, les crédits et les remerciements particuliers.</li><li><b>Le journal des modifications</b> répertorie les changements apportés à chaque version, en commençant par les plus récents. Cliquer sur la version à côté du titre permet également de l&#x27;ouvrir.</li><li><b>« Licence »</b> ouvre le texte de la licence : la Licence publique générale GNU Affero, version 3, assortie de deux clauses supplémentaires concernant le nom.</li></ul>",
       "machine": true
     },
-    "Help.Group.MakingaWARNOMod": {
-      "english": "Making a WARNO Mod",
+    "Help.Group.WARNOModding": {
+      "english": "WARNO Modding",
       "text": "Créer un mod WARNO",
-      "machine": true
-    },
-    "Help.Page.mod-find.Title": {
-      "english": "1. Find the Mods Folder",
-      "text": "1. Recherchez le dossier « Mods »",
-      "machine": true
-    },
-    "Help.Page.mod-find.Html": {
-      "english": "<p class=\"wklead\">These pages are about the game's own mod tools, not EasyNDF. The game's <span class=\"mono\">Mods\\ReadMe.txt</span> and modding manual have every detail.</p><p>In Steam, right-click <b>WARNO</b>, then <b>Manage</b>, then <b>Browse local files</b>. Open the <span class=\"mono\">Mods</span> folder.</p><p>Steel Division 2 works the same way: its <span class=\"mono\">Mods</span> folder has the same <span class=\"mono\">.bat</span> files and a <span class=\"mono\">ModData\\base.zip</span>. Read <i>WARNO</i> as <i>Steel Division 2</i> in these pages.</p>",
-      "text": "<p class=\"wklead\">Ces pages concernent les outils de modding propres au jeu, et non EasyNDF. La page <span class=\"mono\">Mods\\ReadMe.txt</span> du jeu et le manuel de modding fournissent tous les détails.</p><p>Sur Steam, cliquez avec le bouton droit sur <b>WARNO</b>, puis sélectionnez « <b>Gérer »</b>, puis « <b>Parcourir les fichiers locaux</b> ». Ouvrez le dossier <span class=\"mono\">Mods</span>.</p><p>Steel Division 2 fonctionne de la même manière : son dossier <span class=\"mono\">Mods</span> contient les mêmes fichiers <span class=\"mono\">.bat</span> ainsi qu’un fichier <span class=\"mono\">ModData\\base.zip</span>. Dans ces pages, remplacez <i>« WARNO »</i> par « <i>Steel Division 2</i> ».</p>",
-      "machine": true
-    },
-    "Help.Page.mod-create.Title": {
-      "english": "2. Make Your Mod",
-      "text": "2. Créez votre mod",
-      "machine": true
-    },
-    "Help.Page.mod-create.Html": {
-      "english": "<p class=\"wklead\">You only do this once per mod.</p><ol class=\"wksteps\"><li>In the <span class=\"mono\">Mods</span> folder, click the address bar at the top, type <span class=\"mono\">cmd</span> and press Enter. A black window opens.</li><li>Type <span class=\"mono\">CreateNewMod.bat MyMod</span> and press Enter. Use your own name. If it has spaces, put it in double quotes: <span class=\"mono\">CreateNewMod.bat \"My Mod\"</span>.</li></ol><p>You now have a folder called <span class=\"mono\">WARNO\\Mods\\MyMod</span>. Its <span class=\"mono\">GameData</span> folder holds the game's files. Leave the other files in there as they are.</p>",
-      "text": "<p class=\"wklead\">Vous ne devez effectuer cette opération qu’une seule fois par mod.</p><ol class=\"wksteps\"><li>Dans le dossier <span class=\"mono\">Mods</span>, cliquez sur la barre d’adresse en haut, saisissez <span class=\"mono\">cmd</span> puis appuyez sur Entrée. Une fenêtre noire s’ouvre.</li><li>Tapez <span class=\"mono\">CreateNewMod.bat MyMod</span> et appuyez sur Entrée. Utilisez votre propre nom. S&#x27;il comporte des espaces, mettez-le entre guillemets : <span class=\"mono\">CreateNewMod.bat \"My Mod\"</span>.</li></ol><p>Vous disposez désormais d’un dossier nommé <span class=\"mono\">WARNO\\Mods\\MyMod</span>. Son dossier <span class=\"mono\">GameData</span> contient les fichiers du jeu. Laissez les autres fichiers tels quels.</p>",
-      "machine": true
-    },
-    "Help.Page.mod-clean.Title": {
-      "english": "3. Get the Clean Files",
-      "text": "3. Récupérez les fichiers nettoyés",
-      "machine": true
-    },
-    "Help.Page.mod-clean.Html": {
-      "english": "<p class=\"wklead\">The game keeps its untouched files zipped in <span class=\"mono\">WARNO\\Mods\\ModData\\base.zip</span>. Steam keeps it up to date with the game. These are the files to add in EasyNDF.</p><h3>Getting Them</h3><p>Unzip <span class=\"mono\">base.zip</span> into a folder outside the game, like <span class=\"mono\">Documents\\WARNO clean</span>, and add the <span class=\"mono\">GameData</span> folder inside it.</p><div class=\"wkcall wkwarn\"><b>Careful</b><span>Always add <b>these</b> files on the Files tab, not your mod's own GameData. Your mod gets your edited files, and running your rules on those again would apply them twice.</span></div>",
-      "text": "<p class=\"wklead\">Le jeu conserve ses fichiers intacts compressés dans <span class=\"mono\">WARNO\\Mods\\ModData\\base.zip</span>. Steam les maintient à jour en fonction du jeu. Ce sont ces fichiers qu’il faut ajouter dans EasyNDF.</p><h3>Comment les obtenir</h3><p>Décompressez <span class=\"mono\">base.zip</span> dans un dossier situé en dehors du jeu, comme <span class=\"mono\">Documents\\WARNO clean</span>, puis ajoutez-y le dossier <span class=\"mono\">GameData</span>.</p><div class=\"wkcall wkwarn\"><b>Attention :</b><span> ajoutez</span> <b>toujours</b> <span><b>ces</b> fichiers dans l’onglet « Fichiers », et non dans le dossier « GameData » de votre mod. Votre mod récupère vos fichiers modifiés, et appliquer à nouveau vos règles à ces derniers reviendrait à les appliquer deux fois.</span></div>",
-      "machine": true
-    },
-    "Help.Page.mod-export.Title": {
-      "english": "4. Put Your Changes In",
-      "text": "4. Enregistrez vos modifications",
-      "machine": true
-    },
-    "Help.Page.mod-export.Html": {
-      "english": "<p class=\"wklead\">Have Export write straight into your mod:</p><ol class=\"wksteps\"><li>On the Files tab, press <b>Select all</b>.</li><li>Press <b>Export folder...</b> and choose <span class=\"mono\">WARNO\\Mods\\MyMod</span>. Choose the mod folder itself, not the GameData inside it.</li></ol><p>From then on, Export writes straight into your mod, replacing the files it wrote last time. <b>Back up overwritten files</b> in Settings keeps the old ones as .bak.</p><p>Or press <b>Save as zip...</b> after an export and unzip it into <span class=\"mono\">WARNO\\Mods\\MyMod</span>.</p>",
-      "text": "<p class=\"wklead\">Demandez à Lancer l&#x27;export d’écrire directement dans votre mod :</p><ol class=\"wksteps\"><li>Dans l’onglet « Fichiers », cliquez sur « <b>Tout sélectionner</b> ».</li><li>Cliquez sur « <b>Exporter le dossier… »</b> et sélectionnez <span class=\"mono\">WARNO\\Mods\\MyMod</span>. Choisissez le dossier du mod lui-même, et non le dossier « GameData » qu’il contient.</li></ol><p>Désormais, Lancer l&#x27;export enregistre directement dans votre mod, en remplaçant les fichiers créés lors de la dernière exportation. L’option « <b>Sauvegarder les fichiers écrasés »</b> dans les paramètres conserve les anciens fichiers sous le format .bak.</p><p>Vous pouvez également cliquer sur <b>« Enregistrer au format zip… »</b> après une exportation, puis décompresser le fichier dans <span class=\"mono\">WARNO\\Mods\\MyMod</span>.</p>",
-      "machine": true
-    },
-    "Help.Page.mod-generate.Title": {
-      "english": "5. Build It and Play",
-      "text": "5. Créez-le et jouez-y",
-      "machine": true
-    },
-    "Help.Page.mod-generate.Html": {
-      "english": "<ol class=\"wksteps\"><li>Double-click <span class=\"mono\">GenerateMod.bat</span> in <span class=\"mono\">WARNO\\Mods\\MyMod</span> and wait for it to finish. Do this after every export.</li><li>Start WARNO, open the <b>Mod Center</b>, and turn your mod on.</li></ol>",
-      "text": "<ol class=\"wksteps\"><li>Double-cliquez sur <span class=\"mono\">GenerateMod.bat</span> dans <span class=\"mono\">WARNO\\Mods\\MyMod</span> et attendez que l&#x27;opération soit terminée. Répétez cette opération après chaque exportation.</li><li>Lancez WARNO, ouvrez le <b>Mod Center</b> et activez votre mod.</li></ol>",
-      "machine": true
-    },
-    "Help.Page.mod-share.Title": {
-      "english": "6. Share It",
-      "text": "6. Partager",
-      "machine": true
-    },
-    "Help.Page.mod-share.Html": {
-      "english": "<ul><li><span class=\"mono\">UploadMod.bat</span>, in your mod's folder, puts it on the Steam Workshop.</li><li>Changed how the game plays? Raise the <b>Version</b> number in your mod's <span class=\"mono\">Config.ini</span> before uploading, or players with different versions can't play together. It's in <span class=\"mono\">Saved Games\\EugenSystems\\WARNO\\mod\\MyMod</span>.</li><li>Want your name in the files? See <a href=\"#\" data-p=\"watermark\">Watermark</a>.</li></ul>",
-      "text": "<ul><li><span class=\"mono\">UploadMod.bat</span>, dans le dossier de votre mod, permet de le publier sur le Steam Workshop.</li><li>Vous avez modifié le fonctionnement du jeu ? Augmentez le numéro <b>de version</b> dans le fichier <span class=\"mono\">Config.ini</span> de votre mod avant de le mettre en ligne, sinon les joueurs disposant de versions différentes ne pourront pas jouer ensemble. Cela se trouve dans le fichier <span class=\"mono\">Saved Games\\EugenSystems\\WARNO\\mod\\MyMod</span>.</li><li>Vous souhaitez que votre nom figure dans les fichiers ? Consultez la section « <a href=\"#\" data-p=\"watermark\">Filigrane</a> ».</li></ul>",
-      "machine": true
-    },
-    "Help.Page.mod-update.Title": {
-      "english": "7. After a Game Update",
-      "text": "7. Après une mise à jour du jeu",
-      "machine": true
-    },
-    "Help.Page.mod-update.Html": {
-      "english": "<p class=\"wklead\">After the game updates, <span class=\"mono\">GenerateMod.bat</span> won't build your mod until the mod is updated too.</p><ol class=\"wksteps\"><li>Double-click <span class=\"mono\">UpdateMod.bat</span> in your mod's folder. It brings your mod up to the new game version. If it lists files that need fixing by hand, files EasyNDF exports can be skipped: press Enter, and your next export replaces them.</li><li>Get fresh clean files: unzip the new <span class=\"mono\">base.zip</span>.</li><li>Add them in EasyNDF, export into your mod, and run <span class=\"mono\">GenerateMod.bat</span>.</li></ol><p>Your rules work on the new files without any extra effort.</p><p>If a rule now changes nothing, the game probably renamed what it was looking for. <a href=\"#\" data-p=\"details\">Details</a> tells you which rule.</p>",
-      "text": "<p class=\"wklead\">Après la mise à jour du jeu, <span class=\"mono\">GenerateMod.bat</span> ne compilera pas votre mod tant que celui-ci n’aura pas été mis à jour à son tour.</p><ol class=\"wksteps\"><li>Double-cliquez sur <span class=\"mono\">UpdateMod.bat</span> dans le dossier de votre mod. Cela mettra votre mod à jour pour la nouvelle version du jeu. Si la liste indique des fichiers nécessitant une correction manuelle, vous pouvez ignorer les fichiers exportés par EasyNDF : appuyez sur Entrée, et votre prochaine exportation les remplacera.</li><li>Obtenez des fichiers propres et à jour : décompressez le nouveau <span class=\"mono\">base.zip</span>.</li><li>Ajoutez-les dans EasyNDF, exportez-les vers votre mod, puis lancez <span class=\"mono\">GenerateMod.bat</span>.</li></ol><p>Vos règles s’appliquent aux nouveaux fichiers sans effort supplémentaire.</p><p>Si une règle ne modifie désormais plus rien, c’est probablement que le jeu a renommé l’élément qu’il recherchait. <a href=\"#\" data-p=\"details\">La rubrique « Détails »</a> vous indique de quelle règle il s’agit.</p>",
       "machine": true
     },
     "About.Page.Html": {

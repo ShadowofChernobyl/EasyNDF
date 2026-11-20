@@ -114,6 +114,9 @@ public sealed class ValueGuide
     /// <summary>Whether the guide knows a type.</summary>
     public bool Knows(string type) => types.ContainsKey(type);
 
+    /// <summary>Every type the guide knows, as the Help tab's Reference lists them.</summary>
+    public IEnumerable<string> Types => types.Keys;
+
     /// <summary>The names a type takes, in the order of the data (by name).</summary>
     public IEnumerable<string> NamesOf(string type) => types.TryGetValue(type, out Dictionary<string, ValueInfo>? names) ? names.Keys : [];
 

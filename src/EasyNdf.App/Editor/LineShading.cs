@@ -17,6 +17,9 @@ public sealed class LineShading : IBackgroundRenderer
     /// <summary>The start of the line pointed at, which follows edits; null for none.</summary>
     public TextAnchor? PointedAt { get; set; }
 
+    /// <summary>Find's In Selection range, shaded behind its lines; null while it is off.</summary>
+    public (TextAnchor Start, TextAnchor End)? Scope { get; set; }
+
     /// <summary>Each line's mark in "Changes only", by line number from 0; null otherwise.</summary>
     public IReadOnlyList<LineMark>? Marks { get; set; }
 
@@ -28,10 +31,13 @@ public sealed class LineShading : IBackgroundRenderer
         if (!textView.VisualLinesValid) return;
         double width = Math.Max(textView.ActualWidth, ((System.Windows.Controls.Primitives.IScrollInfo)textView).ExtentWidth) + textView.HorizontalOffset;
         Brush? pointedTint = PointedAt is { IsDeleted: false } ? PointedTint() : null;
+        Brush? scopeTint = Scope is ({ IsDeleted: false }, { IsDeleted: false }) ? Application.Current.Resources["sel"] as Brush : null;
         foreach (VisualLine line in textView.VisualLines)
         {
             int number = line.FirstDocumentLine.LineNumber;
             double top = line.VisualTop - textView.VerticalOffset;
+            if (scopeTint is not null && number >= Scope!.Value.Start.Line && number <= Scope.Value.End.Line)
+                drawingContext.DrawRectangle(scopeTint, null, new Rect(-textView.HorizontalOffset, top, width, line.Height));
             if (MarkBrush(number - 1) is Brush mark)
                 drawingContext.DrawRectangle(mark, null, new Rect(-textView.HorizontalOffset, top, width, line.Height));
             if (pointedTint is not null && number == PointedAt!.Line)

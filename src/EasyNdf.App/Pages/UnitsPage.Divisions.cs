@@ -386,7 +386,7 @@ public partial class UnitsPage
         // it would save into the division chosen now. Saving reads the divisions again, so the one clicked is found anew.
         if (IsKeyboardFocusWithin && Keyboard.FocusedElement is TextBox)
         {
-            Keyboard.ClearFocus();
+            Units.ClickToChange.GiveKeysToWindow(this);
             if (division is not null) division = divisions.FirstOrDefault(each => each.Descriptor == division.Descriptor) ?? division;
             if (ReferenceEquals(division, chosenDivision)) return;
         }

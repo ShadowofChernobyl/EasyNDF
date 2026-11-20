@@ -98,7 +98,21 @@ public static class WikiPages
     }
 
     /// <summary>A page by its id, in the language in use; null when there is none.</summary>
-    public static WikiPage? ById(string id) => All.FirstOrDefault(page => page.Id == id);
+    public static WikiPage? ById(string id)
+    {
+        string wanted = MergedInto.GetValueOrDefault(id, id);
+        return All.FirstOrDefault(page => page.Id == wanted);
+    }
+
+    /// <summary>
+    /// Pages joined into another (Help's Tidy redesign): Four Steps and The Tutorial into Start Here, the seven pages
+    /// of Making a WARNO Mod into its guide.
+    /// </summary>
+    private static readonly Dictionary<string, string> MergedInto = new(StringComparer.Ordinal)
+    {
+        ["steps"] = "start", ["tutorial"] = "start", ["mod-create"] = "mod-find", ["mod-clean"] = "mod-find",
+        ["mod-export"] = "mod-find", ["mod-generate"] = "mod-find", ["mod-share"] = "mod-find", ["mod-update"] = "mod-find",
+    };
 
     /// <summary>
     /// The English of the pages, the About tab's page and the change log, by text name, for the catalog: each page's

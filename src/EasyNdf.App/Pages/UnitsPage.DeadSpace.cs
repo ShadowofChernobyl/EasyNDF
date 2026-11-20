@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using EasyNdf.App.Controls;
 
 namespace EasyNdf.App.Pages;
 
@@ -26,7 +27,7 @@ public partial class UnitsPage
     /// <summary>A click nothing handled: away from the focused box, the page takes the focus from it.</summary>
     private void DeadSpacePressed(object sender, MouseButtonEventArgs e)
     {
-        if (Keyboard.FocusedElement is not DependencyObject focused || ReferenceEquals(focused, this) || !IsAncestorOf(focused)) return;
+        if (Keyboard.FocusedElement is not DependencyObject focused || ReferenceEquals(focused, this) || !this.Holds(focused)) return;
         if (e.OriginalSource is DependencyObject pressed && IsInAControl(pressed)) return;
         Focus();
     }

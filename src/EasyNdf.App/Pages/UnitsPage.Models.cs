@@ -51,14 +51,14 @@ public partial class UnitsPage
     public string? WhyNoModel(Weapon weapon)
     {
         if (!ModelViewer.CanShow(Game)) return Texts.Get("Units.Model.Menu.OtherGame.Tip");
-        return weapon.Missile is null ? Texts.Get("Units.Model.Menu.PartOfUnit.Tip") : null;
+        return null;
     }
 
     /// <inheritdoc/>
     public void ShowModel(Weapon weapon)
     {
-        if (loaded is null || weapon.Missile is not string missile || WhyNoModel(weapon) is not null) return;
-        MainView.Of(this).ModelViewer.OpenMissile(weapon.Name, missile, loaded.Source);
+        if (loaded is null || WhyNoModel(weapon) is not null) return;
+        MainView.Of(this).ModelViewer.OpenWeapon(weapon.Name, weapon.Descriptor, weapon.Missile, loaded.Source);
     }
 
     /// <summary>The weapons as the Armory shows them (the open mod's values), by their ammunition's descriptor.</summary>

@@ -39,8 +39,10 @@ public sealed class SettingsStore(string settingsFolder)
         ["confirmDelete"] = true,
         // the desktop app's own: a double-click on the empty part of a rule's condition or action list adds one
         ["theme"] = "steam",
-        // the desktop app's own: the file list comes back when the app starts again
-        ["restoreSession"] = true,
+        // the desktop app's own: the file list comes back when the app starts again. Off by default: a list left
+        // from last time can hold files that are not the Source's, and the Armory would show them under its name.
+        // A new name, so that a list switched on before also starts empty; the empty list offers Reopen Last List.
+        ["reopenLastFiles"] = false,
         // the File Editor's scope lines and closing pairs, as in Sublime Text
         ["indentGuides"] = true,
         ["autoPairs"] = true,
@@ -49,8 +51,13 @@ public sealed class SettingsStore(string settingsFolder)
         ["reopenFile"] = true,
         // the descriptor tree shows only how files connect, unless this is on
         ["treeShowsAll"] = false,
-        // exporting
-        ["confirmExport"] = false,
+        // exporting: the Export window's options, set there or on the Settings tab
+        ["keepFolderStructure"] = true,
+        ["exportZip"] = false,
+        ["holdBackFailing"] = true,
+        // on, the watermark window opens before each export for every mod with a watermark; off, for those set to ask
+        ["updateWatermarkFirst"] = false,
+        ["rememberExportFolder"] = true,
         // the desktop app's own: each Run export asks where to write the files, rather than using the folders kept
         ["askExportFolder"] = true,
         ["armoryMarks"] = true,

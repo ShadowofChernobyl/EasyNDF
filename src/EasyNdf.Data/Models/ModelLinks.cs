@@ -163,6 +163,192 @@ public sealed partial class ModelLinks(GameDataFiles files)
     }
 
     /// <summary>
+    /// The model of a weapon that is not a missile but has one of its own, by its ammunition's descriptor: a weapon held
+    /// by soldiers, or a bomb or rocket pod an aircraft carries. The first unit whose weapons use the ammunition gives it:
+    /// for soldiers, the weapon's HandheldEquipmentKey ("WeaponAlternative_N") in the squad's AllWeaponAlternatives_ list in
+    /// DepictionInfantry.ndf; for an aircraft, its turret's number (N of Tag "tourelleN") as WeaponIndex in the aircraft's
+    /// SubGenerators_Showroom_ in MissileCarriageDepiction.ndf, or for rockets in pods the pod its pylon set gives (see
+    /// <see cref="ReadPods"/>). Null when no unit carries a model of it (guns, shells).
+    /// </summary>
+    public ModelFile? CarriedModel(string ammunition)
+    {
+        carried ??= ReadCarried();
+        foreach ((string unit, string? key, int? number) in carried.Mounts.GetValueOrDefault(ammunition) ?? [])
+        {
+            if (key is not null && carried.Held.TryGetValue((unit, key), out string? held) && MeshPathOf(held) is ModelFile weapon) return weapon;
+            if (number is int n && carried.OnPylons.TryGetValue((unit, n), out string? hung) && MeshPathOf(hung) is ModelFile ordnance) return ordnance;
+            if (number is int p && carried.Pods.TryGetValue((unit, p), out string? pod) && MeshPathOf(pod) is ModelFile rockets) return rockets;
+        }
+        return null;
+    }
+
+    /// <summary>What <see cref="CarriedModel"/> reads, once: every unit's weapons, the squads' held weapons and the aircraft's carried ones.</summary>
+    private sealed record CarriedModels(
+        Dictionary<string, List<(string Unit, string? Key, int? Number)>> Mounts,
+        Dictionary<(string Unit, string Key), string> Held,
+        Dictionary<(string Unit, int Number), string> OnPylons,
+        Dictionary<(string Unit, int Number), string> Pods);
+
+    private CarriedModels? carried;
+
+    private CarriedModels ReadCarried()
+    {
+        var mounts = new Dictionary<string, List<(string Unit, string? Key, int? Number)>>(StringComparer.Ordinal);
+        if (files.Read("Generated/Gameplay/Gfx/WeaponDescriptor.ndf") is string weapons)
+        {
+            MatchCollection managers = WeaponManager().Matches(weapons);
+            for (int i = 0; i < managers.Count; i++)
+            {
+                string unit = managers[i].Groups[1].Value;
+                int end = i + 1 < managers.Count ? managers[i + 1].Index : weapons.Length;
+                // each turret's values run to the next turret's start; its Tag ("tourelle2") is the number the carriage
+                // lists give its weapons (WeaponIndex), as two guns on one turret share it
+                string[] turrets = weapons[managers[i].Index..end].Split("TTurret");
+                foreach (string turret in turrets.Skip(1))
+                {
+                    Match tag = TurretTag().Match(turret);
+                    int? number = tag.Success ? int.Parse(tag.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : null;
+                    // each mounted weapon's values run to the next one's start
+                    foreach (string part in turret.Split("TMountedWeaponDescriptor").Skip(1))
+                    {
+                        Match ammo = MountAmmunition().Match(part);
+                        if (!ammo.Success) continue;
+                        Match key = HandheldKey().Match(part);
+                        if (!mounts.TryGetValue(ammo.Groups[1].Value, out var list)) mounts[ammo.Groups[1].Value] = list = [];
+                        list.Add((unit, key.Success ? key.Groups[1].Value : null, number));
+                    }
+                }
+            }
+        }
+        var held = new Dictionary<(string Unit, string Key), string>();
+        if (files.Read("Generated/Gameplay/Gfx/Infanterie/DepictionInfantry.ndf") is string infantry)
+            foreach (Match list in WeaponAlternatives().Matches(infantry))
+            {
+                // the list ends at the first "]" alone on its line, after the selectors' own brackets
+                Match close = ListEnd().Match(infantry, list.Index);
+                string block = infantry[list.Index..(close.Success ? close.Index : infantry.Length)];
+                foreach (Match weapon in HeldWeapon().Matches(block)) held.TryAdd((list.Groups[1].Value, weapon.Groups[1].Value), weapon.Groups[2].Value);
+            }
+        var onPylons = new Dictionary<(string Unit, int Number), string>();
+        if (files.Read("Generated/Gameplay/Gfx/MissileCarriageDepiction.ndf") is string carriages)
+        {
+            MatchCollection showrooms = ShowroomCarriage().Matches(carriages);
+            for (int i = 0; i < showrooms.Count; i++)
+            {
+                // up to the next declaration: the next aircraft's in-game list comes before its showroom list
+                Match next = NextDeclaration().Match(carriages, showrooms[i].Index + showrooms[i].Length);
+                int end = next.Success ? next.Index : carriages.Length;
+                foreach (Match hung in CarriedOrdnance().Matches(carriages[showrooms[i].Index..end]))
+                    onPylons.TryAdd((showrooms[i].Groups[1].Value, int.Parse(hung.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture)), hung.Groups[1].Value);
+            }
+        }
+        return new CarriedModels(mounts, held, onPylons, ReadPods());
+    }
+
+    /// <summary>
+    /// The rocket pods units carry, by unit and weapon number: MissileCarriage.ndf gives a weapon carried in pods
+    /// (MountingType=eMountingPod) with its rocket count and the unit's pylon set; Pylons.ndf gives the set's pod models,
+    /// each named by how many rockets it holds (PodModelPylon4, 7, 19). A weapon's pod is the largest of them whose size
+    /// divides its rocket count (14 rockets are two pods of 7; 28, four of 7; 38, two of 19).
+    /// </summary>
+    private Dictionary<(string Unit, int Number), string> ReadPods()
+    {
+        var pods = new Dictionary<(string Unit, int Number), string>();
+        if (files.Read("Gameplay/Gfx/Units/Pylons.ndf") is not string pylons || files.Read("Generated/Gameplay/Gfx/MissileCarriage.ndf") is not string carriages) return pods;
+        // each pylon set's models, and each multi-set's pod set
+        var models = new Dictionary<string, List<(int Size, string Model)>>(StringComparer.Ordinal);
+        var podSets = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (Match set in PylonSetDeclaration().Matches(pylons))
+        {
+            Match next = NextDeclaration().Match(pylons, set.Index + set.Length);
+            string block = pylons[set.Index..(next.Success ? next.Index : pylons.Length)];
+            if (set.Groups[2].Value == "TMultiPylonSet")
+            {
+                if (PodPylonSet().Match(block) is { Success: true } pod) podSets[set.Groups[1].Value] = pod.Groups[1].Value;
+                continue;
+            }
+            models[set.Groups[1].Value] = [.. PylonModel().Matches(block)
+                .Select(model => (Size: int.TryParse(TrailingDigits().Match(model.Groups[1].Value).Value, out int size) ? size : 0, Model: model.Groups[1].Value))
+                .Where(model => model.Size > 0)];
+        }
+        foreach (Match carriage in CarriageDeclaration().Matches(carriages))
+        {
+            Match next = NextDeclaration().Match(carriages, carriage.Index + carriage.Length);
+            string block = carriages[carriage.Index..(next.Success ? next.Index : carriages.Length)];
+            if (CarriagePylonSet().Match(block) is not { Success: true } setName || !podSets.TryGetValue(setName.Groups[1].Value, out string? podSet)
+                || !models.TryGetValue(podSet, out var sizes) || sizes.Count == 0) continue;
+            foreach (Match info in PodWeapon().Matches(block))
+            {
+                int count = int.Parse(info.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+                int number = int.Parse(info.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture);
+                if (sizes.Where(size => count % size.Size == 0).OrderByDescending(size => size.Size).FirstOrDefault() is { Model: string model })
+                    pods.TryAdd((carriage.Groups[1].Value, number), model);
+            }
+        }
+        return pods;
+    }
+
+    /// <summary>A pylon set in Pylons.ndf: its name (group 1) and its kind (group 2: TPylonSet or TMultiPylonSet).</summary>
+    [GeneratedRegex("""(?m)^(?:export\s+)?(\w+)\s+is\s+(TPylonSet|TMultiPylonSet)\b""")]
+    private static partial Regex PylonSetDeclaration();
+
+    /// <summary>A multi-set's pod set: PodPylonSet = &lt;set&gt; (group 1).</summary>
+    [GeneratedRegex("""\bPodPylonSet\s*=\s*~?/?(\w+)""")]
+    private static partial Regex PodPylonSet();
+
+    /// <summary>A pylon model: ModelResource = $/GFX/DepictionResources/&lt;model&gt; (group 1).</summary>
+    [GeneratedRegex("""\bModelResource\s*=\s*\$/GFX/DepictionResources/(\w+)""")]
+    private static partial Regex PylonModel();
+
+    /// <summary>The digits a pod model's name ends with: how many rockets it holds.</summary>
+    [GeneratedRegex("""\d+$""")]
+    private static partial Regex TrailingDigits();
+
+    /// <summary>A unit's carriage in MissileCarriage.ndf: MissileCarriage_&lt;unit&gt; is TMissileCarriageConnoisseur (group 1, the unit).</summary>
+    [GeneratedRegex("""(?m)^(?:export\s+)?MissileCarriage_(\w+?)\s+is\s+TMissileCarriageConnoisseur\b""")]
+    private static partial Regex CarriageDeclaration();
+
+    /// <summary>A carriage's pylon set: PylonSet = ~/&lt;set&gt; (group 1).</summary>
+    [GeneratedRegex("""\bPylonSet\s*=\s*~?/?(\w+)""")]
+    private static partial Regex CarriagePylonSet();
+
+    /// <summary>A weapon carried in pods: its MissileCount (group 1) and WeaponIndex (group 2), with MountingType=eMountingPod.</summary>
+    [GeneratedRegex("""TMissileCarriageWeaponInfo\(\s*MissileCount\s*=\s*(\d+)[^)]*?MountingType\s*=\s*eMountingPod[^)]*?WeaponIndex\s*=\s*(\d+)""")]
+    private static partial Regex PodWeapon();
+
+    /// <summary>A unit's weapons: WeaponDescriptor_&lt;unit&gt; is TWeaponManagerModuleDescriptor (group 1, the unit).</summary>
+    [GeneratedRegex("""(?m)^(?:export\s+)?WeaponDescriptor_(\w+)\s+is\s+TWeaponManagerModuleDescriptor\b""")]
+    private static partial Regex WeaponManager();
+
+    /// <summary>A mounted weapon's ammunition: $/GFX/Weapon/&lt;descriptor&gt; (group 1).</summary>
+    [GeneratedRegex("""\bAmmunition\s*=\s*\$/GFX/Weapon/(\w+)""")]
+    private static partial Regex MountAmmunition();
+
+    /// <summary>A soldier's weapon slot: HandheldEquipmentKey = "WeaponAlternative_N" (group 1).</summary>
+    [GeneratedRegex("""\bHandheldEquipmentKey\s*=\s*["']([^"']+)["']""")]
+    private static partial Regex HandheldKey();
+
+    /// <summary>A turret's number: the N of its Tag = "tourelleN" (group 1).</summary>
+    [GeneratedRegex("""\bTag\s*=\s*["']tourelle(\d+)["']""")]
+    private static partial Regex TurretTag();
+
+    /// <summary>A squad's held weapons: AllWeaponAlternatives_&lt;unit&gt; is [ (group 1, the unit).</summary>
+    [GeneratedRegex("""(?m)^(?:export\s+)?AllWeaponAlternatives_(\w+)\s+is\s*\[""")]
+    private static partial Regex WeaponAlternatives();
+
+    /// <summary>A held weapon: SelectorId = ['WeaponAlternative_N'] (group 1) MeshDescriptor = $/GFX/DepictionResources/&lt;model&gt; (group 2).</summary>
+    [GeneratedRegex("""SelectorId\s*=\s*\[\s*['"]([^'"]+)['"]\s*\]\s*MeshDescriptor\s*=\s*\$/GFX/DepictionResources/(\w+)""")]
+    private static partial Regex HeldWeapon();
+
+    /// <summary>An aircraft's or vehicle's carried ordnance as its showroom shows it: SubGenerators_Showroom_&lt;unit&gt; is (group 1).</summary>
+    [GeneratedRegex("""(?m)^(?:export\s+)?SubGenerators_Showroom_(\w+)\s+is\b""")]
+    private static partial Regex ShowroomCarriage();
+
+    /// <summary>One carried kind: its ProjectileModelResource (group 1), then its WeaponIndex (group 2).</summary>
+    [GeneratedRegex("""ProjectileModelResource\s*=\s*\$/GFX/DepictionResources/(\w+)(?:(?!ProjectileModelResource)[\s\S])*?WeaponIndex\s*=\s*(\d+)""")]
+    private static partial Regex CarriedOrdnance();
+
+    /// <summary>
     /// The models of a squad's soldiers: TacticDepiction_&lt;squad&gt;_Alternatives in DepictionInfantry.ndf lists one per
     /// soldier with the selector LOD_High ('01', '02'…), then a lighter one for far away.
     /// </summary>

@@ -68,14 +68,14 @@ public partial class WeaponsArmory
     }
 
     /// <summary>
-    /// "Show 3D Model…" for a missile; dim for other weapons, which are part of the model of the unit carrying them, with
-    /// the reason at the right and on hover.
+    /// "Show 3D Model…" for a weapon: its own model (a missile, a weapon soldiers hold, a bomb or rocket pod); for a gun,
+    /// which is part of the model of the unit carrying it, the viewer says no model is available.
     /// </summary>
     private static MenuChoice ShowModelChoice(IWeaponActions tab, Weapon weapon)
     {
         string? why = tab.WhyNoModel(weapon);
         return new MenuChoice(Texts.Get("Units.Model.Menu.Show"), () => tab.ShowModel(weapon), IsEnabled: why is null,
-            Key: weapon.Missile is null ? Texts.Get("Units.Model.Menu.PartOfUnit") : "", Tip: why ?? Texts.Get("Units.Model.Menu.ShowMissile.Tip"));
+            Tip: why ?? Texts.Get("Units.Model.Menu.ShowWeapon.Tip"));
     }
 
     /// <summary>

@@ -30,7 +30,8 @@ public static partial class ExportValueCheck
     /// <param name="exported">What they made of it.</param>
     /// <param name="guide">The values' types and limits.</param>
     /// <param name="impacts">The impact names the MimeticImpactMapping.ndf the game will load maps; null checks no ImpactHappening.</param>
-    public static List<ExportValueError> Find(string source, string exported, ValueGuide guide, IReadOnlySet<string>? impacts = null)
+    /// <param name="classes">The classes the game's files use; null checks no class.</param>
+    public static List<ExportValueError> Find(string source, string exported, ValueGuide guide, IReadOnlySet<string>? impacts = null, IReadOnlySet<string>? classes = null)
     {
         var before = new Dictionary<string, (int Start, int End)>(StringComparer.Ordinal);
         int unnamed = 0;
@@ -59,7 +60,9 @@ public static partial class ExportValueCheck
             try { document = Parser.Parse(exported[start..end]); }
             catch (NdfParseException) { found[index] = ("", []); return; }
             string name = document.Declarations.Count > 0 && !document.Declarations[0].IsUnnamed ? document.Declarations[0].Name : "";
-            found[index] = (name, ValueChecker.Check(document, guide, start, mountsNamed, impacts).FindAll(problem => !problem.IsWarning));
+            List<ValueProblem> problems = ValueChecker.Check(document, guide, start, mountsNamed, impacts).FindAll(problem => !problem.IsWarning);
+            if (classes is not null) problems.AddRange(UnknownClasses(exported, start, end, classes));
+            found[index] = (name, problems);
         });
 
         var errors = new List<ExportValueError>();
@@ -73,6 +76,65 @@ public static partial class ExportValueCheck
                 if (errors.Count >= MostErrors) return errors;
             }
         return errors;
+    }
+
+    /// <summary>
+    /// The objects of a stretch of text whose class (a T name before its opening bracket) is an older or other form of a
+    /// class the game's files use, as TUIResourceTexture_Common of TUIResourceTexture: each once, where it is first
+    /// written, with the game's class as its value. A class the files don't use at all is not reported: the game knows
+    /// classes its files never write (TEugBMutableFloat), so only a renamed one is surely wrong. Text in quotes and
+    /// comments is passed over.
+    /// </summary>
+    public static IEnumerable<ValueProblem> UnknownClasses(string text, int start, int end, IReadOnlySet<string> classes)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        string stretch = Blanked(text.Substring(start, end - start));
+        foreach (Match use in ClassUse().Matches(stretch))
+        {
+            string type = use.Groups[1].Value;
+            if (classes.Contains(type) || !seen.Add(type)) continue;
+            string? game = classes.Where(known => type.StartsWith(known + "_", StringComparison.Ordinal) || known.StartsWith(type + "_", StringComparison.Ordinal))
+                .OrderByDescending(known => known.Length).FirstOrDefault();
+            if (game is null) continue;
+            yield return new ValueProblem(start + use.Groups[1].Index, type.Length, ValueProblemKind.UnknownClass, type, game);
+        }
+    }
+
+    /// <summary>A text with its quoted texts and comments turned to spaces, each place kept where it was.</summary>
+    private static string Blanked(string text)
+    {
+        char[] chars = text.ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
+        {
+            char c = chars[i];
+            if (c is '"' or '\'')
+            {
+                int close = text.IndexOf(c, i + 1);
+                if (close < 0) close = chars.Length - 1;
+                for (int j = i; j <= close; j++) if (chars[j] != '\n') chars[j] = ' ';
+                i = close;
+            }
+            else if (c == '/' && i + 1 < chars.Length && chars[i + 1] == '/')
+                for (; i < chars.Length && chars[i] != '\n'; i++) chars[i] = ' ';
+            else if (c == '/' && i + 1 < chars.Length && chars[i + 1] == '*')
+            {
+                int close = text.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                close = close < 0 ? chars.Length - 1 : close + 1;
+                for (int j = i; j <= close; j++) if (chars[j] != '\n') chars[j] = ' ';
+                i = close;
+            }
+        }
+        return new string(chars);
+    }
+
+    /// <summary>A class name before the bracket of its object: TUIResourceTexture( or TUIResourceTexture\n(.</summary>
+    [GeneratedRegex(@"\b(T[A-Z][A-Za-z0-9_]*)\s*\(")]
+    private static partial Regex ClassUse();
+
+    /// <summary>The classes in game files' texts: every T name before an object's bracket.</summary>
+    public static void AddClassesOf(string text, ISet<string> classes)
+    {
+        foreach (Match use in ClassUse().Matches(text)) classes.Add(use.Groups[1].Value);
     }
 
     /// <summary>

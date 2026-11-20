@@ -320,8 +320,25 @@
 
             <!-- .bar: Find, Replace, Go to line and Search all files; shown by Find or Ctrl+F, hidden by × or Escape -->
             <controls:FlexRow x:Name="FindBar" Gap="6" LineGap="6" Margin="0,0,0,8" Visibility="Collapsed">
-                <TextBox x:Name="FindBox" Width="224" Tag="{t:Text Editor.FindBox.Hint}" ToolTip="{t:Text Editor.FindBox.Tip}" IsEnabled="False" KeyDown="FindKeyDown"
-                         controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
+                <!-- the Find box, with its options inside its right end: Match Case, Whole Word, Regular Expression, In Selection -->
+                <Grid>
+                    <TextBox x:Name="FindBox" Width="300" Padding="5,3,95,3" Tag="{t:Text Editor.FindBox.Hint}" ToolTip="{t:Text Editor.FindBox.Tip}" IsEnabled="False" KeyDown="FindKeyDown"
+                             controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0">
+                        <ToggleButton x:Name="CaseToggle" Style="{StaticResource SearchOption}" Content="{t:Text Editor.Option.Case.Label}" ToolTip="{t:Text Editor.Option.Case.Tip}" AutomationProperties.Name="{t:Text Editor.Option.Case}" Click="CaseToggled" />
+                        <ToggleButton x:Name="WordToggle" Style="{StaticResource SearchOption}" ToolTip="{t:Text Editor.Option.Word.Tip}" AutomationProperties.Name="{t:Text Editor.Option.Word}" Click="WordToggled">
+                            <TextBlock Text="{t:Text Editor.Option.Word.Label}" TextDecorations="Underline" />
+                        </ToggleButton>
+                        <ToggleButton x:Name="RegexToggle" Style="{StaticResource SearchOption}" Content=".*" ToolTip="{t:Text Editor.Option.Regex.Tip}" AutomationProperties.Name="{t:Text Editor.Option.Regex}" Click="RegexToggled" />
+                        <ToggleButton x:Name="SelectionToggle" Style="{StaticResource SearchOption}" ToolTip="{t:Text Editor.Option.Selection.Tip}" AutomationProperties.Name="{t:Text Editor.Option.Selection}" Click="SelectionToggled">
+                            <!-- three lines of text inside a dashed box: the selected text -->
+                            <Canvas Width="13" Height="13">
+                                <Path Data="M2,3 H11 M2,6.5 H11 M2,10 H7" StrokeThickness="1" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                <Rectangle Width="13" Height="13" StrokeThickness="1" StrokeDashArray="2 1.5" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                            </Canvas>
+                        </ToggleButton>
+                    </StackPanel>
+                </Grid>
                 <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2191;" ToolTip="{t:Text Editor.Previous.Tip}" AutomationProperties.Name="{t:Text Editor.Previous.Name}" IsEnabled="False" Click="PreviousClicked" controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
                 <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x2193;" ToolTip="{t:Text Editor.Next.Tip}" AutomationProperties.Name="{t:Text Editor.Next.Name}" IsEnabled="False" Click="NextClicked" controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
                 <TextBox x:Name="ReplaceBox" Width="224" Tag="{t:Text Editor.ReplaceBox.Hint}" ToolTip="{t:Text Editor.ReplaceBox.Tip}" IsEnabled="False" KeyDown="ReplaceKeyDown" controls:OffReason.Text="{t:Text Editor.Replace.Off}" />
@@ -330,8 +347,18 @@
                 <controls:Bevel Style="{StaticResource BarSeparator}" />
                 <TextBox x:Name="GoBox" Width="104" Tag="{t:Text Editor.GoBox.Hint}" ToolTip="{t:Text Editor.GoBox.Tip}" IsEnabled="False" KeyDown="GoKeyDown" controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
                 <controls:Bevel Style="{StaticResource BarSeparator}" />
-                <TextBox x:Name="SearchAllBox" Width="192" Tag="{t:Text Editor.SearchAllBox.Hint}"
-                         ToolTip="{t:Text Editor.SearchAllBox.Tip}" KeyDown="SearchAllKeyDown" />
+                <!-- the Search all files box, with the options it shares with Find inside its right end -->
+                <Grid>
+                    <TextBox x:Name="SearchAllBox" Width="250" Padding="5,3,73,3" Tag="{t:Text Editor.SearchAllBox.Hint}"
+                             ToolTip="{t:Text Editor.SearchAllBox.Tip}" KeyDown="SearchAllKeyDown" />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0">
+                        <ToggleButton x:Name="AllCaseToggle" Style="{StaticResource SearchOption}" Content="{t:Text Editor.Option.Case.Label}" ToolTip="{t:Text Editor.Option.Case.Tip}" AutomationProperties.Name="{t:Text Editor.Option.Case}" Click="CaseToggled" />
+                        <ToggleButton x:Name="AllWordToggle" Style="{StaticResource SearchOption}" ToolTip="{t:Text Editor.Option.Word.Tip}" AutomationProperties.Name="{t:Text Editor.Option.Word}" Click="WordToggled">
+                            <TextBlock Text="{t:Text Editor.Option.Word.Label}" TextDecorations="Underline" />
+                        </ToggleButton>
+                        <ToggleButton x:Name="AllRegexToggle" Style="{StaticResource SearchOption}" Content=".*" ToolTip="{t:Text Editor.Option.Regex.Tip}" AutomationProperties.Name="{t:Text Editor.Option.Regex}" Click="RegexToggled" />
+                    </StackPanel>
+                </Grid>
                 <Button Content="{t:Text Editor.Search}" ToolTip="{t:Text Editor.Search.Tip}" Click="SearchAllClicked" />
             </controls:FlexRow>
 

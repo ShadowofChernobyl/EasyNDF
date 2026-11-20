@@ -27,6 +27,12 @@ public sealed record RunSettings
     /// <summary>"Line endings".</summary>
     public LineEndings LineEndings { get; init; } = LineEndings.Lf;
 
+    /// <summary>"Keep folder structure": each file in the folders it was added from; off, straight into the export folder.</summary>
+    public bool KeepFolderStructure { get; init; } = true;
+
+    /// <summary>"Hold back files that fail the safety check": off, a file with errors is written anyway.</summary>
+    public bool HoldBackFailing { get; init; } = true;
+
     /// <summary>Reads the settings as the HTML app stores them.</summary>
     public static RunSettings From(JsonObject settings)
     {
@@ -41,6 +47,8 @@ public sealed record RunSettings
             DecimalPlaces = decimals > 0 ? decimals : null,
             EditedWithLine = settings["stamp"]?.GetValue<bool>() != false,
             LineEndings = (string?)settings["eol"] switch { "crlf" => LineEndings.CrLf, "keep" => LineEndings.Keep, _ => LineEndings.Lf },
+            KeepFolderStructure = settings["keepFolderStructure"]?.GetValue<bool>() != false,
+            HoldBackFailing = settings["holdBackFailing"]?.GetValue<bool>() != false,
         };
     }
 }

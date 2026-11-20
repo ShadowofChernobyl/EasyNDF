@@ -32,6 +32,7 @@
     <EmbeddedResource Include="Assets\DefaultMod.json" LogicalName="DefaultMod.json" />
     <!-- the File Editor's guide to WARNO's names: value types, descriptions, choices and limits (see Editor\EditorGuide.cs) -->
     <EmbeddedResource Include="Assets\EditorGuide.json.gz" LogicalName="EditorGuide.json.gz" />
+    <EmbeddedResource Include="Assets\ReferenceTopics.json" LogicalName="ReferenceTopics.json" />
     <!-- the Help wiki's pages, copied from the HTML app -->
     <!-- the app's English texts, one file per part of the app (see Text\Texts.cs) -->
     <EmbeddedResource Include="Languages\en\*.json" LogicalName="EasyNdf.App.Languages.en.%(Filename)%(Extension)" />

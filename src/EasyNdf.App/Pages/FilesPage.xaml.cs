@@ -105,22 +105,29 @@ public partial class FilesPage : UserControl
         ShowListState();
     }
 
-    /// <summary>Keeps the file list for next time, when "Reopen the last files" is on; called as the window closes.</summary>
+    /// <summary>
+    /// Keeps the file list for next time; called as the window closes. It is kept whatever "Reopen the last files"
+    /// says, for the empty list's Reopen Last List; an empty list leaves the one kept before as it is.
+    /// </summary>
     public void KeepSession()
     {
-        bool reopens = AppData.Current.Settings["restoreSession"]?.GetValue<bool>() != false;
-        AppData.Current.Session = reopens ? FileSession.Keep(Model.Entries) : null;
+        if (Model.Entries.Count == 0) return;
+        AppData.Current.Session = FileSession.Keep(Model.Entries);
         AppData.Current.SaveSession();
     }
 
     /// <summary>
-    /// Brings back the file list of the last session, when "Reopen the last files" is on: the files still where they
-    /// were, each with its preset, On box and export folder, then reads them.
+    /// Brings back the file list of the last session: the files still where they were, each with its preset, On box
+    /// and export folder, then reads them. When the app starts, only while "Reopen the last files" is on; otherwise
+    /// the list starts empty and offers Reopen Last List.
     /// </summary>
-    public async Task ReopenSession()
+    /// <param name="asked">Whether the user clicked Reopen Last List.</param>
+    public async Task ReopenSession(bool asked = false)
     {
-        if (AppData.Current.Settings["restoreSession"]?.GetValue<bool>() == false) return;
         List<FileSession.KeptRow> kept = FileSession.Rows(AppData.Current.Session);
+        ReopenButton.Visibility = !asked && kept.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (!asked && AppData.Current.Settings["reopenLastFiles"]?.GetValue<bool>() != true) return;
+        ReopenButton.Visibility = Visibility.Collapsed;
         if (kept.Count == 0) return;
         List<(FileToAdd File, FileSession.KeptRow Row)> found = await Task.Run(() => FileSession.StillThere(kept));
         if (found.Count == 0) return;
@@ -590,7 +597,16 @@ public partial class FilesPage : UserControl
 
     // ---- Preview, Run export and what they leave ----
 
-    internal FileRunner Runner => new(Model, RunSettings.From(AppData.Current.Settings)) { AskGameMod = AskGameMod, ShowFilesWithErrors = ShowFilesWithErrors };
+    internal FileRunner Runner => MakeRunner();
+
+    /// <param name="overwriteSource">The Export window's "overwrite my source files" was ticked.</param>
+    /// <param name="everyFileToChosenFolder">Every file goes into the folder chosen, as for a .zip.</param>
+    private FileRunner MakeRunner(bool overwriteSource = false, bool everyFileToChosenFolder = false) =>
+        new(Model, RunSettings.From(AppData.Current.Settings))
+        {
+            AskGameMod = AskGameMod, ShowFilesWithErrors = ShowFilesWithErrors,
+            OverwriteSource = overwriteSource, EveryFileToChosenFolder = everyFileToChosenFolder,
+        };
 
     /// <summary>
     /// "Show Them" on the notice of files a run found values in that would stop mod generation: the list shows only files
@@ -668,13 +684,103 @@ public partial class FilesPage : UserControl
     /// <summary>A Preview of one file only, as Details offers for a file with no run yet.</summary>
     internal Task PreviewOnly(FileEntry entry) => Runner.Run(write: false, ChooseExportFolder, Model.Entries.Where(other => !ReferenceEquals(other, entry)).ToHashSet());
 
+    /// <summary>
+    /// Export: the Export window (where, the options, what will be written) stands for the folder window; then the
+    /// divisions' and watermarks' questions, and the run. With "Pack into one .zip" the files are gathered in a folder
+    /// of their own first, in the folders the .zip keeps, then packed into the folder chosen. With "Remember this folder
+    /// for these files" off (and always for a .zip) the files keep the folders they had.
+    /// </summary>
     private async void RunClicked(object sender, RoutedEventArgs e)
     {
-        if (Model.IsBusy || !await ExportIsConfirmed() || !await DivisionsAreChecked() || !await WatermarksAreUpToDate()) return;
+        if (Model.IsBusy) return;
+        if (FileRunner.FilesThatRun(Model.Entries, everyFile: true).Count == 0)
+        {
+            await Runner.Run(write: true, ChooseExportFolder);
+            return;
+        }
+        if (await MainView.Of(this).ExportWindow.Open(Model.Entries, Model.SelectedEntries, LastExportFolder()) is not ExportChoice choice) return;
+        // the card shows at once: the checks before the run can take seconds
+        Model.StartProgress(exporting: true);
+        Model.ShowStep(Texts.Get("Files.Run.Card.GettingReady"));
+        Model.IsPreparing = true;
+        try
+        {
+            await ExportChosen(choice);
+        }
+        finally
+        {
+            Model.IsPreparing = false;
+        }
+    }
+
+    /// <summary>Export after the Export window: the divisions' and watermarks' questions, then the run, as chosen there.</summary>
+    private async Task ExportChosen(ExportChoice choice)
+    {
+        if (!await DivisionsAreChecked() || !await WatermarksAreUpToDate()) return;
         HashSet<FileEntry>? skipped = await AskAboutEarlierExports();
-        if (skipped is null) return;
-        await Runner.Run(write: true, ChooseExportFolder, skipped);
-        if (AppData.Current.Settings["openAfterExport"]?.GetValue<bool>() == true) OpenExportFolder();
+        if (skipped is null || Model.IsCancelRequested) return;
+        skipped.UnionWith(choice.LeftOut);
+        bool remember = AppData.Current.Settings["rememberExportFolder"]?.GetValue<bool>() != false && choice.Zip is null;
+        Dictionary<FileEntry, string?> folders = Model.Entries.ToDictionary(entry => entry, entry => entry.ExportFolder);
+        System.Text.Json.Nodes.JsonNode? modFolders = AppData.Current.State["exportFolders"]?.DeepClone();
+        string? folder = choice.Folder, gathered = null;
+        if (choice.Zip is not null && folder is not null)
+        {
+            gathered = Path.Combine(Path.GetTempPath(), "EasyNDF", "export-" + Guid.NewGuid().ToString("N")[..8]);
+            string root = FileRunner.ZipRootFor(folder);
+            folder = Path.Combine(gathered, Path.GetRelativePath(root, folder));
+        }
+        FileRunner runner = MakeRunner(choice.OverwriteSource, everyFileToChosenFolder: gathered is not null);
+        try
+        {
+            await runner.Run(write: true, () => Task.FromResult(folder), skipped);
+            string? opened = gathered is null ? MostExportedFolder() : null;
+            if (gathered is not null && choice.Zip is not null) await Pack(gathered, choice.Zip);
+            if (!remember) PutBackExportFolders(folders, modFolders);
+            if (AppData.Current.Settings["openAfterExport"]?.GetValue<bool>() != true) return;
+            if (choice.Zip is not null && File.Exists(choice.Zip)) ShowInExplorer(choice.Zip);
+            else if (opened is not null) OpenFolder(opened);
+        }
+        finally
+        {
+            if (gathered is not null)
+            {
+                try { Directory.Delete(gathered, recursive: true); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+            }
+        }
+    }
+
+    /// <summary>"Pack into one .zip": the files gathered for it, in their folders, into the .zip; said under the list.</summary>
+    private async Task Pack(string gathered, string zip)
+    {
+        List<FileEntry> written = [.. Model.Entries.Where(entry => entry.Done && entry.ExportedPath is string path && path.StartsWith(gathered, StringComparison.OrdinalIgnoreCase))];
+        if (!Directory.Exists(gathered) || !Directory.EnumerateFiles(gathered, "*", SearchOption.AllDirectories).Any()) return;
+        try
+        {
+            await Task.Run(() => System.IO.Compression.ZipFile.CreateFromDirectory(gathered, zip));
+            Model.Say(Texts.Get("Files.Export.ZipDone", ("files", FileListModel.Files(Directory.EnumerateFiles(gathered, "*", SearchOption.AllDirectories).Count())), ("zip", Path.GetFileName(zip))));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            await Messages.Tell(Texts.Get("Files.Export.ZipFailed", ("reason", error.Message)), DialogIcon.Error);
+        }
+        // the gathered copies are gone with their folder: "Save as zip..." has nothing to pack from them
+        foreach (FileEntry entry in written) entry.ExportedPath = null;
+    }
+
+    /// <summary>"Remember this folder for these files" off: each file has the export folder it had before, and each mod the folder kept for it.</summary>
+    private void PutBackExportFolders(Dictionary<FileEntry, string?> folders, System.Text.Json.Nodes.JsonNode? modFolders)
+    {
+        // set straight, not as "Export folder..." does: the rows keep what the export said
+        foreach ((FileEntry entry, string? folder) in folders)
+        {
+            if (entry.ExportFolder == folder || !Model.Entries.Contains(entry)) continue;
+            entry.ExportFolder = folder;
+            Model.RowChanged(entry);
+        }
+        AppData.Current.State["exportFolders"] = modFolders;
+        AppData.Current.SaveState();
     }
 
     /// <summary>
@@ -793,22 +899,6 @@ public partial class FilesPage : UserControl
         return line;
     }
 
-    /// <summary>"Confirm before Run export": says how many files will be written, and to how many folders, and asks.</summary>
-    private async Task<bool> ExportIsConfirmed()
-    {
-        if (AppData.Current.Settings["confirmExport"]?.GetValue<bool>() != true) return true;
-        List<FileEntry> files = FilesToExport();
-        if (files.Count == 0) return true;
-        // asked for each time, the folder is chosen after this question
-        if (RunSettings.From(AppData.Current.Settings).AskExportFolder)
-            return await Messages.Confirm(Texts.Get("Files.ConfirmExport.AskFolderNext", ("files", FileListModel.Files(files.Count))), Texts.Get("Files.ConfirmExport.Export"), DialogIcon.Question);
-        int folders = files.Select(e => e.ExportFolder ?? "").Distinct().Count();
-        bool someHaveNone = files.Any(e => e.ExportFolder is null);
-        string question = Texts.Get("Files.ConfirmExport.Ask", ("files", FileListModel.Files(files.Count)), ("folders", Texts.Count("Files.ConfirmExport.Folders", folders)));
-        if (someHaveNone) question += " " + Texts.Get("Files.ConfirmExport.SomeHaveNone");
-        return await Messages.Confirm(question, Texts.Get("Files.ConfirmExport.Export"), DialogIcon.Question);
-    }
-
     /// <summary>
     /// Files EasyNDF exported before (they start with its "Edited with EasyNDF" comment) would get the rules a second
     /// time. For each one, as Windows asks when replacing files: skip it, export it anyway, or cancel the export; the
@@ -846,19 +936,30 @@ public partial class FilesPage : UserControl
         return skipped;
     }
 
-    /// <summary>"Open the folder after export": the folder the most files were exported to opens in File Explorer.</summary>
-    private void OpenExportFolder()
-    {
-        string? folder = Model.Entries.Where(e => e.Done && e.ExportFolder is not null).GroupBy(e => e.ExportFolder!)
+    /// <summary>The folder the most files were exported to; null when none was.</summary>
+    private string? MostExportedFolder() =>
+        Model.Entries.Where(e => e.Done && e.ExportFolder is not null).GroupBy(e => e.ExportFolder!)
             .OrderByDescending(g => g.Count()).Select(g => g.Key).FirstOrDefault();
-        if (folder is null || !Directory.Exists(folder)) return;
+
+    /// <summary>"Open the folder after export": a folder in File Explorer.</summary>
+    private static void OpenFolder(string folder)
+    {
+        if (!Directory.Exists(folder)) return;
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder) { UseShellExecute = true }); }
+        catch (System.ComponentModel.Win32Exception) { }
+    }
+
+    /// <summary>"Open the folder after export" for a .zip: its folder in File Explorer, the .zip selected.</summary>
+    private static void ShowInExplorer(string file)
+    {
+        try { System.Diagnostics.Process.Start("explorer.exe", "/select,\"" + file + "\""); }
         catch (System.ComponentModel.Win32Exception) { }
     }
 
     /// <summary>
     /// The watermark question comes first (the HTML app's runJobs): for each mod whose files are exported, whose
-    /// watermark is on and asks on export, the Watermark window offers to update it. Cancel stops the export.
+    /// watermark is on and asks on export (or every such mod, with "Update watermark first"), the Watermark window
+    /// offers to update it. Cancel stops the export.
     /// </summary>
     private async Task<bool> WatermarksAreUpToDate()
     {
@@ -866,7 +967,7 @@ public partial class FilesPage : UserControl
         // with nothing to run, the run itself says so
         if (exported.Count == 0) return true;
         IEnumerable<Mod> asking = exported.SelectMany(e => e.ModsOnFile).Select(m => AppData.Current.ModStore.Find(m.Mod)).OfType<Mod>().Distinct()
-            .Where(m => m.Watermark is { On: true, Ask: true });
+            .Where(m => m.Watermark is { On: true } mark && (mark.Ask || AppData.Current.Settings["updateWatermarkFirst"]?.GetValue<bool>() == true));
         foreach (Mod mod in asking.ToList())
             if (!await MainView.Of(this).Watermark.AskBeforeExport(mod)) return false;
         return true;
@@ -886,7 +987,8 @@ public partial class FilesPage : UserControl
     /// </summary>
     private string? LastExportFolder()
     {
-        string? folder = AppData.Current.ExportFolderOf(AppData.Current.OpenMod)
+        string? folder = (AppData.Current.Settings["recentExportFolders"] as System.Text.Json.Nodes.JsonArray)?.Select(JsonValues.AsText).FirstOrDefault(Directory.Exists)
+            ?? AppData.Current.ExportFolderOf(AppData.Current.OpenMod)
             ?? Model.Entries.Where(entry => entry.ExportFolder is not null).GroupBy(entry => entry.ExportFolder!).OrderByDescending(group => group.Count()).Select(group => group.Key).FirstOrDefault();
         return folder is not null && Directory.Exists(folder) ? folder : null;
     }
@@ -1066,6 +1168,8 @@ public partial class FilesPage : UserControl
     /// Shows what the model does not bind: the empty row, the sort arrow, which button is the next step, and the columns'
     /// widths.
     /// </summary>
+    private async void ReopenClicked(object sender, RoutedEventArgs e) => await ReopenSession(asked: true);
+
     private void ShowListState()
     {
         ShownCount.Visibility = Model.ShownCount == "" ? Visibility.Collapsed : Visibility.Visible;

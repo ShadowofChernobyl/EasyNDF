@@ -31,6 +31,11 @@ public partial class SettingsPage : UserControl
         ListCategories();
         MarkCategory("Results");
         Show();
+        // the Export window changes the Export settings too: the tab shows them as they are now each time it opens
+        IsVisibleChanged += (_, e) =>
+        {
+            if ((bool)e.NewValue) Show();
+        };
     }
 
     private MainView View => MainView.Of(this);
@@ -160,7 +165,7 @@ public partial class SettingsPage : UserControl
             DecimalsRow.Note = Texts.Get("Settings.DecimalsRow.Note");
             DecimalsRow.NoteIsWarning = false;
             foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FolderTreeSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
-                ConfirmExportSwitch, AskFolderSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch, ArmoryMarksSwitch,
+                AskFolderSwitch, StructureSwitch, ZipSwitch, HoldBackSwitch, WatermarkFirstSwitch, RememberFolderSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch, ArmoryMarksSwitch,
                 ArmoryFileNamesSwitch, MonitorScalingSwitch, UsageSwitch, LogSwitch })
                 toggle.IsChecked = IsOn((string)toggle.Tag);
             foreach (ComboBox choice in new[] { LineEndChoice, ScopeChoice, FolderChoice, DuplicateChoice, UndoChoice, ScaleChoice, UsageEveryChoice, LogKeepChoice })
