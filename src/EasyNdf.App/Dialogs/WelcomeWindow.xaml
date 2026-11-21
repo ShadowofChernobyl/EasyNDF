@@ -28,7 +28,7 @@
                 <controls:Bevel Style="{StaticResource Heading}" Margin="0,0,0,10">
                     <TextBlock Text="{t:Text Welcome.WelcomeToEasyNDF}" FontSize="15" LineHeight="21.75" LineStackingStrategy="BlockLineHeight" />
                 </controls:Bevel>
-                <!-- first, the language and the theme, each used as it is picked: the window itself changes (Paul, 2026-11-20) -->
+                <!-- first, the language and the theme, each used as it is picked: the window itself changes -->
                 <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -47,7 +47,7 @@
                   The app's tabs in miniature, drawn in the theme: a note for each of the main tabs above it, joined by a
                   line to its tab (the lines are drawn in code, from where the notes and tabs fall in this theme and
                   language). Only to look at: nothing in it takes clicks or keys. No buttons under the tabs: they looked
-                  like ones to click (Paul, 2026-11-20).
+                  like ones to click.
                 -->
                 <Grid x:Name="Map" Margin="0,2,0,12" IsHitTestVisible="False" Focusable="False" KeyboardNavigation.TabNavigation="None"
                       SizeChanged="MapResized">

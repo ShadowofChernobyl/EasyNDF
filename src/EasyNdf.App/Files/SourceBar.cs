@@ -34,7 +34,7 @@ public sealed class SourceBar : Bevel
         listedCount.SetResourceReference(TextBlock.ForegroundProperty, "ok");
         addButton.Click += (_, _) => AddFilesRequested?.Invoke();
 
-        // Add Its Files right beside the list it adds from (Paul's request), the folder after it
+        // Add Its Files right beside the list it adds from, the folder after it
         addButton.Margin = new Thickness(0, 0, 10, 0);
         DockPanel.SetDock(listedCount, Dock.Right);
         DockPanel.SetDock(label, Dock.Left);

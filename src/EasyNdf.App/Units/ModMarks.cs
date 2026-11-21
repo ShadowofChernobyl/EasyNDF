@@ -7,7 +7,7 @@ namespace EasyNdf.App.Units;
 
 /// <summary>
 /// How the Armory shows the open mod's changes, the same way everywhere: a value one of its rules changed has a "*"
-/// after it in the theme's heading colour, the value itself keeping its own colour (Paul's choice), and its tooltip
+/// after it in the theme's heading colour, the value itself keeping its own colour, and its tooltip
 /// names the mod and the rules, and gives the game's value. With a mod that changes nothing, nothing is marked. With
 /// the setting "Mark changed values" off, the "*" is left out everywhere in the Armory, and the tooltip still says what
 /// changed the value.

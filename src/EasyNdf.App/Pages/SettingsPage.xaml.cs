@@ -383,7 +383,7 @@ public partial class SettingsPage : UserControl
     /// <summary>
     /// "Clean Up Mod Files...": the files no mod uses any more (the folders of deleted mods, files no File rule carries,
     /// pictures no mod names), with the room they take, taken away once the user agrees. Nothing is ever cleaned up
-    /// without asking (Paul's choice).
+    /// without asking.
     /// </summary>
     private async void CleanUpClicked(object sender, RoutedEventArgs e)
     {

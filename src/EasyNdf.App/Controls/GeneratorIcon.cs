@@ -7,7 +7,7 @@ namespace EasyNdf.App.Controls;
 
 /// <summary>
 /// The Division Generator's icon: a seven-tooth gear with a spark at its top right, drawn as lines on a 16 by 16 grid
-/// (Paul's choice, option C of the mock). It marks the button that opens the generator, generated divisions in the
+/// (option C of the mock). It marks the button that opens the generator, generated divisions in the
 /// list, and the line above a generated division's units, sharp at any zoom where the ⚙ character was blurry.
 /// </summary>
 public static class GeneratorIcon

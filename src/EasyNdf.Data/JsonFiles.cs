@@ -24,7 +24,7 @@ public static class JsonFiles
     /// <summary>
     /// Tuned for memory: a JSON value's text as UTF-8, as <see cref="JsonNode.ToJsonString"/> writes it, but in memory of
     /// its own. ToJsonString borrows .NET's shared buffers and hands them back for reuse, where they stay: writing out
-    /// WARNO ACTUAL's rules left some 33 MB of them held for good (Paul: "Other .NET data" should stay small). Keep it
+    /// WARNO ACTUAL's rules left some 33 MB of them held for good ("Other .NET data" should stay small). Keep it
     /// that way when tidying.
     /// </summary>
     public static byte[] Utf8Of(JsonNode value, JsonSerializerOptions? options = null)

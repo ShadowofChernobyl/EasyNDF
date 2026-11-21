@@ -164,7 +164,7 @@ public sealed class UnitTableRowView : Bevel
         while (numbers.Count < numberColumns)
         {
             var number = new TextBlock { TextAlignment = TextAlignment.Right, LineHeight = 14.4, LineStackingStrategy = LineStackingStrategy.BlockLineHeight };
-            // the number alone: Paul took the small bars under it out (2026-11-17)
+            // the number alone: the small bars under it were taken out (2026-11-17)
             var meter = new BlockMeter { Blocks = 6, IsThin = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 1, 0, 0), Visibility = Visibility.Collapsed };
             var cell = new StackPanel { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, Children = { number, meter } };
             var editorSlot = new ContentControl { Margin = new Thickness(6, 2, 6, 2), VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, Focusable = false };

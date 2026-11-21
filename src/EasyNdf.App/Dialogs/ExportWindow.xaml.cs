@@ -66,7 +66,7 @@ public partial class ExportWindow : UserControl
 
     /// <summary>
     /// While the tutorial runs: the window only shows what an export would write. Its Export button stays off, and the
-    /// summary says so; nothing is exported during the tour (Paul's choice).
+    /// summary says so; nothing is exported during the tour.
     /// </summary>
     public bool TourOnly { get; set; }
 

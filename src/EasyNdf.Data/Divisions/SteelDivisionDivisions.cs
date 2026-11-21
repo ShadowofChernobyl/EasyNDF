@@ -42,7 +42,7 @@ public static class SteelDivisionDivisions
     /// <summary>
     /// The units only DLC divisions give (<see cref="IsInDlc"/>): those some of the game's divisions have, every one of
     /// them a DLC division. A generated division leaves them out until the game is known to take them in a division of
-    /// the base game (Paul's choice, November 2026).
+    /// the base game (chosen November 2026).
     /// </summary>
     public static HashSet<string> UnitsOnlyInDlc(IEnumerable<Division> game)
     {

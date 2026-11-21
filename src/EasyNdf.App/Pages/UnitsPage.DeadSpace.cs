@@ -9,7 +9,7 @@ namespace EasyNdf.App.Pages;
 
 /// <summary>
 /// A click on the Armory's empty space (a pane's background, a heading, a label) takes the keyboard focus away from
-/// the box or list that had it, as a click outside a box does in most apps (Paul's request). A box keeps what was typed
+/// the box or list that had it, as a click outside a box does in most apps. A box keeps what was typed
 /// in it, as when it is left with Tab.
 /// </summary>
 public partial class UnitsPage

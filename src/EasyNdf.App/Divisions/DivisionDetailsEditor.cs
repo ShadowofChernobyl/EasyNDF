@@ -188,7 +188,7 @@ public static class DivisionDetailsEditor
     /// wraps and scrolls past its lines, a grip under it that drags it taller or shorter (as under the Files tab's edit
     /// list), and how many characters it has. A line break would be lost in the game's dictionary, so Enter does not
     /// make one. A text that cannot be changed is shown in a box switched off, its tooltip saying why.
-    /// Folded at first (Paul's choice, option A of the mock): ▸ and its name, its count at the right, and its first line
+    /// Folded at first (option A of the mock): ▸ and its name, its count at the right, and its first line
     /// cut short with …, so the pane keeps its height while it is resized; a click on the line or the name opens the box,
     /// ready to type, and ▾ folds it again. Each stays as it is left while the app is open.
     /// </summary>

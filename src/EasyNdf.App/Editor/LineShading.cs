@@ -8,7 +8,7 @@ namespace EasyNdf.App.Editor;
 
 /// <summary>
 /// What is drawn behind whole lines of the File Editor: the line Find, Go to line, a search result or a descriptor
-/// points at, tinted in the theme's success green as a problem's line is tinted in its error colour (16%, Paul's choice
+/// points at, tinted in the theme's success green as a problem's line is tinted in its error colour (16%, chosen
 /// over an outline); and in "Changes only", removed and added lines in a faint red and green (15% of the theme's d-del
 /// and d-add).
 /// </summary>

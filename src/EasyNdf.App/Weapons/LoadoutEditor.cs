@@ -168,7 +168,7 @@ public static class LoadoutEditor
         FrameworkElement? number = !actions.HasCount ? null : CountField(mount.Count, count?.Number, updated =>
             actions.Replace(count, updated == mount.Count ? null : new LoadoutChange(LoadoutChange.Count, mount.Turret, mount.Index, Number: updated)));
 
-        // the row's actions in one ⋯ menu (Paul's choice, option B of the mock), rather than a row of buttons on every weapon
+        // the row's actions in one ⋯ menu (option B of the mock), rather than a row of buttons on every weapon
         Panel buttons = Buttons(MoreButton(
         [
             new MenuChoice(Texts.Get("Weapons.Loadout.SwapItem"), () => actions.Swap(mount), Tip: Texts.Get("Weapons.Loadout.Swap.Tip")),

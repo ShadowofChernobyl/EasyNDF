@@ -42,7 +42,7 @@ public sealed class ModWeapon : WeaponValues
     /// <summary>
     /// A descriptor for a weapon named <paramref name="name"/>: its letters and digits, with "_" between words:
     /// "M256 (DU)" is "Ammo_EZ_M256_DU". When <paramref name="taken"/> has it already, the number goes on the EZ, as a
-    /// new unit's does (Paul's choice, the same in every game): "Ammo_EZ2_M256_DU".
+    /// new unit's does (the same in every game): "Ammo_EZ2_M256_DU".
     /// </summary>
     public static string NewDescriptor(string name, IReadOnlyCollection<string> taken)
     {

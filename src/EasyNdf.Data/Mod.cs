@@ -172,7 +172,7 @@ public sealed class ModPreset
     private (int All, int NotGroups) packedCounts;
 
     /// <summary>
-    /// Puts the rules away while nothing uses them (Paul's choices: option C of the memory report, then every rule set
+    /// Puts the rules away while nothing uses them (option C of the memory report, then every rule set
     /// whatever its size): kept as JSON objects, a mod's thousands of Armory rules took some 70 MB, and rules read from
     /// a mod file keep that whole file while any of the mod's are in use (WARNO ACTUAL's, 71 MB); packed text takes a
     /// few hundred KB. The next read of <see cref="Rules"/> unpacks them, in some tens of milliseconds. Only call it

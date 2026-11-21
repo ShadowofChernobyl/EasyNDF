@@ -497,7 +497,7 @@ public partial class FilesPage : UserControl
     /// UNITS.csv, so the export puts it in the mod's Localisation folder as the game wants it.
     /// </summary>
     /// <summary>
-    /// The File Editor's Open File: the file is added to the list too, so the two stay in step (Paul's request). A file of
+    /// The File Editor's Open File: the file is added to the list too, so the two stay in step. A file of
     /// the same name already listed asks as Add Files does (Replace, Keep both, Skip, or the setting's answer). Gives back
     /// the row to open: the one added or replaced, or the listed one when this file was skipped; null when nothing was
     /// added (its game question cancelled, or a run going).

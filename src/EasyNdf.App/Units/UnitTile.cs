@@ -240,7 +240,7 @@ public sealed class UnitTile : Grid
 
     /// <summary>
     /// The cards and units in each card as values the open mod changed: in the headings' colour, their tooltips saying
-    /// what changed them. Unlike the other changed values, without "*" (Paul's choice: it cluttered the tile); the unit's
+    /// what changed them. Unlike the other changed values, without "*" (it cluttered the tile); the unit's
     /// pop-up, where they are typed, has it.
     /// </summary>
     public void MarkCards(string tip)
@@ -485,7 +485,7 @@ public sealed class UnitTile : Grid
             Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom,
             Margin = new Thickness(0, 0, 4, 3), Visibility = Visibility.Collapsed, Children = { menText, man },
         };
-        // the units in a card in their box in the bottom-left corner (Paul's choice), the men at the bottom right
+        // the units in a card in their box in the bottom-left corner, the men at the bottom right
         packBox.HorizontalAlignment = HorizontalAlignment.Left;
         packBox.VerticalAlignment = VerticalAlignment.Bottom;
         pictureArea.Children.Add(boxes);

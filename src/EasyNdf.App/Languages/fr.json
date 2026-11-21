@@ -7317,7 +7317,7 @@
     },
     "Help.Reference.Find.Hint": {
       "english": "Search types and variables",
-      "text": "Types de recherche et variables",
+      "text": "Rechercher des types et des variables",
       "machine": true
     },
     "Help.Reference.Find.Tip": {
@@ -17295,6 +17295,11 @@
     "Help.ChangeLog.Intro.Html": {
       "english": "<p>What changed in each version, newest first.</p>\r\n",
       "text": "<p>Ce qui a changé dans chaque version, en commençant par la plus récente.</p>\r\n",
+      "machine": true
+    },
+    "Help.ChangeLog.1.0.1.Html": {
+      "english": "<h2>1.0.1</h2>\r\n<ul>\r\n  <li>The installer's progress bar looks like the app's own loading bar.</li>\r\n  <li>French: the search hint in Help's Documentation is corrected.</li>\r\n</ul>\r\n",
+      "text": "<h2>1.0.1</h2>\r\n<ul>\r\n  <li>La barre de progression du programme d’installation ressemble désormais à la barre de chargement de l’application.</li>\r\n  <li>Français : l’indication de la zone de recherche de la Documentation de l’Aide est corrigée.</li>\r\n</ul>\r\n",
       "machine": true
     },
     "Help.ChangeLog.1.0.0.Html": {
