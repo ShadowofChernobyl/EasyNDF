@@ -17284,6 +17284,11 @@
       "text": "<p>各版本的更新内容，按最新版本优先排序。</p>\r\n",
       "machine": true
     },
+    "Help.ChangeLog.1.0.1.Html": {
+      "english": "<h2>1.0.1</h2>\r\n<ul>\r\n  <li>The installer's progress bar looks like the app's own loading bar.</li>\r\n  <li>French: the search hint in Help's Documentation is corrected.</li>\r\n</ul>\r\n",
+      "text": "<h2>1.0.1</h2>\r\n<ul>\r\n  <li>安装程序的进度条现在与应用自身的加载条外观一致。</li>\r\n  <li>法语：已更正“帮助”中“文档”搜索框的提示文字。</li>\r\n</ul>\r\n",
+      "machine": true
+    },
     "Help.ChangeLog.1.0.0.Html": {
       "english": "<h2>1.0.0</h2>\r\n<ul>\r\n  <li>The first version of EasyNDF as a Windows desktop app. It does what the browser version does, and opens the mods made in it.</li>\r\n  <li>Your mods, settings and themes are kept in <span class=\"mono\">%LOCALAPPDATA%\\EasyNDF</span>.</li>\r\n</ul>\r\n",
       "text": "<h2>1.0.0</h2>\r\n<ul>\r\n  <li>EasyNDF 作为 Windows 桌面应用程序的第一个版本。它具备浏览器版本的所有功能，并可打开在其中制作的模组。</li>\r\n  <li>您的模组、设置和主题保存在 <span class=\"mono\">%LOCALAPPDATA%\\EasyNDF</span> 中。</li>\r\n</ul>\r\n",

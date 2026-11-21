@@ -215,7 +215,7 @@ public static class DivisionReader
     /// Tuned for memory: the names of units and transports read once, shared by every division that names them, and
     /// units with the same transports share one list of them. Each unit had its own copy of each transport's name: War
     /// in Flames gives thousands of units over a hundred transports each, some 3.6 million texts and 320 MB held by
-    /// the Armory, shown as "Other .NET data" (Paul's 1 GB at rest, 2026-11-19). Keep it that way when tidying.
+    /// the Armory, shown as "Other .NET data" (1 GB at rest with large mods, 2026-11-19). Keep it that way when tidying.
     /// </summary>
     private sealed class SharedTexts
     {

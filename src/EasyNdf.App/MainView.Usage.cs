@@ -12,7 +12,7 @@ public partial class MainView
 {
     /// <summary>
     /// About how much the Armory's game data takes for each unit: its values, weapons and loadouts, and its share of
-    /// the divisions and weapons read with it. Measured on WARNO with Paul's mods, 2,929
+    /// the divisions and weapons read with it. Measured on WARNO with large mods, 2,929
     /// units, November 2026 (about 35 MB).
     /// </summary>
     private const long ArmoryBytesPerUnit = 12 * 1024;

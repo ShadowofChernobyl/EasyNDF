@@ -16,7 +16,7 @@ using ICSharpCode.AvalonEdit.Folding;
 namespace EasyNdf.App.Pages;
 
 /// <summary>
-/// The open files (Paul's "File Editor Tabs" mock, 2026-11-09). Each file is a tab over the text, with × at its right to
+/// The open files (the "File Editor Tabs" mock, 2026-11-09). Each file is a tab over the text, with × at its right to
 /// close it, and has its own text box (<see cref="FileView"/>), which keeps its text, undo steps, place, folds and checks.
 /// A click on a tab shows that file alone; Ctrl+click puts up to three side by side, or takes one away; Shift+click shows
 /// the tabs from the one in use to the one clicked. The file in use, the one last clicked or typed in, is the one the

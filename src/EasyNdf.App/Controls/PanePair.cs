@@ -120,8 +120,8 @@ public sealed class PanePair : Grid
     public bool FoldedAtFirst { get; set; }
 
     /// <summary>
-    /// The second pane's share of the room beside at first, on every tab: 46%, as Paul laid out the Armory's Division
-    /// and Unit panes. Double-clicking the bar brings it back.
+    /// The second pane's share of the room beside at first, on every tab: 46%, as the Armory's Division
+    /// and Unit panes were laid out. Double-clicking the bar brings it back.
     /// </summary>
     public const double DefaultShareBeside = 0.46;
 

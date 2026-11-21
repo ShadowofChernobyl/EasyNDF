@@ -88,8 +88,8 @@ public sealed record DivisionGeneration
     public bool ByPhase { get; init; }
 
     /// <summary>
-    /// For <see cref="GeneratedNumbers.Same"/> by phase: the units a card holds in phases A, B and C (the mock Paul
-    /// approved, November 2026, starts at 6 / 12 / 18).
+    /// For <see cref="GeneratedNumbers.Same"/> by phase: the units a card holds in phases A, B and C (the approved
+    /// mock, November 2026, starts at 6 / 12 / 18).
     /// </summary>
     public IReadOnlyList<int> PhaseCounts { get; init; } = [6, 12, 18];
 

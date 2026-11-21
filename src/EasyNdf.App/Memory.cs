@@ -60,7 +60,7 @@ public static class Memory
     private const long SpareKept = 150L * 1024 * 1024;
 
     /// <summary>
-    /// The most memory the app should take in Task Manager (Paul's aim: 900 MB at all times). Above it, the idle clean-up
+    /// The most memory the app should take in Task Manager (the aim: 900 MB at all times). Above it, the idle clean-up
     /// runs even when .NET's figures show little to give back.
     /// </summary>
     private const long MostTaken = 900L * 1024 * 1024;
@@ -72,7 +72,7 @@ public static class Memory
     private static DateTime lastInput = DateTime.UtcNow;
 
     /// <summary>
-    /// The idle clean-up (Paul's choice, option E of the memory report): every 15 seconds, once the app has gone 5 seconds
+    /// The idle clean-up (option E of the memory report): every 15 seconds, once the app has gone 5 seconds
     /// without a key or the mouse and no long job is running, memory .NET keeps without using (more than 150 MB) is given
     /// back to Windows. What large work leaves behind (reading the mods' changes, a big file, an export) so no longer
     /// stays in Task Manager's figure while the app sits there.

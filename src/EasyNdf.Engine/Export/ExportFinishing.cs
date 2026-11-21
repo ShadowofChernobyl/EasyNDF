@@ -37,7 +37,7 @@ public static partial class ExportFinishing
 {
     /// <summary>
     /// The watermark's line: the mod's name and version, then "by" the author, then "for game version", leaving out
-    /// what is empty. For example "WTO 1.4, by Paul, for game version 1.2".
+    /// what is empty. For example "WTO 1.4, by ShadowofChernobyl, for game version 1.2".
     /// </summary>
     public static string WatermarkLine(string? modName, Watermark watermark)
     {

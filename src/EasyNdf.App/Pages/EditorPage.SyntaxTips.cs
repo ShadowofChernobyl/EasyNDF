@@ -10,8 +10,7 @@ using ICSharpCode.AvalonEdit.Document;
 namespace EasyNdf.App.Pages;
 
 /// <summary>
-/// The File Editor's tips for every coloured word (Paul, 2026-11-11: "I want all colored syntax in the editor to have a
-/// tooltip of its own"): a setting's name and the plain values after it keep the setting's tip; a type, template,
+/// The File Editor's tips for every coloured word (every coloured word has a tip): a setting's name and the plain values after it keep the setting's tip; a type, template,
 /// name, reference, template value, keyword or comment gets one of its own (<see cref="SyntaxTips"/>). A name declared
 /// in another file is looked up in the Files tab's read files; its file, line and first settings come in once that
 /// file is read (the descriptor viewer's kept files are used).

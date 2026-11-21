@@ -192,7 +192,7 @@ public static class GeneratedListsMaker
     /// <summary>
     /// Tuned for memory: the results with each unit name kept once, shared by every list that names it. Each unit of each
     /// list had its own copy of its name and its transports' names, read from the cache folder or made apart: some 3
-    /// million texts, 320 MB with Paul's mods, kept in memory and shown as "Other .NET data". Keep it that way when tidying.
+    /// million texts, 320 MB with large mods, kept in memory and shown as "Other .NET data". Keep it that way when tidying.
     /// </summary>
     private static Results WithNamesShared(Results results)
     {

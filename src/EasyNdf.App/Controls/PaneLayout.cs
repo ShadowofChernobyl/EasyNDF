@@ -4,7 +4,7 @@ using System.Windows.Controls;
 namespace EasyNdf.App.Controls;
 
 /// <summary>
-/// How the Division, Unit and Weapon panes fit any width (Paul's choice, "Stack When Narrow"): in a narrow pane a
+/// How the Division, Unit and Weapon panes fit any width ("Stack When Narrow"): in a narrow pane a
 /// name sits over its value and the value tables show one value a row, so nothing is cut short; in a wide pane the
 /// sections sit in two columns and the picture beside the name. Each panel here chooses by the width it is given,
 /// never by its content's size, so it cannot flip back and forth.

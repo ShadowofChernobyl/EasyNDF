@@ -6,7 +6,7 @@ using EasyNdf.App.Text;
 namespace EasyNdf.App.Editor;
 
 /// <summary>
-/// The File Editor's tips for the coloured words that aren't a setting or its value, as the mock Paul chose
+/// The File Editor's tips for the coloured words that aren't a setting or its value, as the chosen mock
 /// (2026-11-11): a type, a template, a name or reference with its file, line and first settings, a template's value, a
 /// keyword, a comment. They are made of the same parts as a setting's tip (<see cref="ValueTips"/>) and open as it does.
 /// </summary>

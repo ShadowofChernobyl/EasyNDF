@@ -152,7 +152,7 @@ public partial class MainView : UserControl
     /// <summary>
     /// Tuned for memory: whenever the app is idle, every rule set of every mod put away (<see cref="Data.ModPreset.PackRules"/>),
     /// switched on or off and whatever its size, but those shown or selected on the Rules tab, and none while a rule
-    /// window is open, as a rule held there would lose a change made to it. With Paul's mods it took rule sets from
+    /// window is open, as a rule held there would lose a change made to it. With large mods it took rule sets from
     /// about 246 MB to a few, the mod files they were read from let go of with them. Keep it that way when tidying.
     /// </summary>
     private void PackUnusedRuleSets()

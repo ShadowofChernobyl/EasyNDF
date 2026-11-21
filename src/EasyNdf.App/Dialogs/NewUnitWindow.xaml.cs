@@ -142,7 +142,7 @@ public partial class NewUnitWindow : UserControl
         filter.Side = "";
         filter.Nations.Clear();
         filter.Role = "";
-        // every type at first (Paul's choice): the model may be of any type, whatever the Armory shows
+        // every type at first: the model may be of any type, whatever the Armory shows
         filter.Factory = "";
         FillRoleFilter();
         NameBox.Text = "";

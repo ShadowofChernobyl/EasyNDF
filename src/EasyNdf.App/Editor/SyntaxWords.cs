@@ -25,8 +25,7 @@ public sealed record TemplateSignature(string Name, string BuiltOn, IReadOnlyLis
 public sealed record KeyValues(IReadOnlyList<(string Key, string Value)> Shown, int Total, string? ConstantValue);
 
 /// <summary>
-/// The File Editor's words that have a tip of their own (Paul, 2026-11-11: "I want all colored syntax in the editor to
-/// have a tooltip of its own"): which coloured word a place is on, and what the text says about it: a keyword's note,
+/// The File Editor's words that have a tip of their own (every coloured word has a tip): which coloured word a place is on, and what the text says about it: a keyword's note,
 /// a template's values, a value's declared type and default, an object's first settings.
 /// </summary>
 public static class SyntaxWords
@@ -46,7 +45,7 @@ public static class SyntaxWords
     }
 
     /// <summary>
-    /// What a comment's tip is headed with (Paul, 2026-11-12: "program all {} comments to display as {}"): {} for a { }
+    /// What a comment's tip is headed with (all { } comments show as {}): {} for a { }
     /// comment, on its first line or on one inside it; otherwise its first two characters (// or /*).
     /// </summary>
     public static string CommentMark(string word, bool insideBraces) =>

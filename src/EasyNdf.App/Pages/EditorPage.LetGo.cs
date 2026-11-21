@@ -10,7 +10,7 @@ using ICSharpCode.AvalonEdit.Document;
 namespace EasyNdf.App.Pages;
 
 /// <summary>
-/// A large file in the editor is let go of while another tab of the app is in front (Paul's choice, option A of the
+/// A large file in the editor is let go of while another tab of the app is in front (option A of the
 /// memory report): the editor keeps a record of every line of a text, some 150 MB for UniteDescriptor.ndf's 711,000,
 /// which stays in memory for as long as the file is open. A while after the Editor tab is left, each open unedited file
 /// of the Files tab larger than 2 MB is put away, keeping where it was scrolled to, the caret and the blocks folded;

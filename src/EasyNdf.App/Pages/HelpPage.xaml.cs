@@ -42,7 +42,7 @@ public partial class HelpPage : UserControl
         InitializeComponent();
         PageScroller.ScrollChanged += (_, _) => MarkSectionInView();
         PageScroller.SizeChanged += (_, _) => headingPlaces = null;
-        // Back, Forward and Welcome Window end where the page does, the right column under them left clear (Paul's request)
+        // Back, Forward and Welcome Window end where the page does, the right column under them left clear
         Rail.IsVisibleChanged += (_, _) => TopBar.Margin = new Thickness(0, 0, Rail.IsVisible ? Rail.Width + Rail.Margin.Left : 0, 6);
         // scrolled by hand: the page keeps its place when its examples come in
         PageScroller.PreviewMouseWheel += (_, _) => shownVariable = null;
