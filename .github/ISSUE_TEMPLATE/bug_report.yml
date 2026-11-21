@@ -1,0 +1,103 @@
+name: Bug report
+description: Something in EasyNDF doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please check the open issues first, in case it's already known.
+
+        **Everything here is public.** Screenshots and logs can show your Windows user name or folder paths
+        (like `C:\Users\YourName\...`): blur or remove them before posting. Don't attach the game's own files.
+
+  - type: input
+    id: version
+    attributes:
+      label: EasyNDF version
+      description: Shown at the top left of the window, beside the name.
+      placeholder: v1.0.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Which EasyNDF
+      options:
+        - Installed (EasyNDF-Setup.exe)
+        - Portable (EasyNDF-Portable.exe)
+        - Browser demo
+    validations:
+      required: true
+
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options:
+        - WARNO
+        - Steel Division 2
+        - Both
+        - Not about a game
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tab
+    attributes:
+      label: Where in EasyNDF
+      multiple: true
+      options:
+        - Files
+        - Mods
+        - Editor
+        - Armory
+        - Settings
+        - Help
+        - About
+        - Export
+        - Starting or updating the app
+        - Somewhere else
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What went wrong, and any message EasyNDF showed (the exact words help).
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen
+      description: From opening EasyNDF, what you did, so we can do the same.
+      placeholder: |
+        1. On the Mods tab, open WARNO Tactical Overhaul
+        2. Click ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, mod file or log
+      description: |
+        Drag files into this box. Useful extras:
+        - A screenshot of the problem.
+        - Your mod (Mods tab: select it, then Export... under the list), if the problem is with its rules.
+        - If EasyNDF closes at start: `EasyNDF-Crash.txt` in `%LOCALAPPDATA%\EasyNDF`.
+        - For anything hard to repeat: switch on Settings > Debug > Keep a log, make it happen, then attach the newest
+          file from Open Log Folder.
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11
