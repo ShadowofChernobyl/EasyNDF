@@ -29,6 +29,9 @@ public sealed class RowListView : Grid
     /// <summary>The sunken box the rows are in.</summary>
     internal FrameworkElement Box => box;
 
+    /// <summary>The first row's line, for the tutorial to point at; the whole box while the list has no rows.</summary>
+    internal FrameworkElement FirstLine => (model.RowsOf(List)?.Count ?? 0) > 0 && lines.Children.Count > 0 && lines.Children[0] is FrameworkElement line ? line : box;
+
     /// <summary>The + that adds a row, for the tutorial to point at.</summary>
     internal Button? AddButton { get; private set; }
 

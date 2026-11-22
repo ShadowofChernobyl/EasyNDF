@@ -56,9 +56,12 @@ public sealed partial class TourOverlay : Grid
     /// <param name="SkipIf">When the step is passed over: what it makes is there already (a second run), or what it opens is open.</param>
     /// <param name="Show">Puts the app as the step begins it, each time it is come to, by Next or by Back: the view it
     /// shows, or, for a step that asks for a click, the view before that click; so the app and the tour never part.</param>
+    /// <param name="Needed">For a step with Done: the rest of the tutorial needs what it asks for (the mod, the rule, its
+    /// values, the run), so Skip Step is off until it is done; without it the later chapters would have nothing to show.</param>
+    /// <param name="Ready">For a step without Done: when Next may go on, such as once a name is typed; null for always.</param>
     private sealed record Step(string Text, Func<FrameworkElement?> Target, Func<bool>? Done = null, TabItem? Tab = null,
         bool LookOnly = true, Func<bool>? Undone = null, Func<FrameworkElement?>? Also = null, Action? OnEnter = null,
-        Func<bool>? SkipIf = null, Action? Show = null)
+        Func<bool>? SkipIf = null, Action? Show = null, bool Needed = false, Func<bool>? Ready = null)
     {
         /// <summary>The chapter the step is in; set as the steps are put together.</summary>
         public Chapter Chapter { get; set; }
@@ -98,11 +101,27 @@ public sealed partial class TourOverlay : Grid
     private bool targetSeen;
 
     /// <summary>
+    /// Whether Next or Skip Step may go on from a step: not past one the rest of the tutorial needs until it is done
+    /// (gone back to and done already, it may), and not from one that waits for something typed until it is.
+    /// </summary>
+    private bool CanGoOn(Step step) => step.Done is null ? step.Ready?.Invoke() != false : !step.Needed || held;
+
+    /// <summary>Next or Skip Step is greyed, with why in its tooltip, while the step cannot be passed.</summary>
+    private void ShowCanGoOn(Step step)
+    {
+        bool can = CanGoOn(step);
+        if (nextButton.IsEnabled == can) return;
+        nextButton.IsEnabled = can;
+        nextButton.ToolTip = can ? null : Texts.Get("Tour.Needed");
+    }
+
+    /// <summary>
     /// Next, or Skip Step: on to the next step, past the steps that only happen inside the question or window the
     /// skipped step would have opened (they have an Undone), which would otherwise send the tour straight back.
     /// </summary>
     private void Skip()
     {
+        if (!CanGoOn(steps[at])) return;
         // a question the skipped step waits on is put away, or it would hide the next step
         if (view?.Messages.IsOpen == true) view.Messages.Close(DialogChoice.Cancel);
         int next = at + 1;
@@ -130,6 +149,7 @@ public sealed partial class TourOverlay : Grid
         counter.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         text.SetResourceReference(TextBlock.ForegroundProperty, "ink");
         nextButton.Style = (Style)Application.Current.FindResource("GoButton");
+        ToolTipService.SetShowOnDisabled(nextButton, true);
         backButton.Click += (_, _) => Go(at - 1, byUser: true);
         nextButton.Click += (_, _) => Skip();
         endButton.Click += (_, _) => End();
@@ -232,6 +252,7 @@ public sealed partial class TourOverlay : Grid
         backButton.IsEnabled = at > 0;
         bool last = at == steps.Count - 1;
         nextButton.Content = Texts.Get(last ? "Welcome.Tour.Finish" : shown.Done is null || held ? "Welcome.Tour.Next" : "Welcome.Tour.Skip");
+        ShowCanGoOn(shown);
         endButton.Content = Texts.Get("Welcome.Tour.End");
         endButton.Visibility = last ? Visibility.Collapsed : Visibility.Visible;
         outline.StrokeDashArray = shown.Done is null && shown.LookOnly ? new DoubleCollection([3, 2]) : null;
@@ -259,6 +280,7 @@ public sealed partial class TourOverlay : Grid
             Go(at + 1);
             return;
         }
+        ShowCanGoOn(shown);
         if (targetSeen && shown.Undone?.Invoke() == true && at > 0)
         {
             // the window the step is in was closed: back to the step that opens it, before the others in that window

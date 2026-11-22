@@ -89,7 +89,7 @@ public sealed partial class TourOverlay
         string? Condition(string field) => mods.Model.OpenRule?["Conditions"]?[0]?[field]?.ToString();
         string? Action(string field) => mods.Model.OpenRule?["Actions"]?[0]?[field]?.ToString();
         bool CommentHas(string field) => JsonValues.IsTruthy(mods.Model.OpenRule?["Actions"]?[0]?["Comment"]?[field]);
-        FrameworkElement? List(int index) => rule.Parts is { } parts && parts.Lists.Count > index ? parts.Lists[index] : null;
+        FrameworkElement? Line(int index) => rule.Parts is { } parts && parts.Lists.Count > index ? parts.Lists[index].FirstLine : null;
         // a second run reuses what the first made: the mod, its rule set and its rule, each opened and its steps passed over
         const string modName = "Tutorial Mod", ruleName = "Longer autocannon range";
         ModPreset? AmmunitionSet() => AppData.Current.OpenMod.Presets.FirstOrDefault(set => string.Equals(set.Name, TutorialSample.Name, StringComparison.OrdinalIgnoreCase));
@@ -146,63 +146,64 @@ public sealed partial class TourOverlay
             {
                 modsBefore = AppData.Current.Mods.Count;
                 return ask.IsOpen;
-            }, tab, SkipIf: HasMod, Show: Outside),
+            }, tab, SkipIf: HasMod, Show: Outside, Needed: true),
             new(T("Tour.Mods.Name"), () => ask.Box, () =>
             {
                 bool made = !ask.IsOpen && AppData.Current.Mods.Count > modsBefore;
                 madeMod |= made;
                 return made;
-            }, tab, Undone: () => !ask.IsOpen && AppData.Current.Mods.Count == modsBefore, SkipIf: HasMod),
+            }, tab, Undone: () => !ask.IsOpen && AppData.Current.Mods.Count == modsBefore, SkipIf: HasMod, Needed: true),
             new(T("Tour.Mods.RuleSets"), () => mods.PresetBox, null, tab, Show: Outside),
             new(T("Tour.Mods.NewSet"), () => mods.NewPresetButton, () =>
             {
                 setsBefore = AppData.Current.OpenMod.Presets.Count;
                 return Menus.IsOpen || ask.IsOpen;
-            }, tab, SkipIf: InSetSteps, Show: Outside),
+            }, tab, SkipIf: InSetSteps, Show: Outside, Needed: true),
             new(T("Tour.Mods.RuleSetItem"), () => Menus.OpenItem(ruleSet), () => ask.IsOpen, tab,
-                Undone: () => !Menus.IsOpen && !ask.IsOpen, SkipIf: InSetSteps),
+                Undone: () => !Menus.IsOpen && !ask.IsOpen, SkipIf: InSetSteps, Needed: true),
             new(T("Tour.Mods.SetName"), () => ask.Box, () =>
             {
                 bool made = !ask.IsOpen && AppData.Current.OpenMod.Presets.Count > setsBefore;
                 madeSet |= made;
                 return made;
-            }, tab, Undone: () => !ask.IsOpen && AppData.Current.OpenMod.Presets.Count == setsBefore, SkipIf: InSetSteps),
+            }, tab, Undone: () => !ask.IsOpen && AppData.Current.OpenMod.Presets.Count == setsBefore, SkipIf: InSetSteps, Needed: true),
             new(T("Tour.Mods.Applies"), () => mods.AppliesText, null, tab, Show: Outside),
             new(T("Tour.Rules.Start"), () => null, Show: Outside),
-            new(T("Tour.Mods.NewRule"), () => mods.NewRuleButton, () => Menus.IsOpen || rule.IsOpen, tab, SkipIf: HasRule, Show: Outside),
+            new(T("Tour.Mods.NewRule"), () => mods.NewRuleButton, () => Menus.IsOpen || rule.IsOpen, tab, SkipIf: HasRule, Show: Outside, Needed: true),
             new(T("Tour.Mods.EditItem", ("item", editKind)), () => Menus.OpenItem(editKind), () =>
             {
                 if (rule.IsOpen) madeRule ??= mods.Model.OpenRule;
                 return rule.IsOpen;
-            }, tab, Undone: () => !Menus.IsOpen && !rule.IsOpen, SkipIf: HasRule),
+            }, tab, Undone: () => !Menus.IsOpen && !rule.IsOpen, SkipIf: HasRule, Needed: true),
             // the name box comes with "New rule" in it: selected, so typing replaces it
             new(T("Tour.Mods.RuleName"), () => rule.Parts?.NameBox, null, tab, LookOnly: false, SkipIf: InRuleSteps, OnEnter: () =>
             {
                 if (rule.Parts?.NameBox is TextBox name) { name.Focus(); name.SelectAll(); }
-            }, Show: InRule),
+            }, Show: InRule, Ready: () => rule.Parts?.NameBox?.Text.Trim() is { Length: > 0 } typed && typed != "New rule"),
             new(T("Tour.Mods.Scope"), () => rule.Parts?.ScopeRow, null, tab, SkipIf: InRuleSteps, Show: InRule),
             new(T("Tour.Mods.Gate"), () => rule.Parts?.GateBox, null, tab, SkipIf: InRuleSteps, Show: InRule),
             new(T("Tour.Mods.Scan"), () => rule.ScanChoice, null, tab, SkipIf: InRuleSteps, Show: InRule),
-            new(T("Tour.Mods.OpenCondition"), () => List(0), () => row.IsOpen, tab, SkipIf: InRuleSteps, Show: InRule),
+            // the row's own line is outlined: a row without a name is in dim text, which looked switched off
+            new(T("Tour.Mods.OpenCondition"), () => Line(0), () => row.IsOpen, tab, SkipIf: InRuleSteps, Show: InRule, Needed: true),
             // goes on once the word is typed and the list of names it suggests is put away
             new(T("Tour.Mods.ConditionValue"), () => row.Field("Value"),
                 () => Condition("Value")?.Equals("AutoCanon", StringComparison.OrdinalIgnoreCase) == true
                     && row.Field("Value") is TextBox box && !Suggestions.IsOpenFor(box), tab, Undone: () => !row.IsOpen, SkipIf: InRuleSteps,
-                OnEnter: () => FocusSoon(() => row.Field("Value")), Show: InRow(RulesModel.Conditions)),
-            new(T("Tour.Mods.ConditionDone"), () => row.DoneButton, () => !row.IsOpen, tab, SkipIf: InRuleSteps, Show: InRow(RulesModel.Conditions)),
-            new(T("Tour.Mods.OpenAction"), () => List(1), () => row.IsOpen, tab, SkipIf: InRuleSteps, Show: InRule),
+                OnEnter: () => FocusSoon(() => row.Field("Value")), Show: InRow(RulesModel.Conditions), Needed: true),
+            new(T("Tour.Mods.ConditionDone"), () => row.DoneButton, () => !row.IsOpen, tab, SkipIf: InRuleSteps, Show: InRow(RulesModel.Conditions), Needed: true),
+            new(T("Tour.Mods.OpenAction"), () => Line(1), () => row.IsOpen, tab, SkipIf: InRuleSteps, Show: InRule, Needed: true),
             new(T("Tour.Mods.ActionTarget"), () => row.Field("Target"), () => Action("Target") == "MaximumRangeGRU", tab, Undone: () => !row.IsOpen,
-                SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions)),
+                SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions), Needed: true),
             new(T("Tour.Mods.ActionValue"), () => row.Field("Value"), () => Action("Value") == "1.5", tab, Undone: () => !row.IsOpen, SkipIf: InRuleSteps,
-                OnEnter: () => FocusSoon(() => row.Field("Value")), Show: InRow(RulesModel.Actions)),
+                OnEnter: () => FocusSoon(() => row.Field("Value")), Show: InRow(RulesModel.Actions), Needed: true),
             // a comment beside each changed value: the Editor chapter's export shows them
             new(T("Tour.Mods.Comment"), () => row.Field("CommentEnabled"), () => CommentHas("Enabled"), tab, Undone: () => !row.IsOpen,
-                SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions)),
+                SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions), Needed: true),
             new(T("Tour.Mods.CommentOriginal"), () => row.Field("CommentIncludeOriginalValue"), () => CommentHas("IncludeOriginalValue"), tab,
-                Undone: () => !row.IsOpen, SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions)),
+                Undone: () => !row.IsOpen, SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions), Needed: true),
             new(T("Tour.Mods.ActionNote"), () => row.Field("Note"), null, tab, Undone: () => !row.IsOpen, SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions)),
-            new(T("Tour.Mods.ActionDone"), () => row.DoneButton, () => !row.IsOpen, tab, SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions)),
-            new(T("Tour.Mods.Save"), () => rule.DoneButton, () => !rule.IsOpen, tab, SkipIf: InRuleSteps, Show: InRule),
+            new(T("Tour.Mods.ActionDone"), () => row.DoneButton, () => !row.IsOpen, tab, SkipIf: InRuleSteps, Show: InRow(RulesModel.Actions), Needed: true),
+            new(T("Tour.Mods.Save"), () => rule.DoneButton, () => !rule.IsOpen, tab, SkipIf: InRuleSteps, Show: InRule, Needed: true),
             new(T("Tour.Mods.Saved"), () => mods.RuleBox, null, tab, Show: Outside),
         ];
     }
@@ -227,15 +228,18 @@ public sealed partial class TourOverlay
         [
             new(T("Tour.Preview.Start"), () => null, OnEnter: AddSample(v)),
             new(T("Tour.Preview.Tab"), () => tab, () => v.Tabs.SelectedItem == tab),
-            new(T("Tour.Preview.Run"), () => files.PreviewButton, Previewed, tab, OnEnter: () => runBefore = Ammunition()?.LastRun),
+            new(T("Tour.Preview.Run"), () => files.PreviewButton, Previewed, tab, OnEnter: () => runBefore = Ammunition()?.LastRun, Needed: true),
             new(T("Tour.Preview.Status"), () => files.ListArea, null, tab, Show: export.CancelNow),
             new(T("Tour.Preview.PickFile"), () => files.ListArea, () => files.Model.SelectedEntries.Count > 0, tab, SkipIf: () => files.Model.SelectedEntries.Count > 0, Show: export.CancelNow),
             // Details may have been closed before the tutorial: opened first
-            new(T("Tour.Preview.OpenDetails"), () => Either(files.Panes.OpenButton, files.Panes.Bar), () => !files.Panes.IsFolded, tab,
+            // (the button is in the Files heading with the panes beside, and along the bottom with them below)
+            new(T("Tour.Preview.OpenDetails"), () => files.Panes.OpenPart, () => !files.Panes.IsFolded, tab,
                 SkipIf: () => !files.Panes.IsFolded, Show: export.CancelNow),
-            new(T("Tour.Preview.Details"), () => Either(files.DetailsArea, files.Panes), null, tab, Undone: () => files.Panes.IsFolded, Show: () =>
+            // come to by Skip Step, or with Details closed again: the step opens it, so it always has its part to show
+            new(T("Tour.Preview.Details"), () => Either(files.DetailsArea, files.Panes), null, tab, Show: () =>
             {
                 if (files.Model.SelectedEntries.Count == 0 && Ammunition() is { } sample) files.Model.SelectEntry(sample);
+                if (files.Panes.IsFolded) files.Panes.Fold(false);
             }),
             new(T("Tour.Preview.Export"), () => files.RunButton, () => export.IsOpen, tab, Show: export.CancelNow),
             new(T("Tour.Preview.Where"), () => export.WherePart, null, tab, Undone: () => !export.IsOpen, Show: InExport),
@@ -260,21 +264,29 @@ public sealed partial class TourOverlay
         [
             new(T("Tour.Editor.Start"), () => null, OnEnter: AddSample(v)),
             new(T("Tour.Editor.Tab"), () => tab, () => v.Tabs.SelectedItem == tab),
-            new(T("Tour.Editor.Pick"), () => editor.FilePick, AmmunitionShown, tab),
+            new(T("Tour.Editor.Pick"), () => editor.FilePick, AmmunitionShown, tab, Needed: true),
             // the words' tips show under the mouse: the text stays usable in this step
             new(T("Tour.Editor.Text"), () => editor.EditorArea, null, tab, LookOnly: false, Show: View("file")),
             new(T("Tour.Editor.ShowExport"), () => editor.ExportButton, () => editor.ShowsExport, tab, Show: View("file")),
             new(T("Tour.Editor.Changes"), () => editor.ChangesButton, () => editor.ChangesButton.IsChecked == true, tab, Show: View("export")),
             new(T("Tour.Editor.Changed"), () => editor.EditorArea, null, tab, LookOnly: false, Show: View("changes")),
             // the Descriptor Tree is folded at first: its button opens it, then the tree and the values are shown apart
-            new(T("Tour.Editor.OpenTree"), () => editor.PaneSlot, () => !editor.Panes.IsFolded, tab, SkipIf: () => !editor.Panes.IsFolded),
+            // (its button is in the Editor's heading with the panes beside, and along the bottom with them below)
+            new(T("Tour.Editor.OpenTree"), () => Either(editor.Halves.LeftButton, editor.Panes.OpenPart), () => !editor.Panes.IsFolded, tab, SkipIf: () => !editor.Panes.IsFolded),
             // either list may have been folded away by its own button before the tutorial
             new(T("Tour.Editor.OpenList", ("list", Texts.Get("Editor.Descriptors"))), () => editor.Halves.LeftButton, () => editor.Halves.LeftShows, tab,
                 SkipIf: () => editor.Halves.LeftShows),
-            new(T("Tour.Editor.Tree"), () => editor.TreeBox, null, tab, LookOnly: false),
+            // come to by Skip Step: the step opens the tree itself, so it always has its part to show
+            new(T("Tour.Editor.Tree"), () => editor.TreeBox, null, tab, LookOnly: false, Show: () =>
+            {
+                if (editor.Panes.IsFolded || !editor.Halves.LeftShows) editor.Halves.Clicked(isLeft: true);
+            }),
             new(T("Tour.Editor.OpenList", ("list", Texts.Get("Editor.Properties"))), () => editor.Halves.RightButton, () => editor.Halves.RightShows, tab,
                 SkipIf: () => editor.Halves.RightShows),
-            new(T("Tour.Editor.Properties"), () => editor.PropertiesBox, null, tab),
+            new(T("Tour.Editor.Properties"), () => editor.PropertiesBox, null, tab, Show: () =>
+            {
+                if (editor.Panes.IsFolded || !editor.Halves.RightShows) editor.Halves.Clicked(isLeft: false);
+            }),
         ];
     }
 

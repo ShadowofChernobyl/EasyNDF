@@ -30,6 +30,13 @@ public sealed class PanePair : Grid
 
     /// <summary>The button that opens the second pane while it is folded, for the tutorial to point at.</summary>
     internal FrameworkElement OpenButton => openButton;
+
+    /// <summary>
+    /// What opens the second pane while it is folded, wherever that is, for the tutorial to point at: beside, the button
+    /// in the main pane's heading; below, the pane's own button in its heading along the bottom; the tab's own heading
+    /// buttons (<see cref="SecondHeading"/>) when it has them.
+    /// </summary>
+    internal FrameworkElement OpenPart => secondHeading ?? (isFolded && Beside && FoldedPlace is not null ? openButton : foldButton);
     private readonly DockPanel second = new();
     private readonly Bevel heading;
     private readonly DockPanel headingRow;
