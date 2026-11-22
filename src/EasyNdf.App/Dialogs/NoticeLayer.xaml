@@ -8,7 +8,7 @@
              xmlns:t="clr-namespace:EasyNdf.App.Text"
              xmlns:controls="clr-namespace:EasyNdf.App.Controls">
     <Grid>
-        <StackPanel x:Name="Toasts" Width="360" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10" />
+        <StackPanel x:Name="Toasts" Width="360" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,24,24" />
         <controls:Bevel x:Name="RecentBox" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                         Width="420" MaxHeight="320" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="Collapsed">
             <DockPanel>

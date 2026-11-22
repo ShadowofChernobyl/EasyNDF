@@ -46,8 +46,21 @@ public partial class UnitsPage
     /// <summary>How many tiles a row of a division's Cards view had when it was last filled.</summary>
     private int divisionCardColumns;
 
-    /// <summary>The mod whose divisions are shown and changed: the one open on the Rules tab.</summary>
-    private static Mod OpenMod => AppData.Current.OpenMod;
+    /// <summary>
+    /// The mod whose changes the Armory shows and makes: the one open on the Mods tab when it is on and for the source's
+    /// game; otherwise the mod of that game that is on, the last to run when several are (it wins where they differ).
+    /// Only with none on is it the open mod, so the Armory says why nothing can be changed. Opening a mod that is off
+    /// only to look at its rules must not stop changes to the mod that is on.
+    /// </summary>
+    private Mod OpenMod => ArmoryModFor(Game);
+
+    /// <summary>The mod the Armory shows and changes for a source of this game (<see cref="OpenMod"/>).</summary>
+    internal static Mod ArmoryModFor(Data.Game.GameTitle game)
+    {
+        Mod open = AppData.Current.OpenMod;
+        if (open.Game == game && ModStack.Runs(open)) return open;
+        return ModStack.RunningFor(game).LastOrDefault() ?? open;
+    }
 
     /// <summary>
     /// Whether the Armory shows the open mod's own changes: "Show mods' changes" is on, the mod is on on the Mods tab,
@@ -356,7 +369,7 @@ public partial class UnitsPage
     }
 
     /// <summary>Whether a division is one of the mod's new divisions, rather than the game's.</summary>
-    private static bool IsNewInMod(Division division) => DivisionChanges.EntryOf(OpenMod, division.Descriptor) is { IsNew: true };
+    private bool IsNewInMod(Division division) => DivisionChanges.EntryOf(OpenMod, division.Descriptor) is { IsNew: true };
 
     /// <summary>A side's place in the game's order; one the app does not know goes last.</summary>
     private static int SideOrder(IReadOnlyList<string> sides, string side)

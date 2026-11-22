@@ -15246,6 +15246,431 @@
       "text": "卡组编号 {number}",
       "machine": true
     },
+    "Units.OwnModel.Done": {
+      "english": "Done",
+      "text": "完成",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Triangulated": {
+      "english": "Faces split into triangles, as the game's tools need.",
+      "text": "已按游戏工具的要求将面拆分为三角形。",
+      "machine": true
+    },
+    "Units.OwnModel.Heading": {
+      "english": "3D Model",
+      "text": "3D 模型",
+      "machine": true
+    },
+    "Units.OwnModel.Own": {
+      "english": "Import Model",
+      "text": "导入模型",
+      "machine": true
+    },
+    "Units.OwnModel.Own.Tip": {
+      "english": "Use a model of your own, from an .fbx file",
+      "text": "使用来自 .fbx 文件的自定义模型",
+      "machine": true
+    },
+    "Units.OwnModel.Copied.Tip": {
+      "english": "Keep {unit}'s model",
+      "text": "保留 {unit} 的模型",
+      "machine": true
+    },
+    "Units.OwnModel.Browse": {
+      "english": "Browse…",
+      "text": "浏览…",
+      "machine": true
+    },
+    "Units.OwnModel.Textures": {
+      "english": "Textures",
+      "text": "纹理",
+      "machine": true
+    },
+    "Units.OwnModel.GoesTo": {
+      "english": "Goes to",
+      "text": "放入",
+      "machine": true
+    },
+    "Units.OwnModel.Levels": {
+      "english": "Detail Levels",
+      "text": "细节层级",
+      "machine": true
+    },
+    "Units.OwnModel.Mid": {
+      "english": "Mid",
+      "text": "中",
+      "machine": true
+    },
+    "Units.OwnModel.Low": {
+      "english": "Low",
+      "text": "低",
+      "machine": true
+    },
+    "Units.OwnModel.ClearLevel.Tip": {
+      "english": "No file for this level",
+      "text": "此层级不使用文件",
+      "machine": true
+    },
+    "Units.OwnModel.Levels.Note": {
+      "english": "Shown farther away. Without them, the main model is used at every distance.",
+      "text": "在较远处显示。没有它们时，所有距离都使用主模型。",
+      "machine": true
+    },
+    "Units.OwnModel.Parts": {
+      "english": "Parts",
+      "text": "部件",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.Note": {
+      "english": "The parts {unit}'s turrets, guns and wheels move. Pick the part in the file for each one.",
+      "text": "{unit} 的炮塔、火炮和车轮所带动的部件。请为每一项选择文件中的部件。",
+      "machine": true
+    },
+    "Units.OwnModel.Checks": {
+      "english": "Checks",
+      "text": "检查",
+      "machine": true
+    },
+    "Units.OwnModel.Reality": {
+      "english": "Preview of the .fbx; may look different in game.",
+      "text": ".fbx 预览；游戏中可能有所不同。",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Copied": {
+      "english": "Keeps the copied unit's model.",
+      "text": "保留所复制单位的模型。",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Pick": {
+      "english": "Pick an .fbx file.",
+      "text": "请选择一个 .fbx 文件。",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Blocked": {
+      "english": "This model can't be used for this unit.",
+      "text": "此模型不能用于该单位。",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Problems": {
+      "english": "{count} check to fix, or go on anyway.|{count} checks to fix, or go on anyway.",
+      "text": "有 {count} 项检查需要修复，也可以直接继续。",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Rules": {
+      "english": "Makes rules: copies the files into the mod, adds the models, points the unit at them.",
+      "text": "生成规则：将文件复制到模组中，添加模型，并让单位使用它们。",
+      "machine": true
+    },
+    "Units.OwnModel.Reading": {
+      "english": "Reading the model…",
+      "text": "正在读取模型…",
+      "machine": true
+    },
+    "Units.OwnModel.CannotRead": {
+      "english": "Can't read the model: {problem}",
+      "text": "无法读取模型：{problem}",
+      "machine": true
+    },
+    "Units.OwnModel.NotKept": {
+      "english": "The model's files couldn't be kept: {problem}",
+      "text": "无法保存模型文件：{problem}",
+      "machine": true
+    },
+    "Units.OwnModel.NoFile": {
+      "english": "No file picked",
+      "text": "未选择文件",
+      "machine": true
+    },
+    "Units.OwnModel.None": {
+      "english": "None",
+      "text": "无",
+      "machine": true
+    },
+    "Units.OwnModel.Textures.Missing": {
+      "english": "{missing} of {count} materials missing maps",
+      "text": "{count} 个材质中有 {missing} 个缺少贴图",
+      "machine": true
+    },
+    "Units.OwnModel.Textures.All": {
+      "english": "{count} material, all found|{count} materials, all found",
+      "text": "{count} 个材质，全部找到",
+      "machine": true
+    },
+    "Units.OwnModel.Show": {
+      "english": "Show",
+      "text": "显示",
+      "machine": true
+    },
+    "Units.OwnModel.Hide": {
+      "english": "Hide",
+      "text": "隐藏",
+      "machine": true
+    },
+    "Units.OwnModel.Colour": {
+      "english": "colour",
+      "text": "颜色",
+      "machine": true
+    },
+    "Units.OwnModel.MapMissing": {
+      "english": "Not found beside the .fbx",
+      "text": "在 .fbx 旁未找到",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Count": {
+      "english": "{count} part|{count} parts",
+      "text": "{count} 个部件",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Own": {
+      "english": "Original",
+      "text": "原有",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Found": {
+      "english": "{found} of {count} found",
+      "text": "找到 {found}/{count}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.None": {
+      "english": "— Not in the file —",
+      "text": "— 文件中没有 —",
+      "machine": true
+    },
+    "Units.OwnModel.Part.GunsEnd": {
+      "english": "Gun's end",
+      "text": "炮口",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Similar": {
+      "english": "picked by a similar name",
+      "text": "按相似名称选择",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Hull": {
+      "english": "Hull",
+      "text": "车体",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Turret": {
+      "english": "Turret {number}",
+      "text": "炮塔 {number}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.GunMount": {
+      "english": "Gun mount {number}",
+      "text": "武器座 {number}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Gun": {
+      "english": "Gun {number}",
+      "text": "火炮 {number}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.FiringPoint": {
+      "english": "Firing point {number}",
+      "text": "射击点 {number}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Wheels": {
+      "english": "Wheels",
+      "text": "车轮",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Tracks": {
+      "english": "Tracks",
+      "text": "履带",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Skirts": {
+      "english": "Armour skirts",
+      "text": "侧裙装甲",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Effects": {
+      "english": "Effect points",
+      "text": "特效点",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Copied": {
+      "english": "Uses {unit}'s model, as in the game.",
+      "text": "使用 {unit} 的模型，与游戏中相同。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NotVehicle": {
+      "english": "Imported models fit ground vehicles only for now.",
+      "text": "目前导入的模型仅适用于地面车辆。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoCopiedModel": {
+      "english": "{unit}'s model wasn't found, so the parts can't be checked.",
+      "text": "未找到 {unit} 的模型，无法检查部件。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Soldier": {
+      "english": "A soldier's model (it has a skeleton), and this unit is a vehicle. Pick another file.",
+      "text": "这是士兵模型（带有骨骼），而该单位是车辆。请选择其他文件。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoHull": {
+      "english": "No hull (chassis): the game places the unit by it. Pick the part for it.",
+      "text": "没有车体（chassis）：游戏据此放置单位。请为其选择部件。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoFiringPoint": {
+      "english": "No firing point for turret {turret}: shots would start at the model's centre.",
+      "text": "炮塔 {turret} 没有射击点：射击将从模型中心发出。",
+      "machine": true
+    },
+    "Units.OwnModel.Fix.GunsEnd": {
+      "english": "Use the Gun's End",
+      "text": "使用炮口",
+      "machine": true
+    },
+    "Units.OwnModel.Check.TooBig": {
+      "english": "{length} m long against {theirs} m: likely made in centimetres.",
+      "text": "长 {length} 米，而原单位为 {theirs} 米：可能以厘米为单位制作。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.TooSmall": {
+      "english": "{length} m long against {theirs} m: likely made in other units.",
+      "text": "长 {length} 米，而原单位为 {theirs} 米：可能使用了其他单位制作。",
+      "machine": true
+    },
+    "Units.OwnModel.Fix.Scale": {
+      "english": "Scale to {scaled} m",
+      "text": "缩放到 {scaled} 米",
+      "machine": true
+    },
+    "Units.OwnModel.Check.SizeOk": {
+      "english": "{length} m long, close to the copied unit's {theirs} m.",
+      "text": "长 {length} 米，接近所复制单位的 {theirs} 米。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoTurret": {
+      "english": "No turret {turret}: it won't turn.",
+      "text": "没有炮塔 {turret}：它不会转动。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoMount": {
+      "english": "No gun mount {turret}: its gun won't aim up and down.",
+      "text": "没有武器座 {turret}：火炮不会上下俯仰。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoGun": {
+      "english": "No gun {turret}: it won't move when firing.",
+      "text": "没有火炮 {turret}：射击时不会运动。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Wheels": {
+      "english": "Wheels: {found} of {count} found. The missing ones won't turn.",
+      "text": "车轮：找到 {found}/{count}。缺少的不会转动。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Tracks": {
+      "english": "Tracks: {found} of {count} found. The missing ones won't move.",
+      "text": "履带：找到 {found}/{count}。缺少的不会运动。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Skirts": {
+      "english": "Armour skirts: {found} of {count} found.",
+      "text": "侧裙装甲：找到 {found}/{count}。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Effects": {
+      "english": "Effect points: {found} of {count} found. Missing ones may show their effects in the wrong place.",
+      "text": "特效点：找到 {found}/{count}。缺少的特效可能出现在错误位置。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.AllParts": {
+      "english": "All {count} parts found.",
+      "text": "已找到全部 {count} 个部件。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Maps": {
+      "english": "{material} has no {maps}: it shows plain in game.",
+      "text": "{material} 缺少 {maps}：在游戏中会显示为纯色。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoLevels": {
+      "english": "No Mid or Low: the main model is used at every distance.",
+      "text": "没有中、低层级：所有距离都使用主模型。",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Levels": {
+      "english": "Detail levels given.",
+      "text": "已提供细节层级。",
+      "machine": true
+    },
+    "Units.OwnModel.Size": {
+      "english": "{length} × {width} × {height} m",
+      "text": "{length} × {width} × {height} 米",
+      "machine": true
+    },
+    "Units.OwnModel.Triangles": {
+      "english": "{count} triangle|{count} triangles",
+      "text": "{count} 个三角形",
+      "machine": true
+    },
+    "Units.OwnModel.Pick.Title": {
+      "english": "Pick a 3D model",
+      "text": "选择 3D 模型",
+      "machine": true
+    },
+    "Units.OwnModel.Pick.Filter": {
+      "english": "FBX models",
+      "text": "FBX 模型",
+      "machine": true
+    },
+    "Units.OwnModel.PickLevel.Title": {
+      "english": "Pick a detail level's model",
+      "text": "选择细节层级的模型",
+      "machine": true
+    },
+    "Units.OwnModel.Window.Title": {
+      "english": "Change 3D Model",
+      "text": "更换 3D 模型",
+      "machine": true
+    },
+    "Units.OwnModel.Menu": {
+      "english": "Change 3D Model…",
+      "text": "更换 3D 模型…",
+      "machine": true
+    },
+    "Units.OwnModel.Menu.Tip": {
+      "english": "Give the unit a model of your own, from an .fbx file",
+      "text": "为单位使用来自 .fbx 文件的自定义模型",
+      "machine": true
+    },
+    "Units.OwnModel.Menu.NotVehicle.Tip": {
+      "english": "Imported models fit WARNO's ground vehicles only for now",
+      "text": "目前导入的模型仅适用于 WARNO 的地面车辆",
+      "machine": true
+    },
+    "Units.New.Step.OwnModel": {
+      "english": "3D Model",
+      "text": "3D 模型",
+      "machine": true
+    },
+    "Units.Rule.Model": {
+      "english": "own 3D model {model}",
+      "text": "自定义 3D 模型 {model}",
+      "machine": true
+    },
+    "Files.Run.Pictures.ModelFiles": {
+      "english": "{count} 3D model file|{count} 3D model files",
+      "text": "{count} 个 3D 模型文件",
+      "machine": true
+    },
+    "Units.OwnModel.ShowParts": {
+      "english": "Parts",
+      "text": "部件",
+      "machine": true
+    },
+    "Units.OwnModel.ShowParts.Tip": {
+      "english": "Show where each turret, gun and firing point is on the model",
+      "text": "在模型上显示每个炮塔、火炮和射击点的位置",
+      "machine": true
+    },
     "Units.Rule.Picture": {
       "english": "card picture {picture}",
       "text": "卡牌图片{picture}",
@@ -15297,8 +15722,8 @@
       "machine": true
     },
     "Units.New.Step.Model": {
-      "english": "Model",
-      "text": "型号",
+      "english": "Base Unit",
+      "text": "基础单位",
       "machine": true
     },
     "Units.New.Step.NameAndNation": {
@@ -15377,8 +15802,8 @@
       "machine": true
     },
     "Units.New.ClickAModel": {
-      "english": "Click a unit to use its 3D model.",
-      "text": "点击一个单位即可使用其3D模型。",
+      "english": "Click a unit to start from it.",
+      "text": "点击一个单位，以它为基础。",
       "machine": true
     },
     "Units.New.ComesWith": {
@@ -15437,8 +15862,8 @@
       "machine": true
     },
     "Units.New.Hint.Model": {
-      "english": "Double-click a unit to use its model.",
-      "text": "双击一个单位以使用其模型。",
+      "english": "Double-click a unit to start from it.",
+      "text": "双击一个单位，以它为基础。",
       "machine": true
     },
     "Units.New.Off.Model": {
@@ -16770,8 +17195,8 @@
       "machine": true
     },
     "Help.Page.start.Html": {
-      "english": "<p class=\"wklead\"><b>EasyNDF changes numbers in WARNO and Steel Division 2 game files,</b> like a weapon's range or reload time.</p><p>Each change is a <a href=\"#\" data-p=\"rules\">rule</a>. EasyNDF runs your rules on the files you add and gives you edited copies. Your files are never changed, and nothing leaves your computer.</p><h3>Four Steps</h3><ol class=\"wksteps\"><li><b>Pick rules.</b> Mods tab: click a mod. <i>WARNO Tactical Overhaul</i> is a ready-made example; <b>Import mod...</b> loads a shared one.</li><li><b>Add files.</b> Files tab: <b>Add folder...</b>, then pick a GameData folder, ideally <a href=\"#\" data-p=\"mod-find\">the game's clean files</a>.</li><li><b>Preview.</b> Nothing is saved. Click a file to see its changes in <b>Details</b>.</li><li><b>Export.</b> Pick a folder for the edited files, or your mod's folder to <a href=\"#\" data-p=\"mod-find\">write straight into your mod</a>.</li></ol><div class=\"wkcall\"><b>Note</b><span>Use clean files. Rules run on whatever you add, so an exported file gets them twice: \"multiply by 2\" becomes \"by 4\". Export asks first when a file was exported by EasyNDF before.</span></div><div class=\"wkcall\"><b>Tip</b><span>Unsure what's next? The green button is always the next step.</span></div><p>New words? See the <a href=\"#\" data-p=\"words\">Glossary</a>.</p><h3>Your First Mod</h3><p><a href=\"#\" data-p=\"mod-find\">WARNO Modding</a> covers the game's side: making a mod folder, building it, turning it on.</p><div class=\"wkcall\"><b>Tip</b><span>Every window has a <b>?</b> button. The search box on the left finds any page.</span></div><h3>Tutorial</h3><p><b>Start the Tutorial</b> in the welcome window (Help tab: <b>Welcome Window</b>) makes a small mod with you, in six chapters: <b>Files</b>, <b>Mods</b>, <b>Rules</b>, <b>Preview and Export</b>, <b>The Editor</b> and <b>The Armory</b>. It works on a sample Ammunition.ndf it adds for you, and nothing is exported. The Help tab's <b>Tutorials</b> button starts at any chapter.</p><ul><li>Each step asks for one thing, shown in bold, inside the outline; it goes on once it is done.</li><li>A step with a dashed outline is only to look at: press <b>Next</b>.</li><li>Only the outlined part responds to clicks, so you can't get lost.</li><li><b>Back</b>, <b>Skip Step</b>, or the Left and Right arrow keys move through it.</li><li><b>Skip Step</b> is greyed on a step the rest of the tutorial needs, such as making the rule.</li><li><b>End Tour</b> stops it any time. <kbd>Escape</kbd> doesn't: it closes the windows the tour opens.</li></ul>",
-      "text": "<p class=\"wklead\"><b>EasyNDF 可修改《WARNO》和《Steel Division 2》游戏文件中的数值，</b>例如武器的射程或装填时间。</p><p>每项修改都是一条<a href=\"#\" data-p=\"rules\">规则</a>。EasyNDF 会将您添加的规则应用于您导入的文件，并生成编辑后的副本。您的原始文件绝不会被修改，且没有任何数据会离开您的计算机。</p><h3>四个步骤</h3><ol class=\"wksteps\"><li><b>选择规则。</b>“模组”选项卡：点击一个模组。<i>WARNO Tactical Overhaul</i>是一个现成的示例；<b>导入模组...</b>可加载共享模组。</li><li><b>添加文件。</b>“文件”选项卡：<b>点击添加文件夹...</b>，然后选择一个 GameData 文件夹，最好是<a href=\"#\" data-p=\"mod-find\">游戏的原始文件</a>。</li><li><b>预览。</b>此时不会保存任何内容。点击文件可在<b>详细信息</b>中查看其修改内容。</li><li><b>导出。</b>选择一个文件夹来存放编辑后的文件，或者选择您的模组文件夹，<a href=\"#\" data-p=\"mod-find\">直接</a>将<a href=\"#\" data-p=\"mod-find\">文件写入模组中</a>。</li></ol><div class=\"wkcall\"><b>注意</b><span>：请使用干净的文件。规则会作用于您添加的任何文件，因此导出的文件会应用两次规则：“乘以 2”将变为“乘以 4”。如果文件之前曾通过 EasyNDF 导出过，导出时会先进行确认。</span></div><div class=\"wkcall\"><span>提示：不确定下一步该做什么？绿色按钮总是下一步操作。</span></div><p>遇到新词？请查阅<a href=\"#\" data-p=\"words\">术语</a>表。</p><h3>你的第一个模组</h3><p><a href=\"#\" data-p=\"mod-find\">警告：模组制作</a>涉及游戏的各个方面：创建模组文件夹、构建模组、启用模组。</p><div class=\"wkcall\"><b>提示：</b><span>每个窗口都有一个<b>？</b>按钮。左侧的搜索框可查找任何页面。</span></div><h3>教程</h3><p>在欢迎窗口（“帮助”选项卡：<b>欢迎窗口</b>）中<b>启动教程</b>，将引导您分六个章节制作一个小型模组：<b>文件</b>、<b>模组</b>、<b>规则</b>、<b>预览与导出</b>、<b>编辑器</b>以及<b>军械库</b>。教程基于系统为您添加的示例文件 Ammunition.ndf 进行操作，且不会导出任何内容。 “帮助”选项卡中的<b>教程</b>按钮可从任意章节开始。</p><ul><li>每个步骤都会要求完成一项任务，该任务以粗体显示在轮廓框内；完成后，教程将自动进入下一步。</li><li>轮廓为虚线的步骤仅供查看：请点击<b>下一步</b>。</li><li>只有带边框的部分会响应点击，因此您不会迷路。</li><li><b>返回</b>、<b>跳过步骤</b>或左右箭头键可在教程中移动。</li><li>教程后续部分需要的步骤（例如创建规则）中，<b>跳过步骤</b>会变灰。</li><li><b>结束导览</b>可随时停止导览。<kbd>Escape</kbd> 不会停止导览：它只会关闭导览打开的窗口。</li></ul>",
+      "english": "<p class=\"wklead\"><b>EasyNDF changes numbers in WARNO and Steel Division 2 game files,</b> like a weapon's range or reload time.</p><p>Each change is a <a href=\"#\" data-p=\"rules\">rule</a>. EasyNDF runs your rules on the files you add and gives you edited copies. Your files are never changed, and nothing leaves your computer.</p><h3>Four Steps</h3><ol class=\"wksteps\"><li><b>Pick rules.</b> Mods tab: click a mod. <i>WARNO Tactical Overhaul</i> is a ready-made example; <b>Import mod...</b> loads a shared one.</li><li><b>Add files.</b> Files tab: <b>Add folder...</b>, then pick a GameData folder, ideally <a href=\"#\" data-p=\"mod-find\">the game's clean files</a>.</li><li><b>Preview.</b> Nothing is saved. Click a file to see its changes in <b>Details</b>.</li><li><b>Export.</b> Pick a folder for the edited files, or your mod's folder to <a href=\"#\" data-p=\"mod-find\">write straight into your mod</a>.</li></ol><div class=\"wkcall\"><b>Note</b><span>Use clean files. Rules run on whatever you add, so an exported file gets them twice: \"multiply by 2\" becomes \"by 4\". Export asks first when a file was exported by EasyNDF before.</span></div><p>New words? See the <a href=\"#\" data-p=\"words\">Glossary</a>.</p><h3>Your First Mod</h3><p><a href=\"#\" data-p=\"mod-find\">WARNO Modding</a> covers the game's side: making a mod folder, building it, turning it on.</p><div class=\"wkcall\"><b>Tip</b><span>Every window has a <b>?</b> button. The search box on the left finds any page.</span></div><h3>Tutorial</h3><p><b>Start the Tutorial</b> in the welcome window (Help tab: <b>Welcome Window</b>) makes a small mod with you, in six chapters: <b>Files</b>, <b>Mods</b>, <b>Rules</b>, <b>Preview and Export</b>, <b>The Editor</b> and <b>The Armory</b>. It works on a sample Ammunition.ndf it adds for you, and nothing is exported. The Help tab's <b>Tutorials</b> button starts at any chapter.</p><ul><li>Each step asks for one thing, shown in bold, inside the outline; it goes on once it is done.</li><li>A step with a dashed outline is only to look at: press <b>Next</b>.</li><li>Only the outlined part responds to clicks, so you can't get lost.</li><li><b>Back</b>, <b>Skip Step</b>, or the Left and Right arrow keys move through it.</li><li><b>Skip Step</b> is greyed on a step the rest of the tutorial needs, such as making the rule.</li><li><b>End Tour</b> stops it any time. <kbd>Escape</kbd> doesn't: it closes the windows the tour opens.</li></ul>",
+      "text": "<p class=\"wklead\"><b>EasyNDF 可修改《WARNO》和《Steel Division 2》游戏文件中的数值，</b>例如武器的射程或装填时间。</p><p>每项修改都是一条<a href=\"#\" data-p=\"rules\">规则</a>。EasyNDF 会将您添加的规则应用于您导入的文件，并生成编辑后的副本。您的原始文件绝不会被修改，且没有任何数据会离开您的计算机。</p><h3>四个步骤</h3><ol class=\"wksteps\"><li><b>选择规则。</b>“模组”选项卡：点击一个模组。<i>WARNO Tactical Overhaul</i>是一个现成的示例；<b>导入模组...</b>可加载共享模组。</li><li><b>添加文件。</b>“文件”选项卡：<b>点击添加文件夹...</b>，然后选择一个 GameData 文件夹，最好是<a href=\"#\" data-p=\"mod-find\">游戏的原始文件</a>。</li><li><b>预览。</b>此时不会保存任何内容。点击文件可在<b>详细信息</b>中查看其修改内容。</li><li><b>导出。</b>选择一个文件夹来存放编辑后的文件，或者选择您的模组文件夹，<a href=\"#\" data-p=\"mod-find\">直接</a>将<a href=\"#\" data-p=\"mod-find\">文件写入模组中</a>。</li></ol><div class=\"wkcall\"><b>注意</b><span>：请使用干净的文件。规则会作用于您添加的任何文件，因此导出的文件会应用两次规则：“乘以 2”将变为“乘以 4”。如果文件之前曾通过 EasyNDF 导出过，导出时会先进行确认。</span></div><p>遇到新词？请查阅<a href=\"#\" data-p=\"words\">术语</a>表。</p><h3>你的第一个模组</h3><p><a href=\"#\" data-p=\"mod-find\">警告：模组制作</a>涉及游戏的各个方面：创建模组文件夹、构建模组、启用模组。</p><div class=\"wkcall\"><b>提示：</b><span>每个窗口都有一个<b>？</b>按钮。左侧的搜索框可查找任何页面。</span></div><h3>教程</h3><p>在欢迎窗口（“帮助”选项卡：<b>欢迎窗口</b>）中<b>启动教程</b>，将引导您分六个章节制作一个小型模组：<b>文件</b>、<b>模组</b>、<b>规则</b>、<b>预览与导出</b>、<b>编辑器</b>以及<b>军械库</b>。教程基于系统为您添加的示例文件 Ammunition.ndf 进行操作，且不会导出任何内容。 “帮助”选项卡中的<b>教程</b>按钮可从任意章节开始。</p><ul><li>每个步骤都会要求完成一项任务，该任务以粗体显示在轮廓框内；完成后，教程将自动进入下一步。</li><li>轮廓为虚线的步骤仅供查看：请点击<b>下一步</b>。</li><li>只有带边框的部分会响应点击，因此您不会迷路。</li><li><b>返回</b>、<b>跳过步骤</b>或左右箭头键可在教程中移动。</li><li>教程后续部分需要的步骤（例如创建规则）中，<b>跳过步骤</b>会变灰。</li><li><b>结束导览</b>可随时停止导览。<kbd>Escape</kbd> 不会停止导览：它只会关闭导览打开的窗口。</li></ul>",
       "machine": true
     },
     "Help.Page.words.Title": {
@@ -17145,8 +17570,8 @@
       "machine": true
     },
     "Help.Page.units-new.Html": {
-      "english": "<p class=\"wklead\">On the <b>Units</b> sub-tab, <b>+ New Unit...</b> makes your own unit in the open mod, in four steps listed at the top of its window.</p><ol><li><b>Model</b>: pick the unit to copy. Its 3D model, animations, showroom view, card picture, type, weapons and values come with it; the right panel lists what's copied.</li><li><b>Name and Nation</b>: name, nation, role, and card picture: <b>Same as</b> the copied unit, or <b>My own...</b>. The card on the left previews it.</li><li><b>Stats</b>: cost, strength, speed, optics and more, plus armor. Empty boxes keep the copied unit's value, shown dim; only values you type change.</li><li><b>Weapons</b>: the copied unit's weapons, turret by turret, as in the Unit pane's <b>Loadout</b> section, to swap, change, remove or add (see <a href=\"#\" data-p=\"units-loadout\">Unit Weapons</a>). Untouched, your unit keeps them all.</li></ol><p><b>Duplicate Unit...</b> on a unit's right-click menu (or <b>Duplicate...</b> in the Unit pane) copies it whole under a new name. Units you made have <b>Delete Unit</b> on their menu, which also removes them from your divisions. Add your unit to a division from its menu, like any other.</p><h3>Rules</h3><ul><li>Each unit is saved as rules in the open mod's <b>Units</b> rule set, under <b>Armory Changes</b>, in a group named after it: a Clone rule copying the unit with its new name and your values, a rule giving it a deck code number, and, for your own card picture, a rule adding it to the game's unit pictures.</li><li>Its values all have a <b>*</b>, in the heading color: they're your mod's.</li><li>Nothing is removed from the copy, weapons included: a unit missing something its 3D model expects can stop the game loading, with no error. For now, change weapons with your own rules.</li></ul><h3>Files</h3><ul><li>A unit goes into the units file, <span class=\"mono\">TacticalUnits.ndf</span> (<span class=\"mono\">UniteDescriptor.ndf</span> in Steel Division 2 and WARNO before v210942), and <span class=\"mono\">DeckSerializer.ndf</span>; <span class=\"mono\">ButtonTexturesUnites.ndf</span> for your own card picture; and the mod's <span class=\"mono\">UNITS.csv</span> for its name. Add them to the Files tab first: a unit needing a missing file is refused, naming the file.</li><li>On export, your card picture is copied into the export folder's GameData, where the game looks for it.</li></ul>",
-      "text": "<p class=\"wklead\">在<b>单位</b>子选项卡中<b>，+ 新建单位...</b>可让你在当前打开的模组中创建自定义单位，具体操作分为四个步骤，这些步骤列在窗口顶部。</p><ol><li><b>模型</b>：选择要复制的单位。其 3D 模型、动画、展示厅视图、卡牌图片、类型、武器和数值将一并复制；右侧面板列出了被复制的项目。</li><li><b>名称与国家</b>：名称、国家、角色和卡牌图片：<b>可选择</b>与被复制单位<b>相同</b>，或<b>选择自定义……</b>。左侧卡牌区域会预览效果。</li><li><b>属性</b>：成本、攻击力、速度、光学性能等，以及装甲值。留空的输入框将保留被复制单位的数值（显示为淡色）；仅您手动输入的数值会发生变化。</li><li><b>武器</b>：被复制单位的武器，按炮塔逐一显示，与“单位”窗格中的<b>装备</b>部分相同，可用于替换、更改、移除或添加（参见<a href=\"#\" data-p=\"units-loadout\">单位武器</a>）。若未进行操作，您的单位将保留所有武器。</li></ol><p>在单位右键菜单中<b>选择复制单位……</b>（或“单位”面板中的<b>复制……</b>）可将其整体复制并以新名称保存。你创建的单位在菜单中会有<b>删除单位</b>选项，选择后该单位也会从你的师团中移除。通过其菜单将单位添加到师团中，操作方式与其他单位相同。</p><h3>规则</h3><ul><li>每个单位都会作为规则保存在当前打开的模组<b>单位</b>规则集的<b>军械库更改</b>下，并归入以该单位命名的组中：一个“克隆”规则会复制该单位并赋予其新名称及您设定的数值；一个规则会为其分配卡组代码编号；还有一个规则会将您自定义的卡牌图片添加到游戏的单位图片库中。</li><li>其所有数值标题颜色中均带有 <b>*</b> 符号：这些是你模组的自定义数值。</li><li>复制过程中不会删除任何内容，包括武器：如果单位缺少其3D模型所需的某些元素，可能会导致游戏无法加载，且不会显示错误提示。目前，请通过自定义规则来更改武器。</li></ul><h3>文件</h3><ul><li><span class=\"mono\">DeckSerializer.ndf</span>；<span class=\"mono\">ButtonTexturesUnites.ndf</span><span class=\"mono\">UniteDescriptor.ndf</span> 用于自定义卡牌图片；以及模组名称对应的 <span class=\"mono\">UNITS.csv</span>。请先将它们添加到<span class=\"mono\">TacticalUnits.ndf</span>“文件”选项卡中：若单位缺少所需文件，系统会拒绝该单位并指出缺失的文件名称。</li><li>导出时，您的卡牌图片会被复制到导出文件夹的 GameData 目录中，游戏会在此处查找该图片。</li></ul>",
+      "english": "<p class=\"wklead\">On the <b>Units</b> sub-tab, <b>+ New Unit...</b> makes your own unit in the open mod, in five steps listed at the top of its window.</p><ol><li><b>Base Unit</b>: pick the unit to copy. Its 3D model, animations, showroom view, card picture, type, weapons and values come with it; the right panel lists what's copied.</li><li><b>3D Model</b>: keep the copied unit's model, or use <b>Import Model</b> to pick an .fbx (see below).</li><li><b>Name and Nation</b>: name, nation, role, and card picture: <b>Same as</b> the copied unit, or <b>My own...</b>. The card on the left previews it.</li><li><b>Stats</b>: cost, strength, speed, optics and more, plus armor. Empty boxes keep the copied unit's value, shown dim; only values you type change.</li><li><b>Weapons</b>: the copied unit's weapons, turret by turret, as in the Unit pane's <b>Loadout</b> section, to swap, change, remove or add (see <a href=\"#\" data-p=\"units-loadout\">Unit Weapons</a>). Untouched, your unit keeps them all.</li></ol><p><b>Duplicate Unit...</b> on a unit's right-click menu (or <b>Duplicate...</b> in the Unit pane) copies it whole under a new name. Units you made have <b>Delete Unit</b> on their menu, which also removes them from your divisions. Add your unit to a division from its menu, like any other.</p><h3>Rules</h3><ul><li>Each unit is saved as rules in the open mod's <b>Units</b> rule set, under <b>Armory Changes</b>, in a group named after it: a Clone rule copying the unit with its new name and your values, a rule giving it a deck code number, and, for your own card picture, a rule adding it to the game's unit pictures.</li><li>Its values all have a <b>*</b>, in the heading color: they're your mod's.</li><li>Nothing is removed from the copy, weapons included: a unit missing something its 3D model expects can stop the game loading, with no error. For now, change weapons with your own rules.</li></ul><h3>Your Own 3D Model</h3><ul><li>WARNO's ground vehicles can take a model of your own: the <b>3D Model</b> step of New Unit, or <b>Change 3D Model...</b> on any unit's menu.</li><li>Pick a binary <b>.fbx</b>, as Blender exports it, made like the game's (metres, z up, x forward). Its pictures are found beside it by the game's names: the colour picture, then <span class=\"mono\">_NM</span>, <span class=\"mono\">_R</span>, <span class=\"mono\">_M</span> and <span class=\"mono\">_O</span>. <b>Mid</b> and <b>Low</b> detail levels are optional.</li><li><b>Parts</b> lists what the copied unit's turrets, guns and wheels move, each with the file's part for it, found by name. A turret only turns, and a gun only fires from the right place, when its part is picked.</li><li><b>Checks</b> says what is missing or wrong, with a fix where there is one (<b>Use the Gun's End</b>, <b>Scale to</b>). Only a model that can't fit, like a soldier's for a vehicle, stops it.</li><li>The 3D view shows the file as the mod will carry it; it may look different in game.</li><li>The unit gets its own look: rules add its models to <span class=\"mono\">SharedResources.ndf</span> and a copy of the copied unit's depiction to <span class=\"mono\">DepictionAlternatives.ndf</span>, <span class=\"mono\">DepictionVehicles.ndf</span>, <span class=\"mono\">DepictionGhosts.ndf</span> and <span class=\"mono\">DepictionVehiclesShowroom.ndf</span>. Add them to the Files tab.</li><li>On export, the model and its pictures are copied into the mod. Then run the game's <b>GenerateMod</b>: it turns the .fbx into the game's format.</li></ul><h3>Files</h3><ul><li>A unit goes into the units file, <span class=\"mono\">TacticalUnits.ndf</span> (<span class=\"mono\">UniteDescriptor.ndf</span> in Steel Division 2 and WARNO before v210942), and <span class=\"mono\">DeckSerializer.ndf</span>; <span class=\"mono\">ButtonTexturesUnites.ndf</span> for your own card picture; and the mod's <span class=\"mono\">UNITS.csv</span> for its name. Add them to the Files tab first: a unit needing a missing file is refused, naming the file.</li><li>On export, your card picture is copied into the export folder's GameData, where the game looks for it.</li></ul>",
+      "text": "<p class=\"wklead\">在<b>单位</b>子选项卡中<b>，+ 新建单位...</b>可让你在当前打开的模组中创建自定义单位，具体操作分为五个步骤，这些步骤列在窗口顶部。</p><ol><li><b>基础单位</b>：选择要复制的单位。其 3D 模型、动画、展示厅视图、卡牌图片、类型、武器和数值将一并复制；右侧面板列出了被复制的项目。</li><li><b>3D 模型</b>：保留所复制单位的模型，或通过<b>导入模型</b>选择 .fbx（见下文）。</li><li><b>名称与国家</b>：名称、国家、角色和卡牌图片：<b>可选择</b>与被复制单位<b>相同</b>，或<b>选择自定义……</b>。左侧卡牌区域会预览效果。</li><li><b>属性</b>：成本、攻击力、速度、光学性能等，以及装甲值。留空的输入框将保留被复制单位的数值（显示为淡色）；仅您手动输入的数值会发生变化。</li><li><b>武器</b>：被复制单位的武器，按炮塔逐一显示，与“单位”窗格中的<b>装备</b>部分相同，可用于替换、更改、移除或添加（参见<a href=\"#\" data-p=\"units-loadout\">单位武器</a>）。若未进行操作，您的单位将保留所有武器。</li></ol><p>在单位右键菜单中<b>选择复制单位……</b>（或“单位”面板中的<b>复制……</b>）可将其整体复制并以新名称保存。你创建的单位在菜单中会有<b>删除单位</b>选项，选择后该单位也会从你的师团中移除。通过其菜单将单位添加到师团中，操作方式与其他单位相同。</p><h3>规则</h3><ul><li>每个单位都会作为规则保存在当前打开的模组<b>单位</b>规则集的<b>军械库更改</b>下，并归入以该单位命名的组中：一个“克隆”规则会复制该单位并赋予其新名称及您设定的数值；一个规则会为其分配卡组代码编号；还有一个规则会将您自定义的卡牌图片添加到游戏的单位图片库中。</li><li>其所有数值标题颜色中均带有 <b>*</b> 符号：这些是你模组的自定义数值。</li><li>复制过程中不会删除任何内容，包括武器：如果单位缺少其3D模型所需的某些元素，可能会导致游戏无法加载，且不会显示错误提示。目前，请通过自定义规则来更改武器。</li></ul><h3>自定义 3D 模型</h3><ul><li>WARNO 的地面车辆可以使用你自己的模型：新建单位的 <b>3D 模型</b>步骤，或任意单位菜单中的<b>更换 3D 模型…</b>。</li><li>选择二进制 <b>.fbx</b>（Blender 导出的格式），按游戏模型的方式制作（米为单位，z 轴向上，x 轴向前）。其图片会按游戏的命名在它旁边查找：颜色图，然后是 <span class=\"mono\">_NM</span>、<span class=\"mono\">_R</span>、<span class=\"mono\">_M</span> 和 <span class=\"mono\">_O</span>。<b>中</b>、<b>低</b>细节层级为可选。</li><li><b>部件</b>列出所复制单位的炮塔、火炮和车轮所带动的部件，并为每项按名称找到文件中的对应部件。只有选择了对应部件，炮塔才会转动，火炮才会从正确位置射击。</li><li><b>检查</b>说明缺少或错误之处，并在可能时提供修复（<b>使用炮口</b>、<b>缩放</b>）。只有无法适配的模型（如把士兵模型用于车辆）才会阻止使用。</li><li>3D 视图显示模组将携带的文件；游戏中可能有所不同。</li><li>该单位将获得自己的外观：规则会把它的模型添加到 <span class=\"mono\">SharedResources.ndf</span>，并把所复制单位的表现副本添加到 <span class=\"mono\">DepictionAlternatives.ndf</span>、<span class=\"mono\">DepictionVehicles.ndf</span>、<span class=\"mono\">DepictionGhosts.ndf</span> 和 <span class=\"mono\">DepictionVehiclesShowroom.ndf</span>。请先把它们添加到“文件”选项卡。</li><li>导出时，模型及其图片会被复制到模组中。然后运行游戏的 <b>GenerateMod</b>：它会把 .fbx 转换为游戏格式。</li></ul><h3>文件</h3><ul><li><span class=\"mono\">DeckSerializer.ndf</span>；<span class=\"mono\">ButtonTexturesUnites.ndf</span><span class=\"mono\">UniteDescriptor.ndf</span> 用于自定义卡牌图片；以及模组名称对应的 <span class=\"mono\">UNITS.csv</span>。请先将它们添加到<span class=\"mono\">TacticalUnits.ndf</span>“文件”选项卡中：若单位缺少所需文件，系统会拒绝该单位并指出缺失的文件名称。</li><li>导出时，您的卡牌图片会被复制到导出文件夹的 GameData 目录中，游戏会在此处查找该图片。</li></ul>",
       "machine": true
     },
     "Help.Page.units-change.Title": {

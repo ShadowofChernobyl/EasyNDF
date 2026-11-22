@@ -321,6 +321,48 @@ public partial class FilesPage : UserControl
         }
     }
 
+    /// <summary>
+    /// Adds one of a source's files to the list and reads it, for the Armory to open a unit or weapon in the File Editor
+    /// when its file is not listed yet: the mod's own copy for a mod that has one, else the game's. Where two files have
+    /// the name, the one under Generated (where units and weapons are) is taken. Null when the source has no such file,
+    /// it cannot be read, or the list is busy with a run.
+    /// </summary>
+    /// <param name="source">The Armory's source.</param>
+    /// <param name="name">The file's name, such as "UniteDescriptor.ndf".</param>
+    public async Task<FileEntry?> AddFromSource(Data.Units.UnitSource source, string name)
+    {
+        static FileToAdd? Pick(IEnumerable<FileToAdd> files, string name) =>
+            files.Where(file => string.Equals(file.Name, name, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(file => file.Folder.Contains("Generated", StringComparison.OrdinalIgnoreCase) ? 0 : 1).FirstOrDefault();
+        try
+        {
+            FileToAdd? found = null;
+            if (source.Mod is not null)
+            {
+                string gameData = Path.Combine(source.Mod.Folder, "GameData");
+                found = Pick(NdfFilesIn(Directory.Exists(gameData) ? gameData : source.Mod.Folder), name);
+            }
+            if (found is null)
+            {
+                string zip = Data.Game.GameInstall.BaseZipOf(source.GameFolder);
+                if (!File.Exists(zip)) return null;
+                Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))), NoticeKind.Working);
+                FileToAdd? listed = Pick(await Task.Run(() => ArchiveReader.NdfFilesListedIn(zip)), name);
+                found = listed is null ? null : (await Task.Run(() => ArchiveReader.WithContent(zip, [listed]))).FirstOrDefault();
+                Model.Say("");
+            }
+            if (found is null) return null;
+            await AddAndRead([found with { Game = source.Game }], fromFolder: false);
+            return Model.Entries.FirstOrDefault(entry => entry.Source is not null && string.Equals(entry.Name, found.Name, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            Model.Say("");
+            await Messages.Tell(Texts.Get("Files.Source.NotRead", ("name", source.Name), ("reason", error.Message)), DialogIcon.Error);
+            return null;
+        }
+    }
+
     /// <summary>The main window's source, shared with the Units tab, in the Source bar.</summary>
     public void UseSources(Units.SourceSelection sources)
     {

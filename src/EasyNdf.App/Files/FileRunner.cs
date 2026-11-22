@@ -1005,7 +1005,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             DivisionExtras.Outcome outcome = DivisionExtras.CopyPictures(armoryRules, exported.ExportedPath!, PictureFolders,
                 Texts.Get("Files.Run.Divisions.NoGameData"), Texts.Get("Files.Run.Divisions.PictureMissing"));
             if (outcome.Problem != "") model.Warn(outcome.Problem);
-            else if (outcome.Pictures > 0) model.Say(PicturesCopied(outcome.Emblems, outcome.Pictures - outcome.Emblems));
+            else if (outcome.Pictures > 0 || outcome.ModelFiles > 0) model.Say(PicturesCopied(outcome.Emblems, outcome.Pictures - outcome.Emblems, outcome.ModelFiles));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -1014,11 +1014,14 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     }
 
     /// <summary>What the Files tab says of the pictures an export copied: "2 emblems and 1 unit picture copied."</summary>
-    private static string PicturesCopied(int emblems, int unitPictures)
+    private static string PicturesCopied(int emblems, int unitPictures, int modelFiles = 0)
     {
         var kinds = new List<string>();
         if (emblems > 0) kinds.Add(Texts.Count("Files.Run.Pictures.Emblems", emblems, ("count", FileStatus.Count(emblems))));
         if (unitPictures > 0) kinds.Add(Texts.Count("Files.Run.Pictures.UnitPictures", unitPictures, ("count", FileStatus.Count(unitPictures))));
+        if (modelFiles > 0) kinds.Add(Texts.Count("Files.Run.Pictures.ModelFiles", modelFiles, ("count", FileStatus.Count(modelFiles))));
+        // three kinds: the first two joined with a comma
+        if (kinds.Count == 3) kinds = [kinds[0] + ", " + kinds[1], kinds[2]];
         string what = kinds.Count == 2 ? Texts.Get("Files.Run.Pictures.Both", ("first", kinds[0]), ("second", kinds[1])) : kinds[0];
         return Texts.Get("Files.Run.Pictures.Copied", ("what", what));
     }

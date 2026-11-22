@@ -1015,7 +1015,11 @@ public partial class RulesPage : UserControl
 
     private void RuleSwitchClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is CheckBox { DataContext: RuleRow row } box) Model.SetRuleOn(row.Index, box.IsChecked == true);
+        if (sender is not CheckBox { DataContext: RuleRow row } box) return;
+        Model.SetRuleOn(row.Index, box.IsChecked == true);
+        // a rule made from the Armory is refused (with its notice) and stays as it is: the switch shows that again, as
+        // the list, unchanged, is not drawn again and the switch was left looking switched off
+        box.IsChecked = row.Index < Model.Rules.Count && !JsonValues.IsFalse(Model.Rules[row.Index]?["Enabled"]);
     }
 
     /// <summary>A group heading's button folds or unfolds its rules.</summary>

@@ -141,7 +141,8 @@ public sealed class UnitChangeRules
             if (edit.ChangesNothing || !byDescriptor.TryGetValue(edit.Descriptor, out Unit? gameUnit)) continue;
             writer.Group(edit.Name ?? gameUnit.Name);
             // a change to the unit's weapons alone has no values to write in the unit
-            if (edit.Name is not null || edit.PictureFile is not null || writer.ValueActions(edit, gameUnit).Count > 0) writer.EditRule(edit, gameUnit);
+            if (edit.Name is not null || edit.PictureFile is not null || edit.OwnModel is not null || writer.ValueActions(edit, gameUnit).Count > 0) writer.EditRule(edit, gameUnit);
+            if (edit.OwnModel is OwnModel editModel) writer.OwnModelRules(edit.Descriptor, edit.Name ?? gameUnit.Name, editModel, EditChange);
             if (edit.PictureFile is string pictureFile)
                 writer.PictureRule(edit.Descriptor, edit.Name ?? gameUnit.Name, pictureFile, EditChange, EditedPictureTexture(edit.Descriptor), EditedPicturePath(edit, gameUnit),
                     edit.Side ?? gameUnit.Side);
@@ -157,6 +158,7 @@ public sealed class UnitChangeRules
             unit.DeckNumber ??= ModUnit.NextDeckNumber(game, mod);
             writer.Group(unit.Name);
             writer.CloneRule(unit, madeFrom);
+            if (unit.OwnModel is OwnModel model) writer.OwnModelRules(unit.Descriptor, unit.Name, model, NewChange);
             writer.DeckNumberRule(unit.Descriptor, unit.Name, unit.DeckNumber ?? 0, NewChange);
             if (mod.Game == GameTitle.SteelDivision2) writer.SteelDivisionNewUnitRules(unit, madeFrom);
             if (unit.PictureFile is string pictureFile)
@@ -183,6 +185,7 @@ public sealed class UnitChangeRules
         if (!Writes(game, UnitField.Name)) kept.Name = null;
         if (!Writes(game, UnitField.Picture)) kept.PictureFile = null;
         if (!Writes(game, UnitField.Weapons)) kept.LoadoutChanges = [];
+        kept.OwnModel = null;
         return kept;
     }
 
@@ -201,6 +204,7 @@ public sealed class UnitChangeRules
         if (game == GameTitle.SteelDivision2) actions.Add(Action("UnitName", SetValue, "'" + token + "'"));
         foreach (JsonObject action in ValueActions(unit, madeFrom)) actions.Add(action);
         if (unit.PictureFile is not null) actions.Add(Action("ButtonTexture", SetValue, "'" + PictureTexture(unit.Descriptor) + "'"));
+        if (unit.OwnModel is OwnModel own) foreach (JsonObject action in OwnModelActions(own)) actions.Add(action);
         string what = unit.IsDuplicate ? "Units.Rule.Duplicate" : "Units.Rule.New";
         JsonObject clone = Rule(new JsonObject
         {
@@ -281,6 +285,7 @@ public sealed class UnitChangeRules
         if (edit.Name is not null && game == GameTitle.SteelDivision2) actions.Add(Action("UnitName", SetValue, "'" + NameToken(edit.Descriptor) + "'"));
         foreach (JsonObject action in ValueActions(edit, gameUnit)) actions.Add(action);
         if (edit.PictureFile is not null) actions.Add(Action("ButtonTexture", SetValue, "'" + EditedPictureTexture(edit.Descriptor) + "'"));
+        if (edit.OwnModel is OwnModel own) foreach (JsonObject action in OwnModelActions(own)) actions.Add(action);
         JsonObject rule = Rule(new JsonObject
         {
             ["Name"] = EditRuleName(edit, gameUnit, texts),
@@ -599,6 +604,50 @@ public sealed class UnitChangeRules
     /// ten characters, the most Steel Division 2 takes.
     /// </summary>
     public static string NameToken(string descriptor) => TextToken(descriptor, "name");
+
+    // ---- a model of the user's own ----
+
+    /// <summary>The files the declarations of a unit's own models are added to (see <see cref="OwnModel"/>).</summary>
+    public const string ModelResourcesFile = "SharedResources.ndf", AlternativesFile = "DepictionAlternatives.ndf", VehicleDepictionsFile = "DepictionVehicles.ndf",
+        GhostsFile = "DepictionGhosts.ndf", ShowroomFile = "DepictionVehiclesShowroom.ndf";
+
+    /// <summary>The Armory's key for the files a rule copies into the mod: each its kept file (File) and its place under GameData (Path, such as "Assets/3D/Units/...").</summary>
+    public const string CarriedFilesKey = "CarriedFiles";
+
+    /// <summary>The unit's look under its own key: its MimeticName, BlackHoleKey, model and showroom look (see <see cref="OwnModel"/>).</summary>
+    private static IEnumerable<JsonObject> OwnModelActions(OwnModel own)
+    {
+        yield return Action("MimeticName", SetValue, "\"" + own.Key + "\"");
+        yield return Action("BlackHoleKey", SetValue, "\"" + own.Key + "\"");
+        yield return Action("ReferenceMesh", SetValue, "$/GFX/DepictionResources/" + own.Resource("High"));
+        // the Armory's and the battlegroup editor's 3D view
+        yield return Action("ShowRoomBlackHoleIdentifier", SetValue, "\"showroom_" + own.Key + "\"");
+    }
+
+    /// <summary>
+    /// A unit's own model: its models' declarations (with the files the export copies), its detail levels, its
+    /// depiction, its placement ghost and its showroom entry, each added to its file (see <see cref="OwnModel"/>).
+    /// </summary>
+    private void OwnModelRules(string descriptor, string unitName, OwnModel own, string change)
+    {
+        string modelName = own.Model("High")?.Name ?? "";
+        string title = Line(unitName, "Units.Rule.Model", ("model", modelName));
+        JsonObject resources = Rule(AddRule(title, own.ResourcesText()), ModelResourcesFile, descriptor, "Model", change);
+        ((JsonObject)resources[ArmoryKey]!)[CarriedFilesKey] = new JsonArray([.. own.Files.Select(file =>
+            (JsonNode)new JsonObject { ["File"] = file.Kept, ["Path"] = own.Folder.Trim('/') + "/" + file.Name })]);
+        Rule(AddRule(title, own.AlternativesText()), AlternativesFile, descriptor, "Model", change);
+        Rule(AddRule(title, own.DepictionText()), VehicleDepictionsFile, descriptor, "Model", change);
+        Rule(AddRule(title, own.GhostText()), GhostsFile, descriptor, "Model", change);
+        Rule(AddRule(title, own.ShowroomText()), ShowroomFile, descriptor, "Model", change);
+    }
+
+    /// <summary>An Add rule: NDF text added at the end of its file.</summary>
+    private static JsonObject AddRule(string name, string text) => new()
+    {
+        ["Name"] = name,
+        ["Kind"] = "Add",
+        ["Params"] = new JsonObject { ["Text"] = text, ["Name"] = "" },
+    };
 
     // ---- making rules ----
 

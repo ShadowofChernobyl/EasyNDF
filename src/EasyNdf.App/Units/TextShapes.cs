@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 
@@ -30,7 +31,18 @@ internal static class TextShapes
     {
         var key = new ShapeKey(kind, text, family, weight, pixelsPerDip);
         if (made.TryGetValue(key, out Shape? shape)) return shape;
-        Geometry geometry = make();
+        Geometry geometry;
+        try
+        {
+            geometry = make();
+        }
+        catch (IOException)
+        {
+            // the font's file is gone (or can't be read): thrown here, inside layout, it would break the whole window
+            // until a restart. The marks go back to the app's own font, which lays them out again.
+            UnitCountFont.Use(null);
+            return new Shape(Geometry.Empty, new Rect(0, 0, 0, 0));
+        }
         geometry.Freeze();
         shape = new Shape(geometry, geometry.IsEmpty() ? new Rect(0, 0, 0, 0) : geometry.GetRenderBounds(outline));
         made[key] = shape;

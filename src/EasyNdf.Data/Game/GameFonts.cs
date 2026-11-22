@@ -27,14 +27,14 @@ public static class GameFonts
         string copy = Path.Combine(folder, Path.GetFileName(UnitCountFont));
         // a game looked through before without finding the font is not looked through again until it is updated
         string noneFound = Path.Combine(folder, "none.txt");
-        lock (usedThisSession) usedThisSession.Add(Path.GetFullPath(folder));
+        // marked as used, so neither this app nor another copy of it deletes the font while cards may show it
+        VersionFolders.MarkUsed(folder);
         if (File.Exists(copy)) return copy;
         if (File.Exists(noneFound)) return null;
         try
         {
             ArchiveFile? font = Newest(gameFolder, UnitCountFont);
-            Directory.CreateDirectory(folder);
-            DeleteOlderVersions(all, game, folder);
+            VersionFolders.DeleteUnused(all, game, folder);
             if (font is null)
             {
                 File.WriteAllText(noneFound, UnitCountFont + " is not in the game's archives.");
@@ -73,24 +73,5 @@ public static class GameFonts
             }
         }
         return found;
-    }
-
-    /// <summary>
-    /// The font folders given out since the app started. Their fonts may be on screen: deleting one closed the app as the
-    /// cards were next drawn ("Unable to find the specified file"), when two installs of a game at different versions
-    /// were read one after the other. Keep it that way when tidying.
-    /// </summary>
-    private static readonly HashSet<string> usedThisSession = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>Takes away the fonts kept for the game's older versions, but none given out since the app started.</summary>
-    private static void DeleteOlderVersions(string all, GameTitle game, string current)
-    {
-        foreach (string folder in Directory.EnumerateDirectories(all, game.Id + " *"))
-        {
-            if (string.Equals(folder, current, StringComparison.OrdinalIgnoreCase)) continue;
-            lock (usedThisSession) if (usedThisSession.Contains(Path.GetFullPath(folder))) continue;
-            try { Directory.Delete(folder, recursive: true); }
-            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
-        }
     }
 }

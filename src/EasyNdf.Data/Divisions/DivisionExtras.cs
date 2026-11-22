@@ -33,7 +33,7 @@ public static class DivisionExtras
     /// <param name="Pictures">How many pictures were copied.</param>
     /// <param name="Problem">What stopped some of it; "" when nothing did.</param>
     /// <param name="Emblems">How many of them are division emblems; the others are units' card pictures.</param>
-    public sealed record Outcome(int Pictures, string Problem, int Emblems = 0);
+    public sealed record Outcome(int Pictures, string Problem, int Emblems = 0, int ModelFiles = 0);
 
     /// <summary>
     /// Copies the pictures of the Armory presets' rules that are on into the GameData folder of a file of theirs just
@@ -50,8 +50,45 @@ public static class DivisionExtras
         string? gameData = GameDataFolderOf(exportedFile);
         if (gameData is null) return new Outcome(0, noGameData.Replace("{path}", exportedFile, StringComparison.Ordinal));
         var missing = new List<string>();
-        int pictures = CopyPicturesInto(gameData, rules, pictureFolders, missing, out int emblems);
-        return new Outcome(pictures, string.Join(" ", missing.Select(path => pictureMissing.Replace("{path}", path, StringComparison.Ordinal))), emblems);
+        int pictures = CopyPicturesInto(gameData, rules, pictureFolders, missing, out int emblems, out int modelFiles);
+        if (modelFiles > 0) DeclareMeshPack(gameData);
+        return new Outcome(pictures, string.Join(" ", missing.Select(path => pictureMissing.Replace("{path}", path, StringComparison.Ordinal))), emblems, modelFiles);
+    }
+
+    /// <summary>
+    /// Makes sure a mod with models of its own loads them: the game's mod tools build a mod's models into its own mesh
+    /// pack (Gen/MeshPack/&lt;mod&gt;/Mesh_All.spk), which the game loads only when the mod declares it in
+    /// GameData/ResourcePacks/&lt;mod&gt;/ResourcePacks.ndf, as the tools' CreateAssetDefinitionFiles writes it. Written
+    /// when the mod has none; one the mod has is left as it is.
+    /// </summary>
+    public static void DeclareMeshPack(string gameData)
+    {
+        string? modName = Path.GetFileName(Path.GetDirectoryName(gameData));
+        if (string.IsNullOrEmpty(modName)) return;
+        string folder = Path.Combine(gameData, "ResourcePacks", modName);
+        string file = Path.Combine(folder, "ResourcePacks.ndf");
+        if (File.Exists(file)) return;
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(file, $$"""
+
+            unnamed TResourcePackLoader
+            (
+                Packs =
+                [
+                    TResourceDescriptorMeshPack
+                    (
+                        PackName = "Base"
+                        PackRelativePath = "MeshPack/{{modName}}/Mesh_All.spk"
+                    ),
+                    TResourceDescriptorProxyPack
+                    (
+                        PackName = "Base"
+                        PackRelativePath = "TextureProxy/{{modName}}/Mesh_All.ndfbin"
+                    ),
+                ]
+            )
+
+            """);
     }
 
     /// <summary>
@@ -282,20 +319,43 @@ public static class DivisionExtras
         new(RulesThatAreOn(rules).Where(HasPicture).Select(rule => (string?)rule[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.FileKey]).OfType<string>(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Whether a rule gives a picture of the user's own to copy.</summary>
-    private static bool HasPicture(JsonNode? rule) => rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PictureFileKey] is not null;
+    private static bool HasPicture(JsonNode? rule) =>
+        rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PictureFileKey] is not null || rule?[DivisionChangeRules.ArmoryKey]?[Units.UnitChangeRules.CarriedFilesKey] is JsonArray;
+
+    /// <summary>
+    /// The files a rule copies into the mod besides a picture (a unit's own 3D model and its pictures, see
+    /// <see cref="Units.OwnModel"/>): each the file the app keeps, and its place under GameData.
+    /// </summary>
+    public static IEnumerable<(string File, string Path)> CarriedFiles(JsonNode? rule) =>
+        (rule?[DivisionChangeRules.ArmoryKey]?[Units.UnitChangeRules.CarriedFilesKey] as JsonArray ?? [])
+            .Select(file => ((string?)file?["File"], (string?)file?["Path"])).Where(file => file.Item1 is not null && file.Item2 is not null).Select(file => (file.Item1!, file.Item2!));
 
 
     /// <summary>
     /// Copies the pictures of the user's own that the rules that are on give, where they say. Returns how many, and
     /// how many of them are division emblems.
     /// </summary>
-    private static int CopyPicturesInto(string gameData, IEnumerable<JsonNode?> rules, IReadOnlyList<string> pictureFolders, List<string> missing, out int emblems)
+    private static int CopyPicturesInto(string gameData, IEnumerable<JsonNode?> rules, IReadOnlyList<string> pictureFolders, List<string> missing, out int emblems, out int modelFiles)
     {
         int copied = 0;
         emblems = 0;
+        modelFiles = 0;
         foreach (JsonNode? rule in RulesThatAreOn(rules))
         {
             if (rule?[DivisionChangeRules.ArmoryKey] is not JsonObject armory || JsonValues.IsFalse(rule["Enabled"])) continue;
+            // a unit's own model and its pictures, copied as they are: they are not card pictures to make ready
+            foreach ((string file, string place) in CarriedFiles(rule))
+            {
+                if (Located(file, pictureFolders) is not string foundFile)
+                {
+                    missing.Add(file);
+                    continue;
+                }
+                if (TargetUnder(gameData, place) is not string to) continue;
+                Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+                File.Copy(foundFile, to, overwrite: true);
+                modelFiles++;
+            }
             if ((string?)armory[DivisionChangeRules.PictureFileKey] is not string picture || (string?)armory[DivisionChangeRules.PicturePathKey] is not string path) continue;
             // a mod file shared by someone else names pictures on their computer: one outside the app's own picture
             // folders is never copied, so a mod file cannot put any file the user can read into the mod

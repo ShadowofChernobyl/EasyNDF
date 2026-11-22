@@ -139,6 +139,7 @@
         <dialogs:ExportWindow x:Name="ExportWindow" />
         <!-- the Armory's New Unit window -->
         <dialogs:NewUnitWindow x:Name="NewUnit" />
+        <dialogs:OwnModelWindow x:Name="ChangeModel" />
         <!-- the Armory's Swap window, over the New Unit window when it is opened from there -->
         <dialogs:SwapWeaponWindow x:Name="SwapWeapon" />
         <!-- the 3D model viewer, over the New Unit window when it is opened from there -->

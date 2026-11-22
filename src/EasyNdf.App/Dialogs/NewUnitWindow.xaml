@@ -1,6 +1,6 @@
 <!--
-  The New Unit window, in four steps listed at the top: Model (the unit whose 3D model the new one takes), Name and Nation,
-  Stats, then Weapons. 1600 pixels wide for Model and Weapons, 1000 for the others, steps up to 760 tall, or 96% of a smaller window, centred on the dimmed backdrop as the other windows.
+  The New Unit window, in five steps listed at the top: Model (the unit the new one is a copy of), 3D Model (its model,
+  or one of the user's own), Name and Nation, Stats, then Weapons. 1600 pixels wide for Model and Weapons, 1000 for the others, steps up to 760 tall, or 96% of a smaller window, centred on the dimmed backdrop as the other windows.
 -->
 <UserControl x:Class="EasyNdf.App.Dialogs.NewUnitWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -131,7 +131,10 @@
                         </controls:Bevel>
                     </Grid>
 
-                    <!-- steps 2 to 4: the new unit's tile at the left, as it will be; the step's boxes at the right -->
+                    <!-- step 2: the 3D model, the copied unit's or one of the user's own -->
+                    <units:OwnModelPanel x:Name="OwnModelStep" Visibility="Collapsed" Height="440" Changed="OwnModelChanged" />
+
+                    <!-- steps 3 to 5: the new unit's tile at the left, as it will be; the step's boxes at the right -->
                     <Grid x:Name="DetailsSteps" Visibility="Collapsed">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition x:Name="PreviewColumn" Width="230" />

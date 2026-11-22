@@ -177,7 +177,12 @@ public static class VeterancyMarks
             place.MouseLeftButtonDown += (_, e) => e.Handled = true;
             marks.Children.Add(place);
         }
-        return StripAround(marks);
+        Bevel strip = StripAround(marks);
+        // drawn shorter to fit a card shorter than its marks, as a division tile's strip is: at full height the lowest
+        // level ran past the strip's bottom, its outline cut off when it was the card's level
+        strip.Child = null;
+        strip.Child = new Squeezable { Child = marks };
+        return strip;
     }
 
     /// <summary>

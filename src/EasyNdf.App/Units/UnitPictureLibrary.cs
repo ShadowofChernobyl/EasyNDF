@@ -156,8 +156,13 @@ public sealed class UnitPictureLibrary(UnitPictureStore store, IReadOnlyDictiona
     {
         try
         {
-            // a card picture of the user's own, for a unit the mod adds, is a file on this computer
-            string? file = Path.IsPathFullyQualified(source) ? source : store.FileFor(source);
+            // a card picture of the user's own, for a unit the mod adds, is a file on this computer: where the mod's
+            // folder keeps it now when it was moved there after the unit was made (the path saved is where it was kept
+            // first), as a division's emblem is found. Read only at the old path, the picture showed until the move and
+            // was gone from then on: a division's cards, asking at another size, drew no picture.
+            string? file = Path.IsPathFullyQualified(source)
+                ? (File.Exists(source) ? source : ModFolders.FindPicture(source))
+                : store.FileFor(source);
             if (file is null) return null;
             byte[] bytes = File.ReadAllBytes(file);
             // never made wider than the file itself: stretched here and again on screen, it would blur twice

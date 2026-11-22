@@ -618,11 +618,27 @@ internal sealed class ModelRenderer : IDisposable
     /// <summary>The node the shaders' pose starts at now, as a part's vertices count their nodes from it.</summary>
     private int poseFrom;
 
-    /// <summary>Gives the shaders the pose from this node on: as many nodes as they hold.</summary>
+    /// <summary>A whole pose buffer's worth of nodes, for a pose with fewer nodes than that left from where it starts.</summary>
+    private readonly Matrix4x4[] poseScratch = new Matrix4x4[MostNodes];
+
+    /// <summary>
+    /// Gives the shaders the pose from this node on: as many nodes as they hold. The copy always fills the whole buffer
+    /// (<see cref="MostNodes"/> nodes), so fewer nodes than that are copied through a full-sized array first: copied
+    /// straight from a shorter one, it read past the array's end and closed the app (a 3D Model step's Bradley, turned).
+    /// </summary>
     private void PoseFrom(int node)
     {
         poseFrom = node;
-        if (node < posed.Length) context.UpdateSubresource(posed.AsSpan(node, Math.Min(posed.Length - node, MostNodes)), poseBuffer, 0, 0, 0, null);
+        if (node >= posed.Length) return;
+        int count = Math.Min(posed.Length - node, MostNodes);
+        if (count == MostNodes)
+        {
+            context.UpdateSubresource(posed.AsSpan(node, MostNodes), poseBuffer, 0, 0, 0, null);
+            return;
+        }
+        posed.AsSpan(node, count).CopyTo(poseScratch);
+        poseScratch.AsSpan(count).Fill(Matrix4x4.Identity);
+        context.UpdateSubresource(poseScratch.AsSpan(), poseBuffer, 0, 0, 0, null);
     }
 
     private void DrawBackdrop()

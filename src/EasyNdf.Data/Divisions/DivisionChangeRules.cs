@@ -296,6 +296,8 @@ public sealed partial class DivisionChangeRules
     /// </summary>
     public static bool WritesTo(FileList.FileEntry entry)
     {
+        // the models of a unit's own are declared beside the game's shared models, which have no Generated copy
+        if (string.Equals(entry.Name, Units.UnitChangeRules.ModelResourcesFile, StringComparison.OrdinalIgnoreCase)) return true;
         string[] folders = (entry.Source ?? entry.Folder).Split(['/', '\\', '>'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         int gameData = Array.FindLastIndex(folders, folder => folder.Equals("GameData", StringComparison.OrdinalIgnoreCase));
         return gameData < 0 || folders.Skip(gameData + 1).Any(folder => folder.Equals("Generated", StringComparison.OrdinalIgnoreCase));

@@ -15246,6 +15246,431 @@
       "text": "Decknummer {number}",
       "machine": true
     },
+    "Units.OwnModel.Done": {
+      "english": "Done",
+      "text": "Fertig",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Triangulated": {
+      "english": "Faces split into triangles, as the game's tools need.",
+      "text": "Flächen in Dreiecke geteilt, wie es die Werkzeuge des Spiels verlangen.",
+      "machine": true
+    },
+    "Units.OwnModel.Heading": {
+      "english": "3D Model",
+      "text": "3D-Modell",
+      "machine": true
+    },
+    "Units.OwnModel.Own": {
+      "english": "Import Model",
+      "text": "Modell importieren",
+      "machine": true
+    },
+    "Units.OwnModel.Own.Tip": {
+      "english": "Use a model of your own, from an .fbx file",
+      "text": "Ein eigenes Modell aus einer .fbx-Datei verwenden",
+      "machine": true
+    },
+    "Units.OwnModel.Copied.Tip": {
+      "english": "Keep {unit}'s model",
+      "text": "Das Modell von {unit} behalten",
+      "machine": true
+    },
+    "Units.OwnModel.Browse": {
+      "english": "Browse…",
+      "text": "Durchsuchen…",
+      "machine": true
+    },
+    "Units.OwnModel.Textures": {
+      "english": "Textures",
+      "text": "Texturen",
+      "machine": true
+    },
+    "Units.OwnModel.GoesTo": {
+      "english": "Goes to",
+      "text": "Ziel",
+      "machine": true
+    },
+    "Units.OwnModel.Levels": {
+      "english": "Detail Levels",
+      "text": "Detailstufen",
+      "machine": true
+    },
+    "Units.OwnModel.Mid": {
+      "english": "Mid",
+      "text": "Mittel",
+      "machine": true
+    },
+    "Units.OwnModel.Low": {
+      "english": "Low",
+      "text": "Niedrig",
+      "machine": true
+    },
+    "Units.OwnModel.ClearLevel.Tip": {
+      "english": "No file for this level",
+      "text": "Keine Datei für diese Stufe",
+      "machine": true
+    },
+    "Units.OwnModel.Levels.Note": {
+      "english": "Shown farther away. Without them, the main model is used at every distance.",
+      "text": "Werden aus größerer Entfernung gezeigt. Ohne sie wird das Hauptmodell in jeder Entfernung verwendet.",
+      "machine": true
+    },
+    "Units.OwnModel.Parts": {
+      "english": "Parts",
+      "text": "Teile",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.Note": {
+      "english": "The parts {unit}'s turrets, guns and wheels move. Pick the part in the file for each one.",
+      "text": "Die Teile, die Türme, Geschütze und Räder von {unit} bewegen. Wählen Sie für jedes das Teil in der Datei.",
+      "machine": true
+    },
+    "Units.OwnModel.Checks": {
+      "english": "Checks",
+      "text": "Prüfungen",
+      "machine": true
+    },
+    "Units.OwnModel.Reality": {
+      "english": "Preview of the .fbx; may look different in game.",
+      "text": "Vorschau der .fbx; kann im Spiel anders aussehen.",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Copied": {
+      "english": "Keeps the copied unit's model.",
+      "text": "Behält das Modell der kopierten Einheit.",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Pick": {
+      "english": "Pick an .fbx file.",
+      "text": "Wählen Sie eine .fbx-Datei.",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Blocked": {
+      "english": "This model can't be used for this unit.",
+      "text": "Dieses Modell kann für diese Einheit nicht verwendet werden.",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Problems": {
+      "english": "{count} check to fix, or go on anyway.|{count} checks to fix, or go on anyway.",
+      "text": "{count} Prüfung zu beheben, oder trotzdem fortfahren.|{count} Prüfungen zu beheben, oder trotzdem fortfahren.",
+      "machine": true
+    },
+    "Units.OwnModel.Hint.Rules": {
+      "english": "Makes rules: copies the files into the mod, adds the models, points the unit at them.",
+      "text": "Erstellt Regeln: kopiert die Dateien in die Mod, fügt die Modelle hinzu und verweist die Einheit darauf.",
+      "machine": true
+    },
+    "Units.OwnModel.Reading": {
+      "english": "Reading the model…",
+      "text": "Modell wird gelesen…",
+      "machine": true
+    },
+    "Units.OwnModel.CannotRead": {
+      "english": "Can't read the model: {problem}",
+      "text": "Das Modell kann nicht gelesen werden: {problem}",
+      "machine": true
+    },
+    "Units.OwnModel.NotKept": {
+      "english": "The model's files couldn't be kept: {problem}",
+      "text": "Die Dateien des Modells konnten nicht gespeichert werden: {problem}",
+      "machine": true
+    },
+    "Units.OwnModel.NoFile": {
+      "english": "No file picked",
+      "text": "Keine Datei gewählt",
+      "machine": true
+    },
+    "Units.OwnModel.None": {
+      "english": "None",
+      "text": "Keine",
+      "machine": true
+    },
+    "Units.OwnModel.Textures.Missing": {
+      "english": "{missing} of {count} materials missing maps",
+      "text": "{missing} von {count} Materialien ohne einige Maps",
+      "machine": true
+    },
+    "Units.OwnModel.Textures.All": {
+      "english": "{count} material, all found|{count} materials, all found",
+      "text": "{count} Material, alles gefunden|{count} Materialien, alles gefunden",
+      "machine": true
+    },
+    "Units.OwnModel.Show": {
+      "english": "Show",
+      "text": "Zeigen",
+      "machine": true
+    },
+    "Units.OwnModel.Hide": {
+      "english": "Hide",
+      "text": "Ausblenden",
+      "machine": true
+    },
+    "Units.OwnModel.Colour": {
+      "english": "colour",
+      "text": "Farbe",
+      "machine": true
+    },
+    "Units.OwnModel.MapMissing": {
+      "english": "Not found beside the .fbx",
+      "text": "Nicht neben der .fbx gefunden",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Count": {
+      "english": "{count} part|{count} parts",
+      "text": "{count} Teil|{count} Teile",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Own": {
+      "english": "Original",
+      "text": "Original",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Found": {
+      "english": "{found} of {count} found",
+      "text": "{found} von {count} gefunden",
+      "machine": true
+    },
+    "Units.OwnModel.Part.None": {
+      "english": "— Not in the file —",
+      "text": "— Nicht in der Datei —",
+      "machine": true
+    },
+    "Units.OwnModel.Part.GunsEnd": {
+      "english": "Gun's end",
+      "text": "Rohrende",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Similar": {
+      "english": "picked by a similar name",
+      "text": "nach ähnlichem Namen gewählt",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Hull": {
+      "english": "Hull",
+      "text": "Wanne",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Turret": {
+      "english": "Turret {number}",
+      "text": "Turm {number}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.GunMount": {
+      "english": "Gun mount {number}",
+      "text": "Waffenlagerung {number}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Gun": {
+      "english": "Gun {number}",
+      "text": "Geschütz {number}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.FiringPoint": {
+      "english": "Firing point {number}",
+      "text": "Feuerpunkt {number}",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Wheels": {
+      "english": "Wheels",
+      "text": "Räder",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Tracks": {
+      "english": "Tracks",
+      "text": "Ketten",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Skirts": {
+      "english": "Armour skirts",
+      "text": "Panzerschürzen",
+      "machine": true
+    },
+    "Units.OwnModel.Part.Effects": {
+      "english": "Effect points",
+      "text": "Effektpunkte",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Copied": {
+      "english": "Uses {unit}'s model, as in the game.",
+      "text": "Verwendet das Modell von {unit}, wie im Spiel.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NotVehicle": {
+      "english": "Imported models fit ground vehicles only for now.",
+      "text": "Importierte Modelle passen vorerst nur zu Bodenfahrzeugen.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoCopiedModel": {
+      "english": "{unit}'s model wasn't found, so the parts can't be checked.",
+      "text": "Das Modell von {unit} wurde nicht gefunden, daher können die Teile nicht geprüft werden.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Soldier": {
+      "english": "A soldier's model (it has a skeleton), and this unit is a vehicle. Pick another file.",
+      "text": "Ein Soldatenmodell (es hat ein Skelett), und diese Einheit ist ein Fahrzeug. Wählen Sie eine andere Datei.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoHull": {
+      "english": "No hull (chassis): the game places the unit by it. Pick the part for it.",
+      "text": "Keine Wanne (chassis): Das Spiel platziert die Einheit danach. Wählen Sie das passende Teil.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoFiringPoint": {
+      "english": "No firing point for turret {turret}: shots would start at the model's centre.",
+      "text": "Kein Feuerpunkt für Turm {turret}: Schüsse würden aus der Mitte des Modells kommen.",
+      "machine": true
+    },
+    "Units.OwnModel.Fix.GunsEnd": {
+      "english": "Use the Gun's End",
+      "text": "Rohrende verwenden",
+      "machine": true
+    },
+    "Units.OwnModel.Check.TooBig": {
+      "english": "{length} m long against {theirs} m: likely made in centimetres.",
+      "text": "{length} m lang statt {theirs} m: vermutlich in Zentimetern erstellt.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.TooSmall": {
+      "english": "{length} m long against {theirs} m: likely made in other units.",
+      "text": "{length} m lang statt {theirs} m: vermutlich in anderen Einheiten erstellt.",
+      "machine": true
+    },
+    "Units.OwnModel.Fix.Scale": {
+      "english": "Scale to {scaled} m",
+      "text": "Auf {scaled} m skalieren",
+      "machine": true
+    },
+    "Units.OwnModel.Check.SizeOk": {
+      "english": "{length} m long, close to the copied unit's {theirs} m.",
+      "text": "{length} m lang, nahe an den {theirs} m der kopierten Einheit.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoTurret": {
+      "english": "No turret {turret}: it won't turn.",
+      "text": "Kein Turm {turret}: Er dreht sich nicht.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoMount": {
+      "english": "No gun mount {turret}: its gun won't aim up and down.",
+      "text": "Keine Waffenlagerung {turret}: Ihr Geschütz richtet sich nicht in der Höhe.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoGun": {
+      "english": "No gun {turret}: it won't move when firing.",
+      "text": "Kein Geschütz {turret}: Es bewegt sich beim Schießen nicht.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Wheels": {
+      "english": "Wheels: {found} of {count} found. The missing ones won't turn.",
+      "text": "Räder: {found} von {count} gefunden. Die fehlenden drehen sich nicht.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Tracks": {
+      "english": "Tracks: {found} of {count} found. The missing ones won't move.",
+      "text": "Ketten: {found} von {count} gefunden. Die fehlenden bewegen sich nicht.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Skirts": {
+      "english": "Armour skirts: {found} of {count} found.",
+      "text": "Panzerschürzen: {found} von {count} gefunden.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Effects": {
+      "english": "Effect points: {found} of {count} found. Missing ones may show their effects in the wrong place.",
+      "text": "Effektpunkte: {found} von {count} gefunden. Bei fehlenden können Effekte an der falschen Stelle erscheinen.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.AllParts": {
+      "english": "All {count} parts found.",
+      "text": "Alle {count} Teile gefunden.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Maps": {
+      "english": "{material} has no {maps}: it shows plain in game.",
+      "text": "{material} hat kein {maps}: Es wirkt im Spiel schlicht.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.NoLevels": {
+      "english": "No Mid or Low: the main model is used at every distance.",
+      "text": "Weder Mittel noch Niedrig: Das Hauptmodell wird in jeder Entfernung verwendet.",
+      "machine": true
+    },
+    "Units.OwnModel.Check.Levels": {
+      "english": "Detail levels given.",
+      "text": "Detailstufen angegeben.",
+      "machine": true
+    },
+    "Units.OwnModel.Size": {
+      "english": "{length} × {width} × {height} m",
+      "text": "{length} × {width} × {height} m",
+      "machine": true
+    },
+    "Units.OwnModel.Triangles": {
+      "english": "{count} triangle|{count} triangles",
+      "text": "{count} Dreieck|{count} Dreiecke",
+      "machine": true
+    },
+    "Units.OwnModel.Pick.Title": {
+      "english": "Pick a 3D model",
+      "text": "3D-Modell wählen",
+      "machine": true
+    },
+    "Units.OwnModel.Pick.Filter": {
+      "english": "FBX models",
+      "text": "FBX-Modelle",
+      "machine": true
+    },
+    "Units.OwnModel.PickLevel.Title": {
+      "english": "Pick a detail level's model",
+      "text": "Modell für eine Detailstufe wählen",
+      "machine": true
+    },
+    "Units.OwnModel.Window.Title": {
+      "english": "Change 3D Model",
+      "text": "3D-Modell ändern",
+      "machine": true
+    },
+    "Units.OwnModel.Menu": {
+      "english": "Change 3D Model…",
+      "text": "3D-Modell ändern…",
+      "machine": true
+    },
+    "Units.OwnModel.Menu.Tip": {
+      "english": "Give the unit a model of your own, from an .fbx file",
+      "text": "Der Einheit ein eigenes Modell aus einer .fbx-Datei geben",
+      "machine": true
+    },
+    "Units.OwnModel.Menu.NotVehicle.Tip": {
+      "english": "Imported models fit WARNO's ground vehicles only for now",
+      "text": "Importierte Modelle passen vorerst nur zu den Bodenfahrzeugen von WARNO",
+      "machine": true
+    },
+    "Units.New.Step.OwnModel": {
+      "english": "3D Model",
+      "text": "3D-Modell",
+      "machine": true
+    },
+    "Units.Rule.Model": {
+      "english": "own 3D model {model}",
+      "text": "eigenes 3D-Modell {model}",
+      "machine": true
+    },
+    "Files.Run.Pictures.ModelFiles": {
+      "english": "{count} 3D model file|{count} 3D model files",
+      "text": "{count} 3D-Modelldatei|{count} 3D-Modelldateien",
+      "machine": true
+    },
+    "Units.OwnModel.ShowParts": {
+      "english": "Parts",
+      "text": "Teile",
+      "machine": true
+    },
+    "Units.OwnModel.ShowParts.Tip": {
+      "english": "Show where each turret, gun and firing point is on the model",
+      "text": "Auf dem Modell zeigen, wo jeder Turm, jede Waffe und jeder Feuerpunkt sitzt",
+      "machine": true
+    },
     "Units.Rule.Picture": {
       "english": "card picture {picture}",
       "text": "Kartenbild {picture}",
@@ -15297,8 +15722,8 @@
       "machine": true
     },
     "Units.New.Step.Model": {
-      "english": "Model",
-      "text": "Modell",
+      "english": "Base Unit",
+      "text": "Basiseinheit",
       "machine": true
     },
     "Units.New.Step.NameAndNation": {
@@ -15377,8 +15802,8 @@
       "machine": true
     },
     "Units.New.ClickAModel": {
-      "english": "Click a unit to use its 3D model.",
-      "text": "Klicken Sie auf eine Einheit, um deren 3D-Modell zu verwenden.",
+      "english": "Click a unit to start from it.",
+      "text": "Klicken Sie auf eine Einheit, um von ihr auszugehen.",
       "machine": true
     },
     "Units.New.ComesWith": {
@@ -15437,8 +15862,8 @@
       "machine": true
     },
     "Units.New.Hint.Model": {
-      "english": "Double-click a unit to use its model.",
-      "text": "Doppelklicken Sie auf eine Einheit, um deren Modell zu verwenden.",
+      "english": "Double-click a unit to start from it.",
+      "text": "Doppelklicken Sie auf eine Einheit, um von ihr auszugehen.",
       "machine": true
     },
     "Units.New.Off.Model": {
@@ -16770,8 +17195,8 @@
       "machine": true
     },
     "Help.Page.start.Html": {
-      "english": "<p class=\"wklead\"><b>EasyNDF changes numbers in WARNO and Steel Division 2 game files,</b> like a weapon's range or reload time.</p><p>Each change is a <a href=\"#\" data-p=\"rules\">rule</a>. EasyNDF runs your rules on the files you add and gives you edited copies. Your files are never changed, and nothing leaves your computer.</p><h3>Four Steps</h3><ol class=\"wksteps\"><li><b>Pick rules.</b> Mods tab: click a mod. <i>WARNO Tactical Overhaul</i> is a ready-made example; <b>Import mod...</b> loads a shared one.</li><li><b>Add files.</b> Files tab: <b>Add folder...</b>, then pick a GameData folder, ideally <a href=\"#\" data-p=\"mod-find\">the game's clean files</a>.</li><li><b>Preview.</b> Nothing is saved. Click a file to see its changes in <b>Details</b>.</li><li><b>Export.</b> Pick a folder for the edited files, or your mod's folder to <a href=\"#\" data-p=\"mod-find\">write straight into your mod</a>.</li></ol><div class=\"wkcall\"><b>Note</b><span>Use clean files. Rules run on whatever you add, so an exported file gets them twice: \"multiply by 2\" becomes \"by 4\". Export asks first when a file was exported by EasyNDF before.</span></div><div class=\"wkcall\"><b>Tip</b><span>Unsure what's next? The green button is always the next step.</span></div><p>New words? See the <a href=\"#\" data-p=\"words\">Glossary</a>.</p><h3>Your First Mod</h3><p><a href=\"#\" data-p=\"mod-find\">WARNO Modding</a> covers the game's side: making a mod folder, building it, turning it on.</p><div class=\"wkcall\"><b>Tip</b><span>Every window has a <b>?</b> button. The search box on the left finds any page.</span></div><h3>Tutorial</h3><p><b>Start the Tutorial</b> in the welcome window (Help tab: <b>Welcome Window</b>) makes a small mod with you, in six chapters: <b>Files</b>, <b>Mods</b>, <b>Rules</b>, <b>Preview and Export</b>, <b>The Editor</b> and <b>The Armory</b>. It works on a sample Ammunition.ndf it adds for you, and nothing is exported. The Help tab's <b>Tutorials</b> button starts at any chapter.</p><ul><li>Each step asks for one thing, shown in bold, inside the outline; it goes on once it is done.</li><li>A step with a dashed outline is only to look at: press <b>Next</b>.</li><li>Only the outlined part responds to clicks, so you can't get lost.</li><li><b>Back</b>, <b>Skip Step</b>, or the Left and Right arrow keys move through it.</li><li><b>Skip Step</b> is greyed on a step the rest of the tutorial needs, such as making the rule.</li><li><b>End Tour</b> stops it any time. <kbd>Escape</kbd> doesn't: it closes the windows the tour opens.</li></ul>",
-      "text": "<p class=\"wklead\"><b>EasyNDF ändert Zahlen in den Spiel-Dateien von WARNO und Steel Division 2,</b> wie beispielsweise die Reichweite einer Waffe oder die Nachladezeit.</p><p>Jede Änderung ist eine <a href=\"#\" data-p=\"rules\">Regel</a>. EasyNDF wendet Ihre Regeln auf die von Ihnen hinzugefügten Dateien an und liefert Ihnen bearbeitete Kopien. Ihre Dateien werden dabei niemals verändert, und es verlassen keine Daten Ihren Computer.</p><h3>Vier Schritte</h3><ol class=\"wksteps\"><li><b>Wählen Sie Regeln aus.</b> Registerkarte „Mods“: Klicken Sie auf einen Mod. <i>WARNO Tactical Overhaul</i> ist ein vorgefertigtes Beispiel; <b>Mod importieren …</b> lädt einen gemeinsam genutzten Mod.</li><li><b>Fügen Sie Dateien hinzu.</b> Registerkarte „Dateien“: <b>Klicken Sie auf Ordner hinzufügen…</b> und wählen Sie anschließend einen „GameData“-Ordner aus, idealerweise <a href=\"#\" data-p=\"mod-find\">die unberührten Dateien des Spiels</a>.</li><li><b>Vorschau.</b> Es wird nichts gespeichert. Klicken Sie auf eine Datei, um die Änderungen unter <b>Details</b> anzuzeigen.</li><li><b>Exportieren.</b> Wählen Sie einen Ordner für die bearbeiteten Dateien oder den Ordner Ihres Mods aus, um die Änderungen <a href=\"#\" data-p=\"mod-find\">direkt in Ihren Mod zu schreiben</a>.</li></ol><div class=\"wkcall\"><b>Hinweis</b><span>: Verwenden Sie saubere Dateien. Die Regeln werden auf alle hinzugefügten Dateien angewendet, sodass eine exportierte Datei diese doppelt erhält: „mit 2 multiplizieren“ wird zu „mit 4“. Beim Export werden Sie zunächst gefragt, ob eine Datei zuvor bereits von EasyNDF exportiert wurde.</span></div><div class=\"wkcall\"><span>Tipp</span><b>:</b> <span>Sie sind sich nicht sicher, wie es weitergeht? Die grüne Schaltfläche ist immer der nächste Schritt.</span></div><p>Neue Begriffe? Schauen Sie im <a href=\"#\" data-p=\"words\">Glossar</a> nach.</p><h3>Ihr erster Mod</h3><p><a href=\"#\" data-p=\"mod-find\">WARNUNG: Das Modding</a> umfasst die spielseitigen Aspekte: das Erstellen eines Mod-Ordners, das Kompilieren und das Aktivieren.</p><div class=\"wkcall\"><b>Tipp:</b><span> Jedes Fenster verfügt über eine <b>?</b>-Schaltfläche. Über das Suchfeld auf der linken Seite können Sie jede Seite finden.</span></div><h3>Tutorial</h3><p><b>Wenn Sie das Tutorial</b> im Begrüßungsfenster <b>starten</b> (Registerkarte „Hilfe“: <b>Begrüßungsfenster</b>), erstellen Sie gemeinsam mit dem Programm in sechs Kapiteln eine kleine Mod: <b>Dateien</b>, <b>Mods</b>, <b>Regeln</b>, <b>Vorschau und Export</b>, <b>Der Editor</b> und <b>Die Waffenkammer</b>. Dabei wird eine Beispieldatei namens „Ammunition.ndf“ verwendet, die das Programm für Sie hinzufügt, und es wird nichts exportiert. Über die Schaltfläche <b>Tutorials</b> auf der Registerkarte „Hilfe“ können Sie bei jedem Kapitel einsteigen.</p><ul><li>Jeder Schritt fordert Sie zu einer bestimmten Aktion auf, die innerhalb der Gliederung fett hervorgehoben ist; der nächste Schritt folgt, sobald diese erledigt ist.</li><li>Ein Schritt mit einer gestrichelten Umrandung dient nur zur Ansicht: Klicken Sie auf <b>Weiter</b>.</li><li>Nur der umrandete Bereich reagiert auf Klicks, sodass Sie sich nicht verirren können.</li><li><b>Mit Zurück</b>, <b>Schritt überspringen</b> oder den Pfeiltasten nach links und rechts können Sie durch die Anleitung navigieren.</li><li><b>Schritt überspringen</b> ist bei einem Schritt ausgegraut, den der Rest des Tutorials braucht, etwa beim Erstellen der Regel.</li><li><b>Mit Tour beenden</b> können Sie die Tour jederzeit beenden. <kbd>Escape</kbd> tut dies nicht: Es schließt die Fenster, die die Tour geöffnet hat.</li></ul>",
+      "english": "<p class=\"wklead\"><b>EasyNDF changes numbers in WARNO and Steel Division 2 game files,</b> like a weapon's range or reload time.</p><p>Each change is a <a href=\"#\" data-p=\"rules\">rule</a>. EasyNDF runs your rules on the files you add and gives you edited copies. Your files are never changed, and nothing leaves your computer.</p><h3>Four Steps</h3><ol class=\"wksteps\"><li><b>Pick rules.</b> Mods tab: click a mod. <i>WARNO Tactical Overhaul</i> is a ready-made example; <b>Import mod...</b> loads a shared one.</li><li><b>Add files.</b> Files tab: <b>Add folder...</b>, then pick a GameData folder, ideally <a href=\"#\" data-p=\"mod-find\">the game's clean files</a>.</li><li><b>Preview.</b> Nothing is saved. Click a file to see its changes in <b>Details</b>.</li><li><b>Export.</b> Pick a folder for the edited files, or your mod's folder to <a href=\"#\" data-p=\"mod-find\">write straight into your mod</a>.</li></ol><div class=\"wkcall\"><b>Note</b><span>Use clean files. Rules run on whatever you add, so an exported file gets them twice: \"multiply by 2\" becomes \"by 4\". Export asks first when a file was exported by EasyNDF before.</span></div><p>New words? See the <a href=\"#\" data-p=\"words\">Glossary</a>.</p><h3>Your First Mod</h3><p><a href=\"#\" data-p=\"mod-find\">WARNO Modding</a> covers the game's side: making a mod folder, building it, turning it on.</p><div class=\"wkcall\"><b>Tip</b><span>Every window has a <b>?</b> button. The search box on the left finds any page.</span></div><h3>Tutorial</h3><p><b>Start the Tutorial</b> in the welcome window (Help tab: <b>Welcome Window</b>) makes a small mod with you, in six chapters: <b>Files</b>, <b>Mods</b>, <b>Rules</b>, <b>Preview and Export</b>, <b>The Editor</b> and <b>The Armory</b>. It works on a sample Ammunition.ndf it adds for you, and nothing is exported. The Help tab's <b>Tutorials</b> button starts at any chapter.</p><ul><li>Each step asks for one thing, shown in bold, inside the outline; it goes on once it is done.</li><li>A step with a dashed outline is only to look at: press <b>Next</b>.</li><li>Only the outlined part responds to clicks, so you can't get lost.</li><li><b>Back</b>, <b>Skip Step</b>, or the Left and Right arrow keys move through it.</li><li><b>Skip Step</b> is greyed on a step the rest of the tutorial needs, such as making the rule.</li><li><b>End Tour</b> stops it any time. <kbd>Escape</kbd> doesn't: it closes the windows the tour opens.</li></ul>",
+      "text": "<p class=\"wklead\"><b>EasyNDF ändert Zahlen in den Spiel-Dateien von WARNO und Steel Division 2,</b> wie beispielsweise die Reichweite einer Waffe oder die Nachladezeit.</p><p>Jede Änderung ist eine <a href=\"#\" data-p=\"rules\">Regel</a>. EasyNDF wendet Ihre Regeln auf die von Ihnen hinzugefügten Dateien an und liefert Ihnen bearbeitete Kopien. Ihre Dateien werden dabei niemals verändert, und es verlassen keine Daten Ihren Computer.</p><h3>Vier Schritte</h3><ol class=\"wksteps\"><li><b>Wählen Sie Regeln aus.</b> Registerkarte „Mods“: Klicken Sie auf einen Mod. <i>WARNO Tactical Overhaul</i> ist ein vorgefertigtes Beispiel; <b>Mod importieren …</b> lädt einen gemeinsam genutzten Mod.</li><li><b>Fügen Sie Dateien hinzu.</b> Registerkarte „Dateien“: <b>Klicken Sie auf Ordner hinzufügen…</b> und wählen Sie anschließend einen „GameData“-Ordner aus, idealerweise <a href=\"#\" data-p=\"mod-find\">die unberührten Dateien des Spiels</a>.</li><li><b>Vorschau.</b> Es wird nichts gespeichert. Klicken Sie auf eine Datei, um die Änderungen unter <b>Details</b> anzuzeigen.</li><li><b>Exportieren.</b> Wählen Sie einen Ordner für die bearbeiteten Dateien oder den Ordner Ihres Mods aus, um die Änderungen <a href=\"#\" data-p=\"mod-find\">direkt in Ihren Mod zu schreiben</a>.</li></ol><div class=\"wkcall\"><b>Hinweis</b><span>: Verwenden Sie saubere Dateien. Die Regeln werden auf alle hinzugefügten Dateien angewendet, sodass eine exportierte Datei diese doppelt erhält: „mit 2 multiplizieren“ wird zu „mit 4“. Beim Export werden Sie zunächst gefragt, ob eine Datei zuvor bereits von EasyNDF exportiert wurde.</span></div><p>Neue Begriffe? Schauen Sie im <a href=\"#\" data-p=\"words\">Glossar</a> nach.</p><h3>Ihr erster Mod</h3><p><a href=\"#\" data-p=\"mod-find\">WARNUNG: Das Modding</a> umfasst die spielseitigen Aspekte: das Erstellen eines Mod-Ordners, das Kompilieren und das Aktivieren.</p><div class=\"wkcall\"><b>Tipp:</b><span> Jedes Fenster verfügt über eine <b>?</b>-Schaltfläche. Über das Suchfeld auf der linken Seite können Sie jede Seite finden.</span></div><h3>Tutorial</h3><p><b>Wenn Sie das Tutorial</b> im Begrüßungsfenster <b>starten</b> (Registerkarte „Hilfe“: <b>Begrüßungsfenster</b>), erstellen Sie gemeinsam mit dem Programm in sechs Kapiteln eine kleine Mod: <b>Dateien</b>, <b>Mods</b>, <b>Regeln</b>, <b>Vorschau und Export</b>, <b>Der Editor</b> und <b>Die Waffenkammer</b>. Dabei wird eine Beispieldatei namens „Ammunition.ndf“ verwendet, die das Programm für Sie hinzufügt, und es wird nichts exportiert. Über die Schaltfläche <b>Tutorials</b> auf der Registerkarte „Hilfe“ können Sie bei jedem Kapitel einsteigen.</p><ul><li>Jeder Schritt fordert Sie zu einer bestimmten Aktion auf, die innerhalb der Gliederung fett hervorgehoben ist; der nächste Schritt folgt, sobald diese erledigt ist.</li><li>Ein Schritt mit einer gestrichelten Umrandung dient nur zur Ansicht: Klicken Sie auf <b>Weiter</b>.</li><li>Nur der umrandete Bereich reagiert auf Klicks, sodass Sie sich nicht verirren können.</li><li><b>Mit Zurück</b>, <b>Schritt überspringen</b> oder den Pfeiltasten nach links und rechts können Sie durch die Anleitung navigieren.</li><li><b>Schritt überspringen</b> ist bei einem Schritt ausgegraut, den der Rest des Tutorials braucht, etwa beim Erstellen der Regel.</li><li><b>Mit Tour beenden</b> können Sie die Tour jederzeit beenden. <kbd>Escape</kbd> tut dies nicht: Es schließt die Fenster, die die Tour geöffnet hat.</li></ul>",
       "machine": true
     },
     "Help.Page.words.Title": {
@@ -17145,8 +17570,8 @@
       "machine": true
     },
     "Help.Page.units-new.Html": {
-      "english": "<p class=\"wklead\">On the <b>Units</b> sub-tab, <b>+ New Unit...</b> makes your own unit in the open mod, in four steps listed at the top of its window.</p><ol><li><b>Model</b>: pick the unit to copy. Its 3D model, animations, showroom view, card picture, type, weapons and values come with it; the right panel lists what's copied.</li><li><b>Name and Nation</b>: name, nation, role, and card picture: <b>Same as</b> the copied unit, or <b>My own...</b>. The card on the left previews it.</li><li><b>Stats</b>: cost, strength, speed, optics and more, plus armor. Empty boxes keep the copied unit's value, shown dim; only values you type change.</li><li><b>Weapons</b>: the copied unit's weapons, turret by turret, as in the Unit pane's <b>Loadout</b> section, to swap, change, remove or add (see <a href=\"#\" data-p=\"units-loadout\">Unit Weapons</a>). Untouched, your unit keeps them all.</li></ol><p><b>Duplicate Unit...</b> on a unit's right-click menu (or <b>Duplicate...</b> in the Unit pane) copies it whole under a new name. Units you made have <b>Delete Unit</b> on their menu, which also removes them from your divisions. Add your unit to a division from its menu, like any other.</p><h3>Rules</h3><ul><li>Each unit is saved as rules in the open mod's <b>Units</b> rule set, under <b>Armory Changes</b>, in a group named after it: a Clone rule copying the unit with its new name and your values, a rule giving it a deck code number, and, for your own card picture, a rule adding it to the game's unit pictures.</li><li>Its values all have a <b>*</b>, in the heading color: they're your mod's.</li><li>Nothing is removed from the copy, weapons included: a unit missing something its 3D model expects can stop the game loading, with no error. For now, change weapons with your own rules.</li></ul><h3>Files</h3><ul><li>A unit goes into the units file, <span class=\"mono\">TacticalUnits.ndf</span> (<span class=\"mono\">UniteDescriptor.ndf</span> in Steel Division 2 and WARNO before v210942), and <span class=\"mono\">DeckSerializer.ndf</span>; <span class=\"mono\">ButtonTexturesUnites.ndf</span> for your own card picture; and the mod's <span class=\"mono\">UNITS.csv</span> for its name. Add them to the Files tab first: a unit needing a missing file is refused, naming the file.</li><li>On export, your card picture is copied into the export folder's GameData, where the game looks for it.</li></ul>",
-      "text": "<p class=\"wklead\">Auf der Unterregisterkarte <b>Einheiten</b> können Sie über <b>+ Neue Einheit…</b> im geöffneten Mod eine eigene Einheit erstellen, und zwar in vier Schritten, die oben im Fenster aufgeführt sind.</p><ol><li><b>Modell</b>: Wählen Sie die Einheit aus, die kopiert werden soll. Das 3D-Modell, die Animationen, die Showroom-Ansicht, das Kartenbild, der Typ, die Waffen und die Werte werden mit übernommen; im rechten Bereich wird aufgelistet, was kopiert wurde.</li><li><b>Name und Nation</b>: Name, Nation, Rolle und Kartenbild: Entweder <b>identisch mit</b> der kopierten Einheit oder <b>Eigenes…</b>. Die Karte auf der linken Seite zeigt eine Vorschau an.</li><li><b>Statistiken</b>: Kosten, Stärke, Geschwindigkeit, Optik und mehr sowie Panzerung. In leeren Feldern bleiben die Werte der kopierten Einheit erhalten und werden abgedunkelt angezeigt; nur die von Ihnen eingegebenen Werte ändern sich.</li><li><b>Waffen</b>: Die Waffen der kopierten Einheit, Turm für Turm, wie im Abschnitt <b>Ausrüstung</b> des Einheitenfensters, zum Austauschen, Ändern, Entfernen oder Hinzufügen (siehe <a href=\"#\" data-p=\"units-loadout\">Einheitswaffen</a>). Bleiben diese Felder unverändert, behält Ihre Einheit alle Waffen bei.</li></ol><p><b>Einheit duplizieren…</b> im Rechtsklick-Menü einer Einheit (oder <b>Duplizieren…</b> im Einheitsfenster) kopiert diese vollständig unter einem neuen Namen. Von Ihnen erstellte Einheiten verfügen in ihrem Menü über <b>den Eintrag Einheit löschen</b>, wodurch sie auch aus Ihren Divisionen entfernt werden. Fügen Sie Ihre Einheit wie jede andere über ihr Menü einer Division hinzu.</p><h3>Regeln</h3><ul><li>Jede Einheit wird als Regeln im Regelsatz <b>Einheiten</b> des geöffneten Mods unter <b>Rüstungsänderungen</b> in einer nach ihr benannten Gruppe gespeichert: eine „Klon“-Regel, die die Einheit mit ihrem neuen Namen und Ihren Werten kopiert, eine Regel, die ihr eine Deck-Codenummer zuweist, und – für Ihr eigenes Kartenbild – eine Regel, die es zu den Einheitenbildern des Spiels hinzufügt.</li><li>Alle ihre Werte sind mit einem <b>*</b> in der Überschriftenfarbe gekennzeichnet: Es handelt sich um die Werte Ihres Mods.</li><li>Aus der Kopie wird nichts entfernt, auch keine Waffen: Fehlt einer Einheit etwas, das ihr 3D-Modell erwartet, kann dies dazu führen, dass das Spiel nicht geladen wird, ohne dass eine Fehlermeldung erscheint. Ändern Sie Waffen vorerst mit Ihren eigenen Regeln.</li></ul><h3>Dateien</h3><ul><li>Eine Einheit wird in die Einheiten-Datei <span class=\"mono\">TacticalUnits.ndf</span> (<span class=\"mono\">UniteDescriptor.ndf</span> in „Steel Division 2“ und „WARNO“ vor Version v210942) sowie <span class=\"mono\">DeckSerializer.ndf</span> eingefügt; <span class=\"mono\">ButtonTexturesUnites.ndf</span> für Ihr eigenes Kartenbild; und <span class=\"mono\">UNITS.csv</span> des Mods für dessen Namen. Fügen Sie diese zunächst auf der Registerkarte „Dateien“ hinzu: Eine Einheit, für die eine Datei fehlt, wird abgelehnt, wobei die fehlende Datei namentlich genannt wird.</li><li>Beim Export wird Ihr Kartenbild in den Ordner „GameData“ des Exportordners kopiert, wo das Spiel danach sucht.</li></ul>",
+      "english": "<p class=\"wklead\">On the <b>Units</b> sub-tab, <b>+ New Unit...</b> makes your own unit in the open mod, in five steps listed at the top of its window.</p><ol><li><b>Base Unit</b>: pick the unit to copy. Its 3D model, animations, showroom view, card picture, type, weapons and values come with it; the right panel lists what's copied.</li><li><b>3D Model</b>: keep the copied unit's model, or use <b>Import Model</b> to pick an .fbx (see below).</li><li><b>Name and Nation</b>: name, nation, role, and card picture: <b>Same as</b> the copied unit, or <b>My own...</b>. The card on the left previews it.</li><li><b>Stats</b>: cost, strength, speed, optics and more, plus armor. Empty boxes keep the copied unit's value, shown dim; only values you type change.</li><li><b>Weapons</b>: the copied unit's weapons, turret by turret, as in the Unit pane's <b>Loadout</b> section, to swap, change, remove or add (see <a href=\"#\" data-p=\"units-loadout\">Unit Weapons</a>). Untouched, your unit keeps them all.</li></ol><p><b>Duplicate Unit...</b> on a unit's right-click menu (or <b>Duplicate...</b> in the Unit pane) copies it whole under a new name. Units you made have <b>Delete Unit</b> on their menu, which also removes them from your divisions. Add your unit to a division from its menu, like any other.</p><h3>Rules</h3><ul><li>Each unit is saved as rules in the open mod's <b>Units</b> rule set, under <b>Armory Changes</b>, in a group named after it: a Clone rule copying the unit with its new name and your values, a rule giving it a deck code number, and, for your own card picture, a rule adding it to the game's unit pictures.</li><li>Its values all have a <b>*</b>, in the heading color: they're your mod's.</li><li>Nothing is removed from the copy, weapons included: a unit missing something its 3D model expects can stop the game loading, with no error. For now, change weapons with your own rules.</li></ul><h3>Your Own 3D Model</h3><ul><li>WARNO's ground vehicles can take a model of your own: the <b>3D Model</b> step of New Unit, or <b>Change 3D Model...</b> on any unit's menu.</li><li>Pick a binary <b>.fbx</b>, as Blender exports it, made like the game's (metres, z up, x forward). Its pictures are found beside it by the game's names: the colour picture, then <span class=\"mono\">_NM</span>, <span class=\"mono\">_R</span>, <span class=\"mono\">_M</span> and <span class=\"mono\">_O</span>. <b>Mid</b> and <b>Low</b> detail levels are optional.</li><li><b>Parts</b> lists what the copied unit's turrets, guns and wheels move, each with the file's part for it, found by name. A turret only turns, and a gun only fires from the right place, when its part is picked.</li><li><b>Checks</b> says what is missing or wrong, with a fix where there is one (<b>Use the Gun's End</b>, <b>Scale to</b>). Only a model that can't fit, like a soldier's for a vehicle, stops it.</li><li>The 3D view shows the file as the mod will carry it; it may look different in game.</li><li>The unit gets its own look: rules add its models to <span class=\"mono\">SharedResources.ndf</span> and a copy of the copied unit's depiction to <span class=\"mono\">DepictionAlternatives.ndf</span>, <span class=\"mono\">DepictionVehicles.ndf</span>, <span class=\"mono\">DepictionGhosts.ndf</span> and <span class=\"mono\">DepictionVehiclesShowroom.ndf</span>. Add them to the Files tab.</li><li>On export, the model and its pictures are copied into the mod. Then run the game's <b>GenerateMod</b>: it turns the .fbx into the game's format.</li></ul><h3>Files</h3><ul><li>A unit goes into the units file, <span class=\"mono\">TacticalUnits.ndf</span> (<span class=\"mono\">UniteDescriptor.ndf</span> in Steel Division 2 and WARNO before v210942), and <span class=\"mono\">DeckSerializer.ndf</span>; <span class=\"mono\">ButtonTexturesUnites.ndf</span> for your own card picture; and the mod's <span class=\"mono\">UNITS.csv</span> for its name. Add them to the Files tab first: a unit needing a missing file is refused, naming the file.</li><li>On export, your card picture is copied into the export folder's GameData, where the game looks for it.</li></ul>",
+      "text": "<p class=\"wklead\">Auf der Unterregisterkarte <b>Einheiten</b> können Sie über <b>+ Neue Einheit…</b> im geöffneten Mod eine eigene Einheit erstellen, und zwar in fünf Schritten, die oben im Fenster aufgeführt sind.</p><ol><li><b>Basiseinheit</b>: Wählen Sie die Einheit aus, die kopiert werden soll. Das 3D-Modell, die Animationen, die Showroom-Ansicht, das Kartenbild, der Typ, die Waffen und die Werte werden mit übernommen; im rechten Bereich wird aufgelistet, was kopiert wurde.</li><li><b>3D-Modell</b>: Behalten Sie das Modell der kopierten Einheit oder wählen Sie mit <b>Modell importieren</b> eine .fbx (siehe unten).</li><li><b>Name und Nation</b>: Name, Nation, Rolle und Kartenbild: Entweder <b>identisch mit</b> der kopierten Einheit oder <b>Eigenes…</b>. Die Karte auf der linken Seite zeigt eine Vorschau an.</li><li><b>Statistiken</b>: Kosten, Stärke, Geschwindigkeit, Optik und mehr sowie Panzerung. In leeren Feldern bleiben die Werte der kopierten Einheit erhalten und werden abgedunkelt angezeigt; nur die von Ihnen eingegebenen Werte ändern sich.</li><li><b>Waffen</b>: Die Waffen der kopierten Einheit, Turm für Turm, wie im Abschnitt <b>Ausrüstung</b> des Einheitenfensters, zum Austauschen, Ändern, Entfernen oder Hinzufügen (siehe <a href=\"#\" data-p=\"units-loadout\">Einheitswaffen</a>). Bleiben diese Felder unverändert, behält Ihre Einheit alle Waffen bei.</li></ol><p><b>Einheit duplizieren…</b> im Rechtsklick-Menü einer Einheit (oder <b>Duplizieren…</b> im Einheitsfenster) kopiert diese vollständig unter einem neuen Namen. Von Ihnen erstellte Einheiten verfügen in ihrem Menü über <b>den Eintrag Einheit löschen</b>, wodurch sie auch aus Ihren Divisionen entfernt werden. Fügen Sie Ihre Einheit wie jede andere über ihr Menü einer Division hinzu.</p><h3>Regeln</h3><ul><li>Jede Einheit wird als Regeln im Regelsatz <b>Einheiten</b> des geöffneten Mods unter <b>Rüstungsänderungen</b> in einer nach ihr benannten Gruppe gespeichert: eine „Klon“-Regel, die die Einheit mit ihrem neuen Namen und Ihren Werten kopiert, eine Regel, die ihr eine Deck-Codenummer zuweist, und – für Ihr eigenes Kartenbild – eine Regel, die es zu den Einheitenbildern des Spiels hinzufügt.</li><li>Alle ihre Werte sind mit einem <b>*</b> in der Überschriftenfarbe gekennzeichnet: Es handelt sich um die Werte Ihres Mods.</li><li>Aus der Kopie wird nichts entfernt, auch keine Waffen: Fehlt einer Einheit etwas, das ihr 3D-Modell erwartet, kann dies dazu führen, dass das Spiel nicht geladen wird, ohne dass eine Fehlermeldung erscheint. Ändern Sie Waffen vorerst mit Ihren eigenen Regeln.</li></ul><h3>Eigenes 3D-Modell</h3><ul><li>Die Bodenfahrzeuge von WARNO können ein eigenes Modell erhalten: im Schritt <b>3D-Modell</b> von „Neue Einheit“ oder über <b>3D-Modell ändern…</b> im Menü jeder Einheit.</li><li>Wählen Sie eine binäre <b>.fbx</b>, wie Blender sie exportiert, aufgebaut wie die des Spiels (Meter, z nach oben, x nach vorn). Ihre Bilder werden daneben unter den Namen des Spiels gefunden: das Farbbild, dann <span class=\"mono\">_NM</span>, <span class=\"mono\">_R</span>, <span class=\"mono\">_M</span> und <span class=\"mono\">_O</span>. Die Detailstufen <b>Mittel</b> und <b>Niedrig</b> sind optional.</li><li><b>Teile</b> listet, was Türme, Geschütze und Räder der kopierten Einheit bewegen, jeweils mit dem passenden Teil der Datei, nach Namen gefunden. Ein Turm dreht sich und ein Geschütz feuert nur dann von der richtigen Stelle, wenn sein Teil gewählt ist.</li><li><b>Prüfungen</b> zeigt, was fehlt oder falsch ist, mit einer Korrektur, wo es eine gibt (<b>Rohrende verwenden</b>, <b>Skalieren</b>). Nur ein Modell, das nicht passen kann, etwa das eines Soldaten für ein Fahrzeug, blockiert.</li><li>Die 3D-Ansicht zeigt die Datei so, wie die Mod sie mitnimmt; im Spiel kann sie anders aussehen.</li><li>Die Einheit erhält ein eigenes Aussehen: Regeln fügen ihre Modelle zu <span class=\"mono\">SharedResources.ndf</span> und eine Kopie der Darstellung der kopierten Einheit zu <span class=\"mono\">DepictionAlternatives.ndf</span>, <span class=\"mono\">DepictionVehicles.ndf</span>, <span class=\"mono\">DepictionGhosts.ndf</span> und <span class=\"mono\">DepictionVehiclesShowroom.ndf</span> hinzu. Fügen Sie diese der Registerkarte „Dateien“ hinzu.</li><li>Beim Export werden das Modell und seine Bilder in die Mod kopiert. Führen Sie dann <b>GenerateMod</b> des Spiels aus: Es wandelt die .fbx in das Format des Spiels um.</li></ul><h3>Dateien</h3><ul><li>Eine Einheit wird in die Einheiten-Datei <span class=\"mono\">TacticalUnits.ndf</span> (<span class=\"mono\">UniteDescriptor.ndf</span> in „Steel Division 2“ und „WARNO“ vor Version v210942) sowie <span class=\"mono\">DeckSerializer.ndf</span> eingefügt; <span class=\"mono\">ButtonTexturesUnites.ndf</span> für Ihr eigenes Kartenbild; und <span class=\"mono\">UNITS.csv</span> des Mods für dessen Namen. Fügen Sie diese zunächst auf der Registerkarte „Dateien“ hinzu: Eine Einheit, für die eine Datei fehlt, wird abgelehnt, wobei die fehlende Datei namentlich genannt wird.</li><li>Beim Export wird Ihr Kartenbild in den Ordner „GameData“ des Exportordners kopiert, wo das Spiel danach sucht.</li></ul>",
       "machine": true
     },
     "Help.Page.units-change.Title": {

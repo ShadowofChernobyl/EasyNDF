@@ -29,6 +29,7 @@ public partial class UnitsPage : IUnitActions
             Menus.Heading(unit.Name),
             .. ShowInEditorChoices(unit),
             ShowModelChoice(unit),
+            ChangeModelChoice(unit),
             Menus.Line,
             onCompare && compared.Contains(unit) && !ReferenceEquals(unit, pinned) ? new MenuChoice(Texts.Get("Units.Menu.Pin"), () => Pin(unit)) : null,
             new MenuChoice(Texts.Get("Units.Menu.Compare"), () => Compare(unit), IsEnabled: !compared.Contains(unit)),
@@ -134,14 +135,14 @@ public partial class UnitsPage : IUnitActions
     }
 
     /// <summary>
-    /// "Show … in File Editor", with the file's name at the right. Dim while the file is not on the Files tab, with a
-    /// tooltip saying to add it.
+    /// "Show … in File Editor", with the file's name at the right. A file not on the Files tab yet is added from the
+    /// source first; dim only while no source is read, with a tooltip saying to add the file.
     /// </summary>
     private MenuChoice ShowInEditorChoice(string label, string descriptor, string file)
     {
-        FileEntry? entry = LoadedFile(file);
-        return new MenuChoice(label, () => ShowInEditor(entry, descriptor), IsEnabled: entry is not null, Key: file,
-            Tip: entry is null ? Texts.Get("Units.Menu.NotLoaded.Tip", ("file", file)) : descriptor);
+        bool can = CanShowInEditor(file);
+        return new MenuChoice(label, () => ShowInEditor(descriptor, file), IsEnabled: can, Key: file,
+            Tip: can ? descriptor : Texts.Get("Units.Menu.NotLoaded.Tip", ("file", file)));
     }
 
     /// <summary>A file on the Files tab with this name that has been read; null when there is none.</summary>
@@ -149,21 +150,27 @@ public partial class UnitsPage : IUnitActions
         MainView.Find(this)?.FilesTab.Model.Entries.FirstOrDefault(entry => entry.Source is not null && !Files.TutorialSample.Is(entry) && string.Equals(entry.Name, file, StringComparison.OrdinalIgnoreCase));
 
     /// <inheritdoc/>
-    public bool CanShowInEditor(string file) => LoadedFile(file) is not null;
+    /// <remarks>True while a source is read too: a file not on the Files tab is added from it (<see cref="ShowInEditor(string, string)"/>).</remarks>
+    public bool CanShowInEditor(string file) => LoadedFile(file) is not null || loaded is not null;
 
     /// <inheritdoc/>
-    public void ShowInEditor(string descriptor, string file) => ShowInEditor(LoadedFile(file), descriptor);
-
-    private void ShowInEditor(FileEntry? entry, string descriptor)
+    /// <remarks>
+    /// A file not on the Files tab yet is added from the Armory's source first, as Add Its Files would add it, so a
+    /// double-click on a card does what the footnote says without a trip to the Files tab.
+    /// </remarks>
+    public async void ShowInEditor(string descriptor, string file)
     {
+        FileEntry? entry = LoadedFile(file);
+        if (entry is null && loaded?.Source is UnitSource source && MainView.Find(this) is MainView main)
+            entry = await main.FilesTab.AddFromSource(source, file);
         if (entry is not null) _ = MainView.Of(this).EditorTab.ShowDescriptor(entry, descriptor);
     }
 
     /// <inheritdoc/>
-    public bool CanShowInEditor(Unit unit) => LoadedFile(unit.File) is not null;
+    public bool CanShowInEditor(Unit unit) => CanShowInEditor(unit.File);
 
     /// <inheritdoc/>
-    public void ShowInEditor(Unit unit) => ShowInEditor(LoadedFile(unit.File), unit.Descriptor);
+    public void ShowInEditor(Unit unit) => ShowInEditor(unit.Descriptor, unit.File);
 
     /// <inheritdoc/>
     public void NewRuleFor(Unit unit) => NewRule(unit.Name, [unit.Descriptor]);

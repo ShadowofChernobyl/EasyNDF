@@ -21,6 +21,9 @@ public abstract class UnitValues
     /// <summary>A card picture of the user's own, kept with the app's data; null for the unit's own picture.</summary>
     public string? PictureFile { get; set; }
 
+    /// <summary>A 3D model of the user's own (<see cref="Units.OwnModel"/>); null to keep the unit's.</summary>
+    public OwnModel? OwnModel { get; set; }
+
     /// <summary>Its cost in command points; null to keep the unit's.</summary>
     public int? Cost { get; set; }
 
@@ -123,7 +126,7 @@ public abstract class UnitValues
     }
 
     /// <summary>Whether it gives any value at all.</summary>
-    public bool GivesAnything => Nation is not null || Side is not null || Role is not null || PictureFile is not null || LoadoutChanges.Count > 0
+    public bool GivesAnything => Nation is not null || Side is not null || Role is not null || PictureFile is not null || OwnModel is not null || LoadoutChanges.Count > 0
         || EditableStat.All.Any(stat => Given(stat.Field) is not null);
 
     /// <summary>
@@ -217,6 +220,7 @@ public abstract class UnitValues
         AddIfGiven(json, "Stealth", Stealth);
         if (LoadoutChanges.Count > 0) json["Loadout"] = new JsonArray([.. LoadoutChanges.Select(change => (JsonNode)change.ToJson())]);
         AddIfGiven(json, "LoadoutFrom", LoadoutFrom);
+        if (OwnModel is not null) json["OwnModel"] = OwnModel.ToJson();
     }
 
     /// <summary>Reads the values of an entry of the mod file; what it does not have stays null, kept from the unit.</summary>
@@ -240,6 +244,7 @@ public abstract class UnitValues
         Stealth = Number(json["Stealth"]);
         LoadoutChanges = [.. (json["Loadout"] as JsonArray ?? []).Select(Weapons.LoadoutChange.FromJson).OfType<Weapons.LoadoutChange>()];
         LoadoutFrom = Text(json["LoadoutFrom"]);
+        OwnModel = OwnModel.FromJson(json["OwnModel"]);
     }
 
     /// <summary>

@@ -299,6 +299,7 @@
   "Files.Run.Pictures.Both": "{first} and {second}",
   "Files.Run.Pictures.Emblems": "{count} emblem|{count} emblems",
   "Files.Run.Pictures.UnitPictures": "{count} unit picture|{count} unit pictures",
+  "Files.Run.Pictures.ModelFiles": "{count} 3D model file|{count} 3D model files",
   "Files.Run.Divisions.NoGameData": "Pictures not copied: {path} is not in a GameData folder. Export into a GameData folder.",
   "Files.Run.DivisionTexts": "{count} division text|{count} division texts",
   "Files.Run.Divisions.PictureMissing": "Picture not copied: {path} is not there any more.",
