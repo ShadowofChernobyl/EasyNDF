@@ -583,7 +583,8 @@ public partial class OwnModelPanel : UserControl
     private void OwnClicked(object sender, RoutedEventArgs e)
     {
         own = true;
-        if (picked is null && !PickFile()) ShowAll();
+        // a file picked before (and the copied model chosen since) comes back as it was; only with none is one asked for
+        if (picked is not null || !PickFile()) ShowAll();
     }
 
     private void BrowseClicked(object sender, RoutedEventArgs e) => PickFile();
