@@ -83,7 +83,9 @@ public sealed class FbxScene
             long parent = links.FirstOrDefault(link => link.Child == id && link.Kind == "OO" && objects.TryGetValue(link.Parent, out FbxNode? p) && p.Name == "Model").Parent;
             Parts.Add(new FbxPart(id, NameOf(node), node.Text(2), parent, LocalOf(node)));
         }
-        var byId = Parts.ToDictionary(part => part.Id);
+        // two parts of one id (a damaged file): the first is the one links find
+        var byId = new Dictionary<long, FbxPart>();
+        foreach (FbxPart part in Parts) byId.TryAdd(part.Id, part);
         foreach (FbxPart part in Parts) part.World = WorldOf(part, byId, 0);
 
         foreach (FbxNode node in objectsNode.All("Material"))
@@ -275,15 +277,15 @@ public sealed class FbxScene
             {
                 int corner = start + c;
                 int point = polygons[corner] < 0 ? ~polygons[corner] : polygons[corner];
-                if (point * 3 + 2 >= points.Length) continue;
+                if (point < 0 || point >= points.Length / 3) continue;
                 Vector3 position = ToGame(Vector3.Transform(new Vector3((float)points[point * 3], (float)points[point * 3 + 1], (float)points[point * 3 + 2]), place));
                 Vector3 normal = Vector3.UnitZ;
                 int n = Layered(normalMapping, normalIndex, corner, point, polygon);
-                if (n >= 0 && n * 3 + 2 < normals.Length)
+                if (n >= 0 && n < normals.Length / 3)
                     normal = DirectionToGame(Vector3.TransformNormal(new Vector3((float)normals[n * 3], (float)normals[n * 3 + 1], (float)normals[n * 3 + 2]), turn));
                 Vector2 uv = Vector2.Zero;
                 int u = Layered(uvMapping, uvIndex, corner, point, polygon);
-                if (u >= 0 && u * 2 + 1 < uvs.Length) uv = new Vector2((float)uvs[u * 2], 1 - (float)uvs[u * 2 + 1]);
+                if (u >= 0 && u < uvs.Length / 2) uv = new Vector2((float)uvs[u * 2], 1 - (float)uvs[u * 2 + 1]);
                 low = Vector3.Min(low, position);
                 high = Vector3.Max(high, position);
                 Vector3 tangent = Vector3.Normalize(Vector3.Cross(MathF.Abs(normal.Z) < 0.9f ? Vector3.UnitZ : Vector3.UnitX, normal));
@@ -429,7 +431,7 @@ public sealed class FbxScene
     /// <summary>Renames a part (its name keeps the "\0\x01Model" the file writes after it).</summary>
     public void Rename(long id, string name)
     {
-        if (!objects.TryGetValue(id, out FbxNode? node)) return;
+        if (!objects.TryGetValue(id, out FbxNode? node) || node.Values.Count < 2) return;
         string written = node.Text(1);
         int cut = written.IndexOf('\0');
         node.Values[1] = name + (cut < 0 ? "\0\u0001Model" : written[cut..]);
@@ -454,7 +456,8 @@ public sealed class FbxScene
         objectsNode.Children.Add(new FbxNode("Model", [id, name + "\0\u0001Model", "Null"], [new FbxNode("Version", 232), props, new FbxNode("Shading", true), new FbxNode("Culling", "CullingOff")]));
         foreach (FbxNode type in file.Node("Definitions")?.All("ObjectType") ?? [])
             if ((type.Text(0) is "Model" or "NodeAttribute") && type.Child("Count") is FbxNode count) count.Values[0] = (int)count.Long(0) + 1;
-        FbxNode connections = file.Node("Connections")!;
+        FbxNode? connections = file.Node("Connections");
+        if (connections is null) file.Nodes.Add(connections = new FbxNode("Connections"));
         connections.Children.Add(new FbxNode("C", "OO", attributeId, id));
         connections.Children.Add(new FbxNode("C", "OO", id, parent));
         Load();
@@ -470,7 +473,7 @@ public sealed class FbxScene
         {
             if (node.Name == "Geometry" && node.Child("Vertices") is FbxNode vertices)
                 vertices.Values[0] = vertices.Doubles().Select(v => v * by).ToArray();
-            else if (node.Name == "Model" && Property(node.Child("Properties70"), "Lcl Translation") is FbxNode t)
+            else if (node.Name == "Model" && Property(node.Child("Properties70"), "Lcl Translation") is { Values.Count: >= 7 } t)
             {
                 for (int i = 4; i < 7; i++) t.Values[i] = t.Number(i) * by;
             }

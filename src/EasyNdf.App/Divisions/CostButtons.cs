@@ -10,8 +10,8 @@ namespace EasyNdf.App.Divisions;
 
 /// <summary>
 /// A type's activation-point costs on a line under its heading in a division's unit list: a button for each card,
-/// showing what that card costs, then a dashed + to add a card. The line wraps, so a freedom deck's dozens of cards all
-/// show. Clicking a card's button opens a small pop-up under it to choose its cost,
+/// showing what that card costs, then a dashed + to add a card. The cards stay on one line, which scrolls sideways when
+/// a freedom deck's dozens of them do not fit; the + stays in view at its end. Clicking a card's button opens a small pop-up under it to choose its cost,
 /// or to take the card away. The wheel never changes a cost, so scrolling the list cannot change one by accident.
 /// </summary>
 public static class CostButtons
@@ -23,9 +23,9 @@ public static class CostButtons
     /// <param name="factory">The type's code: "Tanks".</param>
     /// <param name="costs">What each card of the type costs, the first card's first.</param>
     /// <param name="editing">What changes the division's costs, saved in the open mod.</param>
-    public static WrapPanel Build(string factory, IReadOnlyList<int> costs, IDivisionEditing editing)
+    public static FrameworkElement Build(string factory, IReadOnlyList<int> costs, IDivisionEditing editing)
     {
-        var row = new WrapPanel();
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
         // costs the Armory cannot change for this division (shared with others, say) are shown, switched off with the reason
         string? whyOff = editing.WhyDetailCannotChange(Data.Divisions.DivisionDetail.Costs);
         for (int card = 0; card < costs.Count; card++)
@@ -44,8 +44,22 @@ public static class CostButtons
         System.Windows.Automation.AutomationProperties.SetName(add, (string)add.ToolTip);
         add.Click += (_, _) => editing.AddCost(factory);
         SwitchOff(add, whyOff);
-        row.Children.Add(add);
-        return row;
+        add.VerticalAlignment = VerticalAlignment.Top;
+        // one line that scrolls sideways, with its scrollbar under it only when the cards do not fit
+        var scroller = new ScrollViewer
+        {
+            Content = row, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Focusable = false, HorizontalAlignment = HorizontalAlignment.Left,
+        };
+        // the wheel over the line scrolls the unit list as anywhere else on it: the line itself has nothing to scroll up or down
+        scroller.PreviewMouseWheel += (_, e) =>
+        {
+            if (e.Handled || scroller.Parent is not UIElement around) return;
+            e.Handled = true;
+            around.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta) { RoutedEvent = UIElement.MouseWheelEvent, Source = scroller });
+        };
+        DockPanel.SetDock(add, Dock.Right);
+        return new DockPanel { LastChildFill = true, HorizontalAlignment = HorizontalAlignment.Left, Children = { add, scroller } };
     }
 
     /// <summary>A button switched off with the reason as its tooltip; left as it is when there is none.</summary>

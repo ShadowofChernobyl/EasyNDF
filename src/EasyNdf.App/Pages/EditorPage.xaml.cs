@@ -26,6 +26,9 @@ namespace EasyNdf.App.Pages;
 /// </summary>
 public partial class EditorPage : UserControl
 {
+    /// <summary>Where the height of Search all files' results is kept, as their grip leaves it.</summary>
+    private const string ResultsHeightKey = "editorResultsHeight";
+
     /// <summary>The text size of every open file; the line height goes with it, 17 pixels for 12, as in the HTML app.</summary>
     private double textSize = TextZoom.UsualSize;
 
@@ -164,6 +167,18 @@ public partial class EditorPage : UserControl
         foreach (TextBox box in new[] { FindBox, GoBox, SearchAllBox }) box.TextChanged += FindBoxChanged;
         // the results of Search all files take at most 40% of the tab, so the panes under them keep their room
         SizeChanged += (_, _) => ResultsBox.MaxHeight = Math.Max(ResultsBox.MinHeight, 0.4 * ActualHeight);
+        // the grip under the results: dragged, it gives them a height within their limits; double-clicked, their first
+        // height again. The height is kept for the next time the app runs.
+        double firstResultsHeight = ResultsBox.Height;
+        ResultsGrip.Target = ResultsBox;
+        ResultsGrip.HeightChosen += height => ResultsBox.Height = Math.Max(ResultsBox.MinHeight, Math.Min(height ?? firstResultsHeight, ResultsBox.MaxHeight));
+        ResultsGrip.HeightSettled += () =>
+        {
+            AppData.Current.State[ResultsHeightKey] = ResultsBox.Height;
+            AppData.Current.SaveState();
+        };
+        if (AppData.Current.State[ResultsHeightKey] is System.Text.Json.Nodes.JsonValue kept && kept.TryGetValue(out double keptHeight) && keptHeight >= ResultsBox.MinHeight)
+            ResultsBox.Height = keptHeight;
         SetTextSize(TextZoom.Saved, remember: false);
         TextZoom.Changed += size => SetTextSize(size, remember: false);
         ApplyViewSettings();
@@ -727,7 +742,7 @@ public partial class EditorPage : UserControl
 
     /// <summary>
     /// The tab's keys, anywhere on it, as Sublime Text has them: Ctrl+F finds (what is selected in the text, when it is
-    /// on one line), Ctrl+H replaces, Ctrl+G goes to a line, Ctrl+Shift+F searches all files; F3 and Shift+F3 find the
+    /// on one line), Ctrl+H replaces, Ctrl+G goes to a line, Ctrl+Shift+F searches all files, Ctrl+W closes the file in use; F3 and Shift+F3 find the
     /// next and previous match; Ctrl+Shift+[ folds every descriptor and Ctrl+Shift+] unfolds them; Escape closes the file
     /// filter, or hides the find bar and gives the text the keyboard.
     /// </summary>
@@ -755,6 +770,12 @@ public partial class EditorPage : UserControl
             e.Handled = true;
             if (box == FindBox || box == ReplaceBox) TakeSelectionToFind();
             ShowFindBar(true, box);
+        }
+        // Ctrl+W closes the file in use, as its tab's × does: one with edits not saved asks first
+        else if (control && !shift && e.Key == Key.W && openViews.Contains(view))
+        {
+            e.Handled = true;
+            _ = Close(view);
         }
         else if (e.Key == Key.F3 && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && shown is not null)
         {
@@ -823,11 +844,18 @@ public partial class EditorPage : UserControl
     private void SetTextSize(FileView v)
     {
         TextView lines = v.Editor.TextArea.TextView;
+        // the line at the top stays at the top: where it starts is asked for again once the lines have their new height,
+        // and the view put there. (ScrollToLine puts a line in the middle of the view, which scrolled the text up half a
+        // page at every step of Ctrl and the wheel.)
         int topLine = lines.GetDocumentLineByVisualTop(lines.ScrollOffset.Y)?.LineNumber ?? 1;
         v.Editor.FontSize = textSize;
         v.LineHeight.Height = v.MarkColumn.LineHeight = LineHeightForSize;
         lines.Redraw();
-        if (v.Shown is not null) v.Editor.ScrollToLine(topLine);
+        if (v.Shown is not null && topLine <= v.Editor.Document.LineCount)
+        {
+            v.Editor.UpdateLayout();
+            v.Editor.ScrollToVerticalOffset(lines.GetVisualTopByDocumentLine(topLine));
+        }
         v.Strip.ShowSize(textSize);
     }
 }

@@ -169,9 +169,10 @@ public static class DivisionCards
     /// </summary>
     private static StackPanel Heading(DivisionGroup group, bool isFolded, Action<string> foldClicked, IDivisionEditing editing)
     {
-        var heading = new StackPanel { Tag = group.Factory, Children = { NameLine(group, isFolded, foldClicked, editing) } };
         // folded away, a type shows its name line alone: its card slots fold with its tiles
-        if (!isFolded) heading.Children.Add(CostLine(group, editing));
+        Bevel? costLine = isFolded ? null : CostLine(group, editing);
+        var heading = new StackPanel { Tag = group.Factory, Children = { NameLine(group, isFolded, foldClicked, editing, costLine) } };
+        if (costLine is not null) heading.Children.Add(costLine);
         // a click on the heading itself is not a click on the list behind it, which would let go of the selected unit
         heading.MouseLeftButtonUp += (_, e) => e.Handled = true;
         return heading;
@@ -182,7 +183,7 @@ public static class DivisionCards
     /// its units, cards and points dim, and "+ Add Units…" at the right, for units of that type. A click elsewhere on
     /// it does nothing.
     /// </summary>
-    private static Bevel NameLine(DivisionGroup group, bool isFolded, Action<string> foldClicked, IDivisionEditing editing)
+    private static Bevel NameLine(DivisionGroup group, bool isFolded, Action<string> foldClicked, IDivisionEditing editing, Bevel? costLine = null)
     {
         var fold = new Button
         {
@@ -207,7 +208,9 @@ public static class DivisionCards
         DockPanel.SetDock(fold, Dock.Left);
         DockPanel.SetDock(name, Dock.Left);
         DockPanel.SetDock(add, Dock.Right);
-        var line = new DockPanel { Children = { fold, name, add, counts } };
+        var line = new DockPanel { Children = { fold, name, add } };
+        if (costLine is not null) line.Children.Add(SlotsLink(costLine));
+        line.Children.Add(counts);
         var nameLine = new Bevel { Child = line, Padding = new Thickness(4, 3, 8, 3), Edges = new Thickness(0, 1, 0, 1) };
         nameLine.SetResourceReference(Bevel.TopLeftProperty, "hi");
         nameLine.SetResourceReference(Bevel.BottomRightProperty, "lo");
@@ -215,9 +218,60 @@ public static class DivisionCards
         return nameLine;
     }
 
+    /// <summary>Where it is kept whether the lines of card slots are hidden.</summary>
+    private const string SlotsHiddenKey = "divisionSlotsHidden";
+
+    /// <summary>Whether the lines of card slots are hidden, in every type and division, as last chosen; shown until hidden.</summary>
+    private static bool SlotsHidden => AppData.Current.State[SlotsHiddenKey] is System.Text.Json.Nodes.JsonValue kept && kept.TryGetValue(out bool hidden) && hidden;
+
+    /// <summary>
+    /// "Hide Slots" or "Show Slots" at the right of a type's name line: shows or hides the lines of card slots, which a
+    /// division with many cards has little use for while its units are worked on. One choice for every type, kept for
+    /// the next time; this type's line changes at once, and the others as they are next drawn.
+    /// </summary>
+    private static TextBlock SlotsLink(Bevel costLine)
+    {
+        var link = new TextBlock
+        {
+            Cursor = System.Windows.Input.Cursors.Hand, TextDecorations = TextDecorations.Underline, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(10, 0, 0, 0), Focusable = true,
+        };
+        link.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+        link.FocusVisualStyle = Application.Current.TryFindResource("KeyboardFocusOutline") as Style;
+        void Show()
+        {
+            bool hidden = SlotsHidden;
+            costLine.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
+            link.Text = Texts.Get(hidden ? "Divisions.Heading.ShowSlots" : "Divisions.Heading.HideSlots");
+            link.ToolTip = Texts.Get("Divisions.Heading.Slots.Tip");
+        }
+        void Switch()
+        {
+            AppData.Current.State[SlotsHiddenKey] = !SlotsHidden;
+            AppData.Current.SaveState();
+            // every type's line and link in the view follow, not only this one
+            if (link.Parent is DockPanel { Parent: Bevel { Parent: StackPanel { Parent: StackPanel view } } })
+                foreach (StackPanel heading in view.Children.OfType<StackPanel>())
+                    foreach (TextBlock other in heading.Children.OfType<Bevel>().Select(each => each.Child).OfType<DockPanel>().SelectMany(each => each.Children.OfType<TextBlock>()))
+                        if (other.Tag is Action show) show();
+            Show();
+        }
+        link.Tag = (Action)Show;
+        link.MouseLeftButtonUp += (_, e) => { e.Handled = true; Switch(); };
+        link.KeyDown += (_, e) =>
+        {
+            if (e.Key is not (System.Windows.Input.Key.Enter or System.Windows.Input.Key.Space)) return;
+            e.Handled = true;
+            Switch();
+        };
+        DockPanel.SetDock(link, Dock.Right);
+        Show();
+        return link;
+    }
+
     /// <summary>
     /// The line of a type's cost buttons under its name line, on the panel colour with a line under it, lined up with
-    /// the type's name. It wraps, so every card shows however many there are.
+    /// the type's name. One line, which scrolls sideways when the cards do not fit (see <see cref="CostButtons"/>).
     /// </summary>
     private static Bevel CostLine(DivisionGroup group, IDivisionEditing editing)
     {

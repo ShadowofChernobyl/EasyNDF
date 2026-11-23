@@ -362,7 +362,7 @@
                 <Button Content="{t:Text Editor.Search}" ToolTip="{t:Text Editor.Search.Tip}" Click="SearchAllClicked" />
             </controls:FlexRow>
 
-            <!-- #edAllWrap: what Search all files found: a note and ×, then the lines found, in a box that can be made taller -->
+            <!-- #edAllWrap: what Search all files found: a note and ×, then the lines found, in a box with a grip under it that drags it taller or shorter -->
             <StackPanel x:Name="SearchResults" Visibility="Collapsed" Margin="0,0,0,6">
                 <DockPanel Margin="0,0,0,4">
                     <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Editor.CloseTheResults.Tip}" AutomationProperties.Name="{t:Text Editor.CloseTheResults.Tip}" Margin="6,0,0,0" Click="CloseResultsClicked" />
@@ -401,8 +401,9 @@
                             </ItemsControl>
                         </ScrollViewer>
                     </controls:Bevel>
-                    <controls:ResizeCorner Target="{x:Reference ResultsBox}" />
                 </Grid>
+                <!-- the bar the app's other lists have: drag for the height, double-click for the first height -->
+                <controls:ResizeGrip x:Name="ResultsGrip" ToolTip="{t:Text Common.ResizeGrip.Tip}" />
             </StackPanel>
         </StackPanel>
 

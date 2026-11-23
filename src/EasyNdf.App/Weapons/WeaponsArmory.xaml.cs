@@ -28,6 +28,9 @@ public partial class WeaponsArmory : UserControl
     private List<Weapon> shown = [];
     private string? selected;
     private WeaponView view;
+
+    /// <summary>The cards or the table, whichever was shown last: what Compare gives way to when it has nothing left to show.</summary>
+    private WeaponView listView = WeaponView.Cards;
     private int cardColumns = 1;
 
     /// <summary>The sub-tab's views: the weapons as cards or a table, or the weapons compared.</summary>
@@ -41,7 +44,10 @@ public partial class WeaponsArmory : UserControl
         Panes.SecondTitle = Texts.Get("Weapons.Pane.Title");
         Table.WeaponClicked += Select;
         Table.WeaponRightClicked += OpenWeaponMenu;
-        view = Enum.TryParse((string?)AppData.Current.State["weaponView"], out WeaponView remembered) ? remembered : WeaponView.Cards;
+        // the cards or the table, as last used. Compare is not come back to: the weapons compared are not kept, and it
+        // would open with nothing in it (where it was remembered before this, the cards are shown)
+        view = (string?)AppData.Current.State["weaponView"] == nameof(WeaponView.Table) ? WeaponView.Table : WeaponView.Cards;
+        listView = view;
         PrepareZoom();
         // the dropdowns say what they hold from the start, not blank until a source is chosen
         FillDamageChoice();
@@ -107,6 +113,8 @@ public partial class WeaponsArmory : UserControl
         catalog = units;
         game = units.Game;
         actions = weaponActions;
+        // another source has none of the weapons compared: its weapons are shown, not Compare with nothing in it
+        if (view == WeaponView.Compare && !compared.Any(descriptor => AllWeapons.Any(weapon => weapon.Descriptor == descriptor))) view = listView;
         unitsByDescriptor = new Dictionary<string, Unit>(StringComparer.Ordinal);
         foreach (Unit unit in units.Units) unitsByDescriptor.TryAdd(unit.Descriptor, unit);
         TraitIcon.Known = units.Traits ?? new Dictionary<string, WeaponTrait>();
@@ -324,8 +332,12 @@ public partial class WeaponsArmory : UserControl
     private void ShowView(WeaponView shownView)
     {
         view = shownView;
-        AppData.Current.State["weaponView"] = view.ToString();
-        AppData.Current.SaveState();
+        if (view != WeaponView.Compare)
+        {
+            listView = view;
+            AppData.Current.State["weaponView"] = view.ToString();
+            AppData.Current.SaveState();
+        }
         ShowAll();
     }
 

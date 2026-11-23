@@ -389,5 +389,6 @@
   "Editor.Syntax.Keyword.logic": "A logic word in a formula: not, and, or.",
   "Editor.Syntax.Keyword.div": "Division, in a formula.",
   "Editor.Syntax.Keyword.mod": "The remainder of a division, in a formula.",
-  "Editor.Syntax.Keyword.root": "Starts a full path to a name, from the top: $/GFX/…"
+  "Editor.Syntax.Keyword.root": "Starts a full path to a name, from the top: $/GFX/…",
+  "Editor.Value.NumberGivenTwice": "{name}: {value} is given to both {first} and {second}. Each needs a number of its own; a game update or another mod may have taken it."
 }

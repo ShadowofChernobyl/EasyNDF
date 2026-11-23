@@ -441,5 +441,6 @@
   "Rules.Row.Next.Off": "This is the last row",
   "Rules.Watermark.VersionBox.Tip": "The mod's version, shown in the watermark",
   "Rules.Watermark.GameBox.Tip": "The game version the mod is made for, shown in the watermark",
-  "Rules.Watermark.Off": "Switch on Enable to fill this in"
+  "Rules.Watermark.Off": "Switch on Enable to fill this in",
+  "Rules.Editor.Example": "Example:\n{sample}"
 }

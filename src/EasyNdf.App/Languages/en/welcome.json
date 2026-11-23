@@ -34,7 +34,7 @@
   "Tour.About.Armory": "Units, their values, their 3D models, divisions and weapons",
   "Tour.Files.Start": "This tutorial makes a small mod with you. **Nothing is exported.**",
   "Tour.Files.Tab": "Click the **Files** tab.",
-  "Tour.Files.Source": "**Source** picks your game or a mod; [[Add Its Files]] lists its files once one is picked. Here the tutorial uses **Sample Data**.",
+  "Tour.Files.Source": "**Source** picks your game or a mod, and its files are listed once one is picked. Here the tutorial uses **Sample Data**.",
   "Tour.Files.Add": "[[Add Files…]] and [[Add Folder…]] add .ndf files from anywhere.",
   "Tour.Files.Sample": "The tutorial added its **Sample Data**: an **Ammunition.ndf** with 29 weapons' ammunition.",
   "Tour.Mods.Start": "A mod is a set of rules. Each rule finds parts of the files and changes them, as many as it matches.",

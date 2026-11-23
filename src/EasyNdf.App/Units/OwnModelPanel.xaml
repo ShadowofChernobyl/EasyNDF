@@ -57,14 +57,17 @@
         </DockPanel>
 
         <!-- which model, its file, pictures, detail levels and parts; only the parts list scrolls, inside its box -->
-        <DockPanel Grid.Column="2">
+        <DockPanel Grid.Column="2" SizeChanged="SideResized">
             <StackPanel DockPanel.Dock="Top">
-                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.OwnModel.Heading}" /></controls:Bevel>
-                <StackPanel Orientation="Horizontal">
-                    <ToggleButton x:Name="CopiedChoice" Style="{StaticResource PressedToggle}" Padding="9,1" Click="CopiedClicked" />
-                    <ToggleButton x:Name="OwnChoice" Style="{StaticResource PressedToggle}" Padding="9,1" Margin="-1,0,0,0" Content="{t:Text Units.OwnModel.Own}"
-                                  ToolTip="{t:Text Units.OwnModel.Own.Tip}" Click="OwnClicked" />
-                </StackPanel>
+                <!-- one button at the heading's right: Import Model, or, once a file is in, the way back to the base unit's model -->
+                <DockPanel>
+                    <Button x:Name="ImportButton" DockPanel.Dock="Right" Content="{t:Text Units.OwnModel.Own}" ToolTip="{t:Text Units.OwnModel.Own.Tip}"
+                            Foreground="{DynamicResource accent}" VerticalAlignment="Top" Margin="8,0,0,0" Click="OwnClicked" />
+                    <Button x:Name="BaseButton" DockPanel.Dock="Right" Content="{t:Text Units.OwnModel.UseBase}" VerticalAlignment="Top" Margin="8,0,0,0"
+                            Visibility="Collapsed" Click="CopiedClicked" />
+                    <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.OwnModel.Heading}" /></controls:Bevel>
+                </DockPanel>
+                <TextBlock x:Name="UsingText" Foreground="{DynamicResource muted}" FontSize="12" TextWrapping="Wrap" />
                 <StackPanel x:Name="FileBox" Visibility="Collapsed">
                     <DockPanel Margin="0,6,0,0">
                         <Button DockPanel.Dock="Right" Content="{t:Text Units.OwnModel.Browse}" Margin="6,0,0,0" Click="BrowseClicked" />
@@ -77,20 +80,29 @@
                         <controls:PathText x:Name="DestinationPath" />
                     </DockPanel>
                     <controls:Bevel Style="{StaticResource Heading}" Margin="0,12,0,0"><TextBlock Text="{t:Text Units.OwnModel.Levels}" /></controls:Bevel>
-                    <DockPanel Margin="0,0,0,4">
-                        <TextBlock DockPanel.Dock="Left" Text="{t:Text Units.OwnModel.Mid}" Width="34" VerticalAlignment="Center" />
-                        <Button DockPanel.Dock="Right" Content="&#xD7;" Style="{StaticResource IconButton}" Margin="4,0,0,0" Tag="Mid" Click="ClearLevelClicked"
+                    <!-- one grid for both rows: the labels' column is as wide as the longer label in the language shown -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="34" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="{t:Text Units.OwnModel.Mid}" VerticalAlignment="Center" Margin="0,0,6,4" />
+                        <controls:Bevel Grid.Column="1" Style="{StaticResource SunkenBox}" Padding="6,3" Margin="0,0,0,4"><controls:PathText x:Name="MidPath" /></controls:Bevel>
+                        <Button Grid.Column="2" Content="{t:Text Units.OwnModel.Browse}" Margin="6,0,0,4" Tag="Mid" Click="BrowseLevelClicked" />
+                        <Button Grid.Column="3" Content="&#xD7;" Style="{StaticResource IconButton}" Margin="4,0,0,4" Tag="Mid" Click="ClearLevelClicked"
                                 ToolTip="{t:Text Units.OwnModel.ClearLevel.Tip}" />
-                        <Button DockPanel.Dock="Right" Content="{t:Text Units.OwnModel.Browse}" Margin="6,0,0,0" Tag="Mid" Click="BrowseLevelClicked" />
-                        <controls:Bevel Style="{StaticResource SunkenBox}" Padding="6,3"><controls:PathText x:Name="MidPath" /></controls:Bevel>
-                    </DockPanel>
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Left" Text="{t:Text Units.OwnModel.Low}" Width="34" VerticalAlignment="Center" />
-                        <Button DockPanel.Dock="Right" Content="&#xD7;" Style="{StaticResource IconButton}" Margin="4,0,0,0" Tag="Low" Click="ClearLevelClicked"
+                        <TextBlock Grid.Row="1" Text="{t:Text Units.OwnModel.Low}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <controls:Bevel Grid.Row="1" Grid.Column="1" Style="{StaticResource SunkenBox}" Padding="6,3"><controls:PathText x:Name="LowPath" /></controls:Bevel>
+                        <Button Grid.Row="1" Grid.Column="2" Content="{t:Text Units.OwnModel.Browse}" Margin="6,0,0,0" Tag="Low" Click="BrowseLevelClicked" />
+                        <Button Grid.Row="1" Grid.Column="3" Content="&#xD7;" Style="{StaticResource IconButton}" Margin="4,0,0,0" Tag="Low" Click="ClearLevelClicked"
                                 ToolTip="{t:Text Units.OwnModel.ClearLevel.Tip}" />
-                        <Button DockPanel.Dock="Right" Content="{t:Text Units.OwnModel.Browse}" Margin="6,0,0,0" Tag="Low" Click="BrowseLevelClicked" />
-                        <controls:Bevel Style="{StaticResource SunkenBox}" Padding="6,3"><controls:PathText x:Name="LowPath" /></controls:Bevel>
-                    </DockPanel>
+                    </Grid>
                     <TextBlock Text="{t:Text Units.OwnModel.Levels.Note}" Foreground="{DynamicResource muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
                 </StackPanel>
             </StackPanel>
@@ -111,9 +123,13 @@
             <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}" Margin="0,8,0,0"><TextBlock Text="{t:Text Units.OwnModel.Parts}" /></controls:Bevel>
             <TextBlock x:Name="PartsNote" DockPanel.Dock="Bottom" Foreground="{DynamicResource muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
             <controls:Bevel x:Name="PartsBox" Style="{StaticResource SunkenBox}">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                    <StackPanel x:Name="PartsList" />
-                </ScrollViewer>
+                <DockPanel>
+                    <!-- what each column is; it stays while the parts scroll, and keeps clear of their scrollbar -->
+                    <Border x:Name="PartsHeader" DockPanel.Dock="Top" Background="{DynamicResource panel}" BorderBrush="{DynamicResource line}" BorderThickness="0,0,0,1" />
+                    <ScrollViewer x:Name="PartsScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" ScrollChanged="PartsScrolled">
+                        <StackPanel x:Name="PartsList" />
+                    </ScrollViewer>
+                </DockPanel>
             </controls:Bevel>
         </DockPanel>
     </Grid>

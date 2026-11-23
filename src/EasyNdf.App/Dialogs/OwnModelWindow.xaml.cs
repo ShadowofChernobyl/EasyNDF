@@ -54,17 +54,36 @@ public partial class OwnModelWindow : UserControl
     {
         if (!DoneButton.IsEnabled) return;
         OwnModel? chosen;
+        // the files kept now go again if the change is refused: each try would otherwise leave another copy behind
+        var keptNow = new List<string>();
         try
         {
-            chosen = Panel.UsesOwn ? Panel.Keep(descriptor, keep) : null;
+            chosen = Panel.UsesOwn ? Panel.Keep(descriptor, (bytes, name) =>
+            {
+                string kept = keep(bytes, name);
+                keptNow.Add(kept);
+                return kept;
+            }) : null;
         }
         catch (Exception problem) when (problem is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             HintText.Text = Texts.Get("Units.OwnModel.NotKept", ("problem", problem.Message));
             HintText.SetResourceReference(TextBlock.ForegroundProperty, "warn");
+            DeleteKept(keptNow);
             return;
         }
         if (done(chosen)) Close();
+        else DeleteKept(keptNow);
+    }
+
+    /// <summary>Deletes the model files kept for a change that was not made after all.</summary>
+    private static void DeleteKept(List<string> files)
+    {
+        foreach (string file in files)
+        {
+            try { File.Delete(file); }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
+        }
     }
 
     private void CancelClicked(object sender, RoutedEventArgs e) => Close();

@@ -230,7 +230,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     {
         AddNote(Note("Rules.Editor.Text.Note"));
         // as tall as the Table rule's box: twelve lines of the code font
-        var lines = TextArea(FileAndTextRules.LinesKey, "YSM_UNIT_NAME;Heli Zopium Express\nYSM_WEAPON_NAME;Zombie Bite");
+        var lines = TextArea(FileAndTextRules.LinesKey, "MYMOD_UNIT_NAME;Long Range Patrol\nMYMOD_WEAPON_NAME;81 mm Mortar");
         lines.Height = 12 * 17.390625 + 8 + 2;
         parts.Add(lines);
         int count = FileAndTextRules.LinesOf(JsonValues.AsText(parameters[FileAndTextRules.LinesKey])).Count;
@@ -412,7 +412,8 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     /// <summary>A text box of several lines in the code font, for a setting.</summary>
     private TextBox TextArea(string key, string placeholder)
     {
-        var box = new TextBox { Text = JsonValues.AsText(parameters[key]), Tag = placeholder, ToolTip = TipOrNone(placeholder) };
+        // the lines shown while the box is empty are an example: its tooltip says so, on a line of its own above them
+        var box = new TextBox { Text = JsonValues.AsText(parameters[key]), Tag = placeholder, ToolTip = placeholder == "" ? null : Texts.Get("Rules.Editor.Example", ("sample", placeholder)) };
         box.SetResourceReference(FrameworkElement.StyleProperty, "TextArea");
         box.TextChanged += (_, _) => { parameters[key] = box.Text; changed(); };
         return box;

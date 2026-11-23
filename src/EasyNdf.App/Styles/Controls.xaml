@@ -549,6 +549,8 @@
         <Setter Property="Padding" Value="4" />
         <Setter Property="AcceptsReturn" Value="True" />
         <Setter Property="AcceptsTab" Value="True" />
+        <!-- from the top, as a web page's textarea: a tall box otherwise puts a short text in its middle -->
+        <Setter Property="VerticalContentAlignment" Value="Top" />
         <Setter Property="TextWrapping" Value="NoWrap" />
         <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />

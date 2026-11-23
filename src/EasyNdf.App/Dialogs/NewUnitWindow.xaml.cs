@@ -422,6 +422,7 @@ public partial class NewUnitWindow : UserControl
     private void FillNationList()
     {
         NationList.Children.Clear();
+        nationCountTexts.Clear();
         foreach (string side in UnitNames.SidesOf(game).Where(side => filter.Side == "" || filter.Side == side))
         {
             Dictionary<string, int> counts = filter.NationCounts(units, side);
@@ -438,6 +439,7 @@ public partial class NewUnitWindow : UserControl
         var mark = new NationMark(nation, side == UnitNames.SidesOf(game)[0]) { Margin = new Thickness(0, 0, 6, 0) };
         var countText = new TextBlock { Text = Texts.Number(count), FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) };
         countText.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        nationCountTexts[(side, nation)] = countText;
         var name = new TextBlock { Text = UnitNames.Nation(nation), TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(tick, Dock.Left);
         DockPanel.SetDock(mark, Dock.Left);
@@ -462,6 +464,7 @@ public partial class NewUnitWindow : UserControl
     private void FillFactoryTabs()
     {
         FactoryTabs.Children.Clear();
+        factoryCountTexts.Clear();
         Dictionary<string, int> counts = filter.FactoryCounts(units);
         FactoryTabs.Children.Add(FactoryTab("", Texts.Get("Units.Factory.All.Short"), Texts.Get("Units.Factory.All"), counts.Values.Sum()));
         foreach (string factory in UnitNames.FactoriesOf(game))
@@ -472,6 +475,7 @@ public partial class NewUnitWindow : UserControl
     {
         var countText = new System.Windows.Documents.Run(" " + Texts.Number(count)) { FontWeight = FontWeights.Normal, FontSize = 11 };
         countText.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "muted");
+        factoryCountTexts[factory] = countText;
         var label = new TextBlock { Inlines = { new System.Windows.Documents.Run(shortName), countText } };
         var tab = new ToggleButton { Content = label, Style = (Style)FindResource("FactoryTab"), IsChecked = filter.Factory == factory, ToolTip = name };
         tab.Click += (_, _) =>
@@ -627,11 +631,57 @@ public partial class NewUnitWindow : UserControl
         return null;
     }
 
+    /// <summary>Waits for a pause in the typing before the units are found, as the Armory's Find does: each letter no longer redraws the list.</summary>
+    private readonly System.Windows.Threading.DispatcherTimer searchPause = new() { Interval = TimeSpan.FromMilliseconds(160) };
+
     private void SearchChanged(object sender, TextChangedEventArgs e)
     {
+        if (searchPause.Tag is null)
+        {
+            searchPause.Tag = true;
+            searchPause.Tick += (_, _) =>
+            {
+                searchPause.Stop();
+                if (filter.Text == SearchBox.Text.Trim()) return;
+                filter.Text = SearchBox.Text.Trim();
+                ShowFound();
+            };
+        }
+        searchPause.Stop();
         if (fillingLists) return;
-        filter.Text = SearchBox.Text.Trim();
-        FillModels();
+        searchPause.Start();
+    }
+
+    /// <summary>
+    /// The units found, after the text typed changed: the list, and how many units each nation and type tab would show.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed: the nations' rows and the type tabs stay as they are, and only their counts are written again.
+    /// Building them anew at each change took most of the time a letter typed took to show. Keep it that way when tidying.
+    /// </remarks>
+    private void ShowFound()
+    {
+        ShowCounts();
+        FillModelList();
+        ShowModelDetails();
+        ShowButtons();
+    }
+
+    /// <summary>Each nation's count in the nation list, by side and nation, and each type tab's, by type ("" for ALL): written again as the text typed changes.</summary>
+    private readonly Dictionary<(string Side, string Nation), TextBlock> nationCountTexts = [];
+    private readonly Dictionary<string, System.Windows.Documents.Run> factoryCountTexts = [];
+
+    /// <summary>Writes the counts in the nation list and on the type tabs again, as the filters leave them now.</summary>
+    private void ShowCounts()
+    {
+        foreach (IGrouping<string, KeyValuePair<(string Side, string Nation), TextBlock>> side in nationCountTexts.GroupBy(row => row.Key.Side))
+        {
+            Dictionary<string, int> counts = filter.NationCounts(units, side.Key);
+            foreach (KeyValuePair<(string Side, string Nation), TextBlock> row in side) row.Value.Text = Texts.Number(counts.GetValueOrDefault(row.Key.Nation));
+        }
+        Dictionary<string, int> byFactory = filter.FactoryCounts(units);
+        foreach ((string factory, System.Windows.Documents.Run count) in factoryCountTexts)
+            count.Text = " " + Texts.Number(factory == "" ? byFactory.Values.Sum() : byFactory.GetValueOrDefault(factory));
     }
 
     private void RoleFilterChosen(object sender, SelectionChangedEventArgs e)
@@ -941,17 +991,24 @@ public partial class NewUnitWindow : UserControl
             Role = role == modelUnit.Role ? null : role,
             PictureFile = pictureFile,
         };
-        // a model of the user's own, its files kept with the app's pictures
+        // a model of the user's own, its files kept with the app's pictures; those kept now go again if the unit is refused
+        var keptNow = new List<string>();
         if (TakesOwnModels && ReferenceEquals(ownModelFor, modelUnit) && OwnModelStep.UsesOwn)
         {
             try
             {
-                made.OwnModel = OwnModelStep.Keep(made.Descriptor, keepModelFile);
+                made.OwnModel = OwnModelStep.Keep(made.Descriptor, (bytes, fileName) =>
+                {
+                    string kept = keepModelFile(bytes, fileName);
+                    keptNow.Add(kept);
+                    return kept;
+                });
             }
             catch (Exception problem) when (problem is IOException or UnauthorizedAccessException or InvalidDataException)
             {
                 HintText.Text = Texts.Get("Units.OwnModel.NotKept", ("problem", problem.Message));
                 HintText.SetResourceReference(TextBlock.ForegroundProperty, "warn");
+                DeleteKept(keptNow);
                 return;
             }
         }
@@ -965,6 +1022,18 @@ public partial class NewUnitWindow : UserControl
         }
         List<ModWeapon> copies = ReferenceEquals(weaponsFor, modelUnit) ? [.. pendingWeapons.Copies] : [];
         if (create(made, copies)) Close();
+        // refused (a file missing on the Files tab): each try would otherwise leave another copy of the model's files behind
+        else DeleteKept(keptNow);
+    }
+
+    /// <summary>Deletes the model files kept for a unit that was not made after all.</summary>
+    private static void DeleteKept(List<string> files)
+    {
+        foreach (string file in files)
+        {
+            try { File.Delete(file); }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
+        }
     }
 
     /// <summary>
@@ -1059,6 +1128,18 @@ public partial class NewUnitWindow : UserControl
     private void FitWidth()
     {
         if (Backdrop.ActualWidth <= 0) return;
+        ShowFullSizeButton();
+        if (IsFullSize)
+        {
+            // as large as the app's window, on every step: the steps take all the height the title and foot leave
+            Box.Width = Backdrop.ActualWidth;
+            Box.MaxHeight = Backdrop.ActualHeight;
+            double all = Math.Max(LeastStepHeight, Backdrop.ActualHeight - TitleAndFoot);
+            ModelStep.Height = WeaponsStep.Height = OwnModelStep.Height = all;
+            StatsStep.MaxHeight = all;
+            FitSideColumns(Box.Width - Box.Padding.Left - Box.Padding.Right);
+            return;
+        }
         double widest = step is Step.Model or Step.OwnModel or Step.Weapons ? WidestWindow : WidestForBoxes;
         Box.Width = Math.Min(widest, (Backdrop.ActualWidth + 20) * 0.96);
         // never higher than the main window: the step gives up height, so the buttons at the foot always show
@@ -1069,6 +1150,27 @@ public partial class NewUnitWindow : UserControl
         WeaponsStep.Height = stepHeight;
         OwnModelStep.Height = Math.Max(stepHeight, Math.Min(TallestStep + 80, Backdrop.ActualHeight * 0.96 - TitleAndFoot));
         FitSideColumns(Box.Width - Box.Padding.Left - Box.Padding.Right);
+    }
+
+    /// <summary>Where it is kept whether the window is as large as the app's own.</summary>
+    private const string FullSizeKey = "newUnitFullSize";
+
+    /// <summary>Whether the window fills the app's window, as last chosen with the button beside "?"; its usual size until then.</summary>
+    private static bool IsFullSize => AppData.Current.State[FullSizeKey] is System.Text.Json.Nodes.JsonValue kept && kept.TryGetValue(out bool full) && full;
+
+    /// <summary>The button as Windows draws a title bar's: "maximize" at the usual size, "restore" at full size.</summary>
+    private void ShowFullSizeButton()
+    {
+        FullSizeButton.Content = IsFullSize ? "\uE923" : "\uE922";
+        FullSizeButton.ToolTip = Texts.Get(IsFullSize ? "Main.Restore.Tip" : "Main.Maximize.Tip");
+        System.Windows.Automation.AutomationProperties.SetName(FullSizeButton, (string)FullSizeButton.ToolTip);
+    }
+
+    private void FullSizeClicked(object sender, RoutedEventArgs e)
+    {
+        AppData.Current.State[FullSizeKey] = !IsFullSize;
+        AppData.Current.SaveState();
+        FitWidth();
     }
 
     /// <summary>The least height a step is given, in a very small main window.</summary>

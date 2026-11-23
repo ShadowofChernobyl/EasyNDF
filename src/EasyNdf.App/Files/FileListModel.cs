@@ -842,6 +842,20 @@ public sealed class FileListModel : INotifyPropertyChanged
         FilesChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Takes out the rows a test picks, without a notice: the files of the source chosen before, as another source is
+    /// chosen and its files take their place. Files on disk are not touched. Gives how many went.
+    /// </summary>
+    public int RemoveWhere(Func<FileEntry, bool> picked)
+    {
+        int removed = entries.RemoveAll(entry => picked(entry));
+        if (removed == 0) return 0;
+        lastClicked = null;
+        Refilter();
+        FilesChanged?.Invoke();
+        return removed;
+    }
+
     /// <summary>"Remove all": empties the list. Files on disk are not touched.</summary>
     public void RemoveAll()
     {

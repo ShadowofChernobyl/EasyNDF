@@ -1091,7 +1091,7 @@
     },
     "Divisions.Transports.GiveAll": {
       "english": "Give Every Unit All Its Transports",
-      "text": "“将所有运输工具分配给每个单位”",
+      "text": "将所有运输工具分配给每个单位",
       "machine": true
     },
     "Divisions.Transports.GiveAll.Tip": {
@@ -1326,7 +1326,7 @@
     },
     "Divisions.Delete.Ask": {
       "english": "Delete {division} from the mod?",
-      "text": "“是否从模组中删除{division}？”",
+      "text": "是否从模组中删除{division}？",
       "machine": true
     },
     "Divisions.Revert.Ask": {
@@ -2296,7 +2296,7 @@
     },
     "Divisions.Generate.AsTheGame.Short": {
       "english": "As the game's",
-      "text": "“如游戏所示”",
+      "text": "如游戏所示",
       "machine": true
     },
     "Divisions.Generate.LeaveOut": {
@@ -5566,7 +5566,7 @@
     },
     "Files.Details.Filter.WithEdits": {
       "english": "With Edits",
-      "text": "“含编辑”",
+      "text": "含编辑",
       "machine": true
     },
     "Files.Details.Filter.WithEdits.Tip": {
@@ -7371,7 +7371,7 @@
     },
     "Main.Close.Anyway": {
       "english": "Close Anyway",
-      "text": "“仍要关闭”",
+      "text": "仍要关闭",
       "machine": true
     },
     "Main.Error": {
@@ -7575,8 +7575,8 @@
       "machine": true
     },
     "Main.Usage.Memory.What": {
-      "english": "Task Manager's Memory column for EasyNDF, split by what the app holds it for. It turns yellow above 900 MB, the aim, and red above 2 GB.",
-      "text": "任务管理器中EasyNDF的“内存”列，按应用程序的内存占用情况分类显示。当内存占用超过900 MB（目标值）时，该列会变为黄色；超过2 GB时则变为红色。",
+      "english": "Task Manager's Memory column for EasyNDF, split by what the app holds it for. It turns yellow above 10% of this PC's memory and red above 25%.",
+      "text": "任务管理器中 EasyNDF 的“内存”列，按应用占用的用途拆分。超过本机内存的 10% 时变黄，超过 25% 时变红。",
       "machine": true
     },
     "Main.Usage.DotNet": {
@@ -8692,7 +8692,7 @@
     },
     "Rules.Editor.Choice.SetTo.SetAsThe": {
       "english": "Set as the new value",
-      "text": "“设为新值”",
+      "text": "设为新值",
       "machine": true
     },
     "Rules.Editor.Choice.Multiply.MultipliedIntoThe": {
@@ -9907,7 +9907,7 @@
     },
     "Rules.Menu.AppliesTo": {
       "english": "Applies To…",
-      "text": "“适用于…”",
+      "text": "适用于…",
       "machine": true
     },
     "Rules.Preset.NoFile": {
@@ -11775,7 +11775,7 @@
     },
     "Units.Source": {
       "english": "Source",
-      "text": "源文件",
+      "text": "来源",
       "machine": true
     },
     "Units.SourceChoice.Tip": {
@@ -12069,8 +12069,8 @@
       "machine": true
     },
     "Units.New.Stat.Armor.Tip": {
-      "english": "{family} armor: a whole number from {lowest} to {highest}, the levels the game's DamageResistance.ndf gives it; empty keeps the model unit's value",
-      "text": "{family}装甲：一个介于{lowest}和{highest}之间的整数，即游戏DamageResistance.ndf文件中为其设定的等级；留空则保留模型单位的原始值",
+      "english": "{family} armor: a whole number from {lowest} to {highest}, the levels the game's DamageResistance.ndf gives it; empty keeps the base unit's value",
+      "text": "{family}装甲：一个介于{lowest}和{highest}之间的整数，即游戏DamageResistance.ndf文件中为其设定的等级；留空则保留基础单位的原始值",
       "machine": true
     },
     "Units.Check.Armor": {
@@ -12641,7 +12641,7 @@
     },
     "Units.Compare.Pinned": {
       "english": "Pinned: the others compare to it",
-      "text": "“固定”：其他单位将与之进行比较",
+      "text": "固定：其他单位将与之进行比较",
       "machine": true
     },
     "Units.Compare.ComparedTo": {
@@ -13296,7 +13296,7 @@
     },
     "Weapons.Compare.Pinned": {
       "english": "Pinned: the others compare to it",
-      "text": "“固定”：其他武器将与之进行比较",
+      "text": "固定：其他武器将与之进行比较",
       "machine": true
     },
     "Weapons.Compare.Remove.Tip": {
@@ -13331,7 +13331,7 @@
     },
     "Weapons.Menu.NewRule": {
       "english": "New Rule for This Weapon…",
-      "text": "“为此武器设置新规则…”",
+      "text": "为此武器设置新规则…",
       "machine": true
     },
     "Weapons.Menu.RemoveFromCompare": {
@@ -15227,8 +15227,8 @@
       "machine": true
     },
     "Units.Rule.New": {
-      "english": "new unit, model of {unit}",
-      "text": "新单位，{unit}型号",
+      "english": "new unit, based on {unit}",
+      "text": "新单位，基于{unit}",
       "machine": true
     },
     "Units.Rule.Changed": {
@@ -15262,8 +15262,8 @@
       "machine": true
     },
     "Units.OwnModel.Own": {
-      "english": "Import Model",
-      "text": "导入模型",
+      "english": "Import Model…",
+      "text": "导入模型…",
       "machine": true
     },
     "Units.OwnModel.Own.Tip": {
@@ -15337,8 +15337,8 @@
       "machine": true
     },
     "Units.OwnModel.Hint.Copied": {
-      "english": "Keeps the copied unit's model.",
-      "text": "保留所复制单位的模型。",
+      "english": "Keeps the base unit's model.",
+      "text": "保留基础单位的模型。",
       "machine": true
     },
     "Units.OwnModel.Hint.Pick": {
@@ -15419,11 +15419,6 @@
     "Units.OwnModel.Part.Count": {
       "english": "{count} part|{count} parts",
       "text": "{count} 个部件",
-      "machine": true
-    },
-    "Units.OwnModel.Part.Own": {
-      "english": "Original",
-      "text": "原有",
       "machine": true
     },
     "Units.OwnModel.Part.Found": {
@@ -15542,8 +15537,8 @@
       "machine": true
     },
     "Units.OwnModel.Check.SizeOk": {
-      "english": "{length} m long, close to the copied unit's {theirs} m.",
-      "text": "长 {length} 米，接近所复制单位的 {theirs} 米。",
+      "english": "{length} m long, close to the base unit's {theirs} m.",
+      "text": "长 {length} 米，接近基础单位的 {theirs} 米。",
       "machine": true
     },
     "Units.OwnModel.Check.NoTurret": {
@@ -15582,7 +15577,7 @@
       "machine": true
     },
     "Units.OwnModel.Check.AllParts": {
-      "english": "All {count} parts found.",
+      "english": "The part was found.|All {count} parts found.",
       "text": "已找到全部 {count} 个部件。",
       "machine": true
     },
@@ -15807,8 +15802,8 @@
       "machine": true
     },
     "Units.New.ComesWith": {
-      "english": "Comes With This Model",
-      "text": "随此模型附带",
+      "english": "Comes With This Unit",
+      "text": "此单位自带",
       "machine": true
     },
     "Units.New.ComesWith.Model": {
@@ -15867,8 +15862,8 @@
       "machine": true
     },
     "Units.New.Off.Model": {
-      "english": "Choose a unit whose model to use first",
-      "text": "请先选择要使用的单位模型",
+      "english": "Choose a base unit first",
+      "text": "请先选择基础单位",
       "machine": true
     },
     "Units.New.Off.Name": {
@@ -15887,8 +15882,8 @@
       "machine": true
     },
     "Units.New.Hint.ModelChosen": {
-      "english": "Model of {unit}.",
-      "text": "{unit} 的模型。",
+      "english": "Based on {unit}.",
+      "text": "基于 {unit}。",
       "machine": true
     },
     "Units.New.Hint.Name": {
@@ -15957,13 +15952,13 @@
       "machine": true
     },
     "Units.New.Picture.Model.Tip": {
-      "english": "Use the card picture of the unit whose model it uses",
-      "text": "使用该单位所采用的模型对应的卡牌图片",
+      "english": "Use the base unit's card picture",
+      "text": "使用基础单位的卡牌图片",
       "machine": true
     },
     "Units.New.Picture.Own": {
       "english": "My Own…",
-      "text": "“自定义…”",
+      "text": "自定义…",
       "machine": true
     },
     "Units.New.Picture.Own.Tip": {
@@ -15977,8 +15972,8 @@
       "machine": true
     },
     "Units.New.ModelOf": {
-      "english": "{type} · model of {unit}",
-      "text": "{type} · {unit} 的模型",
+      "english": "{type} · based on {unit}",
+      "text": "{type} · 基于 {unit}",
       "machine": true
     },
     "Units.New.Unnamed": {
@@ -15992,13 +15987,13 @@
       "machine": true
     },
     "Units.New.Stat.Whole.Tip": {
-      "english": "A whole number, 0 or more; empty keeps the model unit's value",
-      "text": "一个整数，0 或更大；留空则保留模型单位的原始值",
+      "english": "A whole number, 0 or more; empty keeps the base unit's value",
+      "text": "一个整数，0 或更大；留空则保留基础单位的原始值",
       "machine": true
     },
     "Units.New.Stat.Decimal.Tip": {
-      "english": "A number, 0 or more; empty keeps the model unit's value",
-      "text": "一个数字，0 或更大；留空则保留模型单位的默认值",
+      "english": "A number, 0 or more; empty keeps the base unit's value",
+      "text": "一个数字，0 或更大；留空则保留基础单位的默认值",
       "machine": true
     },
     "Units.Edit.UnitMissing": {
@@ -16810,8 +16805,8 @@
       "machine": true
     },
     "Tour.Files.Source": {
-      "english": "**Source** picks your game or a mod; [[Add Its Files]] lists its files once one is picked. Here the tutorial uses **Sample Data**.",
-      "text": "**来源**用于选择您的游戏或模组；选择之后，[[添加其文件]]会列出其文件。本教程在此使用**示例数据**。",
+      "english": "**Source** picks your game or a mod, and its files are listed once one is picked. Here the tutorial uses **Sample Data**.",
+      "text": "**来源**用于选择您的游戏或模组；选择之后会列出其文件。本教程在此使用**示例数据**。",
       "machine": true
     },
     "Tour.Files.Add": {
@@ -17231,7 +17226,7 @@
     },
     "Help.Page.where.Title": {
       "english": "Where Is",
-      "text": "“Where Is”",
+      "text": "Where Is",
       "machine": true
     },
     "Help.Page.where.Html": {
@@ -17837,6 +17832,121 @@
     "Main.Update.Failed": {
       "english": "The update couldn't be downloaded: {reason}",
       "text": "无法下载更新：{reason}",
+      "machine": true
+    },
+    "Units.ModChanges.View": {
+      "english": "View",
+      "text": "查看",
+      "machine": true
+    },
+    "Units.ModChanges.Shown": {
+      "english": "Mods Shown",
+      "text": "显示的模组",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Note": {
+      "english": "{count} mod is on.|{count} mods are on, in the order they run. A lower mod wins where two change the same value.",
+      "text": "已启用 {count} 个模组，按运行顺序排列。两个模组修改同一数值时，靠下的生效。",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.ToMods": {
+      "english": "Open the Mods Tab",
+      "text": "打开模组选项卡",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Close": {
+      "english": "Close",
+      "text": "关闭",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Edited": {
+      "english": "changes saved here",
+      "text": "更改保存在此",
+      "machine": true
+    },
+    "Units.ModEdited": {
+      "english": "Mod Being Edited",
+      "text": "正在编辑的模组",
+      "machine": true
+    },
+    "Units.ModEdited.Tip": {
+      "english": "The mod the Armory's changes are saved in. Only the mods that are on are listed.",
+      "text": "军械库的更改保存在此模组中。只能选择已启用的模组。",
+      "machine": true
+    },
+    "Units.ModEdited.New": {
+      "english": "New Mod…",
+      "text": "新建模组…",
+      "machine": true
+    },
+    "Units.OwnModel.UseBase": {
+      "english": "Use Base Unit's Model",
+      "text": "使用基础单位的模型",
+      "machine": true
+    },
+    "Units.OwnModel.Using": {
+      "english": "Using {unit}'s model.",
+      "text": "使用 {unit} 的模型。",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.UnitPart": {
+      "english": "Unit Part",
+      "text": "单位部件",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.FilePart": {
+      "english": "Part in Your File",
+      "text": "文件中的部件",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.Found": {
+      "english": "Found",
+      "text": "已找到",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.ModelPart": {
+      "english": "Model Part",
+      "text": "模型部件",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.Note.Base": {
+      "english": "The parts of {unit} that move, and the model part each one uses.",
+      "text": "{unit} 的活动部件，以及每个部件使用的模型部件。",
+      "machine": true
+    },
+    "Settings.AddSourceFiles": {
+      "english": "Add the source's files",
+      "text": "添加来源的文件",
+      "machine": true
+    },
+    "Settings.AddSourceFiles.Note": {
+      "english": "Choosing a Source lists all its files, in place of the files of the source chosen before. Files added by hand stay. Off: Add Its Files, beside the Source, lists them.",
+      "text": "选择来源后会列出其全部文件，并替换之前所选来源的文件。手动添加的文件会保留。关闭时：由来源旁的“添加其文件”列出。",
+      "machine": true
+    },
+    "Editor.Value.NumberGivenTwice": {
+      "english": "{name}: {value} is given to both {first} and {second}. Each needs a number of its own; a game update or another mod may have taken it.",
+      "text": "{name}：{value} 同时分配给了 {first} 和 {second}。每一项都需要自己的编号；游戏更新或其他模组可能已占用该编号。",
+      "machine": true
+    },
+    "Divisions.Heading.HideSlots": {
+      "english": "Hide Slots",
+      "text": "隐藏卡槽",
+      "machine": true
+    },
+    "Divisions.Heading.ShowSlots": {
+      "english": "Show Slots",
+      "text": "显示卡槽",
+      "machine": true
+    },
+    "Divisions.Heading.Slots.Tip": {
+      "english": "Show or hide the lines of card slots, in every type",
+      "text": "在所有类型中显示或隐藏卡槽行",
+      "machine": true
+    },
+    "Rules.Editor.Example": {
+      "english": "Example:\n{sample}",
+      "text": "示例：\n{sample}",
       "machine": true
     }
   }

@@ -41,7 +41,8 @@ public partial class OwnModelPanel : UserControl
     public OwnModelPanel()
     {
         InitializeComponent();
-        TexturesBox.Height = AppData.Current.State[TexturesHeightKey]?.GetValue<double>() is double kept and >= LeastListHeight ? kept : TexturesHeight;
+        wantedTexturesHeight = AppData.Current.State[TexturesHeightKey]?.GetValue<double>() is double kept and >= LeastListHeight ? kept : TexturesHeight;
+        TexturesBox.Height = wantedTexturesHeight;
         TexturesGrip.Target = TexturesBox;
         TexturesGrip.HeightChosen += ChooseTexturesHeight;
         TexturesGrip.HeightSettled += () =>
@@ -65,6 +66,31 @@ public partial class OwnModelPanel : UserControl
     {
         double most = Math.Max(LeastListHeight, TexturesBox.ActualHeight + PartsBox.ActualHeight - LeastListHeight);
         TexturesBox.Height = height is double asked ? Math.Clamp(asked, LeastListHeight, most) : TexturesHeight;
+        wantedTexturesHeight = TexturesBox.Height;
+    }
+
+    /// <summary>The textures list's height as the grip left it; it is shown lower while the panel has no room for it.</summary>
+    private double wantedTexturesHeight;
+
+    private void SideResized(object sender, SizeChangedEventArgs e) => FitListsSoon();
+
+    private void FitListsSoon() => Dispatcher.BeginInvoke(FitLists, System.Windows.Threading.DispatcherPriority.Loaded);
+
+    /// <summary>
+    /// Keeps a few rows of the parts list in view: a height kept for the textures list in a large window left the
+    /// parts list none at all in a small one. The textures list gives up what the parts list is short of, and takes
+    /// its own height back when there is room again.
+    /// </summary>
+    private void FitLists()
+    {
+        if (TexturesBox.Visibility != Visibility.Visible || !IsVisible) return;
+        double height = TexturesBox.Height, room = PartsBox.ActualHeight - LeastListHeight;
+        double fitted = room < -0.5 ? Math.Max(LeastListHeight, height + room)
+            : room > 0.5 && height < wantedTexturesHeight ? Math.Min(wantedTexturesHeight, height + room) : height;
+        if (Math.Abs(fitted - height) < 0.5) return;
+        TexturesBox.Height = fitted;
+        // a parts list with no height at all hides how much it is short of: looked at again once laid out
+        FitListsSoon();
     }
 
     /// <summary>Raised when the choice or its checks change, for the window's buttons and hint.</summary>
@@ -106,8 +132,8 @@ public partial class OwnModelPanel : UserControl
         own = current is not null;
         texturesOpen = false;
         problemsOpenTextures = false;
-        CopiedChoice.Content = unit.Name;
-        CopiedChoice.ToolTip = Texts.Get("Units.OwnModel.Copied.Tip", ("unit", unit.Name));
+        BaseButton.ToolTip = Texts.Get("Units.OwnModel.Copied.Tip", ("unit", unit.Name));
+        UsingText.Text = Texts.Get("Units.OwnModel.Using", ("unit", unit.Name));
         camera.Yaw = 310;
         camera.Pitch = 18;
         camera.Zoom = 1;
@@ -157,30 +183,46 @@ public partial class OwnModelPanel : UserControl
 
     private async Task ReadCopied(Unit unit, UnitSource from, int attempt)
     {
-        CopiedModel read = await Task.Run(() => CopiedModel.Read(unit, from));
+        CopiedModel read;
+        try
+        {
+            read = await Task.Run(() => CopiedModel.Read(unit, from));
+        }
+        catch (Exception problem)
+        {
+            // whatever stops the game's model being read is said, rather than "Reading…" left up for good
+            SessionLog.Write("Error", problem.ToString());
+            read = new CopiedModel(null, [], null, null, null, problem.Message);
+        }
         if (attempt != reading) return;
         copiedModel = read;
         if (picked is not null && read.Mesh is not null) fit = new ModelFit(picked.Scene, read.Mesh);
         ShowAll();
     }
 
+    /// <summary>Counts the files picked: a slow file's read, finishing after a file picked later, is dropped.</summary>
+    private int picking;
+
     private async Task ReadPicked(string file, int attempt)
     {
+        int pickedAttempt = ++picking;
         StatusText.Text = Texts.Get("Units.OwnModel.Reading");
         try
         {
             IReadOnlyDictionary<string, string>? known = keptPictures;
             PickedModel read = await Task.Run(() => PickedModel.Read(file, known));
-            if (attempt != reading) return;
+            if (attempt != reading || picking != pickedAttempt) return;
             picked = read;
             fit = copiedModel?.Mesh is ModelMesh mesh ? new ModelFit(read.Scene, mesh) : null;
             // a model missing maps opens its pictures' list, so what is missing shows
             problemsOpenTextures = read.Materials.Any(material => material.Missing.Any());
             texturesOpen = problemsOpenTextures;
         }
-        catch (Exception problem) when (problem is IOException or InvalidDataException or UnauthorizedAccessException)
+        catch (Exception problem)
         {
-            if (attempt != reading) return;
+            // any file may be picked: whatever stops it being read is said, rather than "Reading…" left up for good
+            if (problem is not (IOException or InvalidDataException or UnauthorizedAccessException)) SessionLog.Write("Error", problem.ToString());
+            if (attempt != reading || picking != pickedAttempt) return;
             picked = null;
             fit = null;
             StatusText.Text = Texts.Get("Units.OwnModel.CannotRead", ("problem", problem.Message));
@@ -192,8 +234,9 @@ public partial class OwnModelPanel : UserControl
 
     private void ShowAll()
     {
-        CopiedChoice.IsChecked = !own;
-        OwnChoice.IsChecked = own;
+        ImportButton.Visibility = own ? Visibility.Collapsed : Visibility.Visible;
+        BaseButton.Visibility = own ? Visibility.Visible : Visibility.Collapsed;
+        UsingText.Visibility = own ? Visibility.Collapsed : Visibility.Visible;
         FileBox.Visibility = own ? Visibility.Visible : Visibility.Collapsed;
         RealityText.Visibility = own && picked is not null ? Visibility.Visible : Visibility.Collapsed;
         FilePath.Text = picked?.File ?? Texts.Get("Units.OwnModel.NoFile");
@@ -237,6 +280,7 @@ public partial class OwnModelPanel : UserControl
         TexturesButton.Content = Texts.Get(texturesOpen ? "Units.OwnModel.Hide" : "Units.OwnModel.Show");
         TexturesBox.Visibility = texturesOpen ? Visibility.Visible : Visibility.Collapsed;
         TexturesGrip.Visibility = TexturesBox.Visibility;
+        FitListsSoon();
         // shown under the detail levels while a file of the user's own is used
         TexturesArea.Visibility = own ? Visibility.Visible : Visibility.Collapsed;
         foreach (MaterialMaps material in picked.Materials)
@@ -265,34 +309,68 @@ public partial class OwnModelPanel : UserControl
     {
         PartsList.Children.Clear();
         List<ExpectedPart> expected = fit?.Expected ?? (copiedModel?.Mesh is ModelMesh mesh ? ModelFit.ExpectedOf(mesh) : []);
-        PartsNote.Text = expected.Count == 0 ? "" : Texts.Get("Units.OwnModel.Parts.Note", ("unit", copied?.Name ?? ""));
+        PartsNote.Text = expected.Count == 0 ? "" : Texts.Get(own ? "Units.OwnModel.Parts.Note" : "Units.OwnModel.Parts.Note.Base", ("unit", copied?.Name ?? ""));
+        PartsHeader.Child = expected.Count == 0 ? null : PartsHeaderRow();
         for (int i = 0; i < expected.Count; i++) PartsList.Children.Add(PartRow(expected[i], i));
     }
 
-    private FrameworkElement PartRow(ExpectedPart part, int index)
+    /// <summary>The columns of a parts row: the unit's part, the part for it, and the mark.</summary>
+    private static Grid PartColumns()
     {
         var row = new Grid { Margin = new Thickness(6, 3, 6, 3) };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.2, GridUnitType.Star) });
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
+        return row;
+    }
+
+    /// <summary>
+    /// What each column of the parts list is: the unit's part, then the base unit's model part for it; with a model of
+    /// the user's own, the part of their file, and whether one is found.
+    /// </summary>
+    private Grid PartsHeaderRow()
+    {
+        Grid row = PartColumns();
+        string[] heads = own
+            ? [Texts.Get("Units.OwnModel.Parts.UnitPart"), Texts.Get("Units.OwnModel.Parts.FilePart"), Texts.Get("Units.OwnModel.Parts.Found")]
+            : [Texts.Get("Units.OwnModel.Parts.UnitPart"), Texts.Get("Units.OwnModel.Parts.ModelPart")];
+        for (int column = 0; column < heads.Length; column++)
+        {
+            var head = new TextBlock { Text = heads[column], FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis,
+                HorizontalAlignment = column == 2 ? HorizontalAlignment.Right : HorizontalAlignment.Left };
+            head.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+            Grid.SetColumn(head, column);
+            row.Children.Add(head);
+        }
+        return row;
+    }
+
+    /// <summary>The header's columns stay over the rows' when the list gets a scrollbar: it gives up the scrollbar's width.</summary>
+    private void PartsScrolled(object sender, ScrollChangedEventArgs e) =>
+        PartsHeader.Padding = new Thickness(0, 0, Math.Max(0, PartsScroller.ActualWidth - PartsScroller.ViewportWidth), 0);
+
+    private FrameworkElement PartRow(ExpectedPart part, int index)
+    {
+        Grid row = PartColumns();
         var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         name.Children.Add(new TextBlock { Text = PartName(part), TextTrimming = TextTrimming.CharacterEllipsis });
         var code = new TextBlock { Text = part.IsGroup ? Texts.Count("Units.OwnModel.Part.Count", part.Names.Count, ("count", part.Names.Count)) : part.Names[0],
-            FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis };
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         code.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        name.Children.Add(code);
+        // the base unit's model: its own part beside each of the unit's, with nothing to pick or to find
+        bool baseModel = !own;
+        if (baseModel)
+        {
+            if (part.IsGroup) code.ToolTip = string.Join(", ", part.Names);
+            Grid.SetColumn(code, 1);
+            row.Children.Add(code);
+        }
+        else name.Children.Add(code);
         row.Children.Add(name);
 
         string mark;
         string colour;
-        if (!own || fit is null || picked is null)
-        {
-            var same = new TextBlock { Text = own ? "" : Texts.Get("Units.OwnModel.Part.Own"), VerticalAlignment = VerticalAlignment.Center };
-            same.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-            Grid.SetColumn(same, 1);
-            row.Children.Add(same);
-            (mark, colour) = own ? ("", "muted") : ("✓", "ok");
-        }
+        if (!own || fit is null || picked is null) (mark, colour) = ("", "muted");
         else if (part.IsGroup)
         {
             int found = fit.FoundOf(part);
@@ -385,7 +463,10 @@ public partial class OwnModelPanel : UserControl
         DockPanel.SetDock(sign, Dock.Left);
         row.Children.Add(sign);
         var body = new StackPanel();
-        body.Children.Add(new TextBlock { Text = Texts.Get(check.Text, [.. check.Blanks]), TextWrapping = TextWrapping.Wrap });
+        // a check that counts (its {count}) is said in the form its number takes: "The part was found.", "All 3 parts found."
+        string said = check.Blanks.FirstOrDefault(blank => blank.Name == "count").Value is int count
+            ? Texts.Count(check.Text, count, [.. check.Blanks]) : Texts.Get(check.Text, [.. check.Blanks]);
+        body.Children.Add(new TextBlock { Text = said, TextWrapping = TextWrapping.Wrap });
         if (check.Fix is string fix && check.FixKind is string kind)
         {
             var button = new Button { Content = Texts.Get(check.Fix, [.. check.Blanks.Concat(FixBlanks(kind))]), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 3, 0, 0) };
@@ -476,16 +557,40 @@ public partial class OwnModelPanel : UserControl
         if (renderer is null || ViewFrame.ActualWidth <= 0 || ViewFrame.ActualHeight <= 0) return;
         DpiScale dpi = VisualTreeHelper.GetDpi(this);
         renderer.Resize((int)Math.Round(ViewFrame.ActualWidth * dpi.DpiScaleX), (int)Math.Round(ViewFrame.ActualHeight * dpi.DpiScaleY));
+        FitModel();
         Draw();
     }
+
+    /// <summary>
+    /// Narrows the view for a model too tall to fit (a soldier, a mast), as the Armory's viewer does: its bounding
+    /// box's corners all inside 90% of the picture, seen as the view opens on it, at the view's size now.
+    /// </summary>
+    private void FitModel()
+    {
+        if (shownMesh is not ModelMesh mesh) return;
+        double width = ViewFrame.ActualWidth, height = ViewFrame.ActualHeight;
+        var start = new ModelCamera { Yaw = 310, Pitch = 18 };
+        start.Aim((mesh.Low + mesh.High) / 2, RadiusOf(mesh), width, height);
+        double most = 0;
+        for (int corner = 0; corner < 8; corner++)
+        {
+            var point = new Vector3((corner & 1) != 0 ? mesh.High.X : mesh.Low.X, (corner & 2) != 0 ? mesh.High.Y : mesh.Low.Y, (corner & 4) != 0 ? mesh.High.Z : mesh.Low.Z);
+            (double x, double y, _) = start.Project(point);
+            if (double.IsNaN(x)) continue;
+            most = Math.Max(most, Math.Max(Math.Abs(x - width / 2) / (width / 2), Math.Abs(y - height / 2) / (height / 2)));
+        }
+        camera.Fit = most > 0 ? Math.Min(1, 0.9 / most) : 1;
+    }
+
+    /// <summary>The radius the camera stands back from: half the model's bounding box, corner to corner.</summary>
+    private static float RadiusOf(ModelMesh mesh) => Math.Max(50, (mesh.High - mesh.Low).Length() / 2);
 
     private void Draw()
     {
         if (renderer is null || shownMesh is not ModelMesh mesh || ViewFrame.ActualWidth <= 0 || ViewFrame.ActualHeight <= 0) return;
         double width = ViewFrame.ActualWidth, height = ViewFrame.ActualHeight;
         Vector3 centre = (mesh.Low + mesh.High) / 2;
-        float radius = Math.Max(50, (mesh.High - mesh.Low).Length() / 2);
-        camera.Aim(centre, radius, width, height);
+        camera.Aim(centre, RadiusOf(mesh), width, height);
         var pose = new Matrix4x4[Math.Max(1, mesh.Nodes.Count)];
         Array.Fill(pose, Matrix4x4.Identity);
         renderer.Draw(new FrameView(camera.ViewProjection, camera.Eye, camera.Far, 0, Vector3.Zero), pose);
@@ -582,9 +687,15 @@ public partial class OwnModelPanel : UserControl
 
     private void OwnClicked(object sender, RoutedEventArgs e)
     {
+        // a file picked before (and the base unit's model chosen since) comes back as it was; only with none is one asked
+        // for, and closing that without a file changes nothing: the base unit's model stays up
+        if (picked is null)
+        {
+            PickFile();
+            return;
+        }
         own = true;
-        // a file picked before (and the copied model chosen since) comes back as it was; only with none is one asked for
-        if (picked is not null || !PickFile()) ShowAll();
+        ShowAll();
     }
 
     private void BrowseClicked(object sender, RoutedEventArgs e) => PickFile();

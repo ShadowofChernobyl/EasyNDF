@@ -1091,7 +1091,7 @@
     },
     "Divisions.Transports.GiveAll": {
       "english": "Give Every Unit All Its Transports",
-      "text": "„Jeder Einheit alle ihre Transportmittel zuweisen“",
+      "text": "Jeder Einheit alle ihre Transportmittel zuweisen",
       "machine": true
     },
     "Divisions.Transports.GiveAll.Tip": {
@@ -1101,7 +1101,7 @@
     },
     "Divisions.Transports.TakeAll": {
       "english": "Take Every Unit's Transports Away",
-      "text": "„Entfernen Sie die Transportmittel aller Einheiten“",
+      "text": "Entfernen Sie die Transportmittel aller Einheiten",
       "machine": true
     },
     "Divisions.Transports.TakeAll.Tip": {
@@ -1466,7 +1466,7 @@
     },
     "Divisions.Pane.Emblem.Game": {
       "english": "Game's…",
-      "text": "„Spiel…“",
+      "text": "Spiel…",
       "machine": true
     },
     "Divisions.Pane.Emblem.Game.Tip": {
@@ -4171,7 +4171,7 @@
     },
     "Editor.Descriptors.Show": {
       "english": "Show Descriptor Tree",
-      "text": "„Deskriptor-Baum anzeigen“",
+      "text": "Deskriptor-Baum anzeigen",
       "machine": true
     },
     "Editor.Properties": {
@@ -4420,7 +4420,7 @@
     },
     "Editor.Option.Word.Tip": {
       "english": "Whole Word (Alt+W): not inside a longer name",
-      "text": "„Whole Word“ (Taste Alt+W): nicht innerhalb eines längeren Namens",
+      "text": "Whole Word (Taste Alt+W): nicht innerhalb eines längeren Namens",
       "machine": true
     },
     "Editor.Option.Regex": {
@@ -4440,7 +4440,7 @@
     },
     "Editor.Option.Selection.Tip": {
       "english": "In Selection (Alt+L): Find and Replace All stay inside the text selected when this is switched on",
-      "text": "„In Selection“ (Alt+L): Die Funktionen „Suchen“ und „Alle ersetzen“ bleiben auf den ausgewählten Text beschränkt, wenn diese Option aktiviert ist",
+      "text": "In Selection (Alt+L): Die Funktionen „Suchen“ und „Alle ersetzen“ bleiben auf den ausgewählten Text beschränkt, wenn diese Option aktiviert ist",
       "machine": true
     },
     "Editor.Find.BadPattern": {
@@ -7575,8 +7575,8 @@
       "machine": true
     },
     "Main.Usage.Memory.What": {
-      "english": "Task Manager's Memory column for EasyNDF, split by what the app holds it for. It turns yellow above 900 MB, the aim, and red above 2 GB.",
-      "text": "Die Spalte „Speicher“ im Task-Manager für EasyNDF, aufgeschlüsselt nach den Zwecken, für die die App den Speicher belegt. Bei Werten über 900 MB – dem angestrebten Ziel – wird sie gelb, bei Werten über 2 GB rot.",
+      "english": "Task Manager's Memory column for EasyNDF, split by what the app holds it for. It turns yellow above 10% of this PC's memory and red above 25%.",
+      "text": "Die Spalte „Arbeitsspeicher“ des Task-Managers für EasyNDF, aufgeteilt danach, wofür die App ihn belegt. Über 10 % des Arbeitsspeichers dieses PCs wird der Wert gelb, über 25 % rot.",
       "machine": true
     },
     "Main.Usage.DotNet": {
@@ -8117,7 +8117,7 @@
     },
     "Rules.Watermark.DontShowMeThis": {
       "english": "Don't show me this again",
-      "text": "„Dies nicht mehr anzeigen“",
+      "text": "Dies nicht mehr anzeigen",
       "machine": true
     },
     "Rules.Watermark.NeverTick.Tip": {
@@ -9382,7 +9382,7 @@
     },
     "Rules.Rule.DeleteAskSeveral": {
       "english": "Delete these {count} rules?",
-      "text": "„Diese {count} Regeln löschen?“",
+      "text": "Diese {count} Regeln löschen?",
       "machine": true
     },
     "Rules.Group.DeleteAsk": {
@@ -11285,7 +11285,7 @@
     },
     "Settings.ThemeChoice.Automatic": {
       "english": "Automatic (Paper or Slate, following the system)",
-      "text": "„Automatisch (Papier oder Schiefer, entsprechend dem System)“",
+      "text": "Automatisch (Papier oder Schiefer, entsprechend dem System)",
       "machine": true
     },
     "Settings.ThemeChoice.Untitled": {
@@ -12069,8 +12069,8 @@
       "machine": true
     },
     "Units.New.Stat.Armor.Tip": {
-      "english": "{family} armor: a whole number from {lowest} to {highest}, the levels the game's DamageResistance.ndf gives it; empty keeps the model unit's value",
-      "text": "{family}-Panzerung: eine ganze Zahl zwischen {lowest} und {highest}, die Werte, die die Datei „DamageResistance.ndf“ des Spiels zuweist; wenn das Feld leer ist, wird der Wert der Modelleinheit beibehalten",
+      "english": "{family} armor: a whole number from {lowest} to {highest}, the levels the game's DamageResistance.ndf gives it; empty keeps the base unit's value",
+      "text": "{family}-Panzerung: eine ganze Zahl zwischen {lowest} und {highest}, die Werte, die die Datei „DamageResistance.ndf“ des Spiels zuweist; wenn das Feld leer ist, wird der Wert der Basiseinheit beibehalten",
       "machine": true
     },
     "Units.Check.Armor": {
@@ -12641,7 +12641,7 @@
     },
     "Units.Compare.Pinned": {
       "english": "Pinned: the others compare to it",
-      "text": "„Angeheftet“: Die anderen werden damit verglichen",
+      "text": "Angeheftet: Die anderen werden damit verglichen",
       "machine": true
     },
     "Units.Compare.ComparedTo": {
@@ -13296,7 +13296,7 @@
     },
     "Weapons.Compare.Pinned": {
       "english": "Pinned: the others compare to it",
-      "text": "„Angeheftet“: Die anderen werden damit verglichen",
+      "text": "Angeheftet: Die anderen werden damit verglichen",
       "machine": true
     },
     "Weapons.Compare.Remove.Tip": {
@@ -15227,8 +15227,8 @@
       "machine": true
     },
     "Units.Rule.New": {
-      "english": "new unit, model of {unit}",
-      "text": "neue Einheit, Modell von {unit}",
+      "english": "new unit, based on {unit}",
+      "text": "neue Einheit, basiert auf {unit}",
       "machine": true
     },
     "Units.Rule.Changed": {
@@ -15262,8 +15262,8 @@
       "machine": true
     },
     "Units.OwnModel.Own": {
-      "english": "Import Model",
-      "text": "Modell importieren",
+      "english": "Import Model…",
+      "text": "Modell importieren…",
       "machine": true
     },
     "Units.OwnModel.Own.Tip": {
@@ -15337,8 +15337,8 @@
       "machine": true
     },
     "Units.OwnModel.Hint.Copied": {
-      "english": "Keeps the copied unit's model.",
-      "text": "Behält das Modell der kopierten Einheit.",
+      "english": "Keeps the base unit's model.",
+      "text": "Behält das Modell der Basiseinheit.",
       "machine": true
     },
     "Units.OwnModel.Hint.Pick": {
@@ -15419,11 +15419,6 @@
     "Units.OwnModel.Part.Count": {
       "english": "{count} part|{count} parts",
       "text": "{count} Teil|{count} Teile",
-      "machine": true
-    },
-    "Units.OwnModel.Part.Own": {
-      "english": "Original",
-      "text": "Original",
       "machine": true
     },
     "Units.OwnModel.Part.Found": {
@@ -15542,8 +15537,8 @@
       "machine": true
     },
     "Units.OwnModel.Check.SizeOk": {
-      "english": "{length} m long, close to the copied unit's {theirs} m.",
-      "text": "{length} m lang, nahe an den {theirs} m der kopierten Einheit.",
+      "english": "{length} m long, close to the base unit's {theirs} m.",
+      "text": "{length} m lang, nahe an den {theirs} m der Basiseinheit.",
       "machine": true
     },
     "Units.OwnModel.Check.NoTurret": {
@@ -15582,8 +15577,8 @@
       "machine": true
     },
     "Units.OwnModel.Check.AllParts": {
-      "english": "All {count} parts found.",
-      "text": "Alle {count} Teile gefunden.",
+      "english": "The part was found.|All {count} parts found.",
+      "text": "Das Teil wurde gefunden.|Alle {count} Teile gefunden.",
       "machine": true
     },
     "Units.OwnModel.Check.Maps": {
@@ -15807,8 +15802,8 @@
       "machine": true
     },
     "Units.New.ComesWith": {
-      "english": "Comes With This Model",
-      "text": "Im Lieferumfang dieses Modells enthalten",
+      "english": "Comes With This Unit",
+      "text": "Bei dieser Einheit enthalten",
       "machine": true
     },
     "Units.New.ComesWith.Model": {
@@ -15867,8 +15862,8 @@
       "machine": true
     },
     "Units.New.Off.Model": {
-      "english": "Choose a unit whose model to use first",
-      "text": "Wählen Sie zunächst eine Einheit aus, deren Modell verwendet werden soll",
+      "english": "Choose a base unit first",
+      "text": "Wählen Sie zunächst eine Basiseinheit aus",
       "machine": true
     },
     "Units.New.Off.Name": {
@@ -15887,8 +15882,8 @@
       "machine": true
     },
     "Units.New.Hint.ModelChosen": {
-      "english": "Model of {unit}.",
-      "text": "Modell von {unit}.",
+      "english": "Based on {unit}.",
+      "text": "Basiert auf {unit}.",
       "machine": true
     },
     "Units.New.Hint.Name": {
@@ -15957,13 +15952,13 @@
       "machine": true
     },
     "Units.New.Picture.Model.Tip": {
-      "english": "Use the card picture of the unit whose model it uses",
-      "text": "Verwenden Sie das Kartenbild der Einheit, deren Modell hier verwendet wird",
+      "english": "Use the base unit's card picture",
+      "text": "Das Kartenbild der Basiseinheit verwenden",
       "machine": true
     },
     "Units.New.Picture.Own": {
       "english": "My Own…",
-      "text": "„Mein eigenes…“",
+      "text": "Mein eigenes…",
       "machine": true
     },
     "Units.New.Picture.Own.Tip": {
@@ -15977,8 +15972,8 @@
       "machine": true
     },
     "Units.New.ModelOf": {
-      "english": "{type} · model of {unit}",
-      "text": "{type} · Modell von {unit}",
+      "english": "{type} · based on {unit}",
+      "text": "{type} · basiert auf {unit}",
       "machine": true
     },
     "Units.New.Unnamed": {
@@ -15992,13 +15987,13 @@
       "machine": true
     },
     "Units.New.Stat.Whole.Tip": {
-      "english": "A whole number, 0 or more; empty keeps the model unit's value",
-      "text": "Eine ganze Zahl, 0 oder mehr; wenn das Feld leer ist, wird der Wert der Modelleinheit beibehalten",
+      "english": "A whole number, 0 or more; empty keeps the base unit's value",
+      "text": "Eine ganze Zahl, 0 oder mehr; wenn das Feld leer ist, wird der Wert der Basiseinheit beibehalten",
       "machine": true
     },
     "Units.New.Stat.Decimal.Tip": {
-      "english": "A number, 0 or more; empty keeps the model unit's value",
-      "text": "Eine Zahl, 0 oder mehr; bei leerem Feld wird der Wert der Modelleinheit beibehalten",
+      "english": "A number, 0 or more; empty keeps the base unit's value",
+      "text": "Eine Zahl, 0 oder mehr; bei leerem Feld wird der Wert der Basiseinheit beibehalten",
       "machine": true
     },
     "Units.Edit.UnitMissing": {
@@ -16023,7 +16018,7 @@
     },
     "Units.Duplicate.Ask": {
       "english": "Duplicate {unit}: everything is kept but its name. Name of the copy:",
-      "text": "„Duplicate{unit}“: Alles bleibt erhalten, außer dem Namen. Name der Kopie:",
+      "text": "{unit} duplizieren: Alles bleibt erhalten, außer dem Namen. Name der Kopie:",
       "machine": true
     },
     "Units.Menu.Duplicate": {
@@ -16810,8 +16805,8 @@
       "machine": true
     },
     "Tour.Files.Source": {
-      "english": "**Source** picks your game or a mod; [[Add Its Files]] lists its files once one is picked. Here the tutorial uses **Sample Data**.",
-      "text": "**Quelle** wählt Ihr Spiel oder einen Mod; [[Dateien hinzufügen]] listet dessen Dateien auf, sobald eines gewählt ist. Hier verwendet das Tutorial **Beispieldaten**.",
+      "english": "**Source** picks your game or a mod, and its files are listed once one is picked. Here the tutorial uses **Sample Data**.",
+      "text": "**Quelle** wählt Ihr Spiel oder einen Mod; dessen Dateien werden aufgelistet, sobald eines gewählt ist. Hier verwendet das Tutorial **Beispieldaten**.",
       "machine": true
     },
     "Tour.Files.Add": {
@@ -17837,6 +17832,121 @@
     "Main.Update.Failed": {
       "english": "The update couldn't be downloaded: {reason}",
       "text": "Das Update konnte nicht heruntergeladen werden: {reason}",
+      "machine": true
+    },
+    "Units.ModChanges.View": {
+      "english": "View",
+      "text": "Anzeigen",
+      "machine": true
+    },
+    "Units.ModChanges.Shown": {
+      "english": "Mods Shown",
+      "text": "Angezeigte Mods",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Note": {
+      "english": "{count} mod is on.|{count} mods are on, in the order they run. A lower mod wins where two change the same value.",
+      "text": "{count} Mod ist an.|{count} Mods sind an, in der Reihenfolge, in der sie laufen. Ändern zwei denselben Wert, gewinnt der untere.",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.ToMods": {
+      "english": "Open the Mods Tab",
+      "text": "Mods-Tab öffnen",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Close": {
+      "english": "Close",
+      "text": "Schließen",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Edited": {
+      "english": "changes saved here",
+      "text": "Änderungen werden hier gespeichert",
+      "machine": true
+    },
+    "Units.ModEdited": {
+      "english": "Mod Being Edited",
+      "text": "Bearbeiteter Mod",
+      "machine": true
+    },
+    "Units.ModEdited.Tip": {
+      "english": "The mod the Armory's changes are saved in. Only the mods that are on are listed.",
+      "text": "Der Mod, in dem die Änderungen der Rüstkammer gespeichert werden. Nur ein eingeschalteter Mod kann gewählt werden.",
+      "machine": true
+    },
+    "Units.ModEdited.New": {
+      "english": "New Mod…",
+      "text": "Neuer Mod…",
+      "machine": true
+    },
+    "Units.OwnModel.UseBase": {
+      "english": "Use Base Unit's Model",
+      "text": "Modell der Basiseinheit verwenden",
+      "machine": true
+    },
+    "Units.OwnModel.Using": {
+      "english": "Using {unit}'s model.",
+      "text": "Verwendet das Modell von {unit}.",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.UnitPart": {
+      "english": "Unit Part",
+      "text": "Teil der Einheit",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.FilePart": {
+      "english": "Part in Your File",
+      "text": "Teil in Ihrer Datei",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.Found": {
+      "english": "Found",
+      "text": "Gefunden",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.ModelPart": {
+      "english": "Model Part",
+      "text": "Modellteil",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.Note.Base": {
+      "english": "The parts of {unit} that move, and the model part each one uses.",
+      "text": "Die beweglichen Teile von {unit} und das Modellteil, das jedes verwendet.",
+      "machine": true
+    },
+    "Settings.AddSourceFiles": {
+      "english": "Add the source's files",
+      "text": "Dateien der Quelle hinzufügen",
+      "machine": true
+    },
+    "Settings.AddSourceFiles.Note": {
+      "english": "Choosing a Source lists all its files, in place of the files of the source chosen before. Files added by hand stay. Off: Add Its Files, beside the Source, lists them.",
+      "text": "Die Wahl einer Quelle listet alle ihre Dateien auf, anstelle der Dateien der zuvor gewählten Quelle. Von Hand hinzugefügte Dateien bleiben. Aus: „Dateien hinzufügen“ neben der Quelle listet sie auf.",
+      "machine": true
+    },
+    "Editor.Value.NumberGivenTwice": {
+      "english": "{name}: {value} is given to both {first} and {second}. Each needs a number of its own; a game update or another mod may have taken it.",
+      "text": "{name}: {value} ist sowohl {first} als auch {second} zugewiesen. Jeder Eintrag braucht eine eigene Nummer; ein Spiel-Update oder ein anderer Mod hat sie möglicherweise belegt.",
+      "machine": true
+    },
+    "Divisions.Heading.HideSlots": {
+      "english": "Hide Slots",
+      "text": "Slots ausblenden",
+      "machine": true
+    },
+    "Divisions.Heading.ShowSlots": {
+      "english": "Show Slots",
+      "text": "Slots einblenden",
+      "machine": true
+    },
+    "Divisions.Heading.Slots.Tip": {
+      "english": "Show or hide the lines of card slots, in every type",
+      "text": "Die Zeilen der Kartenslots in jedem Typ ein- oder ausblenden",
+      "machine": true
+    },
+    "Rules.Editor.Example": {
+      "english": "Example:\n{sample}",
+      "text": "Beispiel:\n{sample}",
       "machine": true
     }
   }

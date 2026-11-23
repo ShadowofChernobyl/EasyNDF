@@ -328,5 +328,7 @@
   "Settings.LogFiles": "Log files",
   "Settings.LogFiles.Note": "The logs are kept in the data folder's Logs.",
   "Settings.OpenLogFolder": "Open Log Folder",
-  "Settings.OpenLogFolder.Tip": "Shows the log files in File Explorer"
+  "Settings.OpenLogFolder.Tip": "Shows the log files in File Explorer",
+  "Settings.AddSourceFiles": "Add the source's files",
+  "Settings.AddSourceFiles.Note": "Choosing a Source lists all its files, in place of the files of the source chosen before. Files added by hand stay. Off: Add Its Files, beside the Source, lists them."
 }

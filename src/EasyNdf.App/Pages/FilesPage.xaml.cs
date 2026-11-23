@@ -87,7 +87,10 @@ public partial class FilesPage : UserControl
         Model.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is null or nameof(FileListModel.IsBusy)) SourceBar.RunGoing = Model.IsBusy;
+            // a source chosen while a run went waited for it: its files are listed now
+            if (e.PropertyName is null or nameof(FileListModel.IsBusy) && !Model.IsBusy) _ = FollowSource();
         };
+        SourceBar.AddsFilesItself = AddsSourceFiles;
         SourceBar.AddFilesRequested += AddSourceFiles;
         DataContext = Model;
         ListBox.SizeChanged += (_, _) => FitColumns();
@@ -299,8 +302,7 @@ public partial class FilesPage : UserControl
         {
             if (source.Mod is not null)
             {
-                string gameData = Path.Combine(source.Mod.Folder, "GameData");
-                await AddFolderFiles([.. NdfFilesIn(Directory.Exists(gameData) ? gameData : source.Mod.Folder).Select(file => file with { Game = source.Game })]);
+                await AddFolderFiles(ModSourceFiles(source));
                 return;
             }
             string zip = Data.Game.GameInstall.BaseZipOf(source.GameFolder);
@@ -368,7 +370,87 @@ public partial class FilesPage : UserControl
     {
         SourceBar.Selection = sources;
         sources.Changed += ShowSourceCount;
+        sources.Changed += () => _ = FollowSource();
     }
+
+    /// <summary>A mod source's .ndf files: those of its GameData folder, each of the source's game.</summary>
+    private static List<FileToAdd> ModSourceFiles(Data.Units.UnitSource source)
+    {
+        string gameData = Path.Combine(source.Mod!.Folder, "GameData");
+        return [.. NdfFilesIn(Directory.Exists(gameData) ? gameData : source.Mod.Folder).Select(file => file with { Game = source.Game })];
+    }
+
+    /// <summary>"Add the source's files" (Settings): choosing a Source lists all its files. On unless switched off.</summary>
+    private static bool AddsSourceFiles => AppData.Current.Settings["addSourceFiles"]?.GetValue<bool>() != false;
+
+    /// <summary>The setting was switched: Add Its Files shows or hides, and switched on, the source's files are listed now.</summary>
+    internal void SourceFilesSettingChanged()
+    {
+        SourceBar.AddsFilesItself = AddsSourceFiles;
+        _ = FollowSource();
+    }
+
+    /// <summary>The source whose files were listed by themselves, by its key; null for none yet.</summary>
+    private string? sourceListed;
+
+    /// <summary>Where that source's files are (<see cref="StartOf"/>), to take them out when another is chosen.</summary>
+    private string? sourceListedStart;
+
+    /// <summary>True while a source's files are being listed, so a second source chosen meanwhile waits its turn.</summary>
+    private bool followingSource;
+
+    /// <summary>
+    /// Lists all the files of the source just chosen, while "Add the source's files" is on, in place of those of the
+    /// source listed this way before. Only those go: a file added by hand from anywhere else stays, and one of the new
+    /// source's that is listed already (by hand, or a row of the same name and folder) is left as it is. Every file is
+    /// taken, without asking which: what a user needs of a source is theirs to say, and the list's filter shows the
+    /// files with rules first. Waits for a run to finish.
+    /// </summary>
+    private async Task FollowSource()
+    {
+        if (!AddsSourceFiles || followingSource || Model.IsBusy) return;
+        if (SourceBar.Selection?.Chosen is not Data.Units.UnitSource source || source.Key == sourceListed) return;
+        followingSource = true;
+        try
+        {
+            List<FileToAdd> files;
+            if (source.Mod is not null) files = await Task.Run(() => ModSourceFiles(source));
+            else
+            {
+                string zip = Data.Game.GameInstall.BaseZipOf(source.GameFolder);
+                Model.Say(Texts.Get("Files.Opening", ("file", Path.GetFileName(zip))), NoticeKind.Working);
+                files = [.. (await Task.Run(() => ArchiveReader.WithContent(zip, ArchiveReader.NdfFilesListedIn(zip)))).Select(file => file with { Game = source.Game })];
+                Model.Say("");
+            }
+            if (sourceListedStart is string before)
+                Model.RemoveWhere(entry => entry.Source?.StartsWith(before, StringComparison.OrdinalIgnoreCase) == true);
+            sourceListed = source.Key;
+            sourceListedStart = StartOf(source);
+            IReadOnlyList<FileEntry> toRead = await Model.AddFiles(files, fromFolder: true, (_, _) => Task.FromResult(new DuplicateAnswer(DuplicateChoice.Skip, true)));
+            await ReadAll(toRead);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            Model.Say("");
+            // not tried again for this source until another is chosen: the message would come back at every change
+            sourceListed = source.Key;
+            await Messages.Tell(Texts.Get("Files.Source.NotRead", ("name", source.Name), ("reason", error.Message)), DialogIcon.Error);
+        }
+        finally
+        {
+            followingSource = false;
+        }
+        // another source was chosen while this one's files were listed
+        if (SourceBar.Selection?.Chosen is Data.Units.UnitSource now && now.Key != sourceListed) await FollowSource();
+    }
+
+    /// <summary>
+    /// How the place of every file of a source starts: a mod's files are on disk in its folder; a game's are inside
+    /// its base.zip ("...\base.zip > GameData/...").
+    /// </summary>
+    private static string StartOf(Data.Units.UnitSource source) => source.Mod is not null
+        ? Path.GetFullPath(source.Mod.Folder).TrimEnd('\\', '/') + Path.DirectorySeparatorChar
+        : Path.GetFullPath(Data.Game.GameInstall.BaseZipOf(source.GameFolder)) + " > ";
 
     /// <summary>"✓ 17 of its files listed": how many rows hold a file from the source chosen.</summary>
     private void ShowSourceCount()
@@ -378,10 +460,7 @@ public partial class FilesPage : UserControl
             SourceBar.ShowListedCount(0);
             return;
         }
-        // a mod's files are on disk in its folder; a game's are inside its base.zip ("...\base.zip > GameData/...")
-        string start = source.Mod is not null
-            ? Path.GetFullPath(source.Mod.Folder).TrimEnd('\\', '/') + Path.DirectorySeparatorChar
-            : Path.GetFullPath(Data.Game.GameInstall.BaseZipOf(source.GameFolder)) + " > ";
+        string start = StartOf(source);
         SourceBar.ShowListedCount(Model.Entries.Count(entry => entry.Source?.StartsWith(start, StringComparison.OrdinalIgnoreCase) == true));
     }
 
@@ -815,6 +894,11 @@ public partial class FilesPage : UserControl
             folder = Path.Combine(gathered, Path.GetRelativePath(root, folder));
         }
         FileRunner runner = MakeRunner(choice.OverwriteSource, everyFileToChosenFolder: gathered is not null);
+        // one export is one step to undo: it sets the rows' folders as it starts and the mods' folders as it goes, which
+        // were filed as two steps, the second with nothing to see when undone
+        UndoHistory history = MainView.Of(this).History;
+        bool wasPaused = history.IsPaused;
+        history.IsPaused = true;
         try
         {
             await runner.Run(write: true, () => Task.FromResult(folder), skipped);
@@ -827,6 +911,8 @@ public partial class FilesPage : UserControl
         }
         finally
         {
+            history.IsPaused = wasPaused;
+            history.Mark();
             if (gathered is not null)
             {
                 try { Directory.Delete(gathered, recursive: true); }

@@ -47,8 +47,8 @@ public partial class UnitsPage
     private int divisionCardColumns;
 
     /// <summary>
-    /// The mod whose changes the Armory shows and makes: the one open on the Mods tab when it is on and for the source's
-    /// game; otherwise the mod of that game that is on, the last to run when several are (it wins where they differ).
+    /// The mod whose changes the Armory shows and makes: the one chosen under the Source ("Mod Being Edited") while it
+    /// runs; with none chosen there, the one open on the Mods tab when it is on and for the source's game; otherwise the mod of that game that is on, the last to run when several are (it wins where they differ).
     /// Only with none on is it the open mod, so the Armory says why nothing can be changed. Opening a mod that is off
     /// only to look at its rules must not stop changes to the mod that is on.
     /// </summary>
@@ -57,6 +57,7 @@ public partial class UnitsPage
     /// <summary>The mod the Armory shows and changes for a source of this game (<see cref="OpenMod"/>).</summary>
     internal static Mod ArmoryModFor(Data.Game.GameTitle game)
     {
+        if (ModStack.ArmoryChoice(game) is Mod chosen) return chosen;
         Mod open = AppData.Current.OpenMod;
         if (open.Game == game && ModStack.Runs(open)) return open;
         return ModStack.RunningFor(game).LastOrDefault() ?? open;

@@ -43,6 +43,9 @@ public sealed class SettingsStore(string settingsFolder)
         // from last time can hold files that are not the Source's, and the Armory would show them under its name.
         // A new name, so that a list switched on before also starts empty; the empty list offers Reopen Last List.
         ["reopenLastFiles"] = false,
+        // choosing a Source lists all its files, and takes out those of the source chosen before; off, the Source
+        // bar's Add Its Files lists them, as before there was this setting
+        ["addSourceFiles"] = true,
         // the File Editor's scope lines and closing pairs, as in Sublime Text
         ["indentGuides"] = true,
         ["autoPairs"] = true,

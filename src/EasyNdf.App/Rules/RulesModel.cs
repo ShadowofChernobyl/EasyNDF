@@ -215,6 +215,8 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         Data.Open(mod);
         // a mod made to work in starts on; a copy or an import keeps its original's switch
         EasyNdf.App.Mods.ModStack.SetOn(mod, on: true);
+        // a mod made to work in is the one the Armory changes, for its game
+        EasyNdf.App.Mods.ModStack.ForgetArmoryChoice(game);
         OpenPreset = null;
         Refresh();
     }

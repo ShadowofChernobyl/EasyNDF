@@ -248,7 +248,7 @@
     },
     "Common.Cancel": {
       "english": "Cancel",
-      "text": "«Отмена»",
+      "text": "Отмена",
       "machine": true
     },
     "Common.Cancel.Tip": {
@@ -313,7 +313,7 @@
     },
     "Common.Menu.CopySeveral": {
       "english": "Copy {what}",
-      "text": "«Копировать» {what}",
+      "text": "Копировать {what}",
       "machine": true
     },
     "Common.Menu.Copy": {
@@ -1101,7 +1101,7 @@
     },
     "Divisions.Transports.TakeAll": {
       "english": "Take Every Unit's Transports Away",
-      "text": "«Изъять транспортные средства у всех подразделений»",
+      "text": "Изъять транспортные средства у всех подразделений",
       "machine": true
     },
     "Divisions.Transports.TakeAll.Tip": {
@@ -1256,7 +1256,7 @@
     },
     "Divisions.Menu.CopyCards": {
       "english": "Copy Cards and Veterancy",
-      "text": "«Копировать карточки и стаж»",
+      "text": "Копировать карточки и стаж",
       "machine": true
     },
     "Divisions.Menu.PasteCards": {
@@ -1466,7 +1466,7 @@
     },
     "Divisions.Pane.Emblem.Game": {
       "english": "Game's…",
-      "text": "«Игра…»",
+      "text": "Игра…",
       "machine": true
     },
     "Divisions.Pane.Emblem.Game.Tip": {
@@ -2711,7 +2711,7 @@
     },
     "Divisions.Battlegroup.Generation.Ready.Balanced": {
       "english": "Balanced",
-      "text": "«Сбалансированный»",
+      "text": "Сбалансированный",
       "machine": true
     },
     "Divisions.Battlegroup.Generation.Ready.Balanced.Tip": {
@@ -2721,7 +2721,7 @@
     },
     "Divisions.Battlegroup.Generation.Ready.Strongest": {
       "english": "Strongest",
-      "text": "«Самый сильный»",
+      "text": "Самый сильный",
       "machine": true
     },
     "Divisions.Battlegroup.Generation.Ready.Strongest.Tip": {
@@ -3254,7 +3254,7 @@
     },
     "Editor.Previous.Name": {
       "english": "Previous Match",
-      "text": "«Предыдущий матч»",
+      "text": "Предыдущее совпадение",
       "machine": true
     },
     "Editor.Previous.Tip": {
@@ -3264,7 +3264,7 @@
     },
     "Editor.Next.Name": {
       "english": "Next Match",
-      "text": "Следующий матч",
+      "text": "Следующее совпадение",
       "machine": true
     },
     "Editor.Next.Tip": {
@@ -4410,7 +4410,7 @@
     },
     "Editor.Option.Case.Tip": {
       "english": "Match Case (Alt+C): only text in the same capitals",
-      "text": "«Соответствие регистру» (Alt+C): только текст с одинаковым регистром",
+      "text": "Соответствие регистру (Alt+C): только текст с одинаковым регистром",
       "machine": true
     },
     "Editor.Option.Word": {
@@ -4420,7 +4420,7 @@
     },
     "Editor.Option.Word.Tip": {
       "english": "Whole Word (Alt+W): not inside a longer name",
-      "text": "«Целое слово» (Alt+W): не в составе более длинного имени",
+      "text": "Целое слово (Alt+W): не в составе более длинного имени",
       "machine": true
     },
     "Editor.Option.Regex": {
@@ -4440,7 +4440,7 @@
     },
     "Editor.Option.Selection.Tip": {
       "english": "In Selection (Alt+L): Find and Replace All stay inside the text selected when this is switched on",
-      "text": "«In Selection» (Alt+L): при включении этой функции функции «Найти» и «Заменить всё» действуют только в пределах выделенного текста",
+      "text": "In Selection (Alt+L): при включении этой функции функции «Найти» и «Заменить всё» действуют только в пределах выделенного текста",
       "machine": true
     },
     "Editor.Find.BadPattern": {
@@ -4836,7 +4836,7 @@
     },
     "Files.AddFiles": {
       "english": "Add Files…",
-      "text": "«Добавить файлы…»",
+      "text": "Добавить файлы…",
       "machine": true
     },
     "Files.AddFiles.Tip": {
@@ -4846,7 +4846,7 @@
     },
     "Files.AddFolder": {
       "english": "Add Folder…",
-      "text": "«Добавить папку…»",
+      "text": "Добавить папку…",
       "machine": true
     },
     "Files.AddFolder.Tip": {
@@ -6866,7 +6866,7 @@
     },
     "Files.Export.TourOnly": {
       "english": "Tour: nothing is exported. Cancel closes the window.",
-      "text": "«Обзор»: ничего не экспортируется. «Отмена» закрывает окно.",
+      "text": "Обзор: ничего не экспортируется. «Отмена» закрывает окно.",
       "machine": true
     },
     "Files.Export.Files": {
@@ -6941,7 +6941,7 @@
     },
     "Files.Export.Show.Replaces": {
       "english": "Replaces",
-      "text": "«Заменить»",
+      "text": "Заменить",
       "machine": true
     },
     "Files.Export.Column.File": {
@@ -6966,7 +6966,7 @@
     },
     "Files.Export.Status.New": {
       "english": "new",
-      "text": "«Новый»",
+      "text": "Новый",
       "machine": true
     },
     "Files.Export.Status.Replaces": {
@@ -7036,7 +7036,7 @@
     },
     "Help.Popup.CloseEscape.Tip": {
       "english": "Close (Escape)",
-      "text": "«Закрыть» (Esc)",
+      "text": "Закрыть (Esc)",
       "machine": true
     },
     "Help.Popup.SeeMore": {
@@ -7246,7 +7246,7 @@
     },
     "Help.Reference.Topic.units": {
       "english": "Units, Weapons and Decks",
-      "text": "«Юниты, оружие и колоды»",
+      "text": "Юниты, оружие и колоды",
       "machine": true
     },
     "Help.Reference.Topic.units.About": {
@@ -7346,7 +7346,7 @@
     },
     "Help.Tutorials.Start": {
       "english": "Start",
-      "text": "«Start»",
+      "text": "Start",
       "machine": true
     },
     "Main.Close.Ask": {
@@ -7371,7 +7371,7 @@
     },
     "Main.Close.Anyway": {
       "english": "Close Anyway",
-      "text": "«Закрыть всё равно»",
+      "text": "Закрыть всё равно",
       "machine": true
     },
     "Main.Error": {
@@ -7541,22 +7541,22 @@
     },
     "Main.Redo.Nothing": {
       "english": "Nothing to redo.",
-      "text": "«Переделывать нечего».",
+      "text": "Переделывать нечего.",
       "machine": true
     },
     "Main.Redo.Rules": {
       "english": "Redone: a change on the Mods tab.",
-      "text": "«Переделано»: изменение на вкладке «Моды».",
+      "text": "Переделано: изменение на вкладке «Моды».",
       "machine": true
     },
     "Main.Redo.Files": {
       "english": "Redone: a change to the file list.",
-      "text": "«Переделано»: изменение в списке файлов.",
+      "text": "Переделано: изменение в списке файлов.",
       "machine": true
     },
     "Main.Redo.Armory": {
       "english": "Redone: a change in the Armory.",
-      "text": "«Переделано»: изменение в разделе «Арсенал».",
+      "text": "Переделано: изменение в разделе «Арсенал».",
       "machine": true
     },
     "Main.Usage.Cpu": {
@@ -7575,8 +7575,8 @@
       "machine": true
     },
     "Main.Usage.Memory.What": {
-      "english": "Task Manager's Memory column for EasyNDF, split by what the app holds it for. It turns yellow above 900 MB, the aim, and red above 2 GB.",
-      "text": "Колонка «Память» в Диспетчере задач для EasyNDF с разбивкой по целям использования памяти приложением. При превышении 900 МБ, что является целевым показателем, она окрашивается в жёлтый цвет, а при превышении 2 ГБ — в красный.",
+      "english": "Task Manager's Memory column for EasyNDF, split by what the app holds it for. It turns yellow above 10% of this PC's memory and red above 25%.",
+      "text": "Столбец «Память» диспетчера задач для EasyNDF с разбивкой по тому, на что приложение её тратит. Значение становится жёлтым выше 10% памяти этого ПК и красным выше 25%.",
       "machine": true
     },
     "Main.Usage.DotNet": {
@@ -8117,7 +8117,7 @@
     },
     "Rules.Watermark.DontShowMeThis": {
       "english": "Don't show me this again",
-      "text": "«Больше не показывать»",
+      "text": "Больше не показывать",
       "machine": true
     },
     "Rules.Watermark.NeverTick.Tip": {
@@ -8747,7 +8747,7 @@
     },
     "Rules.Editor.Choice.None.NoneAtAll": {
       "english": "None at all",
-      "text": "«Нет вообще»",
+      "text": "Нет вообще",
       "machine": true
     },
     "Rules.Editor.Expect": {
@@ -9017,7 +9017,7 @@
     },
     "Rules.Editor.Gate.Tip": {
       "english": "Any: one condition is enough. All: every condition must match.",
-      "text": "«Любое»: достаточно одного условия. «Все»: все условия должны совпадать.",
+      "text": "Любое: достаточно одного условия. «Все»: все условия должны совпадать.",
       "machine": true
     },
     "Rules.Editor.Gate.Any": {
@@ -10196,7 +10196,7 @@
     },
     "Settings.Colour.CancelEscape.Tip": {
       "english": "Cancel (Escape)",
-      "text": "«Отмена» (клавиша Escape)",
+      "text": "Отмена (клавиша Escape)",
       "machine": true
     },
     "Settings.Colour.KeepThisColorEnter.Tip": {
@@ -10206,7 +10206,7 @@
     },
     "Settings.Colour.Cancel": {
       "english": "Cancel",
-      "text": "«Отмена»",
+      "text": "Отмена",
       "machine": true
     },
     "Settings.Colour.Cancel.Tip": {
@@ -11285,7 +11285,7 @@
     },
     "Settings.ThemeChoice.Automatic": {
       "english": "Automatic (Paper or Slate, following the system)",
-      "text": "«Автоматически» (бумага или сланец, в соответствии с настройками системы)",
+      "text": "Автоматически (бумага или сланец, в соответствии с настройками системы)",
       "machine": true
     },
     "Settings.ThemeChoice.Untitled": {
@@ -11775,7 +11775,7 @@
     },
     "Units.Source": {
       "english": "Source",
-      "text": "Исходный код",
+      "text": "Источник",
       "machine": true
     },
     "Units.SourceChoice.Tip": {
@@ -12069,8 +12069,8 @@
       "machine": true
     },
     "Units.New.Stat.Armor.Tip": {
-      "english": "{family} armor: a whole number from {lowest} to {highest}, the levels the game's DamageResistance.ndf gives it; empty keeps the model unit's value",
-      "text": "{family} броня: целое число в диапазоне от {lowest} до {highest}, соответствующее уровням, заданным в файле DamageResistance.ndf игры; пустое поле сохраняет значение, заданное для данной модели юнита",
+      "english": "{family} armor: a whole number from {lowest} to {highest}, the levels the game's DamageResistance.ndf gives it; empty keeps the base unit's value",
+      "text": "{family} броня: целое число в диапазоне от {lowest} до {highest}, соответствующее уровням, заданным в файле DamageResistance.ndf игры; пустое поле сохраняет значение базового юнита",
       "machine": true
     },
     "Units.Check.Armor": {
@@ -12320,7 +12320,7 @@
     },
     "Units.Table.Unit": {
       "english": "Unit",
-      "text": "Unit",
+      "text": "Юнит",
       "machine": true
     },
     "Units.Table.Nation": {
@@ -12641,7 +12641,7 @@
     },
     "Units.Compare.Pinned": {
       "english": "Pinned: the others compare to it",
-      "text": "«Закреплено»: остальные сравниваются с ним",
+      "text": "Закреплено: остальные сравниваются с ним",
       "machine": true
     },
     "Units.Compare.ComparedTo": {
@@ -13296,7 +13296,7 @@
     },
     "Weapons.Compare.Pinned": {
       "english": "Pinned: the others compare to it",
-      "text": "«Закреплено»: остальные сравниваются с ним",
+      "text": "Закреплено: остальные сравниваются с ним",
       "machine": true
     },
     "Weapons.Compare.Remove.Tip": {
@@ -13331,7 +13331,7 @@
     },
     "Weapons.Menu.NewRule": {
       "english": "New Rule for This Weapon…",
-      "text": "«Новое правило для этого оружия…»",
+      "text": "Новое правило для этого оружия…",
       "machine": true
     },
     "Weapons.Menu.RemoveFromCompare": {
@@ -13800,7 +13800,7 @@
     },
     "Weapons.Risky.GoOn": {
       "english": "I Know What I'm Doing",
-      "text": "«Я знаю, что делаю»",
+      "text": "Я знаю, что делаю",
       "machine": true
     },
     "Weapons.Risky.HideForSession": {
@@ -13890,7 +13890,7 @@
     },
     "Weapons.Category.SmallArms.Heading": {
       "english": "SMALL ARMS",
-      "text": "«СТРЕЛКОВОЕ ОРУЖИЕ»",
+      "text": "СТРЕЛКОВОЕ ОРУЖИЕ",
       "machine": true
     },
     "Weapons.Category.AntiTankMissile": {
@@ -14619,7 +14619,7 @@
     },
     "Weapons.Pane.FireAndForget": {
       "english": "Fire and forget",
-      "text": "«Выстрелил и забыл»",
+      "text": "Выстрелил и забыл",
       "machine": true
     },
     "Weapons.Pane.Guidance": {
@@ -15227,8 +15227,8 @@
       "machine": true
     },
     "Units.Rule.New": {
-      "english": "new unit, model of {unit}",
-      "text": "новая единица, модель {unit}",
+      "english": "new unit, based on {unit}",
+      "text": "новый юнит, на основе {unit}",
       "machine": true
     },
     "Units.Rule.Changed": {
@@ -15262,8 +15262,8 @@
       "machine": true
     },
     "Units.OwnModel.Own": {
-      "english": "Import Model",
-      "text": "Импорт модели",
+      "english": "Import Model…",
+      "text": "Импорт модели…",
       "machine": true
     },
     "Units.OwnModel.Own.Tip": {
@@ -15337,8 +15337,8 @@
       "machine": true
     },
     "Units.OwnModel.Hint.Copied": {
-      "english": "Keeps the copied unit's model.",
-      "text": "Сохраняет модель скопированного юнита.",
+      "english": "Keeps the base unit's model.",
+      "text": "Сохраняет модель базового юнита.",
       "machine": true
     },
     "Units.OwnModel.Hint.Pick": {
@@ -15419,11 +15419,6 @@
     "Units.OwnModel.Part.Count": {
       "english": "{count} part|{count} parts",
       "text": "{count} часть|{count} части|{count} частей",
-      "machine": true
-    },
-    "Units.OwnModel.Part.Own": {
-      "english": "Original",
-      "text": "Исходная",
       "machine": true
     },
     "Units.OwnModel.Part.Found": {
@@ -15542,8 +15537,8 @@
       "machine": true
     },
     "Units.OwnModel.Check.SizeOk": {
-      "english": "{length} m long, close to the copied unit's {theirs} m.",
-      "text": "Длина {length} м, близко к {theirs} м скопированного юнита.",
+      "english": "{length} m long, close to the base unit's {theirs} m.",
+      "text": "Длина {length} м, близко к {theirs} м базового юнита.",
       "machine": true
     },
     "Units.OwnModel.Check.NoTurret": {
@@ -15582,8 +15577,8 @@
       "machine": true
     },
     "Units.OwnModel.Check.AllParts": {
-      "english": "All {count} parts found.",
-      "text": "Найдены все части: {count}.",
+      "english": "The part was found.|All {count} parts found.",
+      "text": "Найдена {count} часть.|Найдены все части: {count}.|Найдены все части: {count}.",
       "machine": true
     },
     "Units.OwnModel.Check.Maps": {
@@ -15807,8 +15802,8 @@
       "machine": true
     },
     "Units.New.ComesWith": {
-      "english": "Comes With This Model",
-      "text": "Входит в состав этой модели",
+      "english": "Comes With This Unit",
+      "text": "Входит в состав этого юнита",
       "machine": true
     },
     "Units.New.ComesWith.Model": {
@@ -15867,8 +15862,8 @@
       "machine": true
     },
     "Units.New.Off.Model": {
-      "english": "Choose a unit whose model to use first",
-      "text": "Сначала выберите юнит, модель которого необходимо использовать",
+      "english": "Choose a base unit first",
+      "text": "Сначала выберите базовый юнит",
       "machine": true
     },
     "Units.New.Off.Name": {
@@ -15887,8 +15882,8 @@
       "machine": true
     },
     "Units.New.Hint.ModelChosen": {
-      "english": "Model of {unit}.",
-      "text": "Модель {unit}.",
+      "english": "Based on {unit}.",
+      "text": "На основе {unit}.",
       "machine": true
     },
     "Units.New.Hint.Name": {
@@ -15957,13 +15952,13 @@
       "machine": true
     },
     "Units.New.Picture.Model.Tip": {
-      "english": "Use the card picture of the unit whose model it uses",
-      "text": "Используйте изображение карты того юнита, модель которого используется",
+      "english": "Use the base unit's card picture",
+      "text": "Использовать изображение карты базового юнита",
       "machine": true
     },
     "Units.New.Picture.Own": {
       "english": "My Own…",
-      "text": "«Моё собственное…»",
+      "text": "Моё собственное…",
       "machine": true
     },
     "Units.New.Picture.Own.Tip": {
@@ -15977,8 +15972,8 @@
       "machine": true
     },
     "Units.New.ModelOf": {
-      "english": "{type} · model of {unit}",
-      "text": "{type} · модель {unit}",
+      "english": "{type} · based on {unit}",
+      "text": "{type} · на основе {unit}",
       "machine": true
     },
     "Units.New.Unnamed": {
@@ -15992,18 +15987,18 @@
       "machine": true
     },
     "Units.New.Stat.Whole.Tip": {
-      "english": "A whole number, 0 or more; empty keeps the model unit's value",
-      "text": "Целое число, равное 0 или больше; пустое поле сохраняет значение модельной единицы",
+      "english": "A whole number, 0 or more; empty keeps the base unit's value",
+      "text": "Целое число, равное 0 или больше; пустое поле сохраняет значение базового юнита",
       "machine": true
     },
     "Units.New.Stat.Decimal.Tip": {
-      "english": "A number, 0 or more; empty keeps the model unit's value",
-      "text": "Число, равное 0 или больше; пустое поле сохраняет значение, заданное для данной единицы модели",
+      "english": "A number, 0 or more; empty keeps the base unit's value",
+      "text": "Число, равное 0 или больше; пустое поле сохраняет значение базового юнита",
       "machine": true
     },
     "Units.Edit.UnitMissing": {
       "english": "Your mod changes {unit}, which the Armory's source doesn't have, so its rules can't be made again. Choose the source the mod was made with.",
-      "text": "Ваш мод изменяет {unit}, которого нет в исходном коде Арсенал, поэтому его правила не могут быть воссозданы. Выберите исходный код, на основе которого был создан мод.",
+      "text": "Ваш мод изменяет {unit}, которого нет в источнике Арсенала, поэтому его правила не могут быть воссозданы. Выберите исходный код, на основе которого был создан мод.",
       "machine": true
     },
     "Weapons.Edit.WeaponMissing": {
@@ -16766,7 +16761,7 @@
     },
     "Tour.Chapter.Armory": {
       "english": "The Armory",
-      "text": "«Арсенал»",
+      "text": "Арсенал",
       "machine": true
     },
     "Tour.About.Files": {
@@ -16810,8 +16805,8 @@
       "machine": true
     },
     "Tour.Files.Source": {
-      "english": "**Source** picks your game or a mod; [[Add Its Files]] lists its files once one is picked. Here the tutorial uses **Sample Data**.",
-      "text": "**Источник** выбирает вашу игру или мод; [[Добавить файлы]] выводит список его файлов, когда он выбран. Здесь руководство использует **Пример данных**.",
+      "english": "**Source** picks your game or a mod, and its files are listed once one is picked. Here the tutorial uses **Sample Data**.",
+      "text": "**Источник** выбирает вашу игру или мод; его файлы появляются в списке, когда он выбран. Здесь руководство использует **Пример данных**.",
       "machine": true
     },
     "Tour.Files.Add": {
@@ -17186,7 +17181,7 @@
     },
     "Help.Group.Start": {
       "english": "Start",
-      "text": "«Пуск»",
+      "text": "Пуск",
       "machine": true
     },
     "Help.Page.start.Title": {
@@ -17481,7 +17476,7 @@
     },
     "Help.Page.editor-edit.Title": {
       "english": "Find & Edit",
-      "text": "«Найти и отредактировать»",
+      "text": "Найти и отредактировать",
       "machine": true
     },
     "Help.Page.editor-edit.Html": {
@@ -17837,6 +17832,121 @@
     "Main.Update.Failed": {
       "english": "The update couldn't be downloaded: {reason}",
       "text": "Не удалось загрузить обновление: {reason}",
+      "machine": true
+    },
+    "Units.ModChanges.View": {
+      "english": "View",
+      "text": "Показать",
+      "machine": true
+    },
+    "Units.ModChanges.Shown": {
+      "english": "Mods Shown",
+      "text": "Показанные моды",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Note": {
+      "english": "{count} mod is on.|{count} mods are on, in the order they run. A lower mod wins where two change the same value.",
+      "text": "Включён {count} мод.|Включено {count} мода, в порядке их выполнения. Если два меняют одно значение, побеждает нижний.|Включено {count} модов, в порядке их выполнения. Если два меняют одно значение, побеждает нижний.",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.ToMods": {
+      "english": "Open the Mods Tab",
+      "text": "Открыть вкладку «Моды»",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Close": {
+      "english": "Close",
+      "text": "Закрыть",
+      "machine": true
+    },
+    "Units.ModChanges.Shown.Edited": {
+      "english": "changes saved here",
+      "text": "изменения сохраняются здесь",
+      "machine": true
+    },
+    "Units.ModEdited": {
+      "english": "Mod Being Edited",
+      "text": "Редактируемый мод",
+      "machine": true
+    },
+    "Units.ModEdited.Tip": {
+      "english": "The mod the Armory's changes are saved in. Only the mods that are on are listed.",
+      "text": "Мод, в котором сохраняются изменения Арсенала. Выбрать можно только включённый мод.",
+      "machine": true
+    },
+    "Units.ModEdited.New": {
+      "english": "New Mod…",
+      "text": "Новый мод…",
+      "machine": true
+    },
+    "Units.OwnModel.UseBase": {
+      "english": "Use Base Unit's Model",
+      "text": "Использовать модель базового юнита",
+      "machine": true
+    },
+    "Units.OwnModel.Using": {
+      "english": "Using {unit}'s model.",
+      "text": "Используется модель {unit}.",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.UnitPart": {
+      "english": "Unit Part",
+      "text": "Часть юнита",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.FilePart": {
+      "english": "Part in Your File",
+      "text": "Часть в вашем файле",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.Found": {
+      "english": "Found",
+      "text": "Найдена",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.ModelPart": {
+      "english": "Model Part",
+      "text": "Часть модели",
+      "machine": true
+    },
+    "Units.OwnModel.Parts.Note.Base": {
+      "english": "The parts of {unit} that move, and the model part each one uses.",
+      "text": "Подвижные части {unit} и часть модели, которую использует каждая.",
+      "machine": true
+    },
+    "Settings.AddSourceFiles": {
+      "english": "Add the source's files",
+      "text": "Добавлять файлы источника",
+      "machine": true
+    },
+    "Settings.AddSourceFiles.Note": {
+      "english": "Choosing a Source lists all its files, in place of the files of the source chosen before. Files added by hand stay. Off: Add Its Files, beside the Source, lists them.",
+      "text": "При выборе источника в список попадают все его файлы вместо файлов прежнего источника. Файлы, добавленные вручную, остаются. Выкл.: их добавляет кнопка «Добавить файлы» рядом с источником.",
+      "machine": true
+    },
+    "Editor.Value.NumberGivenTwice": {
+      "english": "{name}: {value} is given to both {first} and {second}. Each needs a number of its own; a game update or another mod may have taken it.",
+      "text": "{name}: {value} назначено и {first}, и {second}. Каждому нужен свой номер; возможно, его заняло обновление игры или другой мод.",
+      "machine": true
+    },
+    "Divisions.Heading.HideSlots": {
+      "english": "Hide Slots",
+      "text": "Скрыть слоты",
+      "machine": true
+    },
+    "Divisions.Heading.ShowSlots": {
+      "english": "Show Slots",
+      "text": "Показать слоты",
+      "machine": true
+    },
+    "Divisions.Heading.Slots.Tip": {
+      "english": "Show or hide the lines of card slots, in every type",
+      "text": "Показать или скрыть строки слотов карт во всех типах",
+      "machine": true
+    },
+    "Rules.Editor.Example": {
+      "english": "Example:\n{sample}",
+      "text": "Пример:\n{sample}",
       "machine": true
     }
   }

@@ -23,7 +23,7 @@ public sealed class FbxNode(string name, List<object> values, List<FbxNode> chil
     public IEnumerable<FbxNode> All(string name) => Children.Where(child => child.Name == name);
 
     /// <summary>A value as a long, for ids (a long) and indexes (an int).</summary>
-    public long Long(int index) => Values[index] switch { long l => l, int i => i, short s => s, _ => 0 };
+    public long Long(int index) => index >= Values.Count ? 0 : Values[index] switch { long l => l, int i => i, short s => s, _ => 0 };
 
     /// <summary>A value as text; "" when it is not text.</summary>
     public string Text(int index) => index < Values.Count && Values[index] is string text ? text : "";
@@ -82,20 +82,25 @@ public sealed class FbxFile
         {
             while (pos < data.Length)
             {
-                FbxNode? node = ReadNode(data, ref pos, wide);
+                FbxNode? node = ReadNode(data, ref pos, wide, depth: 0);
                 if (node is null) break;
                 file.Nodes.Add(node);
             }
         }
-        catch (Exception problem) when (problem is ArgumentException or IndexOutOfRangeException or InvalidDataException)
+        catch (Exception problem) when (problem is ArgumentException or IndexOutOfRangeException or InvalidDataException or OverflowException)
         {
             throw new InvalidDataException("the FBX file is damaged or cut short", problem);
         }
         return file;
     }
 
-    private static FbxNode? ReadNode(byte[] d, ref int pos, bool wide)
+    /// <summary>The deepest records sit inside one another; a real file's go some ten deep.</summary>
+    private const int DeepestRecord = 256;
+
+    private static FbxNode? ReadNode(byte[] d, ref int pos, bool wide, int depth)
     {
+        if (depth > DeepestRecord) throw new InvalidDataException("records too deep");
+        int start = pos;
         long end, count;
         if (wide)
         {
@@ -111,7 +116,9 @@ public sealed class FbxFile
         }
         int nameLength = d[pos++];
         if (end == 0) return null;
-        if (end > d.Length) throw new InvalidDataException("record past the end");
+        // a record ends after its own start: one that ends before it would be read again and again, for ever
+        if (end > d.Length || end <= start) throw new InvalidDataException("record past the end");
+        if (count < 0 || count > end - pos) throw new InvalidDataException("more values than the record holds");
         string name = Encoding.ASCII.GetString(d, pos, nameLength);
         pos += nameLength;
         var values = new List<object>((int)Math.Min(count, 64));
@@ -119,7 +126,7 @@ public sealed class FbxFile
         var children = new List<FbxNode>();
         while (pos < end)
         {
-            FbxNode? child = ReadNode(d, ref pos, wide);
+            FbxNode? child = ReadNode(d, ref pos, wide, depth + 1);
             if (child is null) break;
             children.Add(child);
         }
@@ -166,7 +173,7 @@ public sealed class FbxFile
                     'd' => Cast<double>(raw, length),
                     'l' => Cast<long>(raw, length),
                     'i' => Cast<int>(raw, length),
-                    _ => raw.Take(length).Select(b => b != 0).ToArray(),
+                    _ => raw.Take(Math.Max(0, length)).Select(b => b != 0).ToArray(),
                 };
             }
             default: throw new InvalidDataException("unknown value type '" + type + "'");
@@ -175,8 +182,11 @@ public sealed class FbxFile
 
     private static T[] Cast<T>(byte[] raw, int length) where T : struct
     {
+        int size = System.Runtime.InteropServices.Marshal.SizeOf<T>();
+        // a damaged length would ask for memory the file's bytes cannot fill
+        if (length < 0 || (long)length * size > raw.Length) throw new InvalidDataException("an array longer than its bytes");
         var values = new T[length];
-        System.Runtime.InteropServices.MemoryMarshal.Cast<byte, T>(raw.AsSpan(0, Math.Min(raw.Length, length * System.Runtime.InteropServices.Marshal.SizeOf<T>()))).CopyTo(values);
+        System.Runtime.InteropServices.MemoryMarshal.Cast<byte, T>(raw.AsSpan(0, length * size)).CopyTo(values);
         return values;
     }
 

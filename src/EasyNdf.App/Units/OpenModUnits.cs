@@ -63,7 +63,7 @@ public static class OpenModUnits
         DivisionRosters? rosters = null;
         foreach ((FileEntry entry, List<(Mod Mod, List<JsonNode> Rules)> parts) in WithRules(entries, openMod, source.Game))
         {
-            if (!IsTheSourcesCopy(entry, source))
+            if (!IsStandIn(entry) && !IsTheSourcesCopy(entry, source))
             {
                 notShown.Add(entry.Name);
                 continue;
@@ -109,6 +109,60 @@ public static class OpenModUnits
             List<(Mod Mod, List<JsonNode> Rules)> parts = PartsFor(entry, openMod);
             if (parts.Count > 0) yield return (entry, parts);
         }
+        foreach (FileEntry standIn in StandInsFor(entries, game))
+        {
+            List<(Mod Mod, List<JsonNode> Rules)> parts = PartsFor(standIn, openMod);
+            if (parts.Count > 0) yield return (standIn, parts);
+        }
+    }
+
+    /// <summary>What a stand-in has for its place on the disk: it has none, its text is the source's own.</summary>
+    private const string StandInSource = "(the source's own file)";
+
+    /// <summary>Whether a file to run stands in for one the Files tab does not list (<see cref="StandInsFor"/>).</summary>
+    private static bool IsStandIn(FileEntry entry) => ReferenceEquals(entry.Source, StandInSource);
+
+    /// <summary>
+    /// A stand-in for each file the units are read from that the Files tab does not list for the game, so the mods
+    /// that are on run on it all the same: every mod that is on shows in the Armory, whatever the Files tab lists.
+    /// Its text is the source's own file, read as the rules are run (<see cref="StandInTexts"/>); one the source does
+    /// not have (the units file under its other name) is left out then. A file that is listed, even off, is the
+    /// user's to run or not, and gets no stand-in. No folder is given, so rule sets apply to it by its name.
+    /// </summary>
+    private static IEnumerable<FileEntry> StandInsFor(IReadOnlyList<FileEntry> entries, GameTitle game)
+    {
+        var listed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (FileEntry entry in entries)
+            if (entry.Game == game) listed.Add(entry.Name);
+        foreach (string name in UnitReader.FilesWithValues)
+            if (!listed.Contains(name)) yield return new FileEntry { Id = -1, Name = name, Game = game, Source = StandInSource };
+    }
+
+    /// <summary>
+    /// Where each stand-in's file is in the source, and its text: the mod's own copy for a game mod that has one, else
+    /// the game's; where two files have the name, the one under Generated (where units and weapons are). A stand-in
+    /// whose file the source lacks, or that cannot be read, has none.
+    /// </summary>
+    private static Dictionary<FileEntry, ChangedFile> StandInTexts(UnitSource source, List<FileToRun> files)
+    {
+        var texts = new Dictionary<FileEntry, ChangedFile>();
+        if (!files.Any(file => IsStandIn(file.Entry))) return texts;
+        try
+        {
+            using var sourceFiles = new GameDataFiles(GameInstall.BaseZipOf(source.GameFolder), source.Mod?.Folder);
+            foreach (FileToRun file in files.Where(file => IsStandIn(file.Entry)))
+            {
+                string end = "/" + file.Entry.Name;
+                string? path = sourceFiles.PathsWithModWhere(each => ("/" + each).EndsWith(end, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(each => each.Contains("/Generated/", StringComparison.OrdinalIgnoreCase) ? 0 : 1).FirstOrDefault();
+                if (path is not null && sourceFiles.ReadPath(path) is string text) texts[file.Entry] = new ChangedFile(path, text);
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            // the source's files cannot be opened: the stand-ins are left out, and the listed files still run
+        }
+        return texts;
     }
 
     /// <summary>
@@ -276,12 +330,16 @@ public static class OpenModUnits
     {
         var changedFiles = new List<ChangedFile>();
         var edits = new List<RuleEdit>();
+        Dictionary<FileEntry, ChangedFile> standIns = StandInTexts(loaded.Source, files);
         foreach (FileToRun file in files)
         {
-            (string? text, List<RuleEdit> fileEdits) = RunMods(file, settings);
+            ChangedFile? standIn = standIns.GetValueOrDefault(file.Entry);
+            // a stand-in whose file the source does not have
+            if (IsStandIn(file.Entry) && standIn is null) continue;
+            (string? text, List<RuleEdit> fileEdits) = RunMods(file, standIn?.Text, settings);
             // a file the rules leave unchanged, or make invalid, is read as the game has it
             if (text is null || fileEdits.Count == 0) continue;
-            changedFiles.Add(new ChangedFile(Path.Combine(file.Entry.Folder, file.Entry.Name), text));
+            changedFiles.Add(new ChangedFile(standIn?.Path ?? Path.Combine(file.Entry.Folder, file.Entry.Name), text));
             edits.AddRange(fileEdits);
         }
         if (changedFiles.Count == 0) return new ModUnits(loaded.Catalog, UnitChanges.None);
@@ -298,10 +356,11 @@ public static class OpenModUnits
     /// with every edit logged so each change can name its mod and rule. The text is null when the file cannot be read,
     /// or a mod's rules make it invalid.
     /// </summary>
-    private static (string? Text, List<RuleEdit> Edits) RunMods(FileToRun file, RunSettings settings)
+    /// <param name="given">The file's text, for a stand-in; null to read the listed file.</param>
+    private static (string? Text, List<RuleEdit> Edits) RunMods(FileToRun file, string? given, RunSettings settings)
     {
         string text;
-        try { text = FileContent.Text(file.Entry); }
+        try { text = given ?? FileContent.Text(file.Entry); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return (null, []); }
         var edits = new List<RuleEdit>();
         foreach (ModRun mod in file.Mods)

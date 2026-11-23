@@ -48,7 +48,7 @@
   "Main.Usage.Cpu": "CPU",
   "Main.Usage.Cpu.What": "The app's share of the whole processor, all cores together, as Task Manager shows it.",
   "Main.Usage.Memory": "Memory",
-  "Main.Usage.Memory.What": "Task Manager's Memory column for EasyNDF, split by what the app holds it for. It turns yellow above 900 MB, the aim, and red above 2 GB.",
+  "Main.Usage.Memory.What": "Task Manager's Memory column for EasyNDF, split by what the app holds it for. It turns yellow above 10% of this PC's memory and red above 25%.",
   "Main.Usage.DotNet": ".NET",
   "Main.Usage.DotNet.What": "What the app's own data took after .NET's last clean-up. When the pauses go above 5%, lag likely comes from memory, not from the work.",
   "Main.Usage.Gpu": "GPU",

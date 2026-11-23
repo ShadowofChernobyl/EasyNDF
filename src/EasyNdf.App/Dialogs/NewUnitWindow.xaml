@@ -29,6 +29,8 @@
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}" AutomationProperties.Name="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
                         <Button DockPanel.Dock="Right" Style="{StaticResource HelpButton}" Margin="0,0,6,0" controls:QuickHelp.Page="units-new" ToolTip="{t:Text Common.HelpButton.Window.Tip}" />
+                        <!-- the window as large as the app's own, or back to its usual size; kept for the next time -->
+                        <Button x:Name="FullSizeButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0" Click="FullSizeClicked" />
                         <TextBlock Text="{t:Text Units.New.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Margin="0,0,24,0" />
                         <!-- the steps wrap onto a second line in a narrow window -->
                         <WrapPanel x:Name="StepStrip" VerticalAlignment="Center" />

@@ -142,6 +142,9 @@
                         <controls:SettingRow Label="{t:Text Settings.AutoAssignPresetsBy}" Note="{t:Text Settings.AutoAssignPresetsBy.Note}">
                             <CheckBox x:Name="AssignSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="autoAssign" />
                         </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.AddSourceFiles}" Note="{t:Text Settings.AddSourceFiles.Note}">
+                            <CheckBox x:Name="SourceFilesSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="addSourceFiles" />
+                        </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ReopenTheLastFiles}" Note="{t:Text Settings.ReopenTheLastFiles.Note}">
                             <CheckBox x:Name="SessionSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="reopenLastFiles" />
                         </controls:SettingRow>

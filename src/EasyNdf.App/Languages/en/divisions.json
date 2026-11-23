@@ -485,5 +485,8 @@
   "Divisions.Battlegroup.Generation.Chosen.Tip": "Generated: {why}",
   "Divisions.Battlegroup.Generation.CardsLocked": "This battlegroup's cards are chosen at each export. To change them by hand, open ⚙ Generation Settings… and click Make Fixed.",
   "Divisions.Rule.GeneratedBattlegroup": "Official Battlegroup {name}, generated: {how}",
-  "Divisions.Rule.GeneratedCards": "Official Battlegroup {name}'s generated cards"
+  "Divisions.Rule.GeneratedCards": "Official Battlegroup {name}'s generated cards",
+  "Divisions.Heading.HideSlots": "Hide Slots",
+  "Divisions.Heading.ShowSlots": "Show Slots",
+  "Divisions.Heading.Slots.Tip": "Show or hide the lines of card slots, in every type"
 }

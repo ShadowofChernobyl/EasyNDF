@@ -612,14 +612,18 @@ public partial class RulesPage : UserControl
     /// "New": asks the new mod's name and its game, in a dropdown under the name that starts with the game of the
     /// Source chosen on the Files tab, or else the open mod's. A mod runs only on files of its game.
     /// </summary>
-    private async void NewModClicked(object sender, RoutedEventArgs e)
+    private async void NewModClicked(object sender, RoutedEventArgs e) => await AskNewMod();
+
+    /// <summary>Asks for a new mod as "New" does (the Armory's "Mod Being Edited" has it too); false when none was made.</summary>
+    internal async Task<bool> AskNewMod()
     {
         var game = new GameChoice(GameChoice.StartingGame(MainView.Of(this).Sources.Chosen?.Game));
         string name = await Messages.AskName(Texts.Get("Rules.Mod.NewName"),
             new DialogOptions { UnderInput = game.Labelled(GameChoice.Label, Texts.Get("Rules.Mod.Game.Tip")) });
-        if (name == "") return;
-        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists"), DialogIcon.Error); return; }
+        if (name == "") return false;
+        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists"), DialogIcon.Error); return false; }
         Model.NewMod(name, game.Chosen);
+        return true;
     }
 
     private async void RenameModClicked(object sender, RoutedEventArgs e)
