@@ -1,6 +1,6 @@
 # EasyNDF
 
-A rule-based editor for **WARNO** and **Steel Division 2** `.ndf` files, made to make repetitive edits easier.
+A rule-based editor for **WARNO** and **Steel Division 2** `.ndf` files, designed to make repetitive edits easier.
 
 **[Download the latest version](https://github.com/ShadowofChernobyl/EasyNDF/releases/latest)** or **[try the online demo](https://shadowofchernobyl.github.io/EasyNDF-HTML-Demo/)** · Windows 10 or 11 (64-bit) · Free and open source
 
