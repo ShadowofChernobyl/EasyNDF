@@ -4,6 +4,8 @@ A rule-based editor for **WARNO** and **Steel Division 2** `.ndf` files, designe
 
 **[Download the latest version](https://github.com/ShadowofChernobyl/EasyNDF/releases/latest)** or **[try the online demo](https://shadowofchernobyl.github.io/EasyNDF-HTML-Demo/)** · Windows 10 or 11 (64-bit) · Free and open source
 
+Also please feel free to join the **[Discord Server](https://discord.com/invite/BZbRjgxr5b)**
+
 ![The Mods tab: mods, their rule sets, and the rules in one of them](images/ModsTab.jpg)
 
 Instead of hand-editing the same fields over and over, you:
