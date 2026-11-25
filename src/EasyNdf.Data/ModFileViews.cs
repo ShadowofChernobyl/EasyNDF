@@ -83,12 +83,18 @@ public sealed class ModFileViews
     /// </summary>
     private static string? PictureNameIn(string text)
     {
-        if (text.Length < 5 || !text.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || !Path.IsPathFullyQualified(text)) return null;
+        // a unit's own 3D model is kept as its pictures are (see Units.OwnModel)
+        if (text.Length < 5 || !(text.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || text.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase))
+            || !Path.IsPathFullyQualified(text)) return null;
         string? folder = Path.GetFileName(Path.GetDirectoryName(text));
         if (!string.Equals(folder, "Pictures", StringComparison.OrdinalIgnoreCase) && !string.Equals(folder, PicturesFolderName, StringComparison.OrdinalIgnoreCase)) return null;
         string name = Path.GetFileName(text);
         return name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 ? name : null;
     }
+
+    /// <summary>Whether a file in the Pictures folder is one the app keeps for mods: a picture, or a unit's own 3D model.</summary>
+    private static bool IsKeptPicture(string file) =>
+        file.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || file.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase);
 
     private static IEnumerable<JsonNode?> Walk(JsonNode? node)
     {
@@ -382,6 +388,39 @@ public sealed class ModFileViews
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool CreateHardLink(string newFile, string existingFile, IntPtr security);
 
+    // ---- as the app closes ----
+
+    /// <summary>
+    /// Takes away the folders of mods that are gone and that hold no file: a mod deleted leaves its folder behind for
+    /// the session, so that Undo brings the mod back with what it carried. One that still holds files (pictures, the
+    /// files of File rules) stays for "Clean Up Mod Files", which says what it takes. Returns how many went.
+    /// </summary>
+    /// <param name="stems">Every mod: the name of its file without ".mod.json".</param>
+    public int RemoveEmptyFoldersOfGoneMods(IEnumerable<string> stems)
+    {
+        var kept = new HashSet<string>(stems, StringComparer.OrdinalIgnoreCase);
+        int removed = 0;
+        lock (gate)
+        {
+            try
+            {
+                foreach (string folder in ModFolders().ToList())
+                {
+                    if (kept.Contains(Path.GetFileName(folder))) continue;
+                    // the folder's own lists are not files of the mod; anything else is
+                    bool holdsFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+                        .Any(file => Path.GetFileName(file) is not (ListName or OldListName));
+                    if (holdsFiles) continue;
+                    Directory.Delete(folder, recursive: true);
+                    removed++;
+                }
+            }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
+            if (removed > 0) lock (indexGate) index = null;
+        }
+        return removed;
+    }
+
     // ---- Clean Up Mod Files ----
 
     /// <summary>What a clean-up would take away, and the room it would give back.</summary>
@@ -411,7 +450,7 @@ public sealed class ModFileViews
         var files = new List<string>();
         IEnumerable<(string Path, string Id)> waiting =
             (Directory.Exists(store.Folder) ? Directory.GetFiles(store.Folder).Where(file => ModFileStore.IsStoredName(Path.GetFileName(file))).Select(file => (file, Path.GetFileName(file))) : [])
-            .Concat(Directory.Exists(ownPictures) ? Directory.GetFiles(ownPictures, "*.png").Select(file => (file, PicturePrefix + Path.GetFileName(file))) : []);
+            .Concat(Directory.Exists(ownPictures) ? Directory.GetFiles(ownPictures).Where(IsKeptPicture).Select(file => (file, PicturePrefix + Path.GetFileName(file))) : []);
         foreach ((string file, string id) in waiting)
         {
             if (used.Contains(id)) continue;

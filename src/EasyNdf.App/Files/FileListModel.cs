@@ -588,7 +588,12 @@ public sealed class FileListModel : INotifyPropertyChanged
             {
                 // the "Files already in the list" setting: ask, or always replace, or always skip
                 string duplicates = (string?)AppData.Current.Settings["dupes"] ?? "ask";
-                if (duplicates == "replace") choice = DuplicateChoice.Replace;
+                // the very file already listed, unchanged since (Add Its Files pressed twice): nothing to choose between
+                bool sameFile = existing.ArchivedContent is null && file.ArchivedContent is null
+                    && string.Equals(existing.Source, file.Source, StringComparison.OrdinalIgnoreCase)
+                    && existing.Size == file.Size && existing.Modified == file.Modified;
+                if (sameFile) choice = DuplicateChoice.Skip;
+                else if (duplicates == "replace") choice = DuplicateChoice.Replace;
                 else if (duplicates == "skip") choice = DuplicateChoice.Skip;
                 else if (choiceForAll is DuplicateChoice sameAsBefore) choice = sameAsBefore;
                 else
@@ -840,6 +845,20 @@ public sealed class FileListModel : INotifyPropertyChanged
         Say(Texts.Get("Files.Removed", ("files", Files(selected.Count))));
         Refilter();
         FilesChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Takes out the rows a test picks, without a notice: the files of the source chosen before, as another source is
+    /// chosen and its files take their place. Files on disk are not touched. Gives how many went.
+    /// </summary>
+    public int RemoveWhere(Func<FileEntry, bool> picked)
+    {
+        int removed = entries.RemoveAll(entry => picked(entry));
+        if (removed == 0) return 0;
+        lastClicked = null;
+        Refilter();
+        FilesChanged?.Invoke();
+        return removed;
     }
 
     /// <summary>"Remove all": empties the list. Files on disk are not touched.</summary>

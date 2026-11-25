@@ -19,6 +19,7 @@ public static class Startup
         try
         {
             VelopackApp.Build().Run();
+            ShowSplash();
             var app = new App();
             app.InitializeComponent();
             app.Run();
@@ -29,9 +30,27 @@ public static class Startup
         }
     }
 
+    /// <summary>
+    /// Shows the start-up form (<see cref="StartForm"/>) from the app's first moment until its window is there.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed, as felt: the window takes a few seconds to come, and the form is drawn before anything of WPF's
+    /// is loaded. After the installer's steps, which show nothing. Keep it the first thing done when tidying.
+    /// </remarks>
+    internal static void ShowSplash() => StartForm.Show();
+
+    /// <summary>
+    /// The form's forerunner, kept to go back to: a picture without a bar or version (Assets/StartSplash.png, drawn by
+    /// tools/Splash/make-start-splash.ps1), which Windows shows and closes by itself. Call it from
+    /// <see cref="ShowSplash"/> in place of the form.
+    /// </summary>
+    internal static void ShowSplashPicture() =>
+        new System.Windows.SplashScreen(typeof(Startup).Assembly, "Assets/StartSplash.png").Show(autoClose: true, topMost: false);
+
     /// <summary>Writes the error where it can be found (the data folder, else Temp) and shows it.</summary>
     private static void Report(Exception? problem)
     {
+        StartForm.Close();
         string text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "  EasyNDF "
             + (typeof(Startup).Assembly.GetName().Version?.ToString(3) ?? "") + " on " + Environment.OSVersion.VersionString + Environment.NewLine
             + (problem?.ToString() ?? "An unknown error.") + Environment.NewLine + Environment.NewLine;

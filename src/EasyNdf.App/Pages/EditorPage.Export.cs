@@ -74,8 +74,11 @@ public partial class EditorPage
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
 
         Say(Texts.Get("Editor.Working"), NoticeKind.Working);
+        // shown for a descriptor in it (Details, Mod Conflicts): the card stays, on a step of its own, until that descriptor is shown
+        bool finds = loading == 0 && wanted is { Quiet: false };
+        string[] steps = [Texts.Get("Editor.Loading.Rules"), Texts.Get("Editor.Loading.ShowingExport")];
         int exporting = loading != 0 ? loading
-            : StartLoading(Texts.Get("Editor.Loading.Exporting", ("file", entry.Name)), RulesNameOf(entry), Texts.Get("Editor.Loading.Rules"), Texts.Get("Editor.Loading.ShowingExport"));
+            : StartLoading(Texts.Get("Editor.Loading.Exporting", ("file", entry.Name)), RulesNameOf(entry), finds ? [.. steps, Texts.Get("Editor.Loading.FindingDescriptor")] : steps);
         try
         {
             await ShowExportAfterRun(file, entry, typed, current, first, exporting);
@@ -83,7 +86,8 @@ public partial class EditorPage
         finally
         {
             Notices.Say("");
-            if (loading == 0) EndLoading(exporting);
+            if (finds && wanted is not null && shown is { IsExport: true } && ReferenceEquals(shown.Source, file)) HoldUntilFound(exporting, steps.Length);
+            else if (loading == 0) EndLoading(exporting);
         }
     }
 
@@ -92,10 +96,21 @@ public partial class EditorPage
     {
         RunResult result;
         string exported;
+        TextDocument document;
+        NdfColourizer colourizer;
+        Task<(List<EasyNdf.Engine.Viewer.OutlineEntry> List, string Error)>? outline;
+        ITextSourceVersion? version;
         try
         {
             FileRunner runner = new(Files!, RunSettings.From(AppData.Current.Settings));
-            (result, exported) = await Task.Run(() => runner.WouldExport(entry, typed ?? FileContent.Text(entry)));
+            Thread screen = Thread.CurrentThread;
+            // Tuned for speed: the export's lines, colours and descriptors are worked out with the rules, away from the
+            // screen's thread, which a 26 MB export's lines and colours held for most of a second
+            (result, exported, (document, colourizer, outline, version)) = await Task.Run(() =>
+            {
+                (RunResult ran, string text) = runner.WouldExport(entry, typed ?? FileContent.Text(entry));
+                return (ran, text, PreparedDocument(Normalised(text), screen, readsDescriptors: true));
+            });
         }
         catch (Exception error)
         {
@@ -117,10 +132,9 @@ public partial class EditorPage
             ? LineComparison.Differences(first.Split('\n'), current.Split('\n')).Count
             : null;
 
-        var document = new TextDocument(Normalised(exported));
         SwapKeepingPlace(new ShownText
         {
-            Name = file.Name, Entry = entry, Document = document, Colourizer = new NdfColourizer(document),
+            Name = file.Name, Entry = entry, Document = document, Colourizer = colourizer, FirstOutline = outline, OutlineVersion = version,
             IsExport = true, Source = file, How = how, Warning = warning, RuleEdits = result.Edits, HandEdits = handEdits,
             FirstText = handEdits is > 0 ? first : null,
         });

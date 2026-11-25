@@ -1,0 +1,146 @@
+<!--
+  The 3D Model panel, in the New Unit window's 3D Model step and the Armory's Change 3D Model window: at the left, the
+  model in 3D (the copied unit's, or the .fbx picked) with its size, and the checks under it; at the right, which model,
+  the file with its pictures and where it goes, its detail levels, and the parts the copied unit moves and fires from,
+  each with the file's part for it.
+-->
+<UserControl x:Class="EasyNdf.App.Units.OwnModelPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             Foreground="{DynamicResource ink}">
+    <UserControl.Resources>
+        <Style x:Key="SunkenBox" TargetType="controls:Bevel">
+            <Setter Property="TopLeft" Value="{DynamicResource lo}" />
+            <Setter Property="BottomRight" Value="{DynamicResource hi}" />
+            <Setter Property="Background" Value="{DynamicResource well}" />
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition x:Name="SideColumn" Width="460" />
+        </Grid.ColumnDefinitions>
+
+        <!-- the model, its size, and the checks under it -->
+        <DockPanel Grid.Column="0">
+            <!-- the checks: how many of each kind beside the heading, the wrong ones first; the grip under the list shares the height with the view -->
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                <DockPanel>
+                    <StackPanel x:Name="CheckCounts" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" />
+                    <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.OwnModel.Checks}" /></controls:Bevel>
+                </DockPanel>
+                <ScrollViewer x:Name="ChecksScroller" MaxHeight="150" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                    <StackPanel x:Name="ChecksPanel" />
+                </ScrollViewer>
+                <controls:ResizeGrip x:Name="ChecksGrip" ToolTip="{t:Text Common.ResizeGrip.Tip}" />
+            </StackPanel>
+            <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                <Button x:Name="ResetButton" DockPanel.Dock="Left" Content="{t:Text Units.Model.ResetView}" Click="ResetClicked" />
+                <CheckBox x:Name="MarksSwitch" DockPanel.Dock="Left" Style="{StaticResource Toggle}" Content="{t:Text Units.OwnModel.ShowParts}" ToolTip="{t:Text Units.OwnModel.ShowParts.Tip}"
+                          IsChecked="True" VerticalAlignment="Center" Margin="12,0,0,0" Click="MarksSwitchClicked" />
+                <!-- which marks, as in the unit's 3D view: the firing points or the turrets' centres -->
+                <ToggleButton x:Name="FiringPointsChoice" DockPanel.Dock="Left" Style="{StaticResource PressedToggle}" Content="{t:Text Units.Model.FiringPoints}"
+                              IsChecked="True" Padding="6,3" Margin="12,0,0,0" Click="MarkKindClicked" />
+                <ToggleButton x:Name="TurretCentresChoice" DockPanel.Dock="Left" Style="{StaticResource PressedToggle}" Content="{t:Text Units.Model.TurretCentres}"
+                              Padding="6,3" Margin="-1,0,0,0" Click="MarkKindClicked" />
+                <TextBlock x:Name="TriangleText" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                <TextBlock x:Name="SizeText" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" VerticalAlignment="Center" ToolTip="{t:Text Units.Model.Size.Tip}" />
+                <Border />
+            </DockPanel>
+            <controls:Bevel x:Name="ViewFrame" TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="#0b0e0c" ClipToBounds="True" Cursor="Hand"
+                            MinHeight="200" MouseDown="ViewPressed" MouseMove="ViewDragged" MouseUp="ViewReleased" LostMouseCapture="ViewCaptureLost"
+                            MouseWheel="ViewScrolled" SizeChanged="ViewResized">
+                <Grid>
+                    <Image x:Name="Picture" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <Canvas x:Name="Marks" IsHitTestVisible="False" />
+                    <TextBlock Text="{t:Text Units.Model.GridScale}" FontSize="11.5" Foreground="{DynamicResource muted}" IsHitTestVisible="False"
+                               HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,6" />
+                    <TextBlock x:Name="RealityText" Text="{t:Text Units.OwnModel.Reality}" FontSize="11.5" Foreground="{DynamicResource muted}" IsHitTestVisible="False"
+                               HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,6" />
+                    <TextBlock x:Name="StatusText" Foreground="{DynamicResource muted}" TextWrapping="Wrap" TextAlignment="Center"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="40,0" />
+                </Grid>
+            </controls:Bevel>
+        </DockPanel>
+
+        <!-- which model, its file, pictures, detail levels and parts; only the parts list scrolls, inside its box -->
+        <DockPanel Grid.Column="2" SizeChanged="SideResized">
+            <StackPanel DockPanel.Dock="Top">
+                <!-- one button at the heading's right: Import Model, or, once a file is in, the way back to the base unit's model -->
+                <DockPanel>
+                    <Button x:Name="ImportButton" DockPanel.Dock="Right" Content="{t:Text Units.OwnModel.Own}" ToolTip="{t:Text Units.OwnModel.Own.Tip}"
+                            Foreground="{DynamicResource accent}" VerticalAlignment="Top" Margin="8,0,0,0" Click="OwnClicked" />
+                    <Button x:Name="BaseButton" DockPanel.Dock="Right" Content="{t:Text Units.OwnModel.UseBase}" VerticalAlignment="Top" Margin="8,0,0,0"
+                            Visibility="Collapsed" Click="CopiedClicked" />
+                    <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.OwnModel.Heading}" /></controls:Bevel>
+                </DockPanel>
+                <TextBlock x:Name="UsingText" Foreground="{DynamicResource muted}" FontSize="12" TextWrapping="Wrap" />
+                <StackPanel x:Name="FileBox" Visibility="Collapsed">
+                    <DockPanel Margin="0,6,0,0">
+                        <Button DockPanel.Dock="Right" Content="{t:Text Units.OwnModel.Browse}" Margin="6,0,0,0" Click="BrowseClicked" />
+                        <controls:Bevel Style="{StaticResource SunkenBox}" Padding="6,3">
+                            <controls:PathText x:Name="FilePath" />
+                        </controls:Bevel>
+                    </DockPanel>
+                    <DockPanel Margin="0,4,0,0">
+                        <TextBlock DockPanel.Dock="Left" Text="{t:Text Units.OwnModel.GoesTo}" Foreground="{DynamicResource muted}" Margin="0,0,5,0" />
+                        <controls:PathText x:Name="DestinationPath" />
+                    </DockPanel>
+                    <controls:Bevel Style="{StaticResource Heading}" Margin="0,12,0,0"><TextBlock Text="{t:Text Units.OwnModel.Levels}" /></controls:Bevel>
+                    <!-- one grid for both rows: the labels' column is as wide as the longer label in the language shown -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="34" />
+                            <ColumnDefinition />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition />
+                            <RowDefinition />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="{t:Text Units.OwnModel.Mid}" VerticalAlignment="Center" Margin="0,0,6,4" />
+                        <controls:Bevel Grid.Column="1" Style="{StaticResource SunkenBox}" Padding="6,3" Margin="0,0,0,4"><controls:PathText x:Name="MidPath" /></controls:Bevel>
+                        <Button Grid.Column="2" Content="{t:Text Units.OwnModel.Browse}" Margin="6,0,0,4" Tag="Mid" Click="BrowseLevelClicked" />
+                        <Button Grid.Column="3" Content="&#xD7;" Style="{StaticResource IconButton}" Margin="4,0,0,4" Tag="Mid" Click="ClearLevelClicked"
+                                ToolTip="{t:Text Units.OwnModel.ClearLevel.Tip}" />
+                        <TextBlock Grid.Row="1" Text="{t:Text Units.OwnModel.Low}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <controls:Bevel Grid.Row="1" Grid.Column="1" Style="{StaticResource SunkenBox}" Padding="6,3"><controls:PathText x:Name="LowPath" /></controls:Bevel>
+                        <Button Grid.Row="1" Grid.Column="2" Content="{t:Text Units.OwnModel.Browse}" Margin="6,0,0,0" Tag="Low" Click="BrowseLevelClicked" />
+                        <Button Grid.Row="1" Grid.Column="3" Content="&#xD7;" Style="{StaticResource IconButton}" Margin="4,0,0,0" Tag="Low" Click="ClearLevelClicked"
+                                ToolTip="{t:Text Units.OwnModel.ClearLevel.Tip}" />
+                    </Grid>
+                    <TextBlock Text="{t:Text Units.OwnModel.Levels.Note}" Foreground="{DynamicResource muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
+                </StackPanel>
+            </StackPanel>
+            <!-- the textures, and a grip under them sharing the height with the parts list -->
+            <StackPanel x:Name="TexturesArea" DockPanel.Dock="Top" Margin="0,12,0,0" Visibility="Collapsed">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="{t:Text Units.OwnModel.Textures}" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <Button x:Name="TexturesButton" DockPanel.Dock="Right" Padding="7,0" Click="TexturesClicked" />
+                    <TextBlock x:Name="TexturesText" Foreground="{DynamicResource muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <controls:Bevel x:Name="TexturesBox" Style="{StaticResource SunkenBox}" Margin="0,4,0,0" Height="130" Visibility="Collapsed">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                        <StackPanel x:Name="TexturesList" />
+                    </ScrollViewer>
+                </controls:Bevel>
+                <controls:ResizeGrip x:Name="TexturesGrip" Visibility="Collapsed" ToolTip="{t:Text Common.ResizeGrip.Tip}" />
+            </StackPanel>
+            <controls:Bevel DockPanel.Dock="Top" Style="{StaticResource Heading}" Margin="0,8,0,0"><TextBlock Text="{t:Text Units.OwnModel.Parts}" /></controls:Bevel>
+            <TextBlock x:Name="PartsNote" DockPanel.Dock="Bottom" Foreground="{DynamicResource muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0" />
+            <controls:Bevel x:Name="PartsBox" Style="{StaticResource SunkenBox}">
+                <DockPanel>
+                    <!-- what each column is; it stays while the parts scroll, and keeps clear of their scrollbar -->
+                    <Border x:Name="PartsHeader" DockPanel.Dock="Top" Background="{DynamicResource panel}" BorderBrush="{DynamicResource line}" BorderThickness="0,0,0,1" />
+                    <ScrollViewer x:Name="PartsScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False" ScrollChanged="PartsScrolled">
+                        <StackPanel x:Name="PartsList" />
+                    </ScrollViewer>
+                </DockPanel>
+            </controls:Bevel>
+        </DockPanel>
+    </Grid>
+</UserControl>

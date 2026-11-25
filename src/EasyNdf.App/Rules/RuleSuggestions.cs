@@ -46,6 +46,12 @@ public static class RuleSuggestions
                 found.Add(new Suggestion(name, "s-const", "= " + JsonValues.AsText(rule?["Params"]?["Value"]), name + "}",
                     Texts.Get("Rules.Suggest.Variable.Tip")));
         }
+        // the variables other rule sets share with this one: its mod's, and those of all mods that are on
+        if (model.OpenPreset is Data.ModPreset open)
+            foreach (Files.SharedVariables.Definition shared in Files.SharedVariables.InReachOf(model.OpenMod, open, Mods.ModStack.Running))
+                if (!ReferenceEquals(shared.RuleSet, open) && found.All(v => v.Text != shared.Name))
+                    found.Add(new Suggestion(shared.Name, "s-const", "= " + shared.Value, shared.Name + "}",
+                        Texts.Get("Rules.Suggest.Variable.Shared.Tip", ("mod", shared.Mod.Name), ("ruleSet", shared.RuleSet.Name))));
         return found;
     }
 

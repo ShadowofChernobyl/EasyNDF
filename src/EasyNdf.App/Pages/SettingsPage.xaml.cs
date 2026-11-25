@@ -164,9 +164,9 @@ public partial class SettingsPage : UserControl
             DecimalsBox.Text = Number("decimals", 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
             DecimalsRow.Note = Texts.Get("Settings.DecimalsRow.Note");
             DecimalsRow.NoteIsWarning = false;
-            foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FolderTreeSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
+            foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FolderTreeSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, SourceFilesSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
                 AskFolderSwitch, StructureSwitch, ZipSwitch, HoldBackSwitch, WatermarkFirstSwitch, RememberFolderSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch, ArmoryMarksSwitch,
-                ArmoryFileNamesSwitch, MonitorScalingSwitch, UsageSwitch, LogSwitch, UpdatesSwitch })
+                ArmoryFileNamesSwitch, MonitorScalingSwitch, UsageSwitch, LogSwitch, UpdatesSwitch, AskBundledModSwitch })
                 toggle.IsChecked = IsOn((string)toggle.Tag);
             foreach (ComboBox choice in new[] { LineEndChoice, ScopeChoice, FolderChoice, DuplicateChoice, UndoChoice, ScaleChoice, UsageEveryChoice, LogKeepChoice })
             {
@@ -213,6 +213,8 @@ public partial class SettingsPage : UserControl
         if (key == "wrapRows") Controls.ListText.ApplySaved();
         // which files each rule set applies to changes: the Files tab works out the mods on each file again
         if (key == "autoAssign") AppData.Current.TellModsChanged();
+        // switched on with a source chosen, its files are listed now; either way Add Its Files shows or hides
+        if (key == "addSourceFiles") View.FilesTab.SourceFilesSettingChanged();
         View.SettingsChanged(key);
     }
 
@@ -431,7 +433,7 @@ public partial class SettingsPage : UserControl
     {
         var dialog = new OpenFileDialog { Title = Texts.Get("Settings.Restore.Title"), Filter = Texts.Get("Settings.ModFiles"), Multiselect = true };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        View.Tabs.SelectedItem = View.RulesTabItem;
+        View.ShowTab(View.RulesTabItem);
         await View.RulesTab.ImportModFiles(dialog.FileNames);
     }
 

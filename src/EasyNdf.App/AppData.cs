@@ -274,6 +274,8 @@ public sealed class AppData
     {
         SessionLog.Write("Mods", "Opened " + mod.Name);
         State["openMod"] = mod.Name;
+        // opening a mod that runs is choosing it for the Armory too, as before the Armory had a choice of its own
+        if (ModStack.Runs(mod)) ModStack.ForgetArmoryChoice(mod.Game);
         SaveState();
         TellModsChanged(new ModsChange(OpenModChanged: true));
     }

@@ -29,6 +29,7 @@ public static class ValueMessages
         ValueProblemKind.NoSuchImpact => Texts.Get("Editor.Value.NoSuchImpact", ("value", problem.Value.Trim('\'', '"'))),
         ValueProblemKind.MissingValue => Texts.Get("Editor.Value.MustBeSet", ("name", problem.Name)),
         ValueProblemKind.UnknownClass => Texts.Get("Editor.Value.UnknownClass", ("name", problem.Name), ("game", problem.Value)),
+        ValueProblemKind.NumberGivenTwice => Texts.Get("Editor.Value.NumberGivenTwice", ("name", problem.Name), ("value", problem.Value), ("first", problem.OtherValue), ("second", problem.Key)),
         _ => Texts.Get("Editor.Value.Negative", ("name", problem.Name)),
     };
 

@@ -538,6 +538,15 @@ public partial class HelpPage : UserControl
 
     // ---- the buttons ----
 
+    /// <summary>The mouse's Back or Forward button: the page shown before, or after. False with none to go to.</summary>
+    public bool GoBackOrForward(bool back)
+    {
+        if ((back ? backPages.Count : forwardPages.Count) == 0) return false;
+        if (back) BackClicked(this, new RoutedEventArgs());
+        else ForwardClicked(this, new RoutedEventArgs());
+        return true;
+    }
+
     private void BackClicked(object sender, RoutedEventArgs e)
     {
         if (backPages.Count == 0) return;

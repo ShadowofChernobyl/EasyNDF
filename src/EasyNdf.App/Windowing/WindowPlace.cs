@@ -23,12 +23,14 @@ public static class WindowPlace
     }
 
     /// <summary>Keeps the window's place in the app's state; the caller saves the state.</summary>
-    public static void Keep(Window window)
+    /// <param name="window">The window.</param>
+    /// <param name="key">The name its place is kept under: "window" for the main window.</param>
+    public static void Keep(Window window, string key = "window")
     {
-        if (!IsOn) { AppData.Current.State.Remove("window"); return; }
+        if (!IsOn) { AppData.Current.State.Remove(key); return; }
         // while maximized or minimized, the size to come back to is the one it had before
         Rect normal = window.WindowState == WindowState.Normal ? new Rect(window.Left, window.Top, window.Width, window.Height) : window.RestoreBounds;
-        AppData.Current.State["window"] = new JsonObject
+        AppData.Current.State[key] = new JsonObject
         {
             ["left"] = Math.Round(normal.Left),
             ["top"] = Math.Round(normal.Top),
@@ -39,9 +41,9 @@ public static class WindowPlace
     }
 
     /// <summary>Puts the window back where it was, before it is shown.</summary>
-    public static void Restore(Window window)
+    public static void Restore(Window window, string key = "window")
     {
-        if (!IsOn || AppData.Current.State["window"] is not JsonObject kept) return;
+        if (!IsOn || AppData.Current.State[key] is not JsonObject kept) return;
         var place = new Rect((double?)kept["left"] ?? 0, (double?)kept["top"] ?? 0, (double?)kept["width"] ?? 0, (double?)kept["height"] ?? 0);
         if (place.Width < window.MinWidth || place.Height < window.MinHeight || !IsOnAScreen(place)) return;
         window.WindowStartupLocation = WindowStartupLocation.Manual;

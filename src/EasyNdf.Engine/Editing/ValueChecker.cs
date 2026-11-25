@@ -60,6 +60,15 @@ public enum ValueProblemKind
     /// the classes of the game's own files; Value is the game's class.
     /// </summary>
     UnknownClass,
+
+    /// <summary>
+    /// A number for deck codes given to two names in one MAP of DeckSerializer.ndf (TDeckSerializerEntries): two
+    /// divisions, or two units, with one number. The game refuses it ("Division ID '391' conflict in DeckSerializer").
+    /// It comes about when a mod's division or unit keeps the number it was made with and a game update, or another
+    /// mod, gives that number to its own. Name is the MAP, Value the number, OtherValue the name that has it first and
+    /// Key the one marked.
+    /// </summary>
+    NumberGivenTwice,
 }
 
 /// <summary>A value the File Editor marks, and what is wrong with it.</summary>
@@ -93,6 +102,9 @@ public sealed record ValueProblem(int Position, int Length, ValueProblemKind Kin
 
     /// <summary>For <see cref="ValueProblemKind.EmptyAmmoBox"/> and <see cref="ValueProblemKind.EmptyPack"/>: the place in the array, from 0.</summary>
     public int Index { get; init; }
+
+    /// <summary>For <see cref="ValueProblemKind.NumberGivenTwice"/>: the name the marked number is given to; <see cref="OtherValue"/> has it first.</summary>
+    public string Key { get; init; } = "";
 
     /// <summary>Whether this is a warning (mod generation works) rather than an error (it fails).</summary>
     public bool IsWarning => Kind == ValueProblemKind.NegativeInZeroOrMore;
@@ -245,11 +257,37 @@ public static partial class ValueChecker
         }
         CheckComparisons(item.TypeName, firstSet, marked, guide, shift, problems);
         CheckArrays(item.TypeName, firstSet, guide, shift, problems);
+        CheckNumbersGivenOnce(item.TypeName, firstSet, shift, problems);
         // WARNO v210942 on: a mounted weapon carries its weapon's name, and the game refuses one without ("Property
         // 'Name' must be defined"); marked on its type name, where its other values were written in the older way
         if (context.MountsNamed && item.TypeName == "TMountedWeaponDescriptor" && !firstSet.ContainsKey("Name") && item.Start is int at)
             problems.Add(new ValueProblem(at + shift, Math.Max(1, item.SourceTypeNameLength), ValueProblemKind.MountWithoutName, "Name", ""));
         CheckRequired(item, firstSet, guide, shift, problems);
+    }
+
+    /// <summary>The type of DeckSerializer.ndf's one object: every MAP in it gives names their numbers for deck codes.</summary>
+    private const string DeckSerializerType = "TDeckSerializerEntries";
+
+    /// <summary>
+    /// DeckSerializer.ndf's numbers for deck codes: in each of its MAPs (the divisions', the units', and any the game
+    /// adds later, as none is named here), a number is given to one name only. Each number given again is marked, with
+    /// the name that had it first. No number, name or MAP is known beforehand: whatever the file holds is compared.
+    /// </summary>
+    private static void CheckNumbersGivenOnce(string type, Dictionary<string, NdfValue> firstSet, int shift, List<ValueProblem> problems)
+    {
+        if (type != DeckSerializerType) return;
+        foreach ((string name, NdfValue value) in firstSet)
+        {
+            if (value is not ListValue map) continue;
+            var firstWith = new Dictionary<double, string>();
+            foreach (NdfValue entry in map.Items)
+            {
+                if (entry is not PairValue { First: ScalarValue key, Second: ScalarValue { Kind: ScalarKind.Number } number } || !TryReadNumber(number.Text, out double given)) continue;
+                if (!firstWith.TryGetValue(given, out string? first)) firstWith[given] = key.Text;
+                else if (number.Start is int start && number.End is int end)
+                    problems.Add(new ValueProblem(start + shift, end - start, ValueProblemKind.NumberGivenTwice, name, number.Text) { OtherValue = first, Key = key.Text });
+            }
+        }
     }
 
     /// <summary>

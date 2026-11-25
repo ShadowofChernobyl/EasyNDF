@@ -5,8 +5,8 @@ namespace EasyNdf.Data.Units;
 /// <summary>
 /// The Units tab's pictures (units and flags) as .png files, read out of a game's archives once and kept in the app's
 /// cache folder, in a folder for the game's version: "Cache\Unit pictures\WARNO 175910\Assets\2D\...". A game update
-/// changes the version, so its pictures are read again, and the older version's folder is deleted. A mod's own
-/// picture (a .png in its GameData) is used where it is, without a copy.
+/// changes the version, so its pictures are read again, and an older version's folder is deleted once unused for a
+/// while (<see cref="VersionFolders"/>). A mod's own picture (a .png in its GameData) is used where it is, without a copy.
 /// </summary>
 public sealed class UnitPictureStore
 {
@@ -29,7 +29,9 @@ public sealed class UnitPictureStore
         folder = Path.Combine(all, game.Id + " " + (version == "" ? "0" : version));
         this.pictures = pictures;
         this.modFolder = modFolder;
-        DeleteOlderVersions(all, game, folder);
+        // marked as used, so neither this app nor another copy of it deletes it while it may be on screen
+        VersionFolders.MarkUsed(folder);
+        VersionFolders.DeleteUnused(all, game, folder);
     }
 
     /// <summary>
@@ -111,20 +113,4 @@ public sealed class UnitPictureStore
     private static bool IsUnreadable(Exception problem) =>
         problem is InvalidDataException or IOException or UnauthorizedAccessException or ArgumentException
             or IndexOutOfRangeException or EndOfStreamException or OverflowException or ZstdSharp.ZstdException;
-
-    /// <summary>
-    /// Deletes the pictures saved for other versions of the same game: folders named "[game] [version]" beside this
-    /// one. Nothing else in the cache is touched.
-    /// </summary>
-    private static void DeleteOlderVersions(string all, GameTitle game, string current)
-    {
-        if (!Directory.Exists(all)) return;
-        foreach (string other in Directory.EnumerateDirectories(all, game.Id + " *"))
-        {
-            string version = Path.GetFileName(other)[(game.Id.Length + 1)..];
-            if (string.Equals(other, current, StringComparison.OrdinalIgnoreCase) || version == "" || !version.All(char.IsAsciiDigit)) continue;
-            try { Directory.Delete(other, recursive: true); }
-            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
-        }
-    }
 }

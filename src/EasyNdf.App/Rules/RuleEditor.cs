@@ -78,7 +78,16 @@ public sealed class RuleEditor
         GateBox = null;
 
         string kind = KindOf(rule);
+        // several rules as one: what a change does, and what "..." stands for
+        if (model.IsConfiguringSeveral) AddNote(Note("Rules.Mass.Note", ("count", model.SeveralCount)));
         AddHeader();
+        if (Mixed.Is(rule["Kind"]))
+        {
+            // rules of different types share only their name and switch
+            AddNote(Note("Rules.Mass.Types"));
+            return parts;
+        }
+        // (a Lookup rule has it too, under "Descriptors to edit in this file": BuildLookup)
         if (ScopedKinds.Contains(kind)) AddScope(kind);
         switch (kind)
         {
@@ -119,10 +128,39 @@ public sealed class RuleEditor
     private void BuildVariable()
     {
         // "Variable name", as the rule's own name is in the box above it
-        AddRow(Texts.Get("Rules.Editor.VariableName"), TextField("VarName", Texts.Get("Rules.Editor.VarNameHint.ForExampleRangeMultiplier"), mono: true));
+        TextBox nameBox = TextField("VarName", Texts.Get("Rules.Editor.VarNameHint.ForExampleRangeMultiplier"), mono: true);
+        AddRow(Texts.Get("Rules.Editor.VariableName"), nameBox);
         AddRow(Texts.Get("Rules.Editor.Value"), TextField("Value", Texts.Get("Rules.Editor.ValueHint.ForExample2"), mono: true));
+        // where it can be used: its own rule set unless said otherwise; the note under it follows the choice
+        AddRow(Texts.Get("Rules.Editor.Variable.Scope"), Choice("VarScope",
+        [
+            (Files.SharedVariables.RuleSetScope, Texts.Get("Rules.Editor.Variable.Scope.RuleSet")),
+            (Files.SharedVariables.ModScope, Texts.Get("Rules.Editor.Variable.Scope.Mod")),
+            (Files.SharedVariables.AllModsScope, Texts.Get("Rules.Editor.Variable.Scope.AllMods")),
+        ], rebuildAfter: true));
+        string scope = Files.SharedVariables.ScopeOf(rule);
+
+        // a name another variable in reach has already: said at once, as nothing runs while two share a name
+        var taken = new TextBlock { TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed };
+        taken.SetResourceReference(TextBlock.ForegroundProperty, "caution");
+        void ShowWhetherTaken()
+        {
+            Files.SharedVariables.Definition? other = model.OpenPreset is Data.ModPreset ruleSet
+                ? Files.SharedVariables.TakenBy(nameBox.Text, scope, model.OpenMod, ruleSet, rule, Mods.ModStack.Running)
+                : null;
+            taken.Visibility = other is null ? Visibility.Collapsed : Visibility.Visible;
+            if (other is not null)
+                taken.Text = Texts.Get("Rules.Editor.Variable.Taken", ("name", other.Name),
+                    ("where", Texts.Get("Files.Run.Variables.Where", ("mod", other.Mod.Name), ("ruleSet", other.RuleSet.Name))));
+        }
+        nameBox.TextChanged += (_, _) => ShowWhetherTaken();
+        ShowWhetherTaken();
+        parts.Add(taken);
+
         string name = JsonValues.AsText(parameters["VarName"]);
-        AddNote(Note("Rules.Editor.Variable.Note", ("variable", "{" + (name != "" ? name : Texts.Get("Rules.Editor.Name")) + "}")));
+        string noteKey = scope == Files.SharedVariables.ModScope ? "Rules.Editor.Variable.Note.Mod"
+            : scope == Files.SharedVariables.AllModsScope ? "Rules.Editor.Variable.Note.AllMods" : "Rules.Editor.Variable.Note";
+        AddNote(Note(noteKey, ("variable", "{" + (name != "" ? name : Texts.Get("Rules.Editor.Name")) + "}")));
     }
 
     private void BuildAdd()
@@ -205,21 +243,54 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         table.Height = 12 * 17.390625 + 8 + 2;
         parts.Add(table);
         AddNote(Note("Rules.Editor.Table.Note"));
+        // a row is applied only to a descriptor that also meets these
+        AddConditions(Texts.Get("Rules.Editor.ConditionsOptional"), Texts.Get("Rules.Editor.Table.NoConditions"));
     }
 
     private void BuildLookup()
     {
         // the scanned files, each stored by the shortest name no other answers to; the one the rule names keeps its name
         string sourceFile = JsonValues.AsText(parameters["SourceFile"]);
-        var files = new List<ChoiceOption> { new("", Texts.Get("Rules.Editor.Lookup.ChooseFile")) };
+        var files = new List<ChoiceOption> { new("", Texts.Get(scan.SourceFiles.Count == 0 && scan.NewFunnel is not null ? "Rules.Editor.Lookup.NoneListed" : "Rules.Editor.Lookup.ChooseFile")) };
         files.AddRange(scan.SourceFiles);
         if (sourceFile != "" && !scan.SourceFileIsScanned && files.All(file => file.Value != sourceFile))
             files.Add(new(sourceFile, Texts.Get("Rules.Editor.Lookup.NotScanned", ("file", sourceFile))));
         AddNote(Note("Rules.Editor.Lookup.Note"));
-        AddRow(Texts.Get("Rules.Editor.OtherFile"), Choice("SourceFile", files, rebuildAfter: true));
+        ComboBox otherFile = Choice("SourceFile", files, rebuildAfter: true);
+        if (scan.NewFunnel is null) AddRow(Texts.Get("Rules.Editor.OtherFile"), otherFile);
+        else
+        {
+            // the file filter's funnel joined to the dropdown's right, as on the Editor tab: the same filter
+            Controls.FileFilterFunnel funnel = scan.NewFunnel();
+            funnel.Margin = new Thickness(-1, 0, 0, 0);
+            void Refill()
+            {
+                IReadOnlyList<ChoiceOption> listed = scan.SourceFilesNow?.Invoke() ?? scan.SourceFiles;
+                // nothing passes the filter: the first line says so, in place of "(choose a file)" over an empty list
+                var now = new List<ChoiceOption> { listed.Count == 0 ? new("", Texts.Get("Rules.Editor.Lookup.NoneListed")) : files[0] };
+                now.AddRange(listed);
+                string chosen = JsonValues.AsText(parameters["SourceFile"]);
+                if (chosen != "" && now.All(file => file.Value != chosen) && files.FirstOrDefault(file => file.Value == chosen) is ChoiceOption kept) now.Add(kept);
+                otherFile.Tag = Refilling;
+                otherFile.ItemsSource = now;
+                otherFile.SelectedIndex = Math.Max(0, now.FindIndex(file => file.Value == chosen));
+                otherFile.Tag = null;
+                funnel.ShowButton();
+            }
+            funnel.Changed += () => { Refill(); scan.FilterChanged?.Invoke(); };
+            RefillFiles = Refill;
+            var joined = new DockPanel { MinWidth = 218 };
+            DockPanel.SetDock(funnel, Dock.Right);
+            joined.Children.Add(funnel);
+            joined.Children.Add(otherFile);
+            otherFile.ToolTip ??= Texts.Get("Rules.Editor.OtherFile");
+            AddRow(Texts.Get("Rules.Editor.OtherFile"), joined);
+        }
         AddList(RulesModel.SourceConditions, Texts.Get("Rules.Editor.Lookup.SourceConditions"), Gate("SourceGate", inParams: true), Texts.Get("Rules.Editor.ACondition"), Texts.Get("Rules.Editor.NoConditions") + " " + Texts.Get("Rules.Editor.PressPlus"));
         AddRow(Texts.Get("Rules.Editor.CollectFromEach"), TextField("Collect", Texts.Get("Rules.Editor.CollectHint.DescriptorTitleOr"), mono: true), Fill("Collect", ["Descriptor Title", .. scan.SourceNames]));
         parts.Add(new TextBlock { Text = Texts.Get("Rules.Editor.Lookup.ToEdit"), FontWeight = FontWeights.Bold, Margin = new Thickness(0, 6, 0, 0) }.Themed(TextBlock.ForegroundProperty, "accent"));
+        // what is edited here: each descriptor, each object of one type, or the constants, as an Edit rule's
+        AddScope("Lookup");
         AddRow(Texts.Get("Rules.Editor.WhereThisMatchesA"), TextField("MatchOn", Texts.Get("Rules.Editor.CollectHint.DescriptorTitleOr"), mono: true), Fill("MatchOn", ["Descriptor Title", .. scan.Names]));
         AddNote(Note("Rules.Editor.Lookup.ReferenceNote"));
         AddConditions(Texts.Get("Rules.Editor.ExtraConditionsInThis"), null);
@@ -230,7 +301,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     {
         AddNote(Note("Rules.Editor.Text.Note"));
         // as tall as the Table rule's box: twelve lines of the code font
-        var lines = TextArea(FileAndTextRules.LinesKey, "YSM_UNIT_NAME;Heli Zopium Express\nYSM_WEAPON_NAME;Zombie Bite");
+        var lines = TextArea(FileAndTextRules.LinesKey, "MYMOD_UNIT_NAME;Long Range Patrol\nMYMOD_WEAPON_NAME;81 mm Mortar");
         lines.Height = 12 * 17.390625 + 8 + 2;
         parts.Add(lines);
         int count = FileAndTextRules.LinesOf(JsonValues.AsText(parameters[FileAndTextRules.LinesKey])).Count;
@@ -253,7 +324,8 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         string stored = JsonValues.AsText(parameters[FileAndTextRules.StoredKey]);
         string chosen = JsonValues.AsText(parameters[FileAndTextRules.ChosenNameKey]);
         long size = parameters[FileAndTextRules.SizeKey] is JsonValue value && value.TryGetValue(out long bytes) ? bytes : 0;
-        string text = stored == "" ? Texts.Get("Rules.Editor.File.NoneChosen")
+        string text = Mixed.Is(parameters[FileAndTextRules.StoredKey]) ? Mixed.Mark
+            : stored == "" ? Texts.Get("Rules.Editor.File.NoneChosen")
             : AppData.Current.ModFileStore.PathOf(stored) is null ? Texts.Get("Rules.Editor.File.Missing", ("file", chosen))
             : Texts.Get("Rules.Editor.File.Chosen", ("file", chosen), ("size", SizeText(size)));
         var block = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
@@ -313,7 +385,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     /// <summary>.rhead: "Name:" with the Enabled switch at the right, and the name under them.</summary>
     private void AddHeader()
     {
-        var enabled = new CheckBox { Content = Texts.Get("Rules.Editor.Enabled"), IsChecked = !JsonValues.IsFalse(rule["Enabled"]), ToolTip = Texts.Get("Rules.Editor.Enabled.Tip") };
+        var enabled = new CheckBox { Content = Texts.Get("Rules.Editor.Enabled"), IsChecked = Mixed.Is(rule["Enabled"]) ? null : !JsonValues.IsFalse(rule["Enabled"]), ToolTip = Texts.Get("Rules.Editor.Enabled.Tip") };
         enabled.SetResourceReference(FrameworkElement.StyleProperty, "Toggle");
         enabled.Click += (_, _) => { rule["Enabled"] = enabled.IsChecked == true; changed(); };
         var label = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
@@ -380,6 +452,11 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         gate.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Gate.Any"), Tag = "Any" });
         gate.Items.Add(new ComboBoxItem { Content = Texts.Get("Rules.Editor.Gate.All"), Tag = "All" });
         gate.SelectedIndex = JsonValues.AsText(owner[field]) == "All" ? 1 : 0;
+        if (Mixed.Is(owner[field]))
+        {
+            gate.Items.Add(new ComboBoxItem { Content = Mixed.Mark, Tag = Mixed.Mark });
+            gate.SelectedIndex = 2;
+        }
         gate.SelectionChanged += (_, _) => { owner[field] = (string)((ComboBoxItem)gate.SelectedItem).Tag; changed(); };
         GateBox ??= gate;
         return gate;
@@ -412,7 +489,8 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     /// <summary>A text box of several lines in the code font, for a setting.</summary>
     private TextBox TextArea(string key, string placeholder)
     {
-        var box = new TextBox { Text = JsonValues.AsText(parameters[key]), Tag = placeholder, ToolTip = TipOrNone(placeholder) };
+        // the lines shown while the box is empty are an example: its tooltip says so, on a line of its own above them
+        var box = new TextBox { Text = JsonValues.AsText(parameters[key]), Tag = placeholder, ToolTip = placeholder == "" ? null : Texts.Get("Rules.Editor.Example", ("sample", placeholder)) };
         box.SetResourceReference(FrameworkElement.StyleProperty, "TextArea");
         box.TextChanged += (_, _) => { parameters[key] = box.Text; changed(); };
         return box;
@@ -422,6 +500,12 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     private ComboBox Choice(string key, IReadOnlyList<(string Value, string Label)> options, bool rebuildAfter = false) =>
         Choice(key, [.. options.Select(o => new ChoiceOption(o.Value, o.Label))], rebuildAfter);
 
+    /// <summary>Marks a dropdown whose choices are being listed again, in its Tag.</summary>
+    private static readonly object Refilling = new();
+
+    /// <summary>Lists a Lookup rule's other file's choices again, after the file filter changed elsewhere; null without one.</summary>
+    public Action? RefillFiles { get; private set; }
+
     /// <summary>A dropdown for a setting, whose entries may have a dimmed part (a file's folder).</summary>
     private ComboBox Choice(string key, IReadOnlyList<ChoiceOption> options, bool rebuildAfter)
     {
@@ -429,10 +513,18 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         ComboBox choice = NarrowChoices.OfOptions(new ComboBox { ItemsSource = options }, tipShowsChoice: true);
         // a value that is none of the choices shows the first, as a web page's dropdown does
         string current = JsonValues.AsText(parameters[key]);
+        // several rules that do not share the choice: "..." until one is chosen for them all
+        if (Mixed.Is(parameters[key]))
+        {
+            options = [new ChoiceOption(Mixed.Mark, Mixed.Mark), .. options];
+            choice.ItemsSource = options;
+        }
         int at = options.ToList().FindIndex(o => o.Value == current);
         choice.SelectedIndex = Math.Max(0, at);
         choice.SelectionChanged += (_, _) =>
         {
+            // its choices are being listed again (the file filter changed): not the user's choice
+            if (ReferenceEquals(choice.Tag, Refilling) || choice.SelectedItem is not ChoiceOption) return;
             parameters[key] = ((ChoiceOption)choice.SelectedItem).Value;
             changed();
             if (rebuildAfter) rebuild();
@@ -443,7 +535,7 @@ AddNote(Note("Rules.Editor.Formula.Note"));
     /// <summary>A checkbox for a setting.</summary>
     private CheckBox Tick(string key, string label)
     {
-        var tick = new CheckBox { Content = label, IsChecked = JsonValues.IsTruthy(parameters[key]), ToolTip = label };
+        var tick = new CheckBox { Content = label, IsChecked = Mixed.Checked(parameters[key]), ToolTip = label };
         tick.SetResourceReference(FrameworkElement.StyleProperty, "Tick");
         tick.Click += (_, _) => { parameters[key] = tick.IsChecked == true; changed(); };
         return tick;
@@ -532,8 +624,12 @@ AddNote(Note("Rules.Editor.Formula.Note"));
 /// <param name="SourceFiles">Every scanned file, as the choices for a Lookup rule's other file.</param>
 /// <param name="SourceFileIsScanned">Whether the file a Lookup rule names is scanned.</param>
 /// <param name="SourceNames">The property names of a Lookup rule's other file.</param>
+/// <param name="NewFunnel">Makes the file filter's funnel for the other file's dropdown; null for none.</param>
+/// <param name="SourceFilesNow">The other file's choices again, after the file filter changed.</param>
+/// <param name="FilterChanged">Tells the window the file filter changed in the editor's funnel.</param>
 public sealed record ScanLists(IReadOnlyList<string> Names, IReadOnlyList<string> Titles, IReadOnlyList<string> Types,
-    IReadOnlyList<ChoiceOption> SourceFiles, bool SourceFileIsScanned, IReadOnlyList<string> SourceNames)
+    IReadOnlyList<ChoiceOption> SourceFiles, bool SourceFileIsScanned, IReadOnlyList<string> SourceNames,
+    Func<Controls.FileFilterFunnel>? NewFunnel = null, Func<IReadOnlyList<ChoiceOption>>? SourceFilesNow = null, Action? FilterChanged = null)
 {
     /// <summary>No file scanned.</summary>
     public static readonly ScanLists None = new([], [], [], [], false, []);

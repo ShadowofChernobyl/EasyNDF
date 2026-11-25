@@ -95,9 +95,12 @@ public sealed class ValueGuide
     // going through every name of the type each time.
     private readonly Dictionary<string, string[]> required;
 
-    private ValueGuide(Dictionary<string, Dictionary<string, ValueInfo>> types)
+    private readonly Dictionary<string, string> about;
+
+    private ValueGuide(Dictionary<string, Dictionary<string, ValueInfo>> types, Dictionary<string, string>? about = null)
     {
         this.types = types;
+        this.about = about ?? [];
         required = types
             .Select(type => (type.Key, Names: type.Value.Where(name => name.Value.IsRequired || name.Value.RequiredWhen is not null).Select(name => name.Key).ToArray()))
             .Where(type => type.Names.Length > 0)
@@ -110,6 +113,9 @@ public sealed class ValueGuide
     /// <summary>What a name takes in a type; null when the files never give that type the name.</summary>
     public ValueInfo? Find(string type, string name) =>
         types.TryGetValue(type, out Dictionary<string, ValueInfo>? names) && names.TryGetValue(name, out ValueInfo? info) ? info : null;
+
+    /// <summary>What a type is for, in a sentence or two; null when the guide says nothing about the type itself.</summary>
+    public string? AboutType(string type) => about.TryGetValue(type, out string? said) && said.Length > 0 ? said : null;
 
     /// <summary>Whether the guide knows a type.</summary>
     public bool Knows(string type) => types.ContainsKey(type);
@@ -124,7 +130,7 @@ public sealed class ValueGuide
     public IReadOnlyList<string> RequiredNamesOf(string type) => required.TryGetValue(type, out string[]? names) ? names : [];
 
     /// <summary>
-    /// Reads the guide data, <c>{"types": {type: {name: {valueType, typeCertain, …}}}}</c>, a little at a time: the whole
+    /// Reads the guide data, <c>{"types": {type: {name: {valueType, typeCertain, …}}}, "about": {type: text}}</c>, a little at a time: the whole
     /// file is never held at once (read whole, its buffers stayed in memory long after).
     /// </summary>
     public static ValueGuide Read(Stream json)
@@ -138,7 +144,7 @@ public sealed class ValueGuide
             foreach ((string name, EntryData entry) in entries) names[sharing.Shared(name)] = sharing.InfoFrom(entry);
             types[type] = names;
         }
-        return new ValueGuide(types);
+        return new ValueGuide(types, new Dictionary<string, string>(data.About, StringComparer.Ordinal));
     }
 
     private static readonly JsonSerializerOptions ReadingOptions = new() { PropertyNameCaseInsensitive = true };
@@ -149,6 +155,9 @@ public sealed class ValueGuide
     private sealed class GuideData
     {
         public Dictionary<string, Dictionary<string, EntryData>> Types { get; set; } = [];
+
+        /// <summary>What each type is for, by its name.</summary>
+        public Dictionary<string, string> About { get; set; } = [];
     }
 
     /// <summary>One name's entry as the file writes it.</summary>

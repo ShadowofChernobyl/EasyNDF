@@ -130,12 +130,13 @@ public partial class RulesPage : UserControl
             || lines.Zip(wanted).Any(pair => pair.First switch
             {
                 PresetLine line => !ReferenceEquals(line.Preset, pair.Second.Preset) || line.Name != pair.Second.Preset!.Name,
-                PresetGroupLine heading => pair.Second.Group is null || heading.Name != pair.Second.Group.Name || heading.IsFolded != pair.Second.Group.IsFolded || heading.Hidden != pair.Second.Hidden,
+                PresetGroupLine heading => pair.Second.Group is null || heading.Name != pair.Second.Group.Name || heading.IsFolded != pair.Second.Group.IsFolded || heading.Hidden != pair.Second.Hidden
+                    || heading.IsSelected != (heading.Name == keyGroup),
                 _ => true,
             }))
         {
             lines = [.. wanted.Select(entry => entry.Group is PresetGroup group
-                ? (object)new PresetGroupLine(group.Name, group.IsFolded, entry.Hidden)
+                ? (object)new PresetGroupLine(group.Name, group.IsFolded, entry.Hidden, group.Name == keyGroup)
                 : new PresetLine(entry.Preset!) { IsInGroup = entry.Preset!.Group is string name && groups.Contains(name) })];
             PresetLines.ItemsSource = lines;
         }
@@ -143,13 +144,11 @@ public partial class RulesPage : UserControl
     }
 
     /// <summary>A group's heading in the preset list: its name, whether folded, and how many rule sets that hides.</summary>
-    public sealed record PresetGroupLine(string Name, bool IsFolded, int Hidden)
+    /// <param name="IsSelected">Whether it is the heading clicked last, which Ctrl+Up and Ctrl+Down move.</param>
+    public sealed record PresetGroupLine(string Name, bool IsFolded, int Hidden, bool IsSelected = false)
     {
         /// <summary>Drawn as a rule group's heading is (RuleLine).</summary>
         public bool IsGroup => true;
-
-        /// <summary>A heading is never selected.</summary>
-        public bool IsSelected => false;
 
         /// <summary>A heading of rule sets is never off: rule sets have no switch.</summary>
         public bool IsOff => false;
@@ -493,7 +492,21 @@ public partial class RulesPage : UserControl
     private void PresetGroupClicked(object sender, MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: PresetGroupLine line } || e.OriginalSource is DependencyObject source && IsInButton(source)) return;
+        keyGroup = line.Name;
         Model.FoldPresetGroup(line.Name, !line.IsFolded);
+    }
+
+    /// <summary>
+    /// The group of rule sets whose heading was clicked last, which Ctrl+Up and Ctrl+Down move among the groups; null
+    /// once a rule set is clicked, which the keys then move.
+    /// </summary>
+    private string? keyGroup;
+
+    /// <summary>A rule set is picked: the keys are its own again, not a group heading's.</summary>
+    private void PickPreset(ModPreset preset, bool control, bool shift)
+    {
+        keyGroup = null;
+        Model.ClickPreset(preset, control, shift);
     }
 
     private void PresetGroupFoldClicked(object sender, RoutedEventArgs e)
@@ -612,14 +625,20 @@ public partial class RulesPage : UserControl
     /// "New": asks the new mod's name and its game, in a dropdown under the name that starts with the game of the
     /// Source chosen on the Files tab, or else the open mod's. A mod runs only on files of its game.
     /// </summary>
-    private async void NewModClicked(object sender, RoutedEventArgs e)
+    private async void NewModClicked(object sender, RoutedEventArgs e) => await AskNewMod();
+
+    /// <summary>Asks for a new mod as "New" does (the Armory's "Mod Being Edited" has it too); false when none was made.</summary>
+    internal async Task<bool> AskNewMod()
     {
+        // not under a rule left open (asked from the Armory in a window of its own): the new mod would take its place
+        if (MainView.Of(this).RefusedForOpenRule()) return false;
         var game = new GameChoice(GameChoice.StartingGame(MainView.Of(this).Sources.Chosen?.Game));
         string name = await Messages.AskName(Texts.Get("Rules.Mod.NewName"),
             new DialogOptions { UnderInput = game.Labelled(GameChoice.Label, Texts.Get("Rules.Mod.Game.Tip")) });
-        if (name == "") return;
-        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists"), DialogIcon.Error); return; }
+        if (name == "") return false;
+        if (RulesModel.ModExists(name)) { await Messages.Tell(Texts.Get("Rules.Mod.Exists"), DialogIcon.Error); return false; }
         Model.NewMod(name, game.Chosen);
+        return true;
     }
 
     private async void RenameModClicked(object sender, RoutedEventArgs e)
@@ -654,7 +673,53 @@ public partial class RulesPage : UserControl
     }
 
     /// <summary>Imports mod files or backups (also the Settings tab's "Restore backup..."), asking about each mod of a name already here.</summary>
-    public async Task ImportModFiles(IEnumerable<string> paths)
+    public Task ImportModFiles(IEnumerable<string> paths) => MainView.Of(this).RefusedForOpenRule() ? Task.CompletedTask :
+        ImportMods(paths.Select(path => new ModSource(Path.GetFileName(path), Path.GetDirectoryName(path) ?? "", () => File.ReadAllText(path))));
+
+    /// <summary>
+    /// "Import Mod from Clipboard": the mods of a mod file's text on the clipboard (as Copy Mod to Clipboard puts it
+    /// there, or copied from a message or a web page), imported as a mod file is.
+    /// </summary>
+    private async void ImportModFromClipboardClicked(object sender, RoutedEventArgs e)
+    {
+        string text = ClipboardText().Trim();
+        string name = Texts.Get("Rules.Mod.ClipboardName");
+        // told here, not as a failed import: nothing was tried
+        bool holdsMod;
+        try { holdsMod = text.Length > 0 && await Task.Run(() => ModFiles.Read(text, name + ".mod.json").Count > 0); }
+        catch (ModFileException) { holdsMod = false; }
+        if (!holdsMod)
+        {
+            Model.Say(Texts.Get("Rules.Mod.ClipboardEmpty"), NoticeKind.Caution);
+            return;
+        }
+        await ImportMods([new ModSource(name + ".mod.json", "", () => text)]);
+    }
+
+    /// <summary>
+    /// "Copy Mod to Clipboard": the open mod as its mod file's text, to paste into a message or into another EasyNDF
+    /// with Import Mod from Clipboard. A mod whose carried files make it too large for the clipboard is not copied.
+    /// </summary>
+    private async void CopyModToClipboardClicked(object sender, RoutedEventArgs e)
+    {
+        Mod mod = Model.OpenMod;
+        bool on = ModStack.IsOn(mod);
+        string text = await Task.Run(() => ModFiles.ExportText(mod, on, AppData.Current.ModFileStore));
+        if (text.Length > MostClipboardText)
+        {
+            _ = Messages.Tell(Texts.Get("Rules.Mod.TooLargeToCopy", ("mod", mod.Name), ("size", Texts.Number((long)Math.Round(text.Length / 1048576.0)))), DialogIcon.Warning);
+            return;
+        }
+        if (CopyToClipboard(text)) Model.Say(Texts.Get("Rules.Mod.CopiedToClipboard", ("mod", mod.Name), ("presets", RulesModel.Count(mod.Presets.Count))));
+    }
+
+    /// <summary>The longest text put on the clipboard, in characters: beyond it Windows and the programs pasted into struggle.</summary>
+    private const int MostClipboardText = 32 * 1024 * 1024;
+
+    /// <summary>Where mods are imported from: a name to show, the folder shown under it, and how its text is read.</summary>
+    private sealed record ModSource(string Name, string Folder, Func<string> Read);
+
+    private async Task ImportMods(IEnumerable<ModSource> sources)
     {
         using Work.Job job = Work.Start(Texts.Get("Main.Usage.Job.Importing"));
         var problems = new List<string>();
@@ -663,9 +728,9 @@ public partial class RulesPage : UserControl
         int loading = 0;
         try
         {
-            foreach (string path in paths)
+            foreach (ModSource path in sources)
             {
-                loading = Loading.Start(Texts.Get("Rules.Loading.Importing", ("file", Path.GetFileName(path))), Path.GetDirectoryName(path) ?? "",
+                loading = Loading.Start(Texts.Get("Rules.Loading.Importing", ("file", path.Name)), path.Folder,
                     Texts.Get("Rules.Loading.Reading"), Texts.Get("Rules.Loading.Adding"), Texts.Get("Rules.Loading.Carried"), Texts.Get("Rules.Loading.Showing"));
                 (bool read, Mod? lastOfFile, int addedOfFile, int skippedOfFile) = await ImportModFile(path, loading, problems);
                 if (!read) continue;
@@ -696,16 +761,16 @@ public partial class RulesPage : UserControl
     /// Imports one mod file, the loading card's steps following along: hidden while a question is asked about a mod of
     /// a name already here.
     /// </summary>
-    private async Task<(bool Read, Mod? Last, int Added, int Skipped)> ImportModFile(string path, int loading, List<string> problems)
+    private async Task<(bool Read, Mod? Last, int Added, int Skipped)> ImportModFile(ModSource path, int loading, List<string> problems)
     {
         {
             List<Mod> incoming;
             // read away from the window: a mod carrying files can be 100 MB, a second or more to read, and the window
             // would stop answering ("Not Responding") meanwhile
-            try { incoming = await Task.Run(() => ModFiles.Read(File.ReadAllText(path), Path.GetFileName(path))); }
+            try { incoming = await Task.Run(() => ModFiles.Read(path.Read(), path.Name)); }
             catch (Exception error) when (error is ModFileException or IOException or UnauthorizedAccessException)
             {
-                problems.Add(Path.GetFileName(path) + " (" + error.Message + ")");
+                problems.Add(path.Name + " (" + error.Message + ")");
                 return (false, null, 0, 0);
             }
             // what to do with each mod of a name already here, asked before anything changes
@@ -727,7 +792,7 @@ public partial class RulesPage : UserControl
             foreach (Mod mod in kept)
             {
                 try { AppData.Current.ModFileStore.KeepCarried(mod.CarriedFiles); }
-                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { problems.Add(Path.GetFileName(path) + " (" + error.Message + ")"); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { problems.Add(path.Name + " (" + error.Message + ")"); }
             }
             // each mod comes in switched on or off as it was when exported; on when its file doesn't say
             foreach (Mod mod in kept) ModStack.SetOn(mod, mod.WasOn ?? true);
@@ -772,7 +837,7 @@ public partial class RulesPage : UserControl
     {
         if (sender is not FrameworkElement { DataContext: PresetLine line }) return;
         ModifierKeys keys = Keyboard.Modifiers;
-        Model.ClickPreset(line.Preset, keys.HasFlag(ModifierKeys.Control), keys.HasFlag(ModifierKeys.Shift));
+        PickPreset(line.Preset, keys.HasFlag(ModifierKeys.Control), keys.HasFlag(ModifierKeys.Shift));
     }
 
     /// <summary>A click on a part of the Armory: its preset opens, alone, or the part with no rules when it has no changes.</summary>
@@ -957,7 +1022,9 @@ public partial class RulesPage : UserControl
         RuleSource? source = run.RuleSources.FirstOrDefault(each => ruleIndex >= each.First && ruleIndex < each.First + each.Count);
         if (source is null) return;
         MainView view = MainView.Of(this);
-        view.Tabs.SelectedItem = view.RulesTabItem;
+        // a rule already open keeps its place: another is opened once it is done
+        if (view.RefusedForOpenRule()) return;
+        view.ShowTab(view.RulesTabItem);
         Model.OpenModNamed(source.Mod);
         if (Model.OpenMod.Name != source.Mod) return;
         string name = run.Result.Stats[ruleIndex].Name;
@@ -971,7 +1038,7 @@ public partial class RulesPage : UserControl
             return;
         }
         if (preset.IsArmoryPreset) Model.OpenArmoryPart(preset.ArmoryPart!.Value);
-        else Model.ClickPreset(preset, control: false, shift: false);
+        else PickPreset(preset, control: false, shift: false);
         if (index >= preset.Rules.Count || !IsNamed(preset.Rules[index], name))
         {
             index = -1;
@@ -999,11 +1066,14 @@ public partial class RulesPage : UserControl
     }
 
     /// <summary>Opens the rule window on the selected rule (the HTML app's <c>ruleOpen</c>).</summary>
-    public void OpenRuleWindow()
+    /// <param name="several">Whether it opens on all the selected rules as one.</param>
+    public void OpenRuleWindow(bool several = false)
     {
         if (Model.OpenRule is null || History is null) return;
         activeList = KeyList.None;
-        MainView.Of(this).RuleWindow.Open(Model, History);
+        MainView view = MainView.Of(this);
+        view.PlaceRuleLayer();
+        view.RuleWindow.Open(Model, History, several);
     }
 
     /// <summary>The rule window closed: the rule list takes the keys and the keyboard again, its edge in the accent colour.</summary>
@@ -1015,7 +1085,11 @@ public partial class RulesPage : UserControl
 
     private void RuleSwitchClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is CheckBox { DataContext: RuleRow row } box) Model.SetRuleOn(row.Index, box.IsChecked == true);
+        if (sender is not CheckBox { DataContext: RuleRow row } box) return;
+        Model.SetRuleOn(row.Index, box.IsChecked == true);
+        // a rule made from the Armory is refused (with its notice) and stays as it is: the switch shows that again, as
+        // the list, unchanged, is not drawn again and the switch was left looking switched off
+        box.IsChecked = row.Index < Model.Rules.Count && !JsonValues.IsFalse(Model.Rules[row.Index]?["Enabled"]);
     }
 
     /// <summary>A group heading's button folds or unfolds its rules.</summary>
@@ -1051,6 +1125,8 @@ public partial class RulesPage : UserControl
     /// <param name="descriptors">The descriptors' names, such as "Descriptor_Unit_M1A1_Abrams_US".</param>
     public void AddRuleFor(string name, IReadOnlyList<string> descriptors)
     {
+        // a rule already open keeps its place: another is made once it is done
+        if (MainView.Of(this).RefusedForOpenRule()) return;
         JsonObject rule = RuleLoading.NewRule("Edit");
         rule["Name"] = name;
         var conditions = new JsonArray();
@@ -1064,7 +1140,7 @@ public partial class RulesPage : UserControl
         rule["Conditions"] = conditions;
         Model.AddRule(rule);
         MainView view = MainView.Of(this);
-        view.Tabs.SelectedItem = view.RulesTabItem;
+        view.ShowTab(view.RulesTabItem);
         OpenRuleWindow();
     }
 

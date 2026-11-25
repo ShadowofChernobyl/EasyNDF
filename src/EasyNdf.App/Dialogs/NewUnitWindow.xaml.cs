@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -31,7 +32,7 @@ public sealed record ModelLine(Unit Unit, NewUnitWindow Window);
 public partial class NewUnitWindow : UserControl
 {
     /// <summary>The steps, in order.</summary>
-    private enum Step { Model, NameAndNation, Stats, Weapons }
+    private enum Step { Model, OwnModel, NameAndNation, Stats, Weapons }
 
     /// <summary>
     /// A value the Stats step asks for: its name, how the model unit's is read, whether it is a whole number (as the game
@@ -87,6 +88,32 @@ public partial class NewUnitWindow : UserControl
     /// <summary>The new unit's tile, as it will model unit, beside the Name and Stats steps.</summary>
     private UnitTile? preview;
 
+    /// <summary>Where the units are read from, for the 3D Model step's models; null where models of the user's own are not taken.</summary>
+    private UnitSource? unitSource;
+
+    /// <summary>Keeps a file of a model of the user's own with the app's pictures, under a name; returns where.</summary>
+    private Func<byte[], string, string> keepModelFile = (_, name) => name;
+
+    /// <summary>The unit copied the 3D Model step was made for; what it chose is kept while the same unit stays chosen.</summary>
+    private Unit? ownModelFor;
+
+    /// <summary>Whether the new unit can take a model of the user's own: WARNO's units, with their source known.</summary>
+    private bool TakesOwnModels => game == GameTitle.Warno && unitSource is not null;
+
+    /// <summary>The step after one, past the 3D Model step where it is not taken.</summary>
+    private Step After(Step each) => each + 1 == Step.OwnModel && !TakesOwnModels ? Step.NameAndNation : each + 1;
+
+    /// <summary>The step before one, past the 3D Model step where it is not taken.</summary>
+    private Step Before(Step each) => each - 1 == Step.OwnModel && !TakesOwnModels ? Step.Model : each - 1;
+
+    /// <summary>A step's number at the top, counting the 3D Model step only where it is taken.</summary>
+    private int NumberOf(Step each) => (int)each + 1 - (!TakesOwnModels && each > Step.OwnModel ? 1 : 0);
+
+    private void OwnModelChanged()
+    {
+        if (step == Step.OwnModel) ShowButtons();
+    }
+
     /// <summary>Builds the window, closed.</summary>
     public NewUnitWindow()
     {
@@ -115,8 +142,12 @@ public partial class NewUnitWindow : UserControl
     /// <param name="levels">How many armour levels each armour family has, for the armour boxes (<see cref="UnitCatalog.ArmorLevels"/>).</param>
     /// <param name="weapons">The model unit's loadout and the weapons editor, for the Weapons step.</param>
     public void Open(IReadOnlyList<Unit> models, GameTitle fromGame, IReadOnlyCollection<string> taken, Func<string?> pickPicture,
-        Func<ModUnit, IReadOnlyList<ModWeapon>, bool> createUnit, IReadOnlyDictionary<string, int>? levels, INewUnitWeapons weapons, Action<Unit>? showModel = null)
+        Func<ModUnit, IReadOnlyList<ModWeapon>, bool> createUnit, IReadOnlyDictionary<string, int>? levels, INewUnitWeapons weapons, Action<Unit>? showModel = null,
+        UnitSource? source = null, Func<byte[], string, string>? keepFile = null)
     {
+        unitSource = keepFile is null ? null : source;
+        keepModelFile = keepFile ?? ((_, name) => name);
+        ownModelFor = null;
         this.showModel = showModel;
         weaponsSource = weapons;
         pendingWeapons.Clear();
@@ -164,7 +195,8 @@ public partial class NewUnitWindow : UserControl
         step = shown;
         if (shown > furthest) furthest = shown;
         ModelStep.Visibility = shown == Step.Model ? Visibility.Visible : Visibility.Collapsed;
-        DetailsSteps.Visibility = shown == Step.Model ? Visibility.Collapsed : Visibility.Visible;
+        OwnModelStep.Visibility = shown == Step.OwnModel ? Visibility.Visible : Visibility.Collapsed;
+        DetailsSteps.Visibility = shown is Step.Model or Step.OwnModel ? Visibility.Collapsed : Visibility.Visible;
         NameStep.Visibility = shown == Step.NameAndNation ? Visibility.Visible : Visibility.Collapsed;
         StatsStep.Visibility = shown == Step.Stats ? Visibility.Visible : Visibility.Collapsed;
         WeaponsStep.Visibility = shown == Step.Weapons ? Visibility.Visible : Visibility.Collapsed;
@@ -173,7 +205,7 @@ public partial class NewUnitWindow : UserControl
         CreateButton.Visibility = shown == Step.Weapons ? Visibility.Visible : Visibility.Collapsed;
         FitWidth();
         FillStepStrip();
-        if (shown != Step.Model) ShowPreview();
+        if (shown is not Step.Model and not Step.OwnModel) ShowPreview();
         ShowButtons();
         if (shown == Step.NameAndNation) Dispatcher.BeginInvoke(() => NameBox.Focus(), System.Windows.Threading.DispatcherPriority.Input);
         if (shown == Step.Stats && statBoxes.Count > 0) Dispatcher.BeginInvoke(() => statBoxes[0].Box.Focus(), System.Windows.Threading.DispatcherPriority.Input);
@@ -189,11 +221,12 @@ public partial class NewUnitWindow : UserControl
         (Step Step, string Name)[] steps =
         [
             (Step.Model, Texts.Get("Units.New.Step.Model")),
+            (Step.OwnModel, Texts.Get("Units.New.Step.OwnModel")),
             (Step.NameAndNation, Texts.Get("Units.New.Step.NameAndNation")),
             (Step.Stats, Texts.Get("Units.New.Step.Stats")),
             (Step.Weapons, Texts.Get("Units.New.Step.Weapons")),
         ];
-        foreach ((Step each, string name) in steps)
+        foreach ((Step each, string name) in steps.Where(each => each.Step != Step.OwnModel || TakesOwnModels))
         {
             if (StepStrip.Children.Count > 0)
             {
@@ -201,38 +234,50 @@ public partial class NewUnitWindow : UserControl
                 join.SetResourceReference(Border.BackgroundProperty, "line");
                 StepStrip.Children.Add(join);
             }
-            StepStrip.Children.Add(StepMark(each, name, steps.Length));
+            StepStrip.Children.Add(StepMark(each, name, steps.Length - (TakesOwnModels ? 0 : 1)));
         }
     }
 
     /// <summary>One step at the top: its circle and its name.</summary>
+    /// <summary>
+    /// A step's number or tick as a shape centred on its own outline: a text block centres its line, whose room under
+    /// the baseline left the digits sitting high in the circle and the tick off to one side.
+    /// </summary>
+    private System.Windows.Shapes.Path CentredGlyph(string text)
+    {
+        var font = (FontFamily)(TryFindResource("ui-font") ?? new FontFamily("Segoe UI"));
+        var formatted = new FormattedText(text, Texts.Catalog.Culture, FlowDirection.LeftToRight,
+            new Typeface(font, FontStyles.Normal, FontWeights.Bold, FontStretches.Normal), 11, Brushes.Black, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        Geometry shape = formatted.BuildGeometry(new Point(0, 0));
+        Rect ink = shape.Bounds;
+        // moved so its outline starts at the corner: the shape's size is then its outline's, and centring it centres that
+        if (!ink.IsEmpty) shape.Transform = new TranslateTransform(-ink.X, -ink.Y);
+        return new System.Windows.Shapes.Path { Data = shape, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+    }
+
     private FrameworkElement StepMark(Step each, string name, int count)
     {
         bool isShown = each == step, isDone = each < step || (each <= furthest && each != step);
-        var number = new TextBlock
-        {
-            Text = isDone ? "✓" : ((int)each + 1).ToString(Texts.Catalog.Culture), FontSize = 11, FontWeight = FontWeights.Bold,
-            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
-        };
+        var number = CentredGlyph(isDone ? "✓" : NumberOf(each).ToString(Texts.Catalog.Culture));
         var circle = new Border { Width = 18, Height = 18, CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1), Child = number, Margin = new Thickness(0, 0, 6, 0) };
         var label = new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center };
         if (isShown)
         {
             circle.SetResourceReference(Border.BackgroundProperty, "accent");
             circle.SetResourceReference(Border.BorderBrushProperty, "accent");
-            number.SetResourceReference(TextBlock.ForegroundProperty, "panel");
+            number.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, "panel");
         }
         else
         {
             string colour = isDone ? "accent" : "muted";
             circle.SetResourceReference(Border.BorderBrushProperty, colour);
-            number.SetResourceReference(TextBlock.ForegroundProperty, colour);
+            number.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, colour);
             label.SetResourceReference(TextBlock.ForegroundProperty, isDone ? "ink" : "muted");
         }
         var mark = new StackPanel
         {
             Orientation = Orientation.Horizontal, Background = Brushes.Transparent, Children = { circle, label },
-            ToolTip = Texts.Get("Units.New.Step.Tip", ("number", (int)each + 1), ("count", count), ("step", name)),
+            ToolTip = Texts.Get("Units.New.Step.Tip", ("number", NumberOf(each)), ("count", count), ("step", name)),
         };
         // a step done can be gone back to with a click
         if (isDone && CanShow(each))
@@ -250,7 +295,8 @@ public partial class NewUnitWindow : UserControl
     private bool CanShow(Step each) => each switch
     {
         Step.Model => true,
-        Step.NameAndNation => modelUnit is not null,
+        Step.OwnModel => modelUnit is not null && TakesOwnModels,
+        Step.NameAndNation => modelUnit is not null && !OwnModelStep.Blocks,
         Step.Stats => modelUnit is not null && NameBox.Text.Trim() != "",
         _ => modelUnit is not null && NameBox.Text.Trim() != "" && StatsAreValid(),
     };
@@ -258,7 +304,7 @@ public partial class NewUnitWindow : UserControl
     /// <summary>Next, usable once the step shown is done; Create, once every stat is given; the hint says what is left.</summary>
     private void ShowButtons()
     {
-        NextButton.IsEnabled = step != Step.Weapons && CanShow(step + 1);
+        NextButton.IsEnabled = step != Step.Weapons && CanShow(After(step));
         CreateButton.IsEnabled = step == Step.Weapons && StatsAreValid();
         // why Next or Create is off, as its tooltip while it is
         string? wrongStat = StatsAreValid() ? null : Texts.Get("Units.New.Off.Stats");
@@ -267,6 +313,7 @@ public partial class NewUnitWindow : UserControl
         HintText.Text = step switch
         {
             Step.Model => modelUnit is null ? Texts.Get("Units.New.Hint.Model") : Texts.Get("Units.New.Hint.ModelChosen", ("unit", modelUnit.Name)),
+            Step.OwnModel => OwnModelStep.Hint,
             Step.NameAndNation => NameBox.Text.Trim() == "" ? Texts.Get("Units.New.Hint.Name") : "",
             Step.Weapons => Texts.Get("Units.New.Hint.Weapons", ("unit", modelUnit?.Name ?? "")),
             _ => StatsAreValid() ? Texts.Get("Units.New.Hint.Stats", ("unit", modelUnit?.Name ?? "")) : WrongStatHint(),
@@ -297,7 +344,7 @@ public partial class NewUnitWindow : UserControl
     private void GoOn()
     {
         if (!NextButton.IsEnabled || step == Step.Weapons) return;
-        GoTo(step + 1);
+        GoTo(After(step));
     }
 
     /// <summary>
@@ -307,6 +354,14 @@ public partial class NewUnitWindow : UserControl
     private void GoTo(Step target)
     {
         if (target != Step.Model && step == Step.Model) FillNameStep();
+        // the 3D Model step is made for the unit copied; it keeps what was chosen while that stays the same
+        if (target == Step.OwnModel && modelUnit is not null && !ReferenceEquals(ownModelFor, modelUnit) && unitSource is not null)
+        {
+            ownModelFor = modelUnit;
+            OwnModelStep.AwaitsName = true;
+            OwnModelStep.Descriptor = DescriptorSoFar();
+            OwnModelStep.Open(modelUnit, unitSource, null);
+        }
         if (target == Step.Stats) FillStatsStep();
         if (target == Step.Weapons) FillWeaponsStep();
         ShowStep(target);
@@ -314,7 +369,7 @@ public partial class NewUnitWindow : UserControl
 
     private void BackClicked(object sender, RoutedEventArgs e)
     {
-        if (step != Step.Model) ShowStep(step - 1);
+        if (step != Step.Model) ShowStep(Before(step));
     }
 
     // ---- step 1: the model unit ----
@@ -368,6 +423,7 @@ public partial class NewUnitWindow : UserControl
     private void FillNationList()
     {
         NationList.Children.Clear();
+        nationCountTexts.Clear();
         foreach (string side in UnitNames.SidesOf(game).Where(side => filter.Side == "" || filter.Side == side))
         {
             Dictionary<string, int> counts = filter.NationCounts(units, side);
@@ -384,6 +440,7 @@ public partial class NewUnitWindow : UserControl
         var mark = new NationMark(nation, side == UnitNames.SidesOf(game)[0]) { Margin = new Thickness(0, 0, 6, 0) };
         var countText = new TextBlock { Text = Texts.Number(count), FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0) };
         countText.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        nationCountTexts[(side, nation)] = countText;
         var name = new TextBlock { Text = UnitNames.Nation(nation), TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(tick, Dock.Left);
         DockPanel.SetDock(mark, Dock.Left);
@@ -408,9 +465,10 @@ public partial class NewUnitWindow : UserControl
     private void FillFactoryTabs()
     {
         FactoryTabs.Children.Clear();
+        factoryCountTexts.Clear();
         Dictionary<string, int> counts = filter.FactoryCounts(units);
         FactoryTabs.Children.Add(FactoryTab("", Texts.Get("Units.Factory.All.Short"), Texts.Get("Units.Factory.All"), counts.Values.Sum()));
-        foreach (string factory in UnitNames.FactoriesOf(game))
+        foreach (string factory in UnitNames.FactoriesOf(game, units))
             FactoryTabs.Children.Add(FactoryTab(factory, UnitNames.FactoryShort(factory), UnitNames.Factory(factory), counts.GetValueOrDefault(factory)));
     }
 
@@ -418,6 +476,7 @@ public partial class NewUnitWindow : UserControl
     {
         var countText = new System.Windows.Documents.Run(" " + Texts.Number(count)) { FontWeight = FontWeights.Normal, FontSize = 11 };
         countText.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "muted");
+        factoryCountTexts[factory] = countText;
         var label = new TextBlock { Inlines = { new System.Windows.Documents.Run(shortName), countText } };
         var tab = new ToggleButton { Content = label, Style = (Style)FindResource("FactoryTab"), IsChecked = filter.Factory == factory, ToolTip = name };
         tab.Click += (_, _) =>
@@ -573,11 +632,57 @@ public partial class NewUnitWindow : UserControl
         return null;
     }
 
+    /// <summary>Waits for a pause in the typing before the units are found, as the Armory's Find does: each letter no longer redraws the list.</summary>
+    private readonly System.Windows.Threading.DispatcherTimer searchPause = new() { Interval = TimeSpan.FromMilliseconds(160) };
+
     private void SearchChanged(object sender, TextChangedEventArgs e)
     {
+        if (searchPause.Tag is null)
+        {
+            searchPause.Tag = true;
+            searchPause.Tick += (_, _) =>
+            {
+                searchPause.Stop();
+                if (filter.Text == SearchBox.Text.Trim()) return;
+                filter.Text = SearchBox.Text.Trim();
+                ShowFound();
+            };
+        }
+        searchPause.Stop();
         if (fillingLists) return;
-        filter.Text = SearchBox.Text.Trim();
-        FillModels();
+        searchPause.Start();
+    }
+
+    /// <summary>
+    /// The units found, after the text typed changed: the list, and how many units each nation and type tab would show.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed: the nations' rows and the type tabs stay as they are, and only their counts are written again.
+    /// Building them anew at each change took most of the time a letter typed took to show. Keep it that way when tidying.
+    /// </remarks>
+    private void ShowFound()
+    {
+        ShowCounts();
+        FillModelList();
+        ShowModelDetails();
+        ShowButtons();
+    }
+
+    /// <summary>Each nation's count in the nation list, by side and nation, and each type tab's, by type ("" for ALL): written again as the text typed changes.</summary>
+    private readonly Dictionary<(string Side, string Nation), TextBlock> nationCountTexts = [];
+    private readonly Dictionary<string, System.Windows.Documents.Run> factoryCountTexts = [];
+
+    /// <summary>Writes the counts in the nation list and on the type tabs again, as the filters leave them now.</summary>
+    private void ShowCounts()
+    {
+        foreach (IGrouping<string, KeyValuePair<(string Side, string Nation), TextBlock>> side in nationCountTexts.GroupBy(row => row.Key.Side))
+        {
+            Dictionary<string, int> counts = filter.NationCounts(units, side.Key);
+            foreach (KeyValuePair<(string Side, string Nation), TextBlock> row in side) row.Value.Text = Texts.Number(counts.GetValueOrDefault(row.Key.Nation));
+        }
+        Dictionary<string, int> byFactory = filter.FactoryCounts(units);
+        foreach ((string factory, System.Windows.Documents.Run count) in factoryCountTexts)
+            count.Text = " " + Texts.Number(factory == "" ? byFactory.Values.Sum() : byFactory.GetValueOrDefault(factory));
     }
 
     private void RoleFilterChosen(object sender, SelectionChangedEventArgs e)
@@ -650,7 +755,14 @@ public partial class NewUnitWindow : UserControl
         if (!IsOpen) return;
         ShowPreview();
         ShowButtons();
+        // the 3D Model step names the folder its files go into after the unit
+        OwnModelStep.Descriptor = DescriptorSoFar();
+        OwnModelStep.ShowDestination();
     }
+
+    /// <summary>The new unit's descriptor as the name typed so far makes it; null while there is no name.</summary>
+    private string? DescriptorSoFar() =>
+        modelUnit is not null && NameBox.Text.Trim() is { Length: > 0 } name ? ModUnit.NewDescriptor(name, ChosenNation() ?? modelUnit.Nation, takenDescriptors) : null;
 
     private void DetailChosen(object sender, SelectionChangedEventArgs e)
     {
@@ -887,6 +999,27 @@ public partial class NewUnitWindow : UserControl
             Role = role == modelUnit.Role ? null : role,
             PictureFile = pictureFile,
         };
+        // a model of the user's own, its files kept with the app's pictures; those kept now go again if the unit is refused
+        var keptNow = new List<string>();
+        if (TakesOwnModels && ReferenceEquals(ownModelFor, modelUnit) && OwnModelStep.UsesOwn)
+        {
+            try
+            {
+                made.OwnModel = OwnModelStep.Keep(made.Descriptor, (bytes, fileName) =>
+                {
+                    string kept = keepModelFile(bytes, fileName);
+                    keptNow.Add(kept);
+                    return kept;
+                });
+            }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                HintText.Text = Texts.Get("Units.OwnModel.NotKept", ("problem", problem.Message));
+                HintText.SetResourceReference(TextBlock.ForegroundProperty, "warn");
+                DeleteKept(keptNow);
+                return;
+            }
+        }
         foreach ((StatField field, TextBox box) in statBoxes)
             if (ValueOf(box.Text, field) is double value) field.Give(made, value);
         // the weapons changed in the Weapons step, for this model unit; none when it was not shown for it
@@ -897,6 +1030,18 @@ public partial class NewUnitWindow : UserControl
         }
         List<ModWeapon> copies = ReferenceEquals(weaponsFor, modelUnit) ? [.. pendingWeapons.Copies] : [];
         if (create(made, copies)) Close();
+        // refused (a file missing on the Files tab): each try would otherwise leave another copy of the model's files behind
+        else DeleteKept(keptNow);
+    }
+
+    /// <summary>Deletes the model files kept for a unit that was not made after all.</summary>
+    private static void DeleteKept(List<string> files)
+    {
+        foreach (string file in files)
+        {
+            try { File.Delete(file); }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
+        }
     }
 
     /// <summary>
@@ -910,6 +1055,8 @@ public partial class NewUnitWindow : UserControl
         PreviewSlot.Content = null;
         preview = null;
         units = [];
+        OwnModelStep.Close();
+        ownModelFor = null;
     }
 
     // ---- for the workbench's checks, which drive the window without a mouse ----
@@ -940,14 +1087,37 @@ public partial class NewUnitWindow : UserControl
         Create();
     }
 
-    private void CancelClicked(object sender, RoutedEventArgs e) => Close();
+    private void CancelClicked(object sender, RoutedEventArgs e) => _ = CloseAsking();
+
+    /// <summary>Whether a question about dropping the entries is open, so a second click or key does not ask again.</summary>
+    private bool askingToClose;
+
+    /// <summary>
+    /// Closes the window by Cancel, ×, Escape or a click outside it: once a unit to copy is chosen or a name typed, it
+    /// asks first, as the rule window does, since a stray click would otherwise drop all five steps' entries.
+    /// </summary>
+    private async Task CloseAsking()
+    {
+        if (askingToClose || !IsOpen) return;
+        bool begun = modelUnit is not null || NameBox.Text.Trim() != "";
+        if (begun)
+        {
+            askingToClose = true;
+            try
+            {
+                if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Rules.DiscardChanges"), Texts.Get("Rules.Discard"), DialogIcon.Warning)) return;
+            }
+            finally { askingToClose = false; }
+        }
+        Close();
+    }
 
     private void KeyPressed(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
             e.Handled = true;
-            Close();
+            _ = CloseAsking();
         }
         else if (e.Key == Key.Enter && step == Step.Weapons && CreateButton.IsEnabled)
         {
@@ -963,7 +1133,7 @@ public partial class NewUnitWindow : UserControl
 
     private void BackdropPressed(object sender, MouseButtonEventArgs e)
     {
-        if (ReferenceEquals(e.OriginalSource, Backdrop)) Close();
+        if (ReferenceEquals(e.OriginalSource, Backdrop)) _ = CloseAsking();
     }
 
     private void BoxPressed(object sender, MouseButtonEventArgs e) => e.Handled = true;
@@ -989,7 +1159,19 @@ public partial class NewUnitWindow : UserControl
     private void FitWidth()
     {
         if (Backdrop.ActualWidth <= 0) return;
-        double widest = step is Step.Model or Step.Weapons ? WidestWindow : WidestForBoxes;
+        ShowFullSizeButton();
+        if (IsFullSize)
+        {
+            // as large as the app's window, on every step: the steps take all the height the title and foot leave
+            Box.Width = Backdrop.ActualWidth;
+            Box.MaxHeight = Backdrop.ActualHeight;
+            double all = Math.Max(LeastStepHeight, Backdrop.ActualHeight - TitleAndFoot);
+            ModelStep.Height = WeaponsStep.Height = OwnModelStep.Height = all;
+            StatsStep.MaxHeight = all;
+            FitSideColumns(Box.Width - Box.Padding.Left - Box.Padding.Right);
+            return;
+        }
+        double widest = step is Step.Model or Step.OwnModel or Step.Weapons ? WidestWindow : WidestForBoxes;
         Box.Width = Math.Min(widest, (Backdrop.ActualWidth + 20) * 0.96);
         // never higher than the main window: the step gives up height, so the buttons at the foot always show
         Box.MaxHeight = Backdrop.ActualHeight * 0.96;
@@ -997,7 +1179,29 @@ public partial class NewUnitWindow : UserControl
         ModelStep.Height = stepHeight;
         StatsStep.MaxHeight = stepHeight;
         WeaponsStep.Height = stepHeight;
+        OwnModelStep.Height = Math.Max(stepHeight, Math.Min(TallestStep + 80, Backdrop.ActualHeight * 0.96 - TitleAndFoot));
         FitSideColumns(Box.Width - Box.Padding.Left - Box.Padding.Right);
+    }
+
+    /// <summary>Where it is kept whether the window is as large as the app's own.</summary>
+    private const string FullSizeKey = "newUnitFullSize";
+
+    /// <summary>Whether the window fills the app's window, as last chosen with the button beside "?"; its usual size until then.</summary>
+    private static bool IsFullSize => AppData.Current.State[FullSizeKey] is System.Text.Json.Nodes.JsonValue kept && kept.TryGetValue(out bool full) && full;
+
+    /// <summary>The button as Windows draws a title bar's: "maximize" at the usual size, "restore" at full size.</summary>
+    private void ShowFullSizeButton()
+    {
+        FullSizeButton.Content = IsFullSize ? "\uE923" : "\uE922";
+        FullSizeButton.ToolTip = Texts.Get(IsFullSize ? "Main.Restore.Tip" : "Main.Maximize.Tip");
+        System.Windows.Automation.AutomationProperties.SetName(FullSizeButton, (string)FullSizeButton.ToolTip);
+    }
+
+    private void FullSizeClicked(object sender, RoutedEventArgs e)
+    {
+        AppData.Current.State[FullSizeKey] = !IsFullSize;
+        AppData.Current.SaveState();
+        FitWidth();
     }
 
     /// <summary>The least height a step is given, in a very small main window.</summary>

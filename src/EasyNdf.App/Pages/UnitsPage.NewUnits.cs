@@ -1,4 +1,5 @@
 using System.IO;
+using EasyNdf.Data;
 using System.Windows;
 using EasyNdf.App.Controls;
 using EasyNdf.App.Dialogs;
@@ -29,8 +30,43 @@ public partial class UnitsPage
             _ = MainView.Of(this).Messages.Tell(reason, DialogIcon.Error);
             return;
         }
+        // the files every new unit is written into are asked for now, before anything is typed, not at Create after
+        // all five steps: a plain copy of the first unit is tried on a copy of the mod (weapon changes and a model of
+        // the user's own can still need more, which Create says)
+        if (ModelUnits().FirstOrDefault() is Unit first)
+        {
+            var trial = new ModUnit { Descriptor = ModUnit.NewDescriptor("New unit", first.Nation, TakenUnitDescriptors()), MadeFrom = first.Descriptor, Name = "New unit" };
+            List<string> missing = FilesMissingFor(mod =>
+            {
+                ModUnit added = trial.Copy();
+                added.DeckNumber = ModUnit.NextDeckNumber(GameUnits, mod);
+                mod.Units.Add(added);
+            });
+            if (missing.Count > 0)
+            {
+                _ = MainView.Of(this).Messages.Tell(Texts.Count("Divisions.FilesMissing", missing.Count, ("files", string.Join(", ", missing))), DialogIcon.Error);
+                return;
+            }
+        }
         MainView.Of(this).NewUnit.Open(ModelUnits(), Game, TakenUnitDescriptors(), ChooseUnitPicture, MakeUnit, gameUnits?.Catalog.ArmorLevels, this,
-            Models.ModelViewer.CanShow(Game) ? ShowModel : null);
+            Models.ModelViewer.CanShow(Game) ? ShowModel : null, loaded.Source, Models.ModelViewer.CanShow(Game) ? KeepModelFile : null);
+    }
+
+    /// <summary>
+    /// Keeps a file of a unit's own 3D model with the app's pictures, as a card picture of the user's own is kept, under
+    /// a name of its own ("Mod - key - name"): the export finds it there by name and copies it into the mod.
+    /// </summary>
+    /// <exception cref="IOException">It could not be written.</exception>
+    private string KeepModelFile(byte[] bytes, string name)
+    {
+        string folder = AppData.Current.Folders?.Pictures ?? AppFolders.TemporaryPictures;
+        string safe = string.Concat((OpenMod.Name + " - " + name).Select(letter => Path.GetInvalidFileNameChars().Contains(letter) ? '_' : letter));
+        string kept = Path.Combine(folder, safe);
+        string stem = Path.GetFileNameWithoutExtension(safe), extension = Path.GetExtension(safe);
+        for (int copy = 2; File.Exists(kept) || ModFolders.FindPicture(kept) is not null; copy++) kept = Path.Combine(folder, stem + " (" + copy + ")" + extension);
+        Directory.CreateDirectory(folder);
+        File.WriteAllBytes(kept, bytes);
+        return kept;
     }
 
     /// <summary>

@@ -37,7 +37,10 @@ public partial class NoticeLayer : UserControl
     public bool IsOnRecent(Point point) => IsRecentOpen && new Rect(RecentBox.TranslatePoint(new Point(), this), RecentBox.RenderSize).Contains(point);
 
     /// <summary>Keeps the popups above what runs along the bottom of the app.</summary>
-    public void KeepAbove(double height) => Toasts.Margin = new Thickness(0, 0, 10, height + 10);
+    public void KeepAbove(double height) => Toasts.Margin = new Thickness(0, 0, Gap, height + Gap);
+
+    /// <summary>How far the notices stand off the window's right and bottom edges: clear of the panes' own border lines there.</summary>
+    private const double Gap = 24;
 
     /// <summary>Opens the list of the recent notifications, its top right corner where given.</summary>
     public void OpenRecent(double top, double right)

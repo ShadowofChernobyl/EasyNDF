@@ -98,7 +98,7 @@ public partial class UnitsPage
         var entries = main.FilesTab.Model.Entries.Where(entry => !Files.TutorialSample.Is(entry)).ToList();
         var settings = RunSettings.From(AppData.Current.Settings);
         // with "Show mods' changes" off, the units are shown as the source has them
-        string inputs = ArmoryShowsModChanges ? Fingerprint(OpenModUnits.InputsOf(entries, AppData.Current.OpenMod, game.Source.Game, settings)) : "as the source has them";
+        string inputs = ArmoryShowsModChanges ? Fingerprint(OpenModUnits.InputsOf(entries, OpenMod, game.Source.Game, settings)) : "as the source has them";
         bool readNow = inputs != modValuesFrom;
         if (readNow && !ArmoryShowsModChanges)
         {
@@ -114,7 +114,7 @@ public partial class UnitsPage
             StartApplyingMods(mine);
             try
             {
-                read = await OpenModUnits.Read(game, entries, AppData.Current.OpenMod, settings,
+                read = await OpenModUnits.Read(game, entries, OpenMod, settings,
                     new Progress<ModApplyStep>(step => { if (mine == modValueReads) ShowApplyingStep(step); }));
             }
             catch (Exception problem) when (problem is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException

@@ -203,7 +203,7 @@ public partial class UnitsPage
         if (RulesPage.IsCollapseAllKey(e))
         {
             e.Handled = true;
-            foldedBattlegroupCategories.UnionWith(UnitNames.FactoriesOf(Game));
+            foldedBattlegroupCategories.UnionWith(UnitNames.FactoriesOf(Game, loaded?.Catalog.Units ?? []));
             DrawBattlegroup();
         }
         else if (RulesPage.IsExpandAllKey(e))

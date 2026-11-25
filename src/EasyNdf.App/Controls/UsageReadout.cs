@@ -65,13 +65,17 @@ public sealed partial class UsageReadout : Bevel
         TextElement.SetFontSize(this, 12);
         busyLabel.SetResourceReference(TextBlock.ForegroundProperty, "muted");
 
+        // memory is judged against what this PC has, as CPU and GPU are against all of theirs: the same megabytes are a
+        // lot on a PC with 8 GB and little on one with 64
+        double allMemory = GC.GetGCMemoryInfo().TotalAvailableMemoryBytes / Megabyte;
+        double memoryCaution = allMemory > 0 ? allMemory * MemoryCautionShare : 900, memoryWarning = allMemory > 0 ? allMemory * MemoryWarningShare : 2048;
         figures =
         [
             new("Main.Usage.Cpu", "Main.Usage.Cpu.What", r => r.Cpu, Percent, Caution: 80, Warning: 95, Scale: 100,
                 Details: r => [(Texts.Get("Main.Usage.Threads"), r.Threads.ToString(CultureInfo.CurrentCulture)),
                                (Texts.Get("Main.Usage.Handles"), r.Handles.ToString(CultureInfo.CurrentCulture))],
                 Footer: LastJobs),
-            new("Main.Usage.Memory", "Main.Usage.Memory.What", r => r.Memory / Megabyte, Size, Caution: 900, Warning: 2048, Scale: 1024,
+            new("Main.Usage.Memory", "Main.Usage.Memory.What", r => r.Memory / Megabyte, Size, Caution: memoryCaution, Warning: memoryWarning, Scale: 1024,
                 Parts: r => PartsOf(r)),
             new("Main.Usage.DotNet", "Main.Usage.DotNet.What", r => r.DotNet / Megabyte, Size, Caution: double.MaxValue, Warning: double.MaxValue, Scale: 1024,
                 Details: r => [(Texts.Get("Main.Usage.Paused"), Texts.Get("Main.Usage.Paused.Value",
@@ -176,6 +180,9 @@ public sealed partial class UsageReadout : Bevel
     /// <summary>How a figure stands against its aim: below it, over it, or well over it.</summary>
     private enum Level { Fine, Caution, Warning }
 
+    /// <summary>The shares of the PC's memory above which the app's own takes the caution colour, and the warning colour.</summary>
+    private const double MemoryCautionShare = 0.10, MemoryWarningShare = 0.25;
+
     /// <summary>
     /// The theme colour of a level: success, warnings and errors, whatever the theme's accent is (Olivine's gold accent
     /// would read as a warning).
@@ -197,7 +204,7 @@ public sealed partial class UsageReadout : Bevel
     /// <param name="What">The text name of what it measures, for the tooltip.</param>
     /// <param name="ValueOf">The figure in a reading, in the unit it is written in; NaN when it is not known.</param>
     /// <param name="Write">How the figure is written.</param>
-    /// <param name="Caution">Above this, the figure takes the caution colour (the aim: 900 MB of memory, 100 ms of delay).</param>
+    /// <param name="Caution">Above this, the figure takes the caution colour (the aim: a tenth of the PC's memory, 100 ms of delay).</param>
     /// <param name="Warning">Above this, the warning colour.</param>
     /// <param name="Scale">The least the graphs reach up to, so a quiet minute stays low on them.</param>
     /// <param name="Details">More lines for the tooltip, as label and value.</param>

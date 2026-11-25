@@ -47,6 +47,35 @@ public partial class UnitsPage
         MainView.Of(this).ModelViewer.OpenUnit(unit, original, loaded.Source, loadout, originalLoadout, WeaponsShown(), originalWeapons);
     }
 
+    /// <summary>
+    /// "Change 3D Model…" for a unit: a model of the user's own, or back to its own (see <see cref="OwnModel"/>);
+    /// for WARNO's ground vehicles, dim with the reason on hover for the others.
+    /// </summary>
+    private MenuChoice? ChangeModelChoice(Unit unit)
+    {
+        if (!Models.ModelViewer.CanShow(Game) || loaded is null) return null;
+        // a unit the mod adds has the look of the unit it is made from
+        string? why = CopiedOf(unit)?.Look?.Depiction is null ? Texts.Get("Units.OwnModel.Menu.NotVehicle.Tip") : null;
+        return new MenuChoice(Texts.Get("Units.OwnModel.Menu"), () => ChangeModel(unit), IsEnabled: why is null, Tip: why ?? Texts.Get("Units.OwnModel.Menu.Tip"));
+    }
+
+    /// <summary>The unit whose look a unit has: for a unit the mod adds, the game's unit it is made from; else the game's own.</summary>
+    private Unit? CopiedOf(Unit unit)
+    {
+        string descriptor = OpenMod.Units.FirstOrDefault(each => each.Descriptor == unit.Descriptor)?.MadeFrom ?? unit.Descriptor;
+        return GameUnits.FirstOrDefault(each => each.Descriptor == descriptor);
+    }
+
+    /// <summary>Opens the Change 3D Model window on a unit; Done gives the unit the model chosen, in the open mod.</summary>
+    private void ChangeModel(Unit unit)
+    {
+        if (loaded is null || CopiedOf(unit) is not Unit copied) return;
+        OwnModel? current = OpenMod.Units.FirstOrDefault(each => each.Descriptor == unit.Descriptor)?.OwnModel
+            ?? OpenMod.UnitEdits.FirstOrDefault(each => each.Descriptor == unit.Descriptor)?.OwnModel;
+        MainView.Of(this).ChangeModel.Open(unit, copied, loaded.Source, current, KeepModelFile,
+            chosen => ChangeUnitValues(unit, values => values.OwnModel = chosen));
+    }
+
     /// <inheritdoc/>
     public string? WhyNoModel(Weapon weapon)
     {

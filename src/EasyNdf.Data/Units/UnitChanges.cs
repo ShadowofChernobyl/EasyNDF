@@ -14,6 +14,9 @@ public static class UnitField
     /// <summary>The nation (and with it the side), and the role.</summary>
     public const string Nation = "Nation", Role = "Role";
 
+    /// <summary>The Armory tab it is in.</summary>
+    public const string Factory = "Factory";
+
     /// <summary>The card picture.</summary>
     public const string Picture = "Picture";
 

@@ -76,6 +76,23 @@ public sealed class PropertyScans(IReadOnlyDictionary<string, ScanInfo> scans, I
         return whole.GetValueOrDefault(lower) ?? end.GetValueOrDefault(lower) ?? "";
     }
 
+    /// <summary>
+    /// The scans a Lookup rule chooses its other file among: those of the files on the Files tab now, and the scan of
+    /// the file the rule already names when no file on the tab answers to that name. A scan is kept after its file
+    /// leaves the tab, so among all of them a file once added on its own ("Ammunition.ndf") would be offered beside the
+    /// same file from a Source ("Ammunition.ndf (Gfx\)").
+    /// </summary>
+    /// <param name="named">The file the rule names, as it stores it; "" or null for none.</param>
+    public PropertyScans OnFilesTab(string? named)
+    {
+        var listed = listedFiles.ToHashSet(StringComparer.Ordinal);
+        var kept = scans.Where(scan => listed.Contains(scan.Key)).ToDictionary(scan => scan.Key, scan => scan.Value, StringComparer.Ordinal);
+        string wanted = (named ?? "").ToLowerInvariant();
+        bool onTab = wanted != "" && listedFiles.Any(file => file.ToLowerInvariant() is string key && (key == wanted || key.EndsWith("/" + wanted, StringComparison.Ordinal)));
+        if (!onTab && Find(named) is { Length: > 0 } elsewhere) kept[elsewhere] = scans[elsewhere];
+        return new PropertyScans(kept, listedFiles);
+    }
+
     /// <summary>A file's name, without its folders.</summary>
     public static string BaseName(string file) => file[(file.LastIndexOf('/') + 1)..];
 

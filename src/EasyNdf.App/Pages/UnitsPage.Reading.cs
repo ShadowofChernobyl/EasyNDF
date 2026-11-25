@@ -134,6 +134,7 @@ public partial class UnitsPage
             if (ReferenceEquals(main.ReadingCoverCard.Content, ReadingCard)) main.ReadingCover.Visibility = Visibility.Collapsed;
             return;
         }
+        main.PlaceReadingCoverFor(this);
         if (!ReferenceEquals(main.ReadingCoverCard.Content, ReadingCard))
         {
             ReadingCardHolder.Children.Remove(ReadingCard);

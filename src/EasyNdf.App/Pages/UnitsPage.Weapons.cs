@@ -28,10 +28,10 @@ public partial class UnitsPage : IWeaponActions
     }
 
     /// <inheritdoc/>
-    public bool CanShowInEditor(Weapon weapon) => LoadedFile(weapon.File) is not null;
+    public bool CanShowInEditor(Weapon weapon) => CanShowInEditor(weapon.File);
 
     /// <inheritdoc/>
-    public void ShowInEditor(Weapon weapon) => ShowInEditor(LoadedFile(weapon.File), weapon.Descriptor);
+    public void ShowInEditor(Weapon weapon) => ShowInEditor(weapon.Descriptor, weapon.File);
 
     /// <inheritdoc/>
     public void NewRuleFor(Weapon weapon) => NewRule(weapon.Name, [weapon.Descriptor]);

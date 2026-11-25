@@ -64,6 +64,7 @@ public partial class EditorPage
         catch (RegexMatchTimeoutException) { Say(Texts.Get("Editor.Find.TooSlow"), NoticeKind.Caution); return; }
         if (matches.Count == 0)
         {
+            FindCountText.Text = "";
             Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), NoticeKind.Caution);
             return;
         }
@@ -75,7 +76,8 @@ public partial class EditorPage
         Unfold(found.Index, found.Index + found.Length);
         Text.Select(found.Index, found.Length);
         PointAt(Text.Document.GetLineByOffset(found.Index).LineNumber - 1);
-        Say(Texts.Get("Editor.Find.Count", ("at", Texts.Number(matches.IndexOf(found) + 1)), ("count", Texts.Number(matches.Count))));
+        // beside the find box, not a notice: one for every Enter covered the text
+        FindCountText.Text = Texts.Get("Editor.Find.Count", ("at", Texts.Number(matches.IndexOf(found) + 1)), ("count", Texts.Number(matches.Count)));
         // the keyboard stays where it was, as in Sublime Text: Enter in the find box goes on to the next match, and
         // Escape gives the text the keyboard with the match selected
     }
@@ -95,8 +97,8 @@ public partial class EditorPage
             try { has = SearchOptions.Matches(pattern, line, 0, line.Length).Any(); }
             catch (RegexMatchTimeoutException) { Say(Texts.Get("Editor.Find.TooSlow"), NoticeKind.Caution); return; }
             if (!has) continue;
+            // the marked line shows where it is: no notice for every Enter
             PointAt(index);
-            Say(Texts.Get("Editor.Find.Found", ("file", shown.Name), ("text", wanted), ("line", Texts.Number(index + 1))));
             return;
         }
         Say(Texts.Get("Editor.Find.NotFound", ("text", wanted)), NoticeKind.Caution);
@@ -130,6 +132,7 @@ public partial class EditorPage
     /// <summary>"Go to line": the line typed is marked and scrolled into the middle.</summary>
     internal void GoToLine(string text)
     {
+        RememberPlace();
         if (shown is null) return;
         string typed = text.Trim();
         if (typed == "" || !typed.All(char.IsAsciiDigit) || !int.TryParse(typed, out int number) || number < 1)

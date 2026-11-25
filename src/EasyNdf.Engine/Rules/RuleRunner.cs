@@ -73,10 +73,21 @@ public sealed partial class RuleRunner
 
     private RunResult RunAll()
     {
-        CollectVariables();
+        IReadOnlyList<RuleSegment> segments = options.Segments;
+        int nextSegment = 0;
+        if (segments.Count == 0) CollectVariables(0, rules.Count, null);
 
         for (int ri = 0; ri < rules.Count; ri++)
         {
+            // a rule set begins: its own variables, the shared ones as they stand now, and no group carried over
+            while (nextSegment < segments.Count && segments[nextSegment].Start <= ri)
+            {
+                RuleSegment segment = segments[nextSegment++];
+                variables.Clear();
+                foreach (var shared in segment.Shared) variables[shared.Key] = shared.Value;
+                CollectVariables(segment.Start, nextSegment < segments.Count ? segments[nextSegment].Start : rules.Count, segment.Shared);
+                group = null;
+            }
             Rule rule = rules[ri] ?? new Rule();
             string kind = rule.KindOrEdit;
             current = stats[ri];
@@ -118,7 +129,7 @@ public sealed partial class RuleRunner
                 case "Replace": RunReplace(rule, scope); break;
                 case "Scale": RunScale(rule, scope); break;
                 case "Formula": RunFormula(rule, scope); break;
-                case "Table": RunTable(rule); break;
+                case "Table": RunTable(rule, conditions, gateIsAll); break;
                 case "Lookup": RunLookup(rule, scope); break;
                 case "Check": RunCheck(rule, scope); break;
             }
@@ -132,20 +143,69 @@ public sealed partial class RuleRunner
     // ---- shared helpers ----
 
     /// <summary>
-    /// Variables are collected before any rule runs, so a variable applies to the whole preset wherever it sits.
-    /// A switched-off group switches off the variables in it too.
+    /// A rule set's variables are collected before any of its rules runs, so a variable applies to the whole rule set
+    /// wherever it sits. A switched-off group switches off the variables in it too. A Variable rule shared with other
+    /// rule sets ("This Mod", "All Mods") whose value is given (<paramref name="shared"/>) is left as given: an earlier
+    /// rule set may have changed it.
     /// </summary>
-    private void CollectVariables()
+    private void CollectVariables(int from, int until, IReadOnlyDictionary<string, string>? shared)
     {
         bool groupOn = true;
-        foreach (var rule in rules)
+        for (int at = from; at < until && at < rules.Count; at++)
         {
+            Rule? rule = rules[at];
             if (rule is null) continue;
             if (rule.Kind == "Group") { groupOn = rule.Enabled; continue; }
             if (!groupOn || rule.Kind != "Variable" || !rule.Enabled || rule.Params is null) continue;
             string name = JsText.Trim(rule.P.TextOr("VarName", ""));
-            if (name != "") variables[name] = JsText.Trim(rule.P.Text("Value"));
+            if (name == "") continue;
+            if (shared is not null && rule.P.TextOr("VarScope", "RuleSet") != "RuleSet" && shared.ContainsKey(name)) continue;
+            variables[name] = JsText.Trim(rule.P.Text("Value"));
         }
+    }
+
+    /// <summary>The variable an action is aimed at, when its target is "{Name}" and Name is a variable; null otherwise.</summary>
+    private string? VariableAimedAt(RuleAction action)
+    {
+        string target = JsText.Trim(action.TargetInUse ?? "");
+        if (target.Length < 3 || target[0] != '{' || target[^1] != '}') return null;
+        string name = target[1..^1];
+        return variables.ContainsKey(name) ? name : null;
+    }
+
+    /// <summary>
+    /// An action aimed at a variable: Set To gives it the value; Add, Subtract, Multiply and Divide work on the number
+    /// it holds. The rules after this one see the new value. Nothing is written into the file, so the change is noted
+    /// in the rule's log, with the action's comment.
+    /// </summary>
+    private void ChangeVariable(RuleAction action, string name)
+    {
+        string op = EditComments.OperatorName(action.Operator);
+        string old = variables[name], value = JsText.Trim(action.Value ?? "");
+        string changed;
+        if (op == "Set To") changed = value;
+        else if (Arithmetic.Operations.TryGetValue(op, out var operation))
+        {
+            double number = NumberText.ParseTyped(value);
+            if (!NumberText.IsPlainNumber(old) || double.IsNaN(number))
+            {
+                current.Skipped++;
+                string why = NumberText.IsPlainNumber(old) ? "The action needs a number." : "Its value, " + old + ", is not a number.";
+                FileNote(current.Name, "Variable", op + " was not applied to the variable " + name + ". " + why);
+                return;
+            }
+            changed = JsNumber.ToText(operation(JsNumber.ParsePlain(old), number));
+        }
+        else
+        {
+            current.Skipped++;
+            FileNote(current.Name, "Variable", op + " cannot change a variable. " + name + " is left as it is.");
+            return;
+        }
+        variables[name] = changed;
+        current.VariableChanges++;
+        string comment = action.Comment is { Enabled: true } said && JsText.Trim(said.Text ?? "") != "" ? " (" + Substitute(said.Text) + ")" : "";
+        if (log.Count < options.LogLimit) log.Add(new EditLogEntry("{" + name + "}", "Variable", old, changed + comment, IsNote: false));
     }
 
     /// <summary>Replaces {Name} with the value of the variable called Name. Unknown names are left as they are.</summary>
@@ -260,7 +320,7 @@ public sealed partial class RuleRunner
     /// </summary>
     private sealed class Scope
     {
-        private static readonly HashSet<string> ScopedKinds = ["Edit", "Replace", "Scale", "Formula", "Check", "Remove"];
+        private static readonly HashSet<string> ScopedKinds = ["Edit", "Replace", "Scale", "Formula", "Check", "Remove", "Lookup"];
 
         private readonly RuleRunner runner;
         private readonly List<Condition> conditions;
@@ -330,7 +390,7 @@ public sealed partial class RuleRunner
         /// unit value changed, each naming one division's rule) no longer walk every unit line of DivisionRules.ndf.
         /// </summary>
         private bool TitleRulesOut(Declaration descriptor) =>
-            gateIsAll && conditions.Any(c => c.OperandInUse == Conditions.DescriptorTitle && !Conditions.Test(descriptor, c));
+            conditions.Any(c => (gateIsAll || c.MustBeTrue) && c.OperandInUse == Conditions.DescriptorTitle && !Conditions.Test(descriptor, c));
 
         /// <summary>An object inside a descriptor, standing in for one: its title is the descriptor's, its type its own.</summary>
         private static Declaration StandIn(Declaration top, ObjectValue obj)
@@ -425,15 +485,31 @@ public sealed partial class RuleRunner
             return false;
         }).ToList();
 
+        // actions aimed at a variable change it and write nothing into the file: once for the rule, or for each match
+        var onVariables = actions.Select(a => (Action: a, Name: VariableAimedAt(a))).Where(a => a.Name is not null).ToList();
+        if (onVariables.Count > 0) actions = [.. actions.Where(a => VariableAimedAt(a) is null)];
+        int matchedBefore = current.Matched;
+
         // An Edit rule with no conditions applies to everything only when its gate is "All".
         scope.ForEach(whenNoConditions: gateIsAll, w =>
         {
-            var d = w.Own();
-            var c = NewContext();
-            foreach (var a in actions) ActionApplier.Apply(d, a, c);
+            if (actions.Count > 0)
+            {
+                var d = w.Own();
+                var c = NewContext();
+                foreach (var a in actions) ActionApplier.Apply(d, a, c);
+                Tally(c);
+            }
             current.Matched++;
-            Tally(c);
+            foreach (var (action, name) in onVariables)
+                if (action.PerMatch) ChangeVariable(action, name!);
         });
+
+        // once for the rule: when it matched something, or has no conditions to match by
+        bool noConditions = !(rule.Conditions ?? []).Any(c => c is not null && !string.IsNullOrEmpty(c.Operator));
+        if (noConditions || current.Matched > matchedBefore)
+            foreach (var (action, name) in onVariables)
+                if (!action.PerMatch) ChangeVariable(action, name!);
     }
 
     /// <summary>
@@ -888,7 +964,7 @@ public sealed partial class RuleRunner
     }
 
     /// <summary>Table: sets, multiplies or adds values from a table with one row per descriptor and one column per property.</summary>
-    private void RunTable(Rule rule)
+    private void RunTable(Rule rule, List<Condition> conditions, bool gateIsAll)
     {
         var p = rule.P;
         var rows = TableText.Read(p.Text("Text"));
@@ -925,6 +1001,8 @@ public sealed partial class RuleRunner
             if (!w.IsLiveDescriptor || !byName.TryGetValue(w.Declaration!.Name, out var row)) continue;
             seenRows.Add(w.Declaration.Name);
             if (!InGroup(w.Declaration)) continue;
+            // the rule's own conditions, when it has any: a row is applied only to a descriptor that also meets them
+            if (!Conditions.Pass(w.Declaration, conditions, gateIsAll, whenNoConditions: true)) continue;
 
             var d = w.Own();
             var c = NewContext();
@@ -1146,6 +1224,7 @@ public sealed partial class RuleRunner
             Stats = stats,
             Logs = logs,
             Warnings = warnings,
+            Variables = new Dictionary<string, string>(variables),
         };
     }
 

@@ -26,14 +26,61 @@ public static class DivisionExtras
     /// <summary>The dictionary file the Armory's texts go into for a game: WARNO's UNITS.csv, Steel Division 2's MODDING.csv.</summary>
     public static string NamesFileOf(GameTitle game) => game == GameTitle.SteelDivision2 ? SteelDivisionNamesFile : NamesFile;
 
-    /// <summary>Whether a file is the dictionary the Armory's texts go into for a game (<see cref="NamesFileOf"/>).</summary>
-    public static bool IsNamesFile(string fileName, GameTitle game) => string.Equals(fileName, NamesFileOf(game), StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// WARNO's dictionaries for its screens' texts, outside a battle and in one: an Armory tab's name and tooltip are
+    /// looked up in these, not in UNITS.csv (the game stops at its menu on a tab name it finds in neither).
+    /// </summary>
+    public static IReadOnlyList<string> InterfaceFiles { get; } = ["INTERFACE_OUTGAME.csv", "INTERFACE_INGAME.csv"];
+
+    /// <summary>Whether a file is one of WARNO's two dictionaries for its screens' texts (<see cref="InterfaceFiles"/>).</summary>
+    public static bool IsInterfaceFile(string fileName, GameTitle game) =>
+        game == GameTitle.Warno && InterfaceFiles.Contains(fileName, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether a file is a dictionary the Armory's texts go into for a game: its names file (<see cref="NamesFileOf"/>)
+    /// or, for the tabs' texts, one of WARNO's interface dictionaries.
+    /// </summary>
+    public static bool IsNamesFile(string fileName, GameTitle game) =>
+        string.Equals(fileName, NamesFileOf(game), StringComparison.OrdinalIgnoreCase) || IsInterfaceFile(fileName, game);
+
+    /// <summary>The dictionaries the Armory presets' rules give texts to: the names file, and the interface dictionaries for tab texts.</summary>
+    public static List<string> NamesFilesNeeded(IEnumerable<JsonNode?> rules, GameTitle game)
+    {
+        var files = new List<string>();
+        List<JsonNode?> all = [.. rules];
+        if (all.Any(NeedsNamesFile)) files.Add(NamesFileOf(game));
+        if (game == GameTitle.Warno && all.Any(GivesTabTexts)) files.AddRange(InterfaceFiles);
+        return files;
+    }
+
+    /// <summary>Whether a rule gives texts to a dictionary of this name: the interface dictionaries take the tab rules', the names file the others'.</summary>
+    public static bool NeedsNamesFile(JsonNode? rule, string fileName) =>
+        InterfaceFiles.Contains(fileName, StringComparer.OrdinalIgnoreCase) ? GivesTabTexts(rule) : NeedsNamesFile(rule);
+
+    /// <summary>The texts the rules give a dictionary of this name (see <see cref="NeedsNamesFile(JsonNode?, string)"/>).</summary>
+    public static List<DictionaryText> ArmoryTextsOf(IEnumerable<JsonNode?> rules, string fileName)
+    {
+        if (!InterfaceFiles.Contains(fileName, StringComparer.OrdinalIgnoreCase)) return ArmoryTextsOf(rules);
+        var texts = new List<DictionaryText>();
+        foreach (JsonNode? rule in RulesThatAreOn(rules))
+        {
+            if (!GivesTabTexts(rule) || JsonValues.IsFalse(rule!["Enabled"])) continue;
+            foreach ((string token, JsonNode? text) in (JsonObject)rule[DivisionChangeRules.ArmoryKey]![DivisionChangeRules.TextsKey]!)
+                if (texts.All(each => each.Token != token)) texts.Add(new DictionaryText(token, (string?)text ?? ""));
+        }
+        return texts;
+    }
+
+    /// <summary>Whether a rule is for an Armory tab's name and tooltip (<see cref="TabChangeRules"/>) and keeps texts for them.</summary>
+    private static bool GivesTabTexts(JsonNode? rule) =>
+        ((string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ChangeKey])?.StartsWith("Tab:", StringComparison.Ordinal) == true
+        && rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.TextsKey] is JsonObject { Count: > 0 };
 
     /// <summary>What was copied, or why not.</summary>
     /// <param name="Pictures">How many pictures were copied.</param>
     /// <param name="Problem">What stopped some of it; "" when nothing did.</param>
     /// <param name="Emblems">How many of them are division emblems; the others are units' card pictures.</param>
-    public sealed record Outcome(int Pictures, string Problem, int Emblems = 0);
+    public sealed record Outcome(int Pictures, string Problem, int Emblems = 0, int ModelFiles = 0);
 
     /// <summary>
     /// Copies the pictures of the Armory presets' rules that are on into the GameData folder of a file of theirs just
@@ -50,8 +97,45 @@ public static class DivisionExtras
         string? gameData = GameDataFolderOf(exportedFile);
         if (gameData is null) return new Outcome(0, noGameData.Replace("{path}", exportedFile, StringComparison.Ordinal));
         var missing = new List<string>();
-        int pictures = CopyPicturesInto(gameData, rules, pictureFolders, missing, out int emblems);
-        return new Outcome(pictures, string.Join(" ", missing.Select(path => pictureMissing.Replace("{path}", path, StringComparison.Ordinal))), emblems);
+        int pictures = CopyPicturesInto(gameData, rules, pictureFolders, missing, out int emblems, out int modelFiles);
+        if (modelFiles > 0) DeclareMeshPack(gameData);
+        return new Outcome(pictures, string.Join(" ", missing.Select(path => pictureMissing.Replace("{path}", path, StringComparison.Ordinal))), emblems, modelFiles);
+    }
+
+    /// <summary>
+    /// Makes sure a mod with models of its own loads them: the game's mod tools build a mod's models into its own mesh
+    /// pack (Gen/MeshPack/&lt;mod&gt;/Mesh_All.spk), which the game loads only when the mod declares it in
+    /// GameData/ResourcePacks/&lt;mod&gt;/ResourcePacks.ndf, as the tools' CreateAssetDefinitionFiles writes it. Written
+    /// when the mod has none; one the mod has is left as it is.
+    /// </summary>
+    public static void DeclareMeshPack(string gameData)
+    {
+        string? modName = Path.GetFileName(Path.GetDirectoryName(gameData));
+        if (string.IsNullOrEmpty(modName)) return;
+        string folder = Path.Combine(gameData, "ResourcePacks", modName);
+        string file = Path.Combine(folder, "ResourcePacks.ndf");
+        if (File.Exists(file)) return;
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(file, $$"""
+
+            unnamed TResourcePackLoader
+            (
+                Packs =
+                [
+                    TResourceDescriptorMeshPack
+                    (
+                        PackName = "Base"
+                        PackRelativePath = "MeshPack/{{modName}}/Mesh_All.spk"
+                    ),
+                    TResourceDescriptorProxyPack
+                    (
+                        PackName = "Base"
+                        PackRelativePath = "TextureProxy/{{modName}}/Mesh_All.ndfbin"
+                    ),
+                ]
+            )
+
+            """);
     }
 
     /// <summary>
@@ -61,7 +145,7 @@ public static class DivisionExtras
     public static bool NeedsNamesFile(JsonNode? rule) =>
         (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ShowsKey] == "Name"
         || (rule?["Actions"] as JsonArray ?? []).Any(action => IsTextTarget((string?)action?["Target"]))
-        || (IsAddRule(rule) && rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.TextsKey] is JsonObject { Count: > 0 });
+        || (KeepsItsTexts(rule) && rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.TextsKey] is JsonObject { Count: > 0 });
 
     /// <summary>
     /// Whether a rule's target is a text token whose text goes into the dictionary: a unit's name is one too, and Steel
@@ -71,6 +155,9 @@ public static class DivisionExtras
 
     /// <summary>Whether a rule adds a descriptor: its texts are kept by token, as it has no action to name them.</summary>
     private static bool IsAddRule(JsonNode? rule) => (string?)rule?["Kind"] == "Add";
+
+    /// <summary>Whether every text a rule keeps by token goes into the names file: a rule that adds a descriptor.</summary>
+    private static bool KeepsItsTexts(JsonNode? rule) => IsAddRule(rule);
 
     /// <summary>
     /// A UNITS.csv with the texts of the Armory presets' rules that are on: a line "TOKEN";"Text" for each, as the
@@ -217,7 +304,7 @@ public static class DivisionExtras
         {
             if (rule?[DivisionChangeRules.ArmoryKey] is not JsonObject armory || JsonValues.IsFalse(rule["Enabled"])) continue;
             JsonObject kept = armory[DivisionChangeRules.TextsKey] as JsonObject ?? [];
-            if (IsAddRule(rule))
+            if (KeepsItsTexts(rule))
                 foreach ((string token, JsonNode? text) in kept)
                     if (names.All(name => name.Token != token)) names.Add(new DictionaryText(token, (string?)text ?? ""));
             foreach (JsonNode? action in rule["Actions"] as JsonArray ?? [])
@@ -282,20 +369,43 @@ public static class DivisionExtras
         new(RulesThatAreOn(rules).Where(HasPicture).Select(rule => (string?)rule[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.FileKey]).OfType<string>(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Whether a rule gives a picture of the user's own to copy.</summary>
-    private static bool HasPicture(JsonNode? rule) => rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PictureFileKey] is not null;
+    private static bool HasPicture(JsonNode? rule) =>
+        rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.PictureFileKey] is not null || rule?[DivisionChangeRules.ArmoryKey]?[Units.UnitChangeRules.CarriedFilesKey] is JsonArray;
+
+    /// <summary>
+    /// The files a rule copies into the mod besides a picture (a unit's own 3D model and its pictures, see
+    /// <see cref="Units.OwnModel"/>): each the file the app keeps, and its place under GameData.
+    /// </summary>
+    public static IEnumerable<(string File, string Path)> CarriedFiles(JsonNode? rule) =>
+        (rule?[DivisionChangeRules.ArmoryKey]?[Units.UnitChangeRules.CarriedFilesKey] as JsonArray ?? [])
+            .Select(file => ((string?)file?["File"], (string?)file?["Path"])).Where(file => file.Item1 is not null && file.Item2 is not null).Select(file => (file.Item1!, file.Item2!));
 
 
     /// <summary>
     /// Copies the pictures of the user's own that the rules that are on give, where they say. Returns how many, and
     /// how many of them are division emblems.
     /// </summary>
-    private static int CopyPicturesInto(string gameData, IEnumerable<JsonNode?> rules, IReadOnlyList<string> pictureFolders, List<string> missing, out int emblems)
+    private static int CopyPicturesInto(string gameData, IEnumerable<JsonNode?> rules, IReadOnlyList<string> pictureFolders, List<string> missing, out int emblems, out int modelFiles)
     {
         int copied = 0;
         emblems = 0;
+        modelFiles = 0;
         foreach (JsonNode? rule in RulesThatAreOn(rules))
         {
             if (rule?[DivisionChangeRules.ArmoryKey] is not JsonObject armory || JsonValues.IsFalse(rule["Enabled"])) continue;
+            // a unit's own model and its pictures, copied as they are: they are not card pictures to make ready
+            foreach ((string file, string place) in CarriedFiles(rule))
+            {
+                if (Located(file, pictureFolders) is not string foundFile)
+                {
+                    missing.Add(file);
+                    continue;
+                }
+                if (TargetUnder(gameData, place) is not string to) continue;
+                Directory.CreateDirectory(Path.GetDirectoryName(to)!);
+                File.Copy(foundFile, to, overwrite: true);
+                modelFiles++;
+            }
             if ((string?)armory[DivisionChangeRules.PictureFileKey] is not string picture || (string?)armory[DivisionChangeRules.PicturePathKey] is not string path) continue;
             // a mod file shared by someone else names pictures on their computer: one outside the app's own picture
             // folders is never copied, so a mod file cannot put any file the user can read into the mod

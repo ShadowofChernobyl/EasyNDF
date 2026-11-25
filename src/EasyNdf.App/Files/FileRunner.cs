@@ -66,6 +66,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 : Texts.Get("Files.Run.NothingToRun"));
             return;
         }
+        // two variables of one name where both can be seen: nothing runs until one is renamed
+        if (VariableClashOf(SharedVariables.Build(ModStack.Running, [], (_, _) => [], (_, _, _, _, _) => throw new InvalidOperationException())) is string clash)
+        {
+            model.Warn(clash);
+            return;
+        }
 
         if (write)
         {
@@ -178,6 +184,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         }
         // last, so the export's other notices do not push it out of sight
         SayValueErrors(finished, write);
+        await SayTabRowProblems(finished);
         CheckDeckNames(finished, write);
     }
 
@@ -189,6 +196,50 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     {
         try { return await EditorGuide.Get(); }
         catch (Exception error) when (error is InvalidOperationException or IOException or System.Text.Json.JsonException) { return null; }
+    }
+
+    /// <summary>
+    /// After a run of WARNO's units, divisions or decks files: says when a unit is in an Armory tab a division that
+    /// offers it has no cost row for, which crashes the game as it generates the mod with no word of why, or when a
+    /// ready-made deck holds more packs of a tab than the row has slots (<see cref="TabRows"/>). The six files are read
+    /// as the rules leave them; with one of them not on the Files tab, nothing is checked.
+    /// </summary>
+    private async Task SayTabRowProblems(List<FileEntry> finished)
+    {
+        FileEntry? Listed(string name) => model.Entries
+            .Where(entry => entry.Game == Data.Game.GameTitle.Warno && entry.Source is not null && !TutorialSample.Is(entry) && string.Equals(entry.Name, name, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(entry => entry.Folder.Contains("Generated", StringComparison.OrdinalIgnoreCase) ? 0 : 1).FirstOrDefault();
+        FileEntry? units = Listed(Data.Units.UnitReader.TacticalUnitsFile) ?? Listed("UniteDescriptor.ndf");
+        List<FileEntry?> others = [.. TabRows.Files.Select(Listed)];
+        if (units is null || others.Any(entry => entry is null)) return;
+        List<FileEntry> all = [units, .. others.OfType<FileEntry>()];
+        // only a run whose rules reached one of them can have moved a unit or changed a row
+        if (!finished.Any(all.Contains)) return;
+        List<TabRowProblem> problems;
+        try
+        {
+            problems = await Task.Run(() =>
+            {
+                List<string> texts = [.. all.Select(entry => WouldExport(entry, FileContent.Text(entry)).Text)];
+                return TabRows.Find(texts[0], texts[1], texts[2], texts[3], texts[4], texts[5]);
+            });
+        }
+        catch (Exception notRead) when (notRead is IOException or UnauthorizedAccessException) { return; }
+
+        static string Names(IEnumerable<TabRowProblem> found)
+        {
+            List<string> names = [.. found.Select(problem => Data.Units.UnitReader.DivisionNameFromDescriptor(problem.Division)).Distinct()];
+            return string.Join(", ", names.Take(3)) + (names.Count > 3 ? ", …" : "");
+        }
+        static string Tab(string tab) => tab[(tab.LastIndexOf('/') + 1)..];
+        foreach (var sameTab in problems.Where(problem => problem.Fault == TabRowFault.NoRow).GroupBy(problem => problem.Tab))
+            model.Say(Texts.Count("Files.Run.TabRows.NoRow", sameTab.Count(), ("tab", Tab(sameTab.Key)), ("names", Names(sameTab))), NoticeKind.Problem);
+        foreach (var sameTab in problems.Where(problem => problem.Fault == TabRowFault.TooFewSlots).GroupBy(problem => problem.Tab))
+        {
+            TabRowProblem first = sameTab.First();
+            model.Say(Texts.Count("Files.Run.TabRows.TooFewSlots", sameTab.Count(), ("tab", Tab(sameTab.Key)), ("names", Names(sameTab)),
+                ("packs", first.Count), ("slots", first.Slots)), NoticeKind.Problem);
+        }
     }
 
     /// <summary>
@@ -604,7 +655,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     {
         string text = FileContent.Text(input.Entry);
         if (input.Stack.Count == 0) return text;
-        (RunResult result, _) = RunStack(input.Stack, text, wantText: true, logLimit: 0, input.OtherFiles);
+        (RunResult result, _) = RunStack(input.Entry, input.Stack, text, wantText: true, logLimit: 0, input.OtherFiles);
         return result.ParseError == "" && result.Text is not null ? result.Text : text;
     }
 
@@ -647,8 +698,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         bool byName = RuleSetsApplyByName;
         foreach (Mod mod in mods)
         {
-            texts.AddRange(FileAndTextRules.TextsOf(RuleSetFiles.For(fileName, folder, mod.Presets, byName).SelectMany(ruleSet => ruleSet.Rules)));
-            if (DivisionExtras.IsNamesFile(fileName, mod.Game)) texts.AddRange(DivisionExtras.ArmoryTextsOf(ArmoryPresets.RulesOf(mod)));
+            texts.AddRange(FileAndTextRules.TextsOf(RuleSetFiles.For(fileName, folder, mod.PresetsInOrder(), byName).SelectMany(ruleSet => ruleSet.Rules)));
+            if (DivisionExtras.IsNamesFile(fileName, mod.Game)) texts.AddRange(DivisionExtras.ArmoryTextsOf(ArmoryPresets.RulesOf(mod), fileName));
         }
         return texts;
     }
@@ -678,7 +729,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             foreach (ModPreset ruleSet in mod.Presets.Where(ruleSet => !ruleSet.IsArmoryPreset && FileAndTextRules.TextsOf(ruleSet.Rules).Count > 0))
                 foreach (string file in RuleSetFiles.Named(ruleSet).Where(FileAndTextRules.IsDictionaryFile))
                     Note(Path.GetFileName(file), Path.GetDirectoryName(file)?.Replace('\\', '/') ?? "", mod.Game);
-            if (ArmoryPresets.RulesOf(mod).Any(DivisionExtras.NeedsNamesFile)) Note(DivisionExtras.NamesFileOf(mod.Game), "", mod.Game);
+            foreach (string dictionary in DivisionExtras.NamesFilesNeeded(ArmoryPresets.RulesOf(mod), mod.Game)) Note(dictionary, "", mod.Game);
         }
         // each game's dictionaries get the texts of its own mods, and are made when no file of that game has the name
         return [.. names
@@ -831,7 +882,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     {
         IReadOnlyList<JsonNode?> rules = ArmoryRulesOf(ModStack.RunningFor(game));
         HashSet<string> files = Data.Units.UnitReader.WithUnitsFileUnderBothNames(DivisionChangeRules.FilesOf(rules));
-        if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFileOf(game));
+        files.UnionWith(DivisionExtras.NamesFilesNeeded(rules, game));
         return files;
     }
 
@@ -882,7 +933,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         bool byName = RuleSetsApplyByName;
         foreach (Mod mod in TutorialSample.Is(entry) ? [AppData.Current.OpenMod] : ModStack.RunningFor(entry.Game))
         {
-            List<ModPreset> ruleSets = RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, byName);
+            List<ModPreset> ruleSets = RuleSetFiles.For(entry.Name, entry.Folder, mod.PresetsInOrder(), byName);
             var rules = new JsonArray();
             foreach (ModPreset ruleSet in ruleSets)
                 foreach (JsonNode? rule in ruleSet.Rules) rules.Add(rule?.DeepClone());
@@ -906,7 +957,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             if (mod.Game != entry.Game) continue;
             if (TutorialSample.Is(entry) && !ReferenceEquals(mod, AppData.Current.OpenMod)) continue;
-            List<string> ruleSets = [.. RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, byName).Select(ruleSet => ruleSet.Name)];
+            List<string> ruleSets = [.. RuleSetFiles.For(entry.Name, entry.Folder, mod.PresetsInOrder(), byName).Select(ruleSet => ruleSet.Name)];
             bool hasArmoryChanges = files.Contains(entry.Name) && (DivisionExtras.IsNamesFile(entry.Name, entry.Game) || DivisionChangeRules.WritesTo(entry));
             if (ruleSets.Count > 0 || hasArmoryChanges) mods.Add(new ModOnFile(mod.Name, ruleSets, hasArmoryChanges));
         }
@@ -921,14 +972,14 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             IReadOnlyList<JsonNode?> rules = ArmoryPresets.RulesOf(mod);
             HashSet<string> files = Data.Units.UnitReader.WithUnitsFileUnderBothNames(DivisionChangeRules.FilesOf(rules));
-            if (rules.Any(DivisionExtras.NeedsNamesFile)) files.Add(DivisionExtras.NamesFileOf(mod.Game));
+            files.UnionWith(DivisionExtras.NamesFilesNeeded(rules, mod.Game));
             byMod.Add((mod, files));
         }
         return byMod;
     }
 
     /// <summary>A mod's rule sets that apply to a file, in the mod's list order (<see cref="RuleSetFiles"/>).</summary>
-    internal static List<ModPreset> RuleSetsFor(FileEntry entry, Mod mod) => RuleSetFiles.For(entry.Name, entry.Folder, mod.Presets, RuleSetsApplyByName);
+    internal static List<ModPreset> RuleSetsFor(FileEntry entry, Mod mod) => RuleSetFiles.For(entry.Name, entry.Folder, mod.PresetsInOrder(), RuleSetsApplyByName);
 
     /// <summary>Whether a rule set applies to a file: never to a file of another game than its mod's.</summary>
     internal static bool AppliesTo(ModPreset ruleSet, FileEntry entry) =>
@@ -938,7 +989,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     internal static bool HasRuleSetsFor(string fileName, string folder, Data.Game.GameTitle game)
     {
         bool byName = RuleSetsApplyByName;
-        return ModStack.RunningFor(game).Any(mod => RuleSetFiles.For(fileName, folder, mod.Presets, byName).Count > 0);
+        return ModStack.RunningFor(game).Any(mod => RuleSetFiles.For(fileName, folder, mod.PresetsInOrder(), byName).Count > 0);
     }
 
     /// <summary>Every rule run on a file, the mods' one after the other (<see cref="StackFor"/>).</summary>
@@ -960,7 +1011,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         foreach (ModPreset preset in ModStack.RunningFor(game).SelectMany(ArmoryPresets.AllOf))
         {
             int count = DivisionExtras.IsNamesFile(fileName, game)
-                ? preset.Rules.Count(DivisionExtras.NeedsNamesFile)
+                ? preset.Rules.Count(rule => DivisionExtras.NeedsNamesFile(rule, fileName))
                 : DivisionChangeRules.ForFile(preset.Rules, fileName).Count(rule => (string?)rule?["Kind"] != "Group");
             if (count > 0 && preset.ArmoryPart is ArmoryPart part) counts[part] = counts.GetValueOrDefault(part) + count;
         }
@@ -982,7 +1033,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
 
     /// <summary>Whether rules of the Armory are for a file of this name; for the game's dictionary (UNITS.csv, MODDING.csv), whether they give it texts.</summary>
     private static bool HasRulesFor(IEnumerable<JsonNode?> rules, string fileName, Data.Game.GameTitle game) =>
-        DivisionExtras.IsNamesFile(fileName, game) ? rules.Any(DivisionExtras.NeedsNamesFile)
+        DivisionExtras.IsNamesFile(fileName, game) ? rules.Any(rule => DivisionExtras.NeedsNamesFile(rule, fileName))
             : Data.Units.UnitReader.WithUnitsFileUnderBothNames(DivisionChangeRules.FilesOf(rules)).Contains(fileName);
 
     /// <summary>
@@ -1005,7 +1056,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             DivisionExtras.Outcome outcome = DivisionExtras.CopyPictures(armoryRules, exported.ExportedPath!, PictureFolders,
                 Texts.Get("Files.Run.Divisions.NoGameData"), Texts.Get("Files.Run.Divisions.PictureMissing"));
             if (outcome.Problem != "") model.Warn(outcome.Problem);
-            else if (outcome.Pictures > 0) model.Say(PicturesCopied(outcome.Emblems, outcome.Pictures - outcome.Emblems));
+            else if (outcome.Pictures > 0 || outcome.ModelFiles > 0) model.Say(PicturesCopied(outcome.Emblems, outcome.Pictures - outcome.Emblems, outcome.ModelFiles));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -1014,11 +1065,14 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     }
 
     /// <summary>What the Files tab says of the pictures an export copied: "2 emblems and 1 unit picture copied."</summary>
-    private static string PicturesCopied(int emblems, int unitPictures)
+    private static string PicturesCopied(int emblems, int unitPictures, int modelFiles = 0)
     {
         var kinds = new List<string>();
         if (emblems > 0) kinds.Add(Texts.Count("Files.Run.Pictures.Emblems", emblems, ("count", FileStatus.Count(emblems))));
         if (unitPictures > 0) kinds.Add(Texts.Count("Files.Run.Pictures.UnitPictures", unitPictures, ("count", FileStatus.Count(unitPictures))));
+        if (modelFiles > 0) kinds.Add(Texts.Count("Files.Run.Pictures.ModelFiles", modelFiles, ("count", FileStatus.Count(modelFiles))));
+        // three kinds: the first two joined with a comma
+        if (kinds.Count == 3) kinds = [kinds[0] + ", " + kinds[1], kinds[2]];
         string what = kinds.Count == 2 ? Texts.Get("Files.Run.Pictures.Both", ("first", kinds[0]), ("second", kinds[1])) : kinds[0];
         return Texts.Get("Files.Run.Pictures.Copied", ("what", what));
     }
@@ -1093,7 +1147,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             var ruleCounts = new List<int>();
             // the check of the values needs the text a Preview would otherwise leave unkept
             bool checksValues = valueGuide is not null && ChecksValues(entry);
-            (RunResult result, LoadSummary info) = RunStack(stack, work.Content.Text(), write || checksValues, logLimit, work.OtherFiles, stages, ruleCounts,
+            (RunResult result, LoadSummary info) = RunStack(entry, stack, work.Content.Text(), write || checksValues, logLimit, work.OtherFiles, stages, ruleCounts,
                 () => GameFileText(entry));
             // the impact names of the MimeticImpactMapping.ndf the game will load: the export folder's mod's, or else the source's
             List<RunValueError> valueErrors = checksValues && result.ParseError == "" && result.Edits > 0 && result.Text is string made
@@ -1199,6 +1253,79 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         else entry.Message = Texts.Get("Files.Run.ModOff", ("mod", openModName));
     }
 
+    // ---- the variables rule sets share ----
+
+    private SharedVariables? sharedVariables;
+
+    /// <summary>
+    /// The variables the rule sets share, for the files on the Files tab and the mods that run, worked out the first
+    /// time a file's run asks (<see cref="SharedVariables.Build"/>): with an action that changes one, that runs the
+    /// rule sets concerned once more, in the order they run.
+    /// </summary>
+    private SharedVariables Shared
+    {
+        get
+        {
+            if (sharedVariables is not null) return sharedVariables;
+            lock (sharedLock) return sharedVariables ??= BuildShared();
+        }
+    }
+
+    private readonly object sharedLock = new();
+
+    private SharedVariables BuildShared()
+    {
+        List<FileEntry> listed = [.. model.Entries.Where(entry => entry.Source is not null && !TutorialSample.Is(entry)
+            && entry.Name.EndsWith(".ndf", StringComparison.OrdinalIgnoreCase))];
+        bool byName = RuleSetsApplyByName;
+        return SharedVariables.Build(ModStack.Running, [.. listed.Select(entry => new SharedVariables.SharedFile(entry, () => FileContent.Text(entry)))],
+            (file, mod) => file.Key is FileEntry entry && entry.Game == mod.Game ? RuleSetFiles.For(entry.Name, entry.Folder, mod.PresetsInOrder(), byName) : [],
+            (mod, ruleSet, file, text, shared) =>
+            {
+                var engine = new NdfEngine();
+                engine.LoadForRun(text);
+                return engine.Run(RuleLoading.LoadForEngine(ruleSet.Rules.DeepClone()), new RunOptions
+                {
+                    WantText = true,
+                    LogLimit = 0,
+                    OtherFiles = OtherFilesFor(ruleSet.Rules, listed.Where(each => each.Game == mod.Game)),
+                    KeepSourceComments = settings.KeepSourceComments,
+                    CheckOutput = false,
+                    ModName = mod.Name,
+                    DecimalPlaces = settings.DecimalPlaces,
+                    Segments = [new RuleSegment(0, shared)],
+                });
+            });
+    }
+
+    /// <summary>
+    /// Why nothing can run: two variables of one name where both can be seen (<see cref="SharedVariables.Clashes"/>),
+    /// with where each is, so one can be renamed. Null when the names are all apart.
+    /// </summary>
+    internal static string? VariableClashOf(SharedVariables shared)
+    {
+        if (shared.Clashes.Count == 0) return null;
+        SharedVariables.Clash clash = shared.Clashes[0];
+        static string Where(SharedVariables.Definition variable) => Texts.Get("Files.Run.Variables.Where", ("mod", variable.Mod.Name), ("ruleSet", variable.RuleSet.Name));
+        return Texts.Get("Files.Run.Variables.Clash", ("name", clash.First.Name), ("first", Where(clash.First)), ("second", Where(clash.Second)));
+    }
+
+    /// <summary>Where each rule set begins among a mod's rules for a file, with the shared variables it starts with (<see cref="RunOptions.Segments"/>).</summary>
+    private List<RuleSegment> SegmentsOf(ModRules part, FileEntry entry)
+    {
+        SharedVariables shared = Shared;
+        var segments = new List<RuleSegment>();
+        int first = 0;
+        foreach (ModPreset ruleSet in part.RuleSets)
+        {
+            segments.Add(new RuleSegment(first, shared.At(part.Mod, ruleSet, entry)));
+            first += ruleSet.Rules.Count;
+        }
+        // the mod's Armory changes, after its rule sets
+        if (part.Rules.Count > first) segments.Add(new RuleSegment(first, shared.At(part.Mod, null, entry)));
+        return segments;
+    }
+
     // ---- running the mods one after the other ----
 
     /// <summary>What each file run found of mods changing the same values, by the file's key, given to the Mods tab when the run ends.</summary>
@@ -1218,7 +1345,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
     /// </param>
     /// <param name="ruleCounts">When given, filled with how many rules the engine ran for each mod that ran, in order.</param>
     /// <param name="gameOriginal">The game's own version of the file, for a Clone whose source an earlier mod removed; null for none.</param>
-    private (RunResult Result, LoadSummary Info) RunStack(List<ModRules> stack, string text, bool wantText, int logLimit, Dictionary<string, string> otherFiles,
+    /// <param name="entry">The file, for each rule set to begin with its own variables and the shared ones (<see cref="SegmentsOf"/>).</param>
+    private (RunResult Result, LoadSummary Info) RunStack(FileEntry entry, List<ModRules> stack, string text, bool wantText, int logLimit, Dictionary<string, string> otherFiles,
         List<string>? stages = null, List<int>? ruleCounts = null, Func<string?>? gameOriginal = null)
     {
         LoadSummary? info = null;
@@ -1243,6 +1371,7 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 ModName = ExportFinishing.ModNameForComments(part.Mod.Name, WatermarkOf(part.Mod)),
                 DecimalPlaces = settings.DecimalPlaces,
                 GameOriginal = gameOriginal,
+                Segments = SegmentsOf(part, entry),
             });
             results.Add(result);
             if (result.ParseError != "" || result.Text is null) break;
@@ -1378,9 +1507,11 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
             : null;
         if (FillGeneratedLists(stack, generated) is string cannot)
             return (new RunResult { Text = text, ParseError = cannot, Stats = [], Logs = [], Warnings = [] }, text);
+        if (VariableClashOf(Shared) is string clash)
+            return (new RunResult { Text = text, ParseError = clash, Stats = [], Logs = [], Warnings = [] }, text);
         Mod mod = HeaderModOf(stack);
         Watermark? watermark = WatermarkOf(mod);
-        (RunResult result, _) = RunStack(stack, text, wantText: true, logLimit: 0, OtherFilesFor(entry, model.Entries));
+        (RunResult result, _) = RunStack(entry, stack, text, wantText: true, logLimit: 0, OtherFilesFor(entry, model.Entries));
         string exported = result.Text ?? "";
         if (result.Edits > 0 && result.ParseError == "")
             exported = ExportFinishing.AddHeader(exported, MainView.AppVersion, settings.EditedWithLine, mod.Name, watermark);

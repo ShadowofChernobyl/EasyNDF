@@ -597,11 +597,11 @@ public partial class UnitsPage : IDivisionEditing
     void IDivisionEditing.AddUnits(string factory) => AddUnitsToDivision(factory);
 
     /// <inheritdoc/>
-    public bool CanShowDivisionInEditor => LoadedFile(UnitFiles.Divisions) is not null;
+    public bool CanShowDivisionInEditor => CanShowInEditor(UnitFiles.Divisions);
 
     /// <inheritdoc/>
     public void ShowDivisionInEditor()
     {
-        if (chosenDivision is not null) ShowInEditor(LoadedFile(UnitFiles.Divisions), chosenDivision.Descriptor);
+        if (chosenDivision is not null) ShowInEditor(chosenDivision.Descriptor, UnitFiles.Divisions);
     }
 }

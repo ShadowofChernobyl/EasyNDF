@@ -46,6 +46,6 @@
   "Common.Pane.Below": "Below",
   "Common.Pane.Automatic": "Arrange Automatically",
   "Common.HelpButton.Tip": "Help for this tab",
-  "Common.HelpButton.Window.Tip": "Help for this window",
+  "Common.HelpButton.Window.Tip": "Help for this popup",
   "Common.HelpButton.Name": "Help"
 }

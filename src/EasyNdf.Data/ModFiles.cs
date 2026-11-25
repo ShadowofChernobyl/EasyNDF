@@ -84,6 +84,8 @@ public static class ModFiles
                 if (i == 0 && mod.Divisions.Count > 0) entry["Divisions"] = DivisionsToJson(mod);
                 if (i == 0 && mod.Units.Count > 0) entry["Units"] = UnitsToJson(mod);
                 if (i == 0 && mod.UnitEdits.Count > 0) entry["UnitEdits"] = UnitEditsToJson(mod);
+                if (i == 0 && mod.Tabs.Count > 0) entry["Tabs"] = TabsToJson(mod);
+                if (i == 0 && mod.TabOrder is { Count: > 0 }) entry["TabOrder"] = TabOrderToJson(mod);
                 if (i == 0 && mod.WeaponEdits.Count > 0) entry["WeaponEdits"] = WeaponEditsToJson(mod);
                 if (i == 0 && mod.Weapons.Count > 0) entry["Weapons"] = WeaponsToJson(mod);
                 if (i == 0 && mod.UnitDeckNumbers.Count > 0) entry["DeckNumbers"] = DeckNumbersToJson(mod);
@@ -105,12 +107,36 @@ public static class ModFiles
         JsonNode? json;
         try { json = JsonFiles.Parse(text); }
         catch (JsonException error) { throw new ModFileException(DataTexts.Get("Rules.ModFile.NotJson", ("problem", error.Message))); }
+        return FromJson(json, fileName, text.Length);
+    }
 
+    /// <summary>
+    /// Reads a mod file from its bytes as they are on disk (UTF-8, with or without its mark), as
+    /// <see cref="Read(string, string)"/> reads its text.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed, for the app's start: a large mod file took longer to turn into text than to read as JSON, and
+    /// the bytes are read as JSON as they are. On a 430 MB mod, 2 seconds in place of 4.8. Keep it that way when tidying.
+    /// </remarks>
+    public static List<Mod> Read(byte[] utf8, string fileName)
+    {
+        ReadOnlySpan<byte> bytes = utf8;
+        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) bytes = bytes[3..];
+        JsonNode? json;
+        try { json = JsonNode.Parse(bytes); }
+        catch (JsonException error) { throw new ModFileException(DataTexts.Get("Rules.ModFile.NotJson", ("problem", error.Message))); }
+        // the file's length stands in for its text's: the same but for letters outside English, and only an estimate is made of it
+        return FromJson(json, fileName, utf8.Length);
+    }
+
+    /// <summary>The mods a mod file or a backup read as JSON holds.</summary>
+    private static List<Mod> FromJson(JsonNode? json, string fileName, long length)
+    {
         List<Mod>? mods = null;
         if (json is JsonObject modFile && modFile["Presets"] is JsonArray presets)
         {
             mods = [ReadModFile(modFile, presets, NameFromFileName(fileName))];
-            mods[0].ReadFromCharacters = text.Length;
+            mods[0].ReadFromCharacters = length;
         }
         else if (json is JsonArray list && IsBackup(list))
             mods = ReadBackup(list);
@@ -136,6 +162,8 @@ public static class ModFiles
         mod.Divisions = DivisionsFromJson(modFile["Divisions"]);
         mod.Units = UnitsFromJson(modFile["Units"]);
         mod.UnitEdits = UnitEditsFromJson(modFile["UnitEdits"]);
+        mod.Tabs = TabsFromJson(modFile["Tabs"]);
+        mod.TabOrder = TabOrderFromJson(modFile["TabOrder"]);
         mod.WeaponEdits = WeaponEditsFromJson(modFile["WeaponEdits"]);
         mod.Weapons = WeaponsFromJson(modFile["Weapons"]);
         mod.UnitDeckNumbers = DeckNumbersFromJson(modFile["DeckNumbers"]);
@@ -170,6 +198,10 @@ public static class ModFiles
             if (withUnits is not null) mod.Units = UnitsFromJson(withUnits["Units"]);
             JsonObject? withUnitEdits = byMod[name].FirstOrDefault(e => e["UnitEdits"] is JsonArray);
             if (withUnitEdits is not null) mod.UnitEdits = UnitEditsFromJson(withUnitEdits["UnitEdits"]);
+            JsonObject? withTabs = byMod[name].FirstOrDefault(e => e["Tabs"] is JsonArray);
+            if (withTabs is not null) mod.Tabs = TabsFromJson(withTabs["Tabs"]);
+            JsonObject? withTabOrder = byMod[name].FirstOrDefault(e => e["TabOrder"] is JsonArray);
+            if (withTabOrder is not null) mod.TabOrder = TabOrderFromJson(withTabOrder["TabOrder"]);
             JsonObject? withWeaponEdits = byMod[name].FirstOrDefault(e => e["WeaponEdits"] is JsonArray);
             if (withWeaponEdits is not null) mod.WeaponEdits = WeaponEditsFromJson(withWeaponEdits["WeaponEdits"]);
             JsonObject? withWeapons = byMod[name].FirstOrDefault(e => e["Weapons"] is JsonArray);
@@ -241,6 +273,8 @@ public static class ModFiles
         if (mod.Divisions.Count > 0) json["Divisions"] = DivisionsToJson(mod);
         if (mod.Units.Count > 0) json["Units"] = UnitsToJson(mod);
         if (mod.UnitEdits.Count > 0) json["UnitEdits"] = UnitEditsToJson(mod);
+        if (mod.Tabs.Count > 0) json["Tabs"] = TabsToJson(mod);
+        if (mod.TabOrder is { Count: > 0 }) json["TabOrder"] = TabOrderToJson(mod);
         if (mod.WeaponEdits.Count > 0) json["WeaponEdits"] = WeaponEditsToJson(mod);
         if (mod.Weapons.Count > 0) json["Weapons"] = WeaponsToJson(mod);
         if (mod.UnitDeckNumbers.Count > 0) json["DeckNumbers"] = DeckNumbersToJson(mod);
@@ -329,6 +363,16 @@ public static class ModFiles
         [.. (units as JsonArray ?? []).OfType<JsonObject>().Select(Units.ModUnit.FromJson)];
 
     /// <summary>A mod's changes to the game's units, as the mod file keeps them.</summary>
+    private static JsonArray TabsToJson(Mod mod) => new([.. mod.Tabs.Select(tab => (JsonNode)tab.ToJson())]);
+
+    private static List<Divisions.ModTab> TabsFromJson(JsonNode? tabs) =>
+        [.. (tabs as JsonArray ?? []).OfType<JsonObject>().Select(Divisions.ModTab.FromJson).Where(tab => tab.Factory != "")];
+
+    private static JsonArray TabOrderToJson(Mod mod) => new([.. (mod.TabOrder ?? []).Select(tab => (JsonNode)tab)]);
+
+    private static List<string>? TabOrderFromJson(JsonNode? order) =>
+        order is JsonArray { Count: > 0 } list ? [.. list.Select(tab => tab is JsonValue value && value.TryGetValue(out string? name) ? name : "").Where(name => name != "")] : null;
+
     private static JsonArray UnitEditsToJson(Mod mod) => new([.. mod.UnitEdits.Select(edit => (JsonNode)edit.ToJson())]);
 
     /// <summary>The changes to the game's units a mod file keeps; none when it has none.</summary>

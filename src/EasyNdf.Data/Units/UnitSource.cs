@@ -112,6 +112,9 @@ public static class UnitLibrary
         progress?.Report(UnitReadStep.PreparingPictures);
         var pictures = new UnitPictureStore(cacheRoot, source.Game, archives?.Version ?? "", archives is null ? null : new GamePictures(archives), source.Mod?.Folder);
         string? countFont = archives is null ? null : GameFonts.UnitCountFontFile(source.GameFolder, cacheRoot, source.Game, archives.Version);
+        // the tabs' own labels and tooltips are kept too: Edit Tab shows them
+        if (source.Game == GameTitle.Warno)
+            foreach (string token in Divisions.TabChangeRules.GameTokens()) texts.Get(token);
         return new LoadedUnits(source, catalog, pictures, problems, texts.OnlyThoseAsked()) { UnitCountFontFile = countFont, VanillaUnits = vanilla, VanillaWeapons = vanillaWeapons };
     }
 

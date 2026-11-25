@@ -1,6 +1,6 @@
 <!--
-  The New Unit window, in four steps listed at the top: Model (the unit whose 3D model the new one takes), Name and Nation,
-  Stats, then Weapons. 1600 pixels wide for Model and Weapons, 1000 for the others, steps up to 760 tall, or 96% of a smaller window, centred on the dimmed backdrop as the other windows.
+  The New Unit window, in five steps listed at the top: Model (the unit the new one is a copy of), 3D Model (its model,
+  or one of the user's own), Name and Nation, Stats, then Weapons. 1600 pixels wide for Model and Weapons, 1000 for the others, steps up to 760 tall, or 96% of a smaller window, centred on the dimmed backdrop as the other windows.
 -->
 <UserControl x:Class="EasyNdf.App.Dialogs.NewUnitWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -29,6 +29,8 @@
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}" AutomationProperties.Name="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
                         <Button DockPanel.Dock="Right" Style="{StaticResource HelpButton}" Margin="0,0,6,0" controls:QuickHelp.Page="units-new" ToolTip="{t:Text Common.HelpButton.Window.Tip}" />
+                        <!-- the window as large as the app's own, or back to its usual size; kept for the next time -->
+                        <Button x:Name="FullSizeButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0" Click="FullSizeClicked" />
                         <TextBlock Text="{t:Text Units.New.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" Margin="0,0,24,0" />
                         <!-- the steps wrap onto a second line in a narrow window -->
                         <WrapPanel x:Name="StepStrip" VerticalAlignment="Center" />
@@ -131,7 +133,10 @@
                         </controls:Bevel>
                     </Grid>
 
-                    <!-- steps 2 to 4: the new unit's tile at the left, as it will be; the step's boxes at the right -->
+                    <!-- step 2: the 3D model, the copied unit's or one of the user's own -->
+                    <units:OwnModelPanel x:Name="OwnModelStep" Visibility="Collapsed" Height="440" Changed="OwnModelChanged" />
+
+                    <!-- steps 3 to 5: the new unit's tile at the left, as it will be; the step's boxes at the right -->
                     <Grid x:Name="DetailsSteps" Visibility="Collapsed">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition x:Name="PreviewColumn" Width="230" />

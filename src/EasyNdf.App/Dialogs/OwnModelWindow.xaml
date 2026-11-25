@@ -1,0 +1,36 @@
+<!--
+  The Armory's Change 3D Model window, for a unit that exists: the 3D Model panel the New Unit window has as its
+  3D Model step, with Done and Cancel. 1600 pixels wide, or 96% of a smaller window, centred on the dimmed backdrop.
+-->
+<UserControl x:Class="EasyNdf.App.Dialogs.OwnModelWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:t="clr-namespace:EasyNdf.App.Text"
+             xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+             xmlns:units="clr-namespace:EasyNdf.App.Units"
+             Visibility="Collapsed" KeyDown="KeyPressed" Foreground="{DynamicResource ink}">
+    <Grid x:Name="Backdrop" Background="#80000000" MouseLeftButtonDown="BackdropPressed" SizeChanged="BackdropResized">
+        <controls:Bevel x:Name="Box" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
+                        Padding="14,12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        MouseLeftButtonDown="BoxPressed" KeyboardNavigation.TabNavigation="Cycle">
+            <DockPanel>
+                <controls:Bevel DockPanel.Dock="Top" BottomRight="{DynamicResource line}" Edges="0,0,0,1" Padding="0,0,0,8" Margin="0,0,0,10">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}"
+                                AutomationProperties.Name="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
+                        <!-- the window as large as the app's own, or back to its usual size; kept for the next time -->
+                        <Button x:Name="FullSizeButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0" Click="FullSizeClicked" />
+                        <TextBlock Text="{t:Text Units.OwnModel.Window.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
+                        <TextBlock x:Name="UnitText" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="10,1,0,0" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                </controls:Bevel>
+                <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                    <Button DockPanel.Dock="Right" Content="{t:Text Common.Cancel}" Margin="6,0,0,0" Click="CancelClicked" />
+                    <Button x:Name="DoneButton" DockPanel.Dock="Right" Style="{StaticResource GoButton}" Content="{t:Text Units.OwnModel.Done}" Margin="6,0,0,0" Click="DoneClicked" />
+                    <TextBlock x:Name="HintText" Foreground="{DynamicResource muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                </DockPanel>
+                <units:OwnModelPanel x:Name="Panel" Height="560" Changed="PanelChanged" />
+            </DockPanel>
+        </controls:Bevel>
+    </Grid>
+</UserControl>

@@ -115,7 +115,7 @@ public partial class AddUnitsWindow : UserControl
         fillingLists = true;
         SearchBox.Text = "";
         FillSideChoices();
-        FillChoice(FactoryChoice, Texts.Get("Units.AddUnits.AllTypes"), UnitNames.FactoriesOf(game).Where(factory => units.Any(unit => unit.Factory == factory)).Select(factory => (factory, UnitNames.Factory(factory))));
+        FillChoice(FactoryChoice, Texts.Get("Units.AddUnits.AllTypes"), UnitNames.FactoriesOf(game, units).Where(factory => units.Any(unit => unit.Factory == factory)).Select(factory => (factory, UnitNames.Factory(factory))));
         FillChoice(NationChoice, Texts.Get("Units.AddUnits.AllNations"), units.Select(unit => unit.Nation).Distinct().Select(nation => (nation, UnitNames.Nation(nation))).OrderBy(nation => nation.Item2, StringComparer.Create(Texts.Catalog.Culture, true)));
         UnitOrder.Fill(SortChoice);
         FillModdedChoice();

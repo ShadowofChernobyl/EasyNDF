@@ -43,6 +43,9 @@ public sealed class SettingsStore(string settingsFolder)
         // from last time can hold files that are not the Source's, and the Armory would show them under its name.
         // A new name, so that a list switched on before also starts empty; the empty list offers Reopen Last List.
         ["reopenLastFiles"] = false,
+        // choosing a Source lists all its files, and takes out those of the source chosen before; off, the Source
+        // bar's Add Its Files lists them, as before there was this setting
+        ["addSourceFiles"] = true,
         // the File Editor's scope lines and closing pairs, as in Sublime Text
         ["indentGuides"] = true,
         ["autoPairs"] = true,
@@ -77,6 +80,7 @@ public sealed class SettingsStore(string settingsFolder)
         ["tooltips"] = true,
         // whether an installed EasyNDF looks for a newer release at start
         ["checkUpdates"] = true,
+        ["askBundledModUpdate"] = true,
         ["rememberWindow"] = true,
         // how many changes Ctrl+Z can take back
         ["undoSteps"] = "60",

@@ -4,6 +4,8 @@
   "About.License": "License",
   "About.License.Tip": "The license EasyNDF is under, and those of the software by others it includes",
   "About.ChangeLog.Title": "Change Log",
+  "About.Discord": "Discord",
+  "About.Discord.Tip": "Join the EasyNDF Discord server: questions, mods and news",
   "About.Support": "Support on Ko-fi",
-  "About.Support.Tip": "EasyNDF is free. Opens its Ko-fi page in your browser"
+  "About.Support.Tip": "EasyNDF is free. Please consider buying me a coffee :)"
 }

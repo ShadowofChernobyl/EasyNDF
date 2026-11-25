@@ -109,6 +109,7 @@ public sealed class LoadingCover
         if (MainView.Find(page) is not MainView main) return;
         if (shown && page.IsVisible)
         {
+            main.PlaceReadingCoverFor(page);
             main.ReadingCoverCard.Content = card;
             main.ReadingCover.Visibility = Visibility.Visible;
         }

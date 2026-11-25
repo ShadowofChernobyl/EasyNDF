@@ -169,9 +169,10 @@ public static class DivisionCards
     /// </summary>
     private static StackPanel Heading(DivisionGroup group, bool isFolded, Action<string> foldClicked, IDivisionEditing editing)
     {
-        var heading = new StackPanel { Tag = group.Factory, Children = { NameLine(group, isFolded, foldClicked, editing) } };
         // folded away, a type shows its name line alone: its card slots fold with its tiles
-        if (!isFolded) heading.Children.Add(CostLine(group, editing));
+        Bevel? costLine = isFolded ? null : CostLine(group, editing);
+        var heading = new StackPanel { Tag = group.Factory, Children = { NameLine(group, isFolded, foldClicked, editing, costLine) } };
+        if (costLine is not null) heading.Children.Add(costLine);
         // a click on the heading itself is not a click on the list behind it, which would let go of the selected unit
         heading.MouseLeftButtonUp += (_, e) => e.Handled = true;
         return heading;
@@ -182,7 +183,7 @@ public static class DivisionCards
     /// its units, cards and points dim, and "+ Add Units…" at the right, for units of that type. A click elsewhere on
     /// it does nothing.
     /// </summary>
-    private static Bevel NameLine(DivisionGroup group, bool isFolded, Action<string> foldClicked, IDivisionEditing editing)
+    private static Bevel NameLine(DivisionGroup group, bool isFolded, Action<string> foldClicked, IDivisionEditing editing, Bevel? costLine = null)
     {
         var fold = new Button
         {
@@ -194,8 +195,24 @@ public static class DivisionCards
         System.Windows.Automation.AutomationProperties.SetName(fold, (string)fold.ToolTip);
         fold.Click += (_, _) => foldClicked(factory);
         var name = new TextBlock { Text = UnitNames.Factory(group.Factory), FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
-        var counts = new TextBlock { Text = Counts(group), Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        // "6 units · 7 cards · 14 pts"; where the heading is too narrow for it (a small window with both panes open),
+        // the numbers alone, "6 · 7 · 14", with the whole text in the tooltip, rather than a text cut off
+        string full = Counts(group), brief = BriefCounts(group);
+        var counts = new TextBlock { Text = full, ToolTip = full, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         counts.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        double fullWidth = -1;
+        counts.SizeChanged += (_, _) =>
+        {
+            if (fullWidth < 0)
+            {
+                var probe = new TextBlock { Text = full, FontFamily = counts.FontFamily, FontSize = counts.FontSize };
+                probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                fullWidth = probe.DesiredSize.Width;
+            }
+            // it is the line's last part, so its width is the room left, whichever text it shows
+            string wanted = counts.ActualWidth < fullWidth ? brief : full;
+            if (counts.Text != wanted) counts.Text = wanted;
+        };
         var add = new Button
         {
             Content = Texts.Get("Divisions.Heading.AddUnits"), Style = (Style)Application.Current.FindResource("HeadingButton"),
@@ -207,7 +224,9 @@ public static class DivisionCards
         DockPanel.SetDock(fold, Dock.Left);
         DockPanel.SetDock(name, Dock.Left);
         DockPanel.SetDock(add, Dock.Right);
-        var line = new DockPanel { Children = { fold, name, add, counts } };
+        var line = new DockPanel { Children = { fold, name, add } };
+        if (costLine is not null) line.Children.Add(SlotsLink(costLine));
+        line.Children.Add(counts);
         var nameLine = new Bevel { Child = line, Padding = new Thickness(4, 3, 8, 3), Edges = new Thickness(0, 1, 0, 1) };
         nameLine.SetResourceReference(Bevel.TopLeftProperty, "hi");
         nameLine.SetResourceReference(Bevel.BottomRightProperty, "lo");
@@ -215,9 +234,60 @@ public static class DivisionCards
         return nameLine;
     }
 
+    /// <summary>Where it is kept whether the lines of card slots are hidden.</summary>
+    private const string SlotsHiddenKey = "divisionSlotsHidden";
+
+    /// <summary>Whether the lines of card slots are hidden, in every type and division, as last chosen; shown until hidden.</summary>
+    private static bool SlotsHidden => AppData.Current.State[SlotsHiddenKey] is System.Text.Json.Nodes.JsonValue kept && kept.TryGetValue(out bool hidden) && hidden;
+
+    /// <summary>
+    /// "Hide Slots" or "Show Slots" at the right of a type's name line: shows or hides the lines of card slots, which a
+    /// division with many cards has little use for while its units are worked on. One choice for every type, kept for
+    /// the next time; this type's line changes at once, and the others as they are next drawn.
+    /// </summary>
+    private static TextBlock SlotsLink(Bevel costLine)
+    {
+        var link = new TextBlock
+        {
+            Cursor = System.Windows.Input.Cursors.Hand, TextDecorations = TextDecorations.Underline, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(10, 0, 0, 0), Focusable = true,
+        };
+        link.SetResourceReference(TextBlock.ForegroundProperty, "accent");
+        link.FocusVisualStyle = Application.Current.TryFindResource("KeyboardFocusOutline") as Style;
+        void Show()
+        {
+            bool hidden = SlotsHidden;
+            costLine.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
+            link.Text = Texts.Get(hidden ? "Divisions.Heading.ShowSlots" : "Divisions.Heading.HideSlots");
+            link.ToolTip = Texts.Get("Divisions.Heading.Slots.Tip");
+        }
+        void Switch()
+        {
+            AppData.Current.State[SlotsHiddenKey] = !SlotsHidden;
+            AppData.Current.SaveState();
+            // every type's line and link in the view follow, not only this one
+            if (link.Parent is DockPanel { Parent: Bevel { Parent: StackPanel { Parent: StackPanel view } } })
+                foreach (StackPanel heading in view.Children.OfType<StackPanel>())
+                    foreach (TextBlock other in heading.Children.OfType<Bevel>().Select(each => each.Child).OfType<DockPanel>().SelectMany(each => each.Children.OfType<TextBlock>()))
+                        if (other.Tag is Action show) show();
+            Show();
+        }
+        link.Tag = (Action)Show;
+        link.MouseLeftButtonUp += (_, e) => { e.Handled = true; Switch(); };
+        link.KeyDown += (_, e) =>
+        {
+            if (e.Key is not (System.Windows.Input.Key.Enter or System.Windows.Input.Key.Space)) return;
+            e.Handled = true;
+            Switch();
+        };
+        DockPanel.SetDock(link, Dock.Right);
+        Show();
+        return link;
+    }
+
     /// <summary>
     /// The line of a type's cost buttons under its name line, on the panel colour with a line under it, lined up with
-    /// the type's name. It wraps, so every card shows however many there are.
+    /// the type's name. One line, which scrolls sideways when the cards do not fit (see <see cref="CostButtons"/>).
     /// </summary>
     private static Bevel CostLine(DivisionGroup group, IDivisionEditing editing)
     {
@@ -250,6 +320,11 @@ public static class DivisionCards
         if (group.Costs.Count == 0) return units + " · " + Texts.Get("Divisions.Heading.NoCards");
         return string.Join(" · ", units, Texts.Count("Divisions.Heading.Cards", group.Costs.Count), Texts.Count("Divisions.Heading.Points", group.Costs.Sum()));
     }
+
+    /// <summary>The same numbers without their words, for a heading too narrow for them: "6 · 7 · 14", or "0 · 0".</summary>
+    private static string BriefCounts(DivisionGroup group) => group.Costs.Count == 0
+        ? Texts.Number(group.Entries.Count) + " · " + Texts.Number(0)
+        : string.Join(" · ", Texts.Number(group.Entries.Count), Texts.Number(group.Costs.Count), Texts.Number(group.Costs.Sum()));
 
     /// <summary>
     /// Under a type with no units shown: that the division has none of that type (its heading's "+ Add Units…" adds

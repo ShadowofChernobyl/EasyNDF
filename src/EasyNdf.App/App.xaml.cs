@@ -28,6 +28,7 @@ public partial class App : Application
         Controls.LongText.Register();
         Controls.TrimmedTip.Register();
         Controls.OffReason.Register();
+        Controls.TextAreaScroll.Register();
         // tooltips open 25% sooner than WPF's 1000 ms
         System.Windows.Controls.ToolTipService.InitialShowDelayProperty.OverrideMetadata(typeof(DependencyObject), new FrameworkPropertyMetadata(750));
         // the lists' one-line texts, until the saved setting is read
@@ -39,12 +40,20 @@ public partial class App : Application
         if (!RunsTests) AppData.Load();
         Mods.ModStack.Start();
         if (!RunsTests) DispatcherUnhandledException += ErrorNotCaught;
+        if (!RunsTests) TaskScheduler.UnobservedTaskException += BackgroundErrorNotCaught;
         Text.Texts.UseSaved();
         ThemeManager.ApplySaved();
         Controls.ListText.ApplySaved();
+        // the start-up form's bar: the saved data, language and theme are read, and building the window is next
+        StartForm.Progress(0.38, 0.79);
         int frameAt = Array.IndexOf(e.Args, "--frame");
         MainWindow = new MainWindow(frameAt >= 0 && frameAt + 1 < e.Args.Length ? e.Args[frameAt + 1] : "");
+        // the start-up form's bar: the window is built, and showing it is the last step; the form closes once it is drawn
+        StartForm.Progress(0.79, 0.98);
+        MainWindow.ContentRendered += (_, _) => StartForm.Close();
         MainWindow.Show();
+        // Windows' file and folder dialogs open in the middle of the app's screen, not where one was last left
+        if (!RunsTests) Windowing.FileDialogPlacement.Start();
         Updates.CheckSoon();
         // memory large work leaves behind is given back while the app sits idle
         Memory.TrimWhenIdle(Dispatcher);
@@ -58,20 +67,38 @@ public partial class App : Application
     private void ErrorNotCaught(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
         e.Handled = true;
-        SessionLog.Write("Error", e.Exception.ToString());
-        string? logFile = AppData.Current.Folders?.Root is string root ? System.IO.Path.Combine(root, "Errors.txt") : null;
-        try
-        {
-            if (logFile is not null) System.IO.File.AppendAllText(logFile, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "  " + e.Exception + Environment.NewLine + Environment.NewLine);
-        }
-        catch (Exception problem) when (problem is System.IO.IOException or UnauthorizedAccessException)
-        {
-            // the message below still says what went wrong
-            logFile = null;
-        }
+        string? logFile = WriteError(e.Exception);
         string message = Text.Texts.Get("Main.Error", ("error", e.Exception.Message))
             + (logFile is null ? "" : Environment.NewLine + Environment.NewLine + Text.Texts.Get("Main.Error.File", ("file", logFile)));
         MessageBox.Show(MainWindow, message, "EasyNDF", MessageBoxButton.OK, MessageBoxImage.Error);
+    }
+
+    /// <summary>
+    /// An error in work started and left to finish by itself (a list filling, a model being read), which nothing was
+    /// waiting on to catch: written to Errors.txt like any other, so it can be reported. No box is shown: Windows
+    /// tells the app of it some time later, when the user is doing something else.
+    /// </summary>
+    private static void BackgroundErrorNotCaught(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        e.SetObserved();
+        WriteError(e.Exception.InnerExceptions.Count == 1 ? e.Exception.InnerException! : e.Exception);
+    }
+
+    /// <summary>Writes an error to the session log and to Errors.txt in the data folder; returns that file, or null when it could not be written.</summary>
+    private static string? WriteError(Exception error)
+    {
+        SessionLog.Write("Error", error.ToString());
+        string? logFile = AppData.Current.Folders?.Root is string root ? System.IO.Path.Combine(root, "Errors.txt") : null;
+        try
+        {
+            if (logFile is not null) System.IO.File.AppendAllText(logFile, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) + "  " + error + Environment.NewLine + Environment.NewLine);
+        }
+        catch (Exception problem) when (problem is System.IO.IOException or UnauthorizedAccessException)
+        {
+            // the message shown still says what went wrong
+            logFile = null;
+        }
+        return logFile;
     }
 
     /// <summary>Whether the command line has <paramref name="name"/> followed by <paramref name="value"/>.</summary>

@@ -107,18 +107,32 @@
             </DockPanel>
         </controls:Bevel>
         <!--
+          Everything shown over the pages: the windows, the questions and the notifications. They are one layer, so that
+          it can be moved to the window in use while a tab is open in a window of its own (MainView.PopOut.cs).
+        -->
+        <!--
           the Armory's reading card, over the whole app, dimmed as behind the other windows, while a source is read; clicks
           go through it, so the tabs can still be chosen (the Armory page blocks its own while it reads)
         -->
         <Grid x:Name="ReadingCover" Background="#80000000" Visibility="Collapsed" IsHitTestVisible="False">
             <ContentControl x:Name="ReadingCoverCard" Focusable="False" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Grid>
-        <!-- the rule window, over the tabs while it is open -->
-        <dialogs:RuleWindow x:Name="RuleWindow" />
-        <!-- the condition or action window, beside the rule window -->
-        <dialogs:RowWindow x:Name="RowWindow" />
+        <!--
+          The rule window and its condition or action window. They belong to the Mods tab, not to the window in use: they
+          stay over the window that tab is in, and the app's other windows go on working (MainView.RuleLayer.cs).
+        -->
+        <Grid x:Name="RuleLayer">
+            <!-- the rule window, over the tabs while it is open -->
+            <dialogs:RuleWindow x:Name="RuleWindow" />
+            <!-- the condition or action window, beside the rule window -->
+            <dialogs:RowWindow x:Name="RowWindow" />
+        </Grid>
+        <!-- the app's windows and questions: moved into whichever of the app's windows is in use (MainView.PopOut.cs) -->
+        <Grid x:Name="Overlays">
         <!-- the Watermark window -->
         <dialogs:WatermarkWindow x:Name="Watermark" />
+        <!-- the Armory's tab window: Edit Tab and New Tab -->
+        <dialogs:TabWindow x:Name="TabEditor" />
         <!-- the Applies To window: which files a rule set applies to -->
         <dialogs:AppliesToWindow x:Name="AppliesTo" />
         <!-- the Mod Conflicts window, from the Files tab's Conflicts button or a mod's ⚠ on the Mods tab -->
@@ -139,6 +153,7 @@
         <dialogs:ExportWindow x:Name="ExportWindow" />
         <!-- the Armory's New Unit window -->
         <dialogs:NewUnitWindow x:Name="NewUnit" />
+        <dialogs:OwnModelWindow x:Name="ChangeModel" />
         <!-- the Armory's Swap window, over the New Unit window when it is opened from there -->
         <dialogs:SwapWeaponWindow x:Name="SwapWeapon" />
         <!-- the 3D model viewer, over the New Unit window when it is opened from there -->
@@ -155,5 +170,6 @@
         <dialogs:HelpPopup x:Name="HelpPopup" />
         <!-- the notifications, over everything: what the last action did -->
         <dialogs:NoticeLayer x:Name="Notifications" />
+        </Grid>
     </Grid>
 </UserControl>

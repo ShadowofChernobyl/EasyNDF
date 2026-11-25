@@ -88,6 +88,21 @@ public sealed class SourceBar : Bevel
     }
     private bool runGoing;
 
+    /// <summary>
+    /// Whether the source's files are listed as soon as it is chosen (the "Add the source's files" setting): Add Its
+    /// Files is then not shown, as there is nothing left for it to add.
+    /// </summary>
+    public bool AddsFilesItself
+    {
+        get => addsFilesItself;
+        set
+        {
+            addsFilesItself = value;
+            addButton.Visibility = value ? Visibility.Collapsed : Visibility.Visible;
+        }
+    }
+    private bool addsFilesItself;
+
     /// <summary>The source's folder after the list; Add Its Files only once one is chosen, and not while a run goes.</summary>
     private void ShowChosen()
     {

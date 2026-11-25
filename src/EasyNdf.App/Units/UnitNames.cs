@@ -46,12 +46,32 @@ public static partial class UnitNames
         ["Support"] = ("Units.Factory.Support", "Units.Factory.Support.Short"),
         ["AT"] = ("Units.Factory.AT", "Units.Factory.AT.Short"),
         ["Defense"] = ("Units.Factory.Defense", "Units.Factory.Defense.Short"),
+        ["Vehicles"] = ("Units.Factory.Vehicles", "Units.Factory.Vehicles.Short"),
     };
 
     /// <summary>The factory tabs of each game, in the order the game's armory shows them.</summary>
     public static IReadOnlyList<string> FactoriesOf(GameTitle game) => game == GameTitle.SteelDivision2
         ? ["Infantry", "Recons", "Tanks", "Support", "AT", "DCA", "Art", "Planes", "Defense"]
         : ["Logistic", "Infantry", "Art", "Tanks", "Recons", "DCA", "Helis", "Planes"];
+
+    /// <summary>
+    /// The factory tabs for some units: the game's own (<see cref="FactoriesOf(GameTitle)"/>), then any other tab a unit
+    /// is in. WARNO's files name four it shows no tab for (Support, AT, Vehicles, Defense): a mod that moves units into
+    /// one, by its rules or in the mod folder read as the Source, gets that tab here as it does in the game.
+    /// </summary>
+    public static IReadOnlyList<string> FactoriesOf(GameTitle game, IEnumerable<EasyNdf.Data.Units.Unit> units)
+    {
+        IReadOnlyList<string> own = FactoriesOf(game);
+        List<string> others = [.. units.Select(unit => unit.Factory).Where(factory => factory != "" && !own.Contains(factory)).Distinct()
+            .OrderBy(factory => Array.IndexOf(SpareFactories, factory) is >= 0 and var at ? at : int.MaxValue).ThenBy(factory => factory, StringComparer.Ordinal)];
+        return others.Count == 0 ? own : [.. own, .. others];
+    }
+
+    /// <summary>The tabs WARNO's files name and shows none for, in the order they are listed after the game's own.</summary>
+    private static readonly string[] SpareFactories = ["Support", "AT", "Vehicles", "Defense"];
+
+    /// <summary>Every tab a WARNO unit can be moved to: the game's own, then the four it names and shows none for.</summary>
+    public static IReadOnlyList<string> TabsToMoveTo => [.. FactoriesOf(GameTitle.Warno), .. SpareFactories];
 
     /// <summary>The sides of each game, the first one drawn in the first side colour.</summary>
     public static IReadOnlyList<string> SidesOf(GameTitle game) => game == GameTitle.SteelDivision2 ? ["Allied", "Axis"] : ["NATO", "PACT"];

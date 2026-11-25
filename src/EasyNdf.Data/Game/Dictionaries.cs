@@ -28,7 +28,7 @@ public static class Dictionaries
     }
 
     /// <summary>
-    /// The key of a text key such as "HMNGALJGAU": each character in 6 bits, digits 1 to 10 and letters 11 to 36, the
+    /// The key of a text key such as "HMNGALJGAU": each character in 6 bits, digits 1 to 10, letters 11 to 36 and "_" 37 (as in "HPD_LOGT"), the
     /// first character highest. Null for a text that cannot be a key.
     /// </summary>
     public static ulong? KeyOf(string token)
@@ -37,7 +37,7 @@ public static class Dictionaries
         ulong key = 0;
         foreach (char c in token.ToUpperInvariant())
         {
-            int value = c is >= 'A' and <= 'Z' ? c - 'A' + 11 : c is >= '0' and <= '9' ? c - '0' + 1 : -1;
+            int value = c is >= 'A' and <= 'Z' ? c - 'A' + 11 : c is >= '0' and <= '9' ? c - '0' + 1 : c == '_' ? 37 : -1;
             if (value < 0) return null;
             key = (key << 6) | (uint)value;
         }

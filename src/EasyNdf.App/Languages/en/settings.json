@@ -76,7 +76,7 @@
   "Settings.HoldBackFailing": "Hold back files that fail the safety check",
   "Settings.HoldBackFailing.Note": "Files that aren't valid NDF, or have values that would stop mod generation, aren't written. Off: they're written anyway, with the errors on their row.",
   "Settings.UpdateWatermarkFirst": "Update watermark first",
-  "Settings.UpdateWatermarkFirst.Note": "Before each export, opens the watermark window for every mod with a watermark. Off: only for mods set to ask.",
+  "Settings.UpdateWatermarkFirst.Note": "Before each export, opens the watermark popup for every mod with a watermark. Off: only for mods set to ask.",
   "Settings.RememberExportFolder": "Remember this folder for these files",
   "Settings.RememberExportFolder.Note": "Exported files keep the folder they went to, for the next export. Off: they keep the folder they had.",
   "Settings.BackUpOverwrittenFiles": "Back up overwritten files",
@@ -328,5 +328,9 @@
   "Settings.LogFiles": "Log files",
   "Settings.LogFiles.Note": "The logs are kept in the data folder's Logs.",
   "Settings.OpenLogFolder": "Open Log Folder",
-  "Settings.OpenLogFolder.Tip": "Shows the log files in File Explorer"
+  "Settings.OpenLogFolder.Tip": "Shows the log files in File Explorer",
+  "Settings.AddSourceFiles": "Add the source's files",
+  "Settings.AddSourceFiles.Note": "Choosing a Source lists all its files, in place of the files of the source chosen before. Files added by hand stay. Off: Add Its Files, beside the Source, lists them.",
+  "Settings.AskBundledMod": "Ask to update WTO",
+  "Settings.AskBundledMod.Note": "After an update of EasyNDF that brings a newer WARNO Tactical Overhaul, ask whether to update yours."
 }

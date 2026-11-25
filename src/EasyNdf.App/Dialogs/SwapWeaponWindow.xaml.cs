@@ -197,7 +197,9 @@ public partial class SwapWeaponWindow : UserControl
     private static Grid Compared(Weapon? before, Weapon after, SwapBox? box)
     {
         var grid = new Grid();
-        foreach (GridLength width in new[] { new GridLength(1.3, GridUnitType.Star), new GridLength(1, GridUnitType.Star), new GridLength(1, GridUnitType.Star), GridLength.Auto })
+        // the names' column is as wide as the longest name, which leaves the values the rest: a damage such as
+        // "HE AUTOCANON 1" was cut short in both columns
+        foreach (GridLength width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), new GridLength(1, GridUnitType.Star), GridLength.Auto })
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         void Line(string name, string beforeText, string afterText, UIElement mark, bool isHeading = false)
         {
@@ -226,7 +228,8 @@ public partial class SwapWeaponWindow : UserControl
 
     private static TextBlock Cell(string text, bool isHeading)
     {
-        var cell = new TextBlock { Text = text, Margin = new Thickness(0, 1, 6, 1) };
+        // a value still too long ends in "…", and shows whole on hover
+        var cell = new TextBlock { Text = text, Margin = new Thickness(0, 1, 6, 1), TextTrimming = TextTrimming.CharacterEllipsis };
         if (isHeading) cell.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         return cell;
     }

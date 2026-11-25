@@ -26,10 +26,18 @@ public sealed class ModStore
         folder = modsFolder;
         Directory.CreateDirectory(folder);
         MoveIntoFolders();
-        foreach (string path in ModFilesOnDisk().Order(StringComparer.OrdinalIgnoreCase))
-            ReadFile(path);
+        // Tuned for speed, as the app's window waits for this: the files are read several at a time, and each from
+        // its bytes (ModFiles.Read). They are then taken in order, one by one, as two files may hold one name. Keep
+        // it that way when tidying.
+        string[] paths = [.. ModFilesOnDisk().Order(StringComparer.OrdinalIgnoreCase)];
+        var read = new (Mod? Mod, string? Problem)[paths.Length];
+        Parallel.For(0, paths.Length, new ParallelOptions { MaxDegreeOfParallelism = MostReadAtOnce }, at => read[at] = ReadMod(paths[at]));
+        for (int at = 0; at < paths.Length; at++) Take(paths[at], read[at]);
         Mods.Sort(ByName);
     }
+
+    /// <summary>How many mod files are read at once at the start: more would hold several large files in memory together.</summary>
+    private const int MostReadAtOnce = 4;
 
     private const string Extension = ".mod.json";
 
@@ -270,19 +278,27 @@ public sealed class ModStore
         return result;
     }
 
-    private void ReadFile(string path)
+    /// <summary>A mod file read, or why it could not be; nothing of the store is touched, so several can be read at once.</summary>
+    private static (Mod? Mod, string? Problem) ReadMod(string path)
     {
-        try
-        {
-            Mod mod = ModFiles.Read(File.ReadAllText(path), Path.GetFileName(path))[0];
-            if (Find(mod.Name) is not null) mod.Name = FreeName(mod.Name); // two files with the same ModName inside
-            Mods.Add(mod);
-            pathOf[mod] = path;
-        }
+        try { return (ModFiles.Read(File.ReadAllBytes(path), Path.GetFileName(path))[0], null); }
         catch (Exception error) when (error is ModFileException or IOException or UnauthorizedAccessException)
         {
-            Unreadable.Add(Path.GetFileName(path) + " (" + error.Message + ")");
+            return (null, Path.GetFileName(path) + " (" + error.Message + ")");
         }
+    }
+
+    /// <summary>Takes a mod read from a file into the store, or lists the file among those that could not be read.</summary>
+    private void Take(string path, (Mod? Mod, string? Problem) read)
+    {
+        if (read.Mod is not Mod mod)
+        {
+            Unreadable.Add(read.Problem!);
+            return;
+        }
+        if (Find(mod.Name) is not null) mod.Name = FreeName(mod.Name); // two files with the same ModName inside
+        Mods.Add(mod);
+        pathOf[mod] = path;
     }
 
     /// <summary>

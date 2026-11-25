@@ -82,10 +82,16 @@ public sealed class Condition
     /// <summary>The operand in force: the custom one when Manual Override is on.</summary>
     [JsonIgnore] public string? OperandInUse => ManualOverride ? CustomOperand : Operand;
 
+    /// <summary>
+    /// When on, the condition has to pass even when the rule needs only any one of its conditions: "any of these, but
+    /// always this one". With every condition needed anyway it changes nothing.
+    /// </summary>
+    [JsonConverter(typeof(TruthyConverter))] public bool MustBeTrue { get; set; }
+
     public Condition With(string? value) => new()
     {
         Name = Name, Operand = Operand, Operator = Operator, Value = value,
-        ManualOverride = ManualOverride, CustomOperand = CustomOperand,
+        ManualOverride = ManualOverride, CustomOperand = CustomOperand, MustBeTrue = MustBeTrue,
     };
 }
 
@@ -112,6 +118,12 @@ public sealed class RuleAction
     /// <summary>The comment written next to each value this action changes.</summary>
     public ActionComment? Comment { get; set; }
 
+    /// <summary>
+    /// For an action aimed at a variable ("{Name}" as its target): whether it changes the variable once for each
+    /// descriptor the rule matches, rather than once for the rule.
+    /// </summary>
+    [JsonConverter(typeof(TruthyConverter))] public bool PerMatch { get; set; }
+
     // ---- set by the engine for the Scale and Formula rule types, never read from a mod file ----
 
     [JsonIgnore] internal ScaleSettings? Scale { get; init; }
@@ -123,7 +135,7 @@ public sealed class RuleAction
     public RuleAction With(string? value) => new()
     {
         Name = Name, Target = Target, Operator = Operator, Value = value,
-        ManualOverride = ManualOverride, CustomTarget = CustomTarget, Comment = Comment,
+        ManualOverride = ManualOverride, CustomTarget = CustomTarget, Comment = Comment, PerMatch = PerMatch,
     };
 }
 

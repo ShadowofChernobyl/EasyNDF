@@ -653,7 +653,7 @@ public partial class ModConflictsWindow : UserControl
         MainView view = MainView.Of(this);
         FileEntry? entry = EntryOf(fileKey);
         Close();
-        view.Tabs.SelectedItem = view.RulesTabItem;
+        view.ShowTab(view.RulesTabItem);
         Rules.RulesModel model = view.RulesTab.Model;
         model.OpenModNamed(change.Mod);
         if (entry is null) return;

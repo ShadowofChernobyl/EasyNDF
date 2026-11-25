@@ -26,6 +26,9 @@ namespace EasyNdf.App.Pages;
 /// </summary>
 public partial class EditorPage : UserControl
 {
+    /// <summary>Where the height of Search all files' results is kept, as their grip leaves it.</summary>
+    private const string ResultsHeightKey = "editorResultsHeight";
+
     /// <summary>The text size of every open file; the line height goes with it, 17 pixels for 12, as in the HTML app.</summary>
     private double textSize = TextZoom.UsualSize;
 
@@ -92,6 +95,16 @@ public partial class EditorPage : UserControl
         /// <summary>Its colours.</summary>
         public NdfColourizer? Colourizer;
 
+        /// <summary>
+        /// The text's descriptors and what could not be read of them, read while its lines and colours were worked out,
+        /// for the first listing of them (<see cref="RefreshDescriptors"/>); null once used, and for a text not read so.
+        /// </summary>
+        /// <remarks>Tuned for speed: read after the text showed, a 26 MB file's descriptors came two thirds of a second later.</remarks>
+        public Task<(List<EasyNdf.Engine.Viewer.OutlineEntry> List, string Error)>? FirstOutline;
+
+        /// <summary>The document as <see cref="FirstOutline"/> read it: a text changed since is read again.</summary>
+        public ITextSourceVersion? OutlineVersion;
+
         /// <summary>Whether it is an export (or its changed lines), read-only.</summary>
         public bool IsExport;
 
@@ -157,6 +170,7 @@ public partial class EditorPage : UserControl
         view = MakeView();
         StartDescriptors();
         PreviewKeyDown += FindBarKeys;
+        PreviewKeyDown += ShortcutKeys;
         PreviewKeyDown += (_, e) => { if (!e.Handled && SearchOptionKey(e)) e.Handled = true; };
         PreviewKeyDown += (_, e) => { if (!e.Handled && e.Key == Key.F1 && Keyboard.Modifiers == ModifierKeys.None && OpenHelpAtCaret()) e.Handled = true; };
         Editor.SearchOptions.Changed += ShowSearchOptions;
@@ -164,6 +178,18 @@ public partial class EditorPage : UserControl
         foreach (TextBox box in new[] { FindBox, GoBox, SearchAllBox }) box.TextChanged += FindBoxChanged;
         // the results of Search all files take at most 40% of the tab, so the panes under them keep their room
         SizeChanged += (_, _) => ResultsBox.MaxHeight = Math.Max(ResultsBox.MinHeight, 0.4 * ActualHeight);
+        // the grip under the results: dragged, it gives them a height within their limits; double-clicked, their first
+        // height again. The height is kept for the next time the app runs.
+        double firstResultsHeight = ResultsBox.Height;
+        ResultsGrip.Target = ResultsBox;
+        ResultsGrip.HeightChosen += height => ResultsBox.Height = Math.Max(ResultsBox.MinHeight, Math.Min(height ?? firstResultsHeight, ResultsBox.MaxHeight));
+        ResultsGrip.HeightSettled += () =>
+        {
+            AppData.Current.State[ResultsHeightKey] = ResultsBox.Height;
+            AppData.Current.SaveState();
+        };
+        if (AppData.Current.State[ResultsHeightKey] is System.Text.Json.Nodes.JsonValue kept && kept.TryGetValue(out double keptHeight) && keptHeight >= ResultsBox.MinHeight)
+            ResultsBox.Height = keptHeight;
         SetTextSize(TextZoom.Saved, remember: false);
         TextZoom.Changed += size => SetTextSize(size, remember: false);
         ApplyViewSettings();
@@ -233,7 +259,7 @@ public partial class EditorPage : UserControl
     private async Task Open(FileEntry entry, bool showTab)
     {
         if (entry.Source is null) return;
-        if (showTab) MainView.Of(this).Tabs.SelectedItem = MainView.Of(this).EditorTabItem;
+        if (showTab) MainView.Of(this).ShowTab(MainView.Of(this).EditorTabItem);
         if (TabOf(entry) is FileView open)
         {
             Bring(open);
@@ -242,8 +268,11 @@ public partial class EditorPage : UserControl
         using Work.Job job = Work.Start(Texts.Get("Main.Usage.Job.Opening", ("file", entry.Name)));
         FileView into = NewTab();
         Note.Text = Texts.Get("Editor.Viewer.ReadingFile", ("file", entry.Name));
+        // opened to show a descriptor: the card stays, on a step of its own, until that descriptor is shown
+        bool finds = wanted is { Quiet: false };
+        string[] steps = [Texts.Get("Editor.Loading.Reading"), Texts.Get("Editor.Loading.Colouring"), Texts.Get("Editor.Loading.Showing")];
         int loading = StartLoading(Texts.Get("Editor.Loading.Opening", ("file", entry.Name)), entry.Folder,
-            Texts.Get("Editor.Loading.Reading"), Texts.Get("Editor.Loading.Colouring"), Texts.Get("Editor.Loading.Showing"));
+            finds ? [.. steps, Texts.Get("Editor.Loading.FindingDescriptor")] : steps);
         try
         {
             string text = await Task.Run(() => FileContent.Text(entry));
@@ -258,7 +287,8 @@ public partial class EditorPage : UserControl
         }
         finally
         {
-            EndLoading(loading);
+            if (finds && wanted is not null && ReferenceEquals(view, into) && into.Shown?.Entry == entry) HoldUntilFound(loading, steps.Length);
+            else EndLoading(loading);
         }
     }
 
@@ -289,7 +319,8 @@ public partial class EditorPage : UserControl
         // a file opened now takes the place of one let go of
         into.LetGo = null;
         Thread screen = Thread.CurrentThread;
-        ShownText prepared = await Task.Run(() => Prepared(name, text, entry, screen));
+        bool isNdf = !Data.Divisions.FileAndTextRules.IsDictionaryFile(name);
+        ShownText prepared = await Task.Run(() => Prepared(name, text, entry, screen, readsDescriptors: isNdf));
         if (load != into.Loads) return;
         if (loading != 0)
         {
@@ -303,19 +334,42 @@ public partial class EditorPage : UserControl
     }
 
     /// <summary>A text to show, its line ends made "\n", its document handed to <paramref name="owner"/> once made.</summary>
-    private static ShownText Prepared(string name, string text, FileEntry? entry, Thread owner)
+    /// <param name="readsDescriptors">Whether its descriptors are read alongside, for their first listing (<see cref="ShownText.FirstOutline"/>).</param>
+    private static ShownText Prepared(string name, string text, FileEntry? entry, Thread owner, bool readsDescriptors = false)
     {
         bool windowsLineEnds = text.Contains("\r\n", StringComparison.Ordinal);
         if (text.Length > 0 && text[0] == '﻿') text = text[1..];
         text = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
-        var document = new TextDocument(text);
-        var colourizer = new NdfColourizer(document);
-        document.SetOwnerThread(owner);
+        var (document, colourizer, outline, version) = PreparedDocument(text, owner, readsDescriptors);
         return new ShownText
         {
             Name = name, Entry = entry, HasWindowsLineEnds = windowsLineEnds, Original = text,
-            Document = document, Colourizer = colourizer,
+            Document = document, Colourizer = colourizer, FirstOutline = outline, OutlineVersion = version,
         };
+    }
+
+    /// <summary>
+    /// A text's document and colours, handed to <paramref name="owner"/>, and with <paramref name="readsDescriptors"/>
+    /// its descriptors, read on another thread meanwhile. Called away from the screen's thread for a large text.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed: the descriptors of WARNO's 26 MB units file take two thirds of a second to read, about as long
+    /// as its lines and colours. Read side by side, the descriptor asked for shows that much sooner.
+    /// </remarks>
+    private static (TextDocument Document, NdfColourizer Colourizer, Task<(List<EasyNdf.Engine.Viewer.OutlineEntry> List, string Error)>? Outline, ITextSourceVersion? Version)
+        PreparedDocument(string text, Thread owner, bool readsDescriptors)
+    {
+        // it never fails: what could not be read is kept as the message the Descriptor Tree shows
+        Task<(List<EasyNdf.Engine.Viewer.OutlineEntry> List, string Error)>? outline = !readsDescriptors ? null : Task.Run(() =>
+        {
+            try { return (EasyNdf.Engine.Viewer.DescriptorViewer.Outline(text), ""); }
+            catch (Exception problem) when (problem is EasyNdf.Engine.Ndf.NdfParseException or ArgumentException) { return (new List<EasyNdf.Engine.Viewer.OutlineEntry>(), problem.Message); }
+        });
+        var document = new TextDocument(text);
+        var colourizer = new NdfColourizer(document);
+        ITextSourceVersion? version = outline is null ? null : document.Version;
+        document.SetOwnerThread(owner);
+        return (document, colourizer, outline, version);
     }
 
     private async void FilePicked(object sender, SelectionChangedEventArgs e)
@@ -702,6 +756,7 @@ public partial class EditorPage : UserControl
     private void FindBoxChanged(object sender, TextChangedEventArgs e)
     {
         if (((TextBox)sender).Text == "") ClearPointedLine();
+        if (ReferenceEquals(sender, FindBox)) FindCountText.Text = "";
     }
 
     /// <summary>Unmarks the line that Find, Go to line, a search result or a descriptor marked.</summary>
@@ -727,7 +782,7 @@ public partial class EditorPage : UserControl
 
     /// <summary>
     /// The tab's keys, anywhere on it, as Sublime Text has them: Ctrl+F finds (what is selected in the text, when it is
-    /// on one line), Ctrl+H replaces, Ctrl+G goes to a line, Ctrl+Shift+F searches all files; F3 and Shift+F3 find the
+    /// on one line), Ctrl+H replaces, Ctrl+G goes to a line, Ctrl+Shift+F searches all files, Ctrl+W closes the file in use; F3 and Shift+F3 find the
     /// next and previous match; Ctrl+Shift+[ folds every descriptor and Ctrl+Shift+] unfolds them; Escape closes the file
     /// filter, or hides the find bar and gives the text the keyboard.
     /// </summary>
@@ -755,6 +810,12 @@ public partial class EditorPage : UserControl
             e.Handled = true;
             if (box == FindBox || box == ReplaceBox) TakeSelectionToFind();
             ShowFindBar(true, box);
+        }
+        // Ctrl+W closes the file in use, as its tab's × does: one with edits not saved asks first
+        else if (control && !shift && e.Key == Key.W && openViews.Contains(view))
+        {
+            e.Handled = true;
+            _ = Close(view);
         }
         else if (e.Key == Key.F3 && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && !Keyboard.Modifiers.HasFlag(ModifierKeys.Alt) && shown is not null)
         {
@@ -823,11 +884,18 @@ public partial class EditorPage : UserControl
     private void SetTextSize(FileView v)
     {
         TextView lines = v.Editor.TextArea.TextView;
+        // the line at the top stays at the top: where it starts is asked for again once the lines have their new height,
+        // and the view put there. (ScrollToLine puts a line in the middle of the view, which scrolled the text up half a
+        // page at every step of Ctrl and the wheel.)
         int topLine = lines.GetDocumentLineByVisualTop(lines.ScrollOffset.Y)?.LineNumber ?? 1;
         v.Editor.FontSize = textSize;
         v.LineHeight.Height = v.MarkColumn.LineHeight = LineHeightForSize;
         lines.Redraw();
-        if (v.Shown is not null) v.Editor.ScrollToLine(topLine);
+        if (v.Shown is not null && topLine <= v.Editor.Document.LineCount)
+        {
+            v.Editor.UpdateLayout();
+            v.Editor.ScrollToVerticalOffset(lines.GetVisualTopByDocumentLine(topLine));
+        }
         v.Strip.ShowSize(textSize);
     }
 }

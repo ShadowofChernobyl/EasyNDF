@@ -38,6 +38,9 @@ public sealed class RowListView : Grid
     /// <summary>Raised when a row asks to be opened (double-click, Enter, Configure), with its place.</summary>
     public event Action<string, int>? RowOpenAsked;
 
+    /// <summary>Raised when the selected rows ask to be opened together (Enter with several selected).</summary>
+    public event Action<string>? SeveralOpenAsked;
+
     /// <summary>Raised for a right-click, with the row under the mouse or -1, so the window can show the menu.</summary>
     public event Action<RowListView, int>? MenuAsked;
 
@@ -116,7 +119,7 @@ public sealed class RowListView : Grid
         for (int i = 0; i < rows.Count; i++) lines.Children.Add(Line(i, rows[i] as JsonObject ?? [], numberWidth));
     }
 
-    /// <summary>One line: the row's number, then its name, or what it does in dim text.</summary>
+    /// <summary>One line: the row's number, then its name, or what it does.</summary>
     private Border Line(int index, JsonObject row, double numberWidth)
     {
         string name = JsonValues.AsText(row["Name"]).Trim();
@@ -134,13 +137,24 @@ public sealed class RowListView : Grid
         };
         var text = Controls.ListText.Follow(new TextBlock
         {
-            Text = name != "" ? JsonValues.AsText(row["Name"]) : RulesModel.RowSummary(List, row),
+            // rows of several rules whose names differ show what they do, which they may share
+            Text = name != "" && !Mixed.Is(row["Name"]) ? JsonValues.AsText(row["Name"]) : RulesModel.RowSummary(List, row),
         });
         Themed(number, TextBlock.ForegroundProperty, "muted");
-        Themed(text, TextBlock.ForegroundProperty, name != "" ? "ink" : "muted");
+        // a row without a name shows what it does, in the same colour as a named one: dim text would look switched off
+        Themed(text, TextBlock.ForegroundProperty, "ink");
         var content = new DockPanel();
         DockPanel.SetDock(number, Dock.Left);
         content.Children.Add(number);
+        if (List == RulesModel.Conditions && JsonValues.IsTruthy(row["MustBeTrue"]))
+        {
+            // a condition that must be true says so at the row's right, small and plain: a note, not a button
+            var must = new TextBlock { Text = Texts.Get("Rules.Row.MustBeTrue.Short"), FontSize = 11, Margin = new Thickness(8, 1, 2, 0), VerticalAlignment = VerticalAlignment.Top,
+                ToolTip = Texts.Get("Rules.Row.MustBeTrue.Tip") };
+            Themed(must, TextBlock.ForegroundProperty, "accent");
+            DockPanel.SetDock(must, Dock.Right);
+            content.Children.Add(must);
+        }
         content.Children.Add(text);
         // .it: 2 by 3 pixels in; a selected row in the selection colour (a transparent one still takes clicks)
         var line = new Border { Padding = new Thickness(3, 2, 3, 2), Child = content, Tag = index, Background = Brushes.Transparent };
@@ -185,12 +199,22 @@ public sealed class RowListView : Grid
     private void KeyPressed(object sender, KeyEventArgs e)
     {
         ModifierKeys keys = Keyboard.Modifiers;
+        // Ctrl+Up and Ctrl+Down move the selected rows: taken here, as the window's scrolling body would take the
+        // arrow for itself before the window's own keys saw it
+        if (keys == ModifierKeys.Control && e.Key is Key.Up or Key.Down)
+        {
+            e.Handled = true;
+            model.ActiveRowList = List;
+            model.MoveRows(List, e.Key == Key.Up ? -1 : +1);
+            return;
+        }
         if (keys.HasFlag(ModifierKeys.Control) || keys.HasFlag(ModifierKeys.Alt)) return;
         if (e.Key == Key.Enter)
         {
             e.Handled = true;
             IReadOnlyList<int> picked = model.SelectedRowsOf(List);
             if (picked.Count == 1) RowOpenAsked?.Invoke(List, picked[0]);
+            else if (picked.Count > 1) SeveralOpenAsked?.Invoke(List);
             return;
         }
         int step = e.Key switch { Key.Down or Key.End => 1, Key.Up or Key.Home => -1, _ => 0 };

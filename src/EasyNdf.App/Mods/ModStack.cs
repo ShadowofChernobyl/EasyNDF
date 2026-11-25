@@ -227,6 +227,37 @@ public static class ModStack
         return true;
     }
 
+    /// <summary>The Armory's "Mod Being Edited" choices, by game id: kept only once a user chooses one there.</summary>
+    private const string ArmoryKey = "armoryMods";
+
+    /// <summary>
+    /// The mod chosen in the Armory to save a game's changes in, while it can take them: it is still there, for that
+    /// game, and runs. Null when none was chosen, or it cannot take them now; the Armory then picks one itself (the open
+    /// mod, or the last that runs), as it did before there was a choice.
+    /// </summary>
+    public static Mod? ArmoryChoice(GameTitle game) =>
+        Data.State[ArmoryKey] is JsonObject byGame && byGame[game.Id] is JsonValue value && value.TryGetValue(out string? name)
+            && Data.Mods.FirstOrDefault(mod => mod.Name == name) is Mod chosen && chosen.Game == game && Runs(chosen)
+            ? chosen : null;
+
+    /// <summary>Keeps the mod chosen in the Armory for its game's changes.</summary>
+    public static void ChooseForArmory(Mod mod)
+    {
+        if (Data.State[ArmoryKey] is not JsonObject byGame) Data.State[ArmoryKey] = byGame = new JsonObject();
+        byGame[mod.Game.Id] = mod.Name;
+        Data.SaveState();
+    }
+
+    /// <summary>
+    /// Lets go of the Armory's choice for a game: a mod that runs was opened on the Mods tab, and the Armory changes
+    /// that one, as it always did. Of the two ways to choose, the last one used counts.
+    /// </summary>
+    public static void ForgetArmoryChoice(GameTitle game)
+    {
+        if (Data.State[ArmoryKey] is not JsonObject byGame || !byGame.Remove(game.Id)) return;
+        Data.SaveState();
+    }
+
     /// <summary>
     /// A mod renamed keeps its place and whether it is on, its folders and its property scan picks: they are kept by
     /// name. (The folders were left under the old name before.) The conflicts found named the old name, so they are
@@ -244,6 +275,9 @@ public static class ModStack
                 byMod.Remove(oldName);
                 byMod[newName] = kept.DeepClone();
             }
+        if (Data.State[ArmoryKey] is JsonObject byGame)
+            foreach (string game in byGame.Select(pair => pair.Key).ToList())
+                if (byGame[game] is JsonValue value && value.TryGetValue(out string? chosen) && chosen == oldName) byGame[game] = newName;
         Data.SaveState();
         ModConflictList.Forget();
     }

@@ -17,6 +17,8 @@ public partial class MainWindow : Window
         StateChanged += (_, _) => View.ShowWindowState(WindowState);
         // Every key not taken by the control that has the focus ends up here, even when nothing has the focus.
         KeyDown += (_, e) => View.HandleShortcut(e);
+        // the app's windows and questions are shown in whichever of its windows is in use (MainView.PopOut.cs)
+        Activated += (_, _) => View.MainWindowCameIntoUse();
         // the file list is kept for next time, and comes back as the window opens ("Reopen the last files")
         Closing += (_, e) =>
         {
@@ -27,11 +29,16 @@ public partial class MainWindow : Window
                 _ = AskBeforeClosing();
                 return;
             }
+            // the tabs in windows of their own come back first, each window keeping its place
+            View.CloseTabWindows();
             // the last two are kept in the state the first one saves
             View.EditorTab.KeepOpenFile();
             WindowPlace.Keep(this);
             View.FilesTab.KeepSession();
             AppData.Current.SaveWhatWaits();
+            // a mod deleted this session can no longer be brought back by Undo: its folder goes, when it holds nothing
+            ModFolders.Views?.RemoveEmptyFoldersOfGoneMods(
+                AppData.Current.Mods.Select(mod => AppData.Current.ModStore.FileStemOf(mod)).Where(stem => stem is not null).Select(stem => stem!));
         };
         WindowPlace.SizeForFirstTime(this);
         WindowPlace.Restore(this);
@@ -42,6 +49,7 @@ public partial class MainWindow : Window
             // opening the app is not a step Undo takes back
             View.History.Forget();
             if (!Dialogs.WelcomeWindow.WasSeen) View.Welcome.Open();
+            else if (!App.RunsTests) View.ShowLatestChangesAfterUpdate();
         };
         if (frame == "native") View.CaptionButtons.Visibility = Visibility.Collapsed;
         else _ = new CustomTitleBar(this, View.IsTitleBarAt);

@@ -14,6 +14,9 @@ public sealed class WholeRows : Decorator
     /// <summary>The height last worked out for a list that makes only the rows in sight, kept while it is scrolled.</summary>
     private double whole = double.PositiveInfinity;
 
+    /// <summary>The room <see cref="whole"/> was worked out for.</summary>
+    private double wholeFor = double.NaN;
+
     /// <summary>Makes the box, which follows the list as rows come and go.</summary>
     public WholeRows() => Loaded += (_, _) =>
     {
@@ -53,6 +56,7 @@ public sealed class WholeRows : Decorator
             double shown = Math.Min(arrangeSize.Height, whole);
             Child.Arrange(new Rect(0, 0, arrangeSize.Width, shown));
             whole = WholeHeightOf(list, arrangeSize.Height);
+            wholeFor = arrangeSize.Height;
             // measured again at the height found; the rows just past it stay made, so it comes to the same height again
             if (Math.Abs(Math.Min(arrangeSize.Height, whole) - shown) > 0.5) InvalidateMeasure();
             return arrangeSize;
@@ -70,7 +74,10 @@ public sealed class WholeRows : Decorator
     /// </summary>
     private double WholeHeightOf(ItemsControl list, double room)
     {
-        if (ScrollerOf(list) is not ScrollViewer scroller || scroller.VerticalOffset > 0) return whole;
+        if (ScrollerOf(list) is not ScrollViewer scroller) return whole;
+        // scrolled: the height is kept under the mouse wheel, but not when the room itself changed (the pane dragged
+        // larger), or the list stayed as short as it was with empty room under it; it then takes all of the room
+        if (scroller.VerticalOffset > 0) return !double.IsNaN(wholeFor) && Math.Abs(room - wholeFor) > 0.5 ? room : whole;
         if (ItemsHostOf(list) is not Panel rows) return room;
         double fits = 0;
         foreach (UIElement row in rows.Children)

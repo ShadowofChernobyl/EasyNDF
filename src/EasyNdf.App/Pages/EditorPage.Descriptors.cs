@@ -200,6 +200,13 @@ public partial class EditorPage
     private sealed record Wanted(string Name, int Offset, int RowIndex, bool Quiet, bool InExport = false, bool OnlyInExport = false);
     private Wanted? wanted;
 
+    /// <summary>The descriptor asked for will not be shown: it is forgotten, and a loading card kept for it goes.</summary>
+    private void ForgetWanted()
+    {
+        wanted = null;
+        EndFinding();
+    }
+
     /// <summary>Whether Scan all is reading, and whether it was asked to stop.</summary>
     private bool scanning, stopScanning;
 
@@ -332,8 +339,17 @@ public partial class EditorPage
         List<OutlineEntry> list = [];
         string error = "";
         // the snapshot is made into one string away from the screen's thread, and let go of once read
-        try { list = await Task.Run(() => DescriptorViewer.Outline(text.Text)); }
-        catch (Exception problem) when (problem is NdfParseException or ArgumentException) { error = problem.Message; }
+        // Tuned for speed: a text just opened had its descriptors read while it was made ready (ShownText.FirstOutline)
+        Task<(List<OutlineEntry> List, string Error)>? first = readFrom.FirstOutline;
+        readFrom.FirstOutline = null;
+        if (first is not null && readFrom.OutlineVersion is ITextSourceVersion readAt && text.Version is ITextSourceVersion now
+            && readAt.BelongsToSameDocumentAs(now) && readAt.CompareAge(now) == 0)
+            (list, error) = await first;
+        else
+        {
+            try { list = await Task.Run(() => DescriptorViewer.Outline(text.Text)); }
+            catch (Exception problem) when (problem is NdfParseException or ArgumentException) { error = problem.Message; }
+        }
         if (mine != outlineReading) return;
 
         outlineText = text;
@@ -384,9 +400,13 @@ public partial class EditorPage
         // a full give-back stops the app for a fifth of a second with WARNO's 26 MB UniteDescriptor.ndf open, and is worth
         // it (1 GB to 600 MB in Task Manager); with a far larger text (Steel Division 2's 117 MB) it would stop it for most
         // of a second, so it runs alongside, and the idle clean-up (Memory.TrimWhenIdle) gives the rest back later
+        // Tuned for speed: the give-back waits until the screen is free, so the descriptors show a fifth of a second sooner
         if (before != shown && shown?.Document.TextLength > Memory.LargestTextForFullGiveBack) Memory.GiveBackAlongside();
-        else if (before != shown) Memory.GiveBack();
-        if (chosen >= 0) await SelectDescriptor(chosen, reveal: false, keepClosed: same);
+        else if (before != shown) _ = Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.ApplicationIdle, Memory.GiveBack);
+        // Tuned for speed: with a descriptor asked for that is here, the first one is not shown only to be replaced at once
+        bool wantedIsHere = mine == outlineReading && wanted is Wanted asked && (!asked.OnlyInExport || readFrom is { IsExport: true }) && IndexOfDescriptor(asked.Name) >= 0;
+        if (wantedIsHere) { }
+        else if (chosen >= 0) await SelectDescriptor(chosen, reveal: false, keepClosed: same);
         else
         {
             propertyRows = [];
@@ -396,18 +416,27 @@ public partial class EditorPage
         if (mine == outlineReading && wanted is Wanted want && (!want.OnlyInExport || readFrom is { IsExport: true }))
         {
             wanted = null;
-            int found = IndexOfDescriptor(want.Name);
-            if (found < 0)
+            try
             {
-                if (want.InExport && await LookInExport(want.Name)) return;
-                if (!want.Quiet && shown?.Entry is FileEntry opened) await TellNotInFile(want.Name, opened);
-                return;
+                int found = IndexOfDescriptor(want.Name);
+                if (found < 0)
+                {
+                    // the card kept for the descriptor goes before another file's card, or a message, takes its place
+                    EndFinding();
+                    if (want.InExport && await LookInExport(want.Name)) return;
+                    if (!want.Quiet && shown?.Entry is FileEntry opened) await TellNotInFile(want.Name, opened);
+                    return;
+                }
+                otherDescriptor = null;
+                await SelectDescriptor(found, reveal: false, keepClosed: false);
+                if (!want.Quiet) RevealAt(outline[found].Start + want.Offset);
+                if (want.RowIndex >= 0) ShowPropertyRow(want.RowIndex);
+                ShowTree();
             }
-            otherDescriptor = null;
-            await SelectDescriptor(found, reveal: false, keepClosed: false);
-            if (!want.Quiet) RevealAt(outline[found].Start + want.Offset);
-            if (want.RowIndex >= 0) ShowPropertyRow(want.RowIndex);
-            ShowTree();
+            finally
+            {
+                EndFinding();
+            }
         }
     }
 
@@ -1340,7 +1369,18 @@ public partial class EditorPage
     public async Task ShowDescriptor(FileEntry entry, string name)
     {
         MainView view = MainView.Of(this);
-        view.Tabs.SelectedItem = view.EditorTabItem;
+        view.ShowTab(view.EditorTabItem);
+        // the file is open but was let go of while the Editor was away (EditorPage.LetGo.cs): it is read again, and
+        // the descriptor is shown once its descriptors are listed, not the place the file was left at
+        if (TabOf(entry) is FileView away && away.LetGo is not null && away.Shown is null)
+        {
+            Bring(away);
+            noOldPlace.Add(away);
+            wanted = new Wanted(name, 0, -1, Quiet: false, InExport: true);
+            await BringBack(away);
+            if (shown?.Entry != entry) ForgetWanted();
+            return;
+        }
         if (IsLocal(entry))
         {
             int index = IndexOfDescriptor(name);
@@ -1357,7 +1397,7 @@ public partial class EditorPage
         // shown once the file is open and its descriptors are listed
         wanted = new Wanted(name, 0, -1, Quiet: false, InExport: true);
         await Open(entry);
-        if (shown?.Entry != entry) wanted = null;
+        if (shown?.Entry != entry) ForgetWanted();
     }
 
     /// <summary>
@@ -1368,7 +1408,7 @@ public partial class EditorPage
     public async Task ShowDescriptorInExport(FileEntry entry, string name)
     {
         MainView view = MainView.Of(this);
-        view.Tabs.SelectedItem = view.EditorTabItem;
+        view.ShowTab(view.EditorTabItem);
         if (!IsLocal(entry))
         {
             await Open(entry);
@@ -1379,7 +1419,7 @@ public partial class EditorPage
             wanted = new Wanted(name, 0, -1, Quiet: false, OnlyInExport: true);
             await ShowExportOrSource();
             if (shown is { IsExport: true }) return;
-            wanted = null;
+            ForgetWanted();
         }
         await ShowDescriptor(entry, name);
     }
@@ -1421,7 +1461,7 @@ public partial class EditorPage
         MainView view = MainView.Of(this);
         string question = Texts.Get("Editor.NotInFile", ("name", name), ("file", entry.Name));
         if (await view.Messages.Confirm(question, Texts.Get("Editor.NotInFile.ShowFiles"), DialogIcon.Error))
-            view.Tabs.SelectedItem = view.FilesTabItem;
+            view.ShowTab(view.FilesTabItem);
     }
 
     /// <summary>A descriptor in "Used by" as a tree row, so it can be picked and shown like one.</summary>

@@ -106,9 +106,10 @@ public partial class UnitsPage : UserControl
     {
         ShowPaneButtons();
         ShowSource();
+        // "All Roles" is listed before a source is chosen too
+        FillRoleChoice();
         if (loaded is null) return;
         FillSideChoices();
-        FillRoleChoice();
         ShowAll();
     }
 
@@ -480,8 +481,14 @@ public partial class UnitsPage : UserControl
         if (loaded is null) return;
         Dictionary<string, int> counts = filter.FactoryCounts(loaded.Catalog.Units);
         FactoryTabs.Children.Add(FactoryTab("", Texts.Get("Units.Factory.All.Short"), Texts.Get("Units.Factory.All"), counts.Values.Sum()));
-        foreach (string factory in UnitNames.FactoriesOf(Game))
-            FactoryTabs.Children.Add(FactoryTab(factory, UnitNames.FactoryShort(factory), UnitNames.Factory(factory), counts.GetValueOrDefault(factory)));
+        foreach (string factory in TabsShown())
+        {
+            ToggleButton tab = FactoryTab(factory, TabLabel(factory), TabTip(factory), counts.GetValueOrDefault(factory));
+            // WARNO's tabs can be edited, moved and added to: right-click
+            if (Game == Data.Game.GameTitle.Warno)
+                tab.MouseRightButtonUp += (_, e) => { e.Handled = true; OpenTabMenu(factory, tab); };
+            FactoryTabs.Children.Add(tab);
+        }
     }
 
     private ToggleButton FactoryTab(string factory, string shortName, string name, int count)

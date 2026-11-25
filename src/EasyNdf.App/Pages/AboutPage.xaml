@@ -23,6 +23,13 @@
                     <TextBlock Text="{t:Text About.Support}" VerticalAlignment="Center" />
                 </StackPanel>
             </Button>
+            <Button MinWidth="112" ToolTip="{t:Text About.Discord.Tip}" Click="DiscordClicked">
+                <StackPanel Orientation="Horizontal">
+                    <!-- the frame nearest 16 pixels at the screen's scale is taken from the .ico -->
+                    <Image x:Name="DiscordIcon" Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock Text="{t:Text About.Discord}" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
         </controls:SnappedRow>
         <!-- the text scrolls in a sunken box, as Help's page does, so its edge shows where it is cut off -->
         <controls:Bevel TopLeft="{DynamicResource lo}" BottomRight="{DynamicResource hi}" Background="{DynamicResource well}">
