@@ -23,7 +23,29 @@ public partial class EditorPage
         v.SyntaxProblems.TipAt = (offset, problem) => TipAt(v, offset, problem);
         v.SyntaxProblems.TipsWait = () => v.Suggestions.IsOpen;
         v.Suggestions.Guide = () => v.Guide;
+        // a bare word in a number or True/False is marked when no file read declares it
+        v.SyntaxProblems.DeclaredElsewhere = () =>
+        {
+            IReadOnlyList<Data.FileList.FileEntry> entries = [.. Files?.Entries ?? []];
+            IReadOnlyDictionary<string, ReferenceIndex.Declared> names = ReferenceIndex.Of(entries).Names;
+            // until every listed file's names are gathered, a word could be declared in one not read: none is marked
+            ListedNames.Find(entries, "", out bool ready);
+            if (!ready) return null;
+            return word => names.ContainsKey(word) || KnownWords.Value.Contains(word) || ListedNames.Declares(entries, word);
+        };
     }
+
+    /// <summary>
+    /// The bare words WARNO's own files give numbers and True/False values without declaring them in any file
+    /// (TSoundFilter_RadioAirplane, ParticleCustomFloat_4): never marked.
+    /// </summary>
+    private static readonly Lazy<HashSet<string>> KnownWords = new(() =>
+    {
+        using System.IO.Stream? stream = typeof(EditorPage).Assembly.GetManifestResourceStream("KnownWords.txt");
+        if (stream is null) return [];
+        using var reader = new System.IO.StreamReader(stream);
+        return [.. reader.ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+    });
 
     /// <summary>
     /// Takes the guide for a text put in a box: WARNO's .ndf files (a file of the Files tab, its export, or one opened on
@@ -31,6 +53,8 @@ public partial class EditorPage
     /// </summary>
     private void UseGuideFor(FileView v, ShownText? text, bool isNdf)
     {
+        // the names of every listed file are gathered while the file is read, for its tips and Go to Descriptor
+        if (text is not null && isNdf) ListedNames.Start([.. Files?.Entries ?? []]);
         v.WantsGuide = text is not null && isNdf && (text.Entry?.Game ?? Data.Game.GameTitle.Warno) == Data.Game.GameTitle.Warno;
         v.Guide = v.WantsGuide ? EditorGuide.IfRead : null;
         if (v.WantsGuide && v.Guide is null) _ = UseGuideOnceRead(v);

@@ -40,7 +40,7 @@ public static class BattlegroupView
     /// <param name="whyChosen">Why a generated card was chosen, for its tooltip: "anti-air · good value".</param>
     public static FrameworkElement Build(Division division, IReadOnlyDictionary<string, Unit> units, GameTitle game, UnitSelection selection, int columns,
         IBattlegroupEditing editing, Action<FrameworkElement, string> addClicked, IReadOnlySet<string> folded, Action<string> foldClicked, bool hasPlace,
-        IReadOnlySet<int>? tried = null, Func<GeneratedCard, string>? whyChosen = null)
+        IReadOnlySet<int>? tried = null, Func<GeneratedCard, string>? whyChosen = null, IReadOnlyList<string>? tabOrder = null)
     {
         // Steel Division 2's decks are laid out differently, and are not read
         if (game != GameTitle.Warno) return Muted(Texts.Get("Divisions.Battlegroup.NotForThisGame", ("game", game.Name)));
@@ -55,7 +55,10 @@ public static class BattlegroupView
         if (cards.Count == 0) view.Children.Add(Muted(Texts.Get("Divisions.Battlegroup.Empty")));
         if (problems.Count > 0) view.Children.Add(ProblemsBox(problems, units));
         string firstSide = UnitNames.SidesOf(game)[0];
-        foreach (string type in UnitNames.FactoriesOf(game, units.Values))
+        // the rows in the order of the Armory's tabs (a mod's own order), then any other type
+        IReadOnlyList<string> types = UnitNames.FactoriesOf(game, units.Values);
+        if (tabOrder is { Count: > 0 }) types = [.. tabOrder.Where(types.Contains), .. types.Where(type => !tabOrder.Contains(type))];
+        foreach (string type in types)
         {
             List<int> places = [.. Enumerable.Range(0, cards.Count).Where(place => TypeOf(cards[place].Unit) == type)];
             int room = division.Costs.TryGetValue(type, out IReadOnlyList<int>? costs) ? costs.Count : 0;

@@ -361,7 +361,7 @@ internal sealed partial class DetailsRuleList : DockPanel
         foreach (int rule in rules)
         {
             RuleStats stats = run.Stats[rule];
-            edits += stats.Edits;
+            edits += stats.AllEdits;
             skipped += stats.Skipped;
             if (RunRecord.IsIdle(stats)) idle++;
             if (run.WarningsOf(rule).Count > 0) warned++;
@@ -509,9 +509,8 @@ internal sealed partial class DetailsRuleList : DockPanel
             case "Text": Word(Texts.Get("Files.Details.Meta.Texts")); break;
             default:
                 if (!RunDetails.IsOn(stats)) Word(Texts.Get("Files.Details.Meta.Off"));
-                else if (stats.Edits == 0 && stats.VariableChanges > 0) Word(Texts.Count("Files.Details.Meta.VariableChanges", stats.VariableChanges));
-                else if (stats.Edits == 0) Caution(Texts.Get("Files.Details.Meta.NoEdits"));
-                else said.Inlines.Add(DetailsText.Piece(DetailsCounts.Edits(stats.Edits), null));
+                else if (stats.AllEdits == 0) Caution(Texts.Get("Files.Details.Meta.NoEdits"));
+                else said.Inlines.Add(DetailsText.Piece(DetailsCounts.Edits(stats.AllEdits), null));
                 break;
         }
         if (stats.Skipped > 0)

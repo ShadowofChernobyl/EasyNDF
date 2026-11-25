@@ -154,7 +154,6 @@
   "Editor.Export.NotValid": "This result would not be a valid file: {problem}.",
   "Editor.Export.UnsavedEdits": "Your unsaved edits are in it; \"Use in File List\" makes Preview and Export use them too.",
   "Editor.Export.Same": "{file}: the export is the same as the source.",
-  "Editor.GoTo.NotADescriptor": "{name} is not a descriptor of the files read.",
   "Editor.Find.NotFound": "\"{text}\" was not found.",
   "Editor.Find.TypeLine": "Type a line number, then Enter.",
   "Editor.Find.Replaced": "{file}: replaced {count} match. Ctrl+Z in the text undoes it.|{file}: replaced {count} matches. Ctrl+Z in the text undoes it.",
@@ -357,7 +356,6 @@
   "Editor.Syntax.UsedByNone": "No descriptor in the files read uses it.",
   "Editor.Syntax.DefinedHere": "Defined here.",
   "Editor.Syntax.DefinedIn": "In {file}, line {line}.",
-  "Editor.Syntax.NotLoaded": "Not in the files read.",
   "Editor.Syntax.Reading": "Reading its settings…",
   "Editor.Syntax.MoreSettings": "and {number} more setting|and {number} more settings",
   "Editor.Syntax.BuiltOn": "Built on {base}.",
@@ -393,6 +391,12 @@
   "Editor.Syntax.Keyword.mod": "The remainder of a division, in a formula.",
   "Editor.Syntax.Keyword.root": "Starts a full path to a name, from the top: $/GFX/…",
   "Editor.Value.NumberGivenTwice": "{name}: {value} is given to both {first} and {second}. Each needs a number of its own; a game update or another mod may have taken it.",
-  "Editor.Syntax.NotRead": "Not in the files read so far. {number} listed file is not read yet; Search all files looks in it too.|Not in the files read so far. {number} listed files are not read yet; Search all files looks in them too.",
-  "Editor.Syntax.UnreadNote": "{number} listed file is not read yet.|{number} listed files are not read yet."
+  "Editor.Syntax.UnreadNote": "{number} listed file is not read yet.|{number} listed files are not read yet.",
+  "Editor.Value.UnknownName.Number": "{name} takes a number. {value} is not one, and no file read declares it.",
+  "Editor.Value.UnknownName.Boolean": "{name} takes True or False. {value} is neither, and no file read declares it.",
+  "Editor.Value.UnknownName.Why": "Check the spelling, or that the file declaring it is on the Files tab.",
+  "Editor.Syntax.LookingInListed": "Not in the files read. Looking in the other listed files ({done} of {total}).",
+  "Editor.Syntax.NotListed": "No file on the Files tab declares it.",
+  "Editor.GoTo.NotListed": "No file on the Files tab declares {name}.",
+  "Editor.GoTo.StillLooking": "{name} is not in the files read. Still looking in the other listed files ({done} of {total}); try again in a moment."
 }

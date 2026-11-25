@@ -156,6 +156,8 @@ public sealed class DescriptorTree(FileEntry? localEntry, bool hasLocal, IReadOn
         if (hasLocal && LocalByName.TryGetValue(name, out OutlineEntry? local))
             return (localEntry, local.Kind == OutlineKind.Constant ? "" : local.Type, local);
         if (index.Names.TryGetValue(name, out ReferenceIndex.Declared declared) && !IsLocal(declared.Entry)) return (declared.Entry, declared.Type, null);
+        // a listed file not read yet: its row opens it, reading it then
+        if (ListedNames.FindGathered(name) is { } listed && !IsLocal(listed.Entry)) return (listed.Entry, listed.Type, null);
         return null;
     }
 

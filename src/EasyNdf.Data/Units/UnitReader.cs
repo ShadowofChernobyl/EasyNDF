@@ -87,7 +87,26 @@ public static class UnitReader
         "Divisions.ndf", "DivisionList.ndf", "DivisionRules.ndf", "DivisionCostMatrix.ndf", "Decks.ndf", "DeckPacks.ndf",
         // where the units' pictures and the divisions' emblems are: a mod's new units and divisions name their own
         "ButtonTexturesUnites.ndf", "DefenseTextures.ndf", "DivisionTextures.ndf",
+        // the order of the Armory's tabs, as the game's armory screen lists them
+        "UISpecificShowRoomArmoryComponent.ndf",
     ];
+
+    /// <summary>The armory screen's file, which lists its tabs in order (FactoryDisplayOrder).</summary>
+    private const string ArmoryScreenFile = "UserInterface/Use/ShowRoom/Views/UISpecificShowRoomArmoryComponent.ndf";
+
+    /// <summary>
+    /// The tabs in the order the armory screen lists them, without "Factory/" (WARNO) or "EDefaultFactories/" (Steel Division 2) and without the all-units tab; empty when
+    /// the source has no such list (another game, or a file that cannot be read).
+    /// </summary>
+    public static IReadOnlyList<string> ReadTabOrder(GameDataFiles files)
+    {
+        string text = files.Read(ArmoryScreenFile) ?? "";
+        Match list = Regex.Match(text, @"FactoryDisplayOrder\s*=\s*\[(?<tabs>[^\]]*)\]");
+        if (!list.Success) return [];
+        string tabs = Regex.Replace(list.Groups["tabs"].Value, @"//[^
+]*|/\*.*?\*/", "", RegexOptions.Singleline);
+        return [.. Regex.Matches(tabs, @"(?:EDefaultFactories|Factory)/(\w+)").Select(tab => tab.Groups[1].Value).Where(tab => tab != "UniversalFactory").Distinct()];
+    }
 
     /// <summary>Reads every unit. What cannot be read is listed in the catalogue's problems; the rest is still read.</summary>
     /// <param name="files">The game's files.</param>
@@ -125,7 +144,7 @@ public static class UnitReader
             }
         }
         return new UnitCatalog(game, units, flags, problems, allDivisions, battlegroupCards, armorLevels, Weapon.WithUsersAmong(ammunition.Values, units), loadouts,
-            WeaponTraitReader.Read(files, texts), weaponPictures);
+            WeaponTraitReader.Read(files, texts), weaponPictures, ReadTabOrder(files));
     }
 
     // ---- one unit ----

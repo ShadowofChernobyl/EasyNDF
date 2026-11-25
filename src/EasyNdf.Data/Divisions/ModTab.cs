@@ -30,8 +30,17 @@ public sealed class ModTab
     /// </summary>
     public List<int>? Slots { get; set; }
 
+    /// <summary>
+    /// A division's own cost row for the tab, by the division's descriptor, set when the tab is edited with that
+    /// division shown; the others keep <see cref="Slots"/>. Null for none.
+    /// </summary>
+    public Dictionary<string, List<int>>? SlotsFor { get; set; }
+
+    /// <summary>The cost row a division gets: its own, else the tab's.</summary>
+    public List<int>? SlotsOf(string division) => SlotsFor is not null && SlotsFor.TryGetValue(division, out List<int>? own) ? own : Slots;
+
     /// <summary>Whether it changes nothing, so it can be let go of.</summary>
-    public bool ChangesNothing => Label is null && TipTitle is null && TipText is null && TipMore is null && Slots is null;
+    public bool ChangesNothing => Label is null && TipTitle is null && TipText is null && TipMore is null && Slots is null && SlotsFor is not { Count: > 0 };
 
     /// <summary>The mod's change to a tab; null when it changes none.</summary>
     public static ModTab? Of(Mod mod, string factory) => mod.Tabs.FirstOrDefault(tab => tab.Factory == factory);
@@ -48,6 +57,12 @@ public sealed class ModTab
         if (TipText is not null) json["TipText"] = TipText;
         if (TipMore is not null) json["TipMore"] = TipMore;
         if (Slots is not null) json["Slots"] = new JsonArray([.. Slots.Select(slot => (JsonNode)slot)]);
+        if (SlotsFor is { Count: > 0 })
+        {
+            var own = new JsonObject();
+            foreach (var (division, slots) in SlotsFor) own[division] = new JsonArray([.. slots.Select(slot => (JsonNode)slot)]);
+            json["SlotsFor"] = own;
+        }
         return json;
     }
 
@@ -62,7 +77,12 @@ public sealed class ModTab
             TipTitle = Text(json["TipTitle"]),
             TipText = Text(json["TipText"]),
             TipMore = Text(json["TipMore"]),
-            Slots = json["Slots"] is JsonArray slots ? [.. slots.Select(slot => slot is JsonValue value && value.TryGetValue(out int cost) ? cost : 1)] : null,
+            Slots = json["Slots"] is JsonArray slots ? Costs(slots) : null,
+            SlotsFor = json["SlotsFor"] is JsonObject own && own.Count > 0
+                ? own.Where(each => each.Value is JsonArray).ToDictionary(each => each.Key, each => Costs((JsonArray)each.Value!), StringComparer.Ordinal)
+                : null,
         };
+
+        static List<int> Costs(JsonArray slots) => [.. slots.Select(slot => slot is JsonValue value && value.TryGetValue(out int cost) ? cost : 1)];
     }
 }

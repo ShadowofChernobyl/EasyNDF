@@ -30,7 +30,7 @@ public partial class UnitsPage : IBattlegroupEditing
         bool hasPlace = chosenDivision.Battlegroup is not null || IsNewInMod(chosenDivision);
         BattlegroupContent.Content = BattlegroupView.Build(chosenDivision, unitsByDescriptor, Game, selection, battlegroupColumns, this,
             (button, type) => BattlegroupCardPopup.Open(button, type, () => chosenDivision, unitsByDescriptor, ((IUnitActions)this).IsFirstSide, this),
-            foldedBattlegroupCategories, BattlegroupFoldClicked, hasPlace, cardsTried, WhyChosen);
+            foldedBattlegroupCategories, BattlegroupFoldClicked, hasPlace, cardsTried, WhyChosen, TabsShown());
     }
 
     /// <summary>The categories folded away in the Battlegroups view, by code; kept apart from the Divisions view's.</summary>

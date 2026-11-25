@@ -470,5 +470,19 @@
   "Rules.Menu.FromFile": "From File…",
   "Rules.Menu.FromClipboard": "From Clipboard",
   "Rules.Editor.Table.NoConditions": "No conditions: every row is applied.",
-  "Rules.Editor.Lookup.NoneListed": "(no files: choose a Source, or check the file filter)"
+  "Rules.Editor.Lookup.NoneListed": "(no files: choose a Source, or check the file filter)",
+  "Rules.NewRule.Name.Edit": "New rule",
+  "Rules.NewRule.Name.Add": "New add descriptor",
+  "Rules.NewRule.Name.Clone": "New clone descriptor",
+  "Rules.NewRule.Name.Remove": "New remove descriptors",
+  "Rules.NewRule.Name.Replace": "New find and replace",
+  "Rules.NewRule.Name.Scale": "New scale",
+  "Rules.NewRule.Name.Formula": "New formula",
+  "Rules.NewRule.Name.Table": "New table",
+  "Rules.NewRule.Name.Lookup": "New lookup",
+  "Rules.NewRule.Name.Text": "New texts",
+  "Rules.NewRule.Name.File": "New file",
+  "Rules.NewRule.Name.Check": "New check",
+  "Rules.NewRule.Name.Group": "New group",
+  "Rules.NewRule.Name.Variable": "New variable"
 }

@@ -1414,8 +1414,12 @@
                                 <TextBlock x:Name="Arrow" Grid.Column="2" Margin="12,0,0,0" Text="▸" Foreground="{DynamicResource muted}" Visibility="Collapsed" />
                             </Grid>
                         </Border>
-                        <!-- its own menu, at its right, drawn as the menu it is in -->
-                        <Popup IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" Placement="Right" HorizontalOffset="3" VerticalOffset="-4"
+                        <!--
+                          its own menu, at its right, drawn as the menu it is in. It starts right at the item's edge, with no
+                          gap: with Windows' menu delay at 0 (Control Panel > Desktop > MenuShowDelay), crossing a gap of even
+                          3 pixels closed the submenu before it could be reached
+                        -->
+                        <Popup IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" Placement="Right" HorizontalOffset="0" VerticalOffset="-4"
                                AllowsTransparency="True" Focusable="False" PopupAnimation="None">
                             <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}"
                                             Padding="3" MinWidth="192" MaxWidth="384">

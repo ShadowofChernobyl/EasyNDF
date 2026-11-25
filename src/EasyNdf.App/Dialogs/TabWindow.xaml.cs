@@ -33,8 +33,10 @@ public partial class TabWindow : UserControl
     /// <param name="tab">The tab, with what the mod gives it so far.</param>
     /// <param name="game">The tab's label and tooltip texts without the mod.</param>
     /// <param name="withSlots">Whether the tab's divisions get their cost row from the mod (a spare tab).</param>
-    public Task<ModTab?> Edit(ModTab tab, ModTab game, bool withSlots)
+    /// <param name="division">The division shown, whose own cost row is edited; null for every division's.</param>
+    public Task<ModTab?> Edit(ModTab tab, ModTab game, bool withSlots, string? division = null)
     {
+        SlotsNote.Text = division is null ? Texts.Get("Units.Tabs.Field.Slots.Note") : Texts.Get("Units.Tabs.Field.Slots.OneDivision", ("division", division));
         Title.Text = Texts.Get("Units.Tabs.Edit.Title");
         DoneButton.Content = Texts.Get("Units.Tabs.Done");
         TabName.Text = "Factory/" + tab.Factory;
@@ -46,8 +48,11 @@ public partial class TabWindow : UserControl
 
     /// <summary>New Tab: one of the spare tabs left is chosen, and given its label, tooltip and cost row.</summary>
     /// <param name="spare">The spare tabs left, with the label each starts with.</param>
-    public Task<ModTab?> New(IReadOnlyList<(string Factory, string Label)> spare)
+    /// <param name="gameTextsOf">A spare tab's texts as the game shows them, which its boxes start with.</param>
+    public Task<ModTab?> New(IReadOnlyList<(string Factory, string Label)> spare, Func<string, ModTab>? gameTextsOf = null)
     {
+        textsOf = gameTextsOf ?? (tab => new ModTab { Factory = tab });
+        SlotsNote.Text = Texts.Get("Units.Tabs.Field.Slots.Note");
         Title.Text = Texts.Get("Units.Tabs.New.Title");
         DoneButton.Content = Texts.Get("Units.Tabs.Create");
         TabName.Visibility = KeepNote.Visibility = Visibility.Collapsed;
@@ -58,8 +63,11 @@ public partial class TabWindow : UserControl
         TabChoice.SelectedIndex = 0;
         choosing = false;
         labels = spare.ToDictionary(each => each.Factory, each => each.Label);
-        return Open(new ModTab { Factory = spare[0].Factory, Label = spare[0].Label, Slots = [.. TabChangeRules.UsualSlots] }, new ModTab { Factory = spare[0].Factory }, withSlots: true);
+        return Open(new ModTab { Factory = spare[0].Factory, Label = spare[0].Label, Slots = [.. TabChangeRules.UsualSlots] }, textsOf(spare[0].Factory), withSlots: true);
     }
+
+    /// <summary>New Tab: a spare tab's texts as the game shows them.</summary>
+    private Func<string, ModTab> textsOf = tab => new ModTab { Factory = tab };
 
     private bool choosing;
     private List<string> choices = [];
@@ -103,6 +111,12 @@ public partial class TabWindow : UserControl
         bool labelWasItsOwn = LabelBox.Text.Trim() == "" || LabelBox.Text == labels.GetValueOrDefault(factory);
         factory = chosen;
         if (labelWasItsOwn) LabelBox.Text = labels.GetValueOrDefault(factory) ?? "";
+        // the tooltip boxes follow the tab chosen, unless something else was typed in them
+        ModTab next = textsOf(chosen);
+        if (TipTitleBox.Text == (gameTexts.TipTitle ?? "")) TipTitleBox.Text = next.TipTitle ?? "";
+        if (TipTextBox.Text == (gameTexts.TipText ?? "")) TipTextBox.Text = next.TipText ?? "";
+        if (TipMoreBox.Text == (gameTexts.TipMore ?? "")) TipMoreBox.Text = next.TipMore ?? "";
+        gameTexts = next;
     }
 
     /// <summary>The values typed, an empty box keeping the game's; null when the slots are not numbers.</summary>

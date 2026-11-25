@@ -21,8 +21,19 @@ public partial class UnitsPage
     private IReadOnlyList<string> TabsShown()
     {
         IReadOnlyList<Unit> units = loaded?.Catalog.Units ?? [];
-        if (Game != GameTitle.Warno) return UnitNames.FactoriesOf(Game, units);
+        if (Game != GameTitle.Warno)
+        {
+            // Steel Division 2: the armory screen's order (Recon first), then any tab it does not list (Defense)
+            IReadOnlyList<string> known = UnitNames.FactoriesOf(Game, units);
+            return loaded?.Catalog.TabOrder is { Count: > 0 } screen
+                ? [.. screen.Where(known.Contains), .. known.Where(tab => !screen.Contains(tab))]
+                : known;
+        }
         List<string> order = TabChangeRules.OrderOf(OpenMod, units.Select(unit => unit.Factory));
+        // the order the files give (the game's, or a mod's that changes the armory screen's list), unless the open mod
+        // set one of its own with Move Left and Move Right: a tab a modder put second shows second
+        if (OpenMod.TabOrder is not { Count: > 0 } && loaded?.Catalog.TabOrder is { Count: > 0 } listed)
+            order = [.. listed, .. order.Where(tab => !listed.Contains(tab))];
         // a tab some unit is in that neither the game nor the mod knows is still shown, last
         return [.. order, .. units.Select(unit => unit.Factory).Where(tab => tab != "" && !order.Contains(tab)).Distinct()];
     }
@@ -79,7 +90,21 @@ public partial class UnitsPage
         bool isSpare = TabChangeRules.SpareTabs.Contains(tab) && !TabChangeRules.HasGameDescription(tab) || tab == "Defense";
         ModTab now = ModTab.Of(OpenMod, tab)?.Copy() ?? new ModTab { Factory = tab };
         if (isSpare && now.Slots is null && !DivisionsHaveRowFor(tab)) now.Slots = [.. TabChangeRules.UsualSlots];
-        if (await MainView.Of(this).TabEditor.Edit(now, GameTextsOf(tab), withSlots: now.Slots is not null) is not ModTab kept) return;
+        // a division shown: its own cost row is the one edited; the tab's name and tooltip are the game's, for all
+        string? division = part is ArmoryPart.Divisions or ArmoryPart.Battlegroups ? chosenDivision?.Descriptor : null;
+        List<int>? forAll = now.Slots;
+        if (division is not null && now.Slots is not null) now.Slots = [.. now.SlotsOf(division)!];
+        if (await MainView.Of(this).TabEditor.Edit(now, GameTextsOf(tab), withSlots: now.Slots is not null, division is null ? null : chosenDivision!.Name) is not ModTab kept) return;
+        // the popup gives back what it shows: the other divisions' own rows are the mod's still
+        kept.SlotsFor = now.SlotsFor is null ? null : new Dictionary<string, List<int>>(now.SlotsFor, StringComparer.Ordinal);
+        if (division is not null && kept.Slots is not null)
+        {
+            kept.SlotsFor ??= new Dictionary<string, List<int>>(StringComparer.Ordinal);
+            if (forAll is not null && kept.Slots.SequenceEqual(forAll)) kept.SlotsFor.Remove(division);
+            else kept.SlotsFor[division] = kept.Slots;
+            if (kept.SlotsFor.Count == 0) kept.SlotsFor = null;
+            kept.Slots = forAll;
+        }
         ChangeTabs(mod =>
         {
             mod.Tabs.RemoveAll(each => each.Factory == tab);
@@ -94,7 +119,9 @@ public partial class UnitsPage
     private ModTab GameTextsOf(string tab)
     {
         var own = new ModTab { Factory = tab, Label = UnitNames.FactoryShort(tab) };
-        if (TabChangeRules.GameTokensOf(tab) is not var (label, title, text, more) || loaded is null) return own;
+        // the game has no tooltip of its own for Support: it shows Artillery's ("The King of the Battlefield")
+        if (TabChangeRules.GameTokensOf(tab == "Support" ? "Art" : tab) is not var (label, title, text, more) || loaded is null) return own;
+        if (tab == "Support") label = "";
         own.Label = loaded.Texts.Get(label) ?? own.Label;
         own.TipTitle = loaded.Texts.Get(title);
         own.TipText = loaded.Texts.Get(text);
@@ -110,7 +137,7 @@ public partial class UnitsPage
     {
         List<string> left = SpareTabsLeft();
         if (left.Count == 0) return;
-        if (await MainView.Of(this).TabEditor.New([.. left.Select(tab => (tab, UnitNames.FactoryShort(tab)))]) is not ModTab made) return;
+        if (await MainView.Of(this).TabEditor.New([.. left.Select(tab => (tab, UnitNames.FactoryShort(tab)))], GameTextsOf) is not ModTab made) return;
         if (DivisionsHaveRowFor(made.Factory)) made.Slots = null;
         ChangeTabs(mod =>
         {

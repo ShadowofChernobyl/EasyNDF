@@ -141,13 +141,16 @@ public static class TabChangeRules
                 rules.Add(rule);
             }
 
-            if (tab.Slots is not { Count: > 0 } slots) continue;
+            if (tab.Slots is not { Count: > 0 } && tab.SlotsFor is not { Count: > 0 }) continue;
             // one row for each cost matrix whose divisions offer a unit of the tab and have no row for it
             foreach (var sameMatrix in divisions.Where(division => division.CostMatrixName != "" && !division.Costs.ContainsKey(tab.Factory)
                          && division.Units.Any(unit => tabOf.GetValueOrDefault(unit.Unit) == tab.Factory)).GroupBy(division => division.CostMatrixName))
             {
                 // a slot for each pack of the tab in a ready-made deck, the last cost again for those beyond the row
                 int packs = sameMatrix.Max(division => division.Battlegroup?.Cards.Count(card => tabOf.GetValueOrDefault(card.Unit) == tab.Factory) ?? 0);
+                // a division's own row, when the tab was edited with it shown; divisions sharing a cost matrix share it
+                List<int>? slots = sameMatrix.Select(division => tab.SlotsFor?.GetValueOrDefault(division.Descriptor)).FirstOrDefault(own => own is { Count: > 0 }) ?? tab.Slots;
+                if (slots is not { Count: > 0 }) continue;
                 List<int> row = [.. slots];
                 while (row.Count < packs) row.Add(row[^1]);
                 JsonObject rule = Rule(ruleName("Row", tab.Factory) + ": " + string.Join(", ", sameMatrix.Select(division => division.Name)), "DivisionCostMatrix.ndf", "TabRow:" + tab.Factory,

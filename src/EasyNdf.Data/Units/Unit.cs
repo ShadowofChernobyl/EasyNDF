@@ -270,7 +270,8 @@ public sealed record UnitCatalog(
     Game.GameTitle Game, IReadOnlyList<Unit> Units, IReadOnlyDictionary<string, string> FlagSources, IReadOnlyList<string> Problems,
     IReadOnlyList<Divisions.Division> Divisions, IReadOnlySet<string>? BattlegroupCards = null, IReadOnlyDictionary<string, int>? ArmorLevels = null,
     IReadOnlyList<Weapons.Weapon>? Weapons = null, IReadOnlyDictionary<string, Weapons.Loadout>? Loadouts = null,
-    IReadOnlyDictionary<string, Weapons.WeaponTrait>? Traits = null, IReadOnlyDictionary<string, string>? WeaponPictures = null);
+    IReadOnlyDictionary<string, Weapons.WeaponTrait>? Traits = null, IReadOnlyDictionary<string, string>? WeaponPictures = null,
+    IReadOnlyList<string>? TabOrder = null);
 
 /// <summary>
 /// The armour levels the game allows: an armour family's levels run from 1 to the number DamageResistance.ndf gives it

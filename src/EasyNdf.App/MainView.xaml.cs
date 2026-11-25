@@ -198,7 +198,7 @@ public partial class MainView : UserControl
             if (newer.Length > 0) latest = newer.ToString();
         }
         (FrameworkElement text, _, _) = new Help.WikiRenderer(Help.PageLook.ChangeLog).Render(latest);
-        TextWindow.Open("What's New", text);
+        TextWindow.Open(Texts.Get("Main.WhatsNew.Title"), text);
     }
 
     /// <summary>
@@ -211,7 +211,8 @@ public partial class MainView : UserControl
             : AppData.Current.State["welcomed"] is System.Text.Json.Nodes.JsonValue welcomed && welcomed.TryGetValue(out string? first) ? first : null;
         if (!WhatsNewIsDue(AppData.Current.State, AppVersion))
         {
-            RememberBundledMod();
+            if (BundledModAskedLater()) _ = OfferBundledModUpdate();
+            else RememberBundledMod();
             return;
         }
         AppData.Current.State[WhatsNewKey] = AppVersion;
@@ -448,10 +449,17 @@ public partial class MainView : UserControl
             return;
         }
         e.Effects = DragDropEffects.Copy;
+        lastDragOver = Environment.TickCount64;
         if (Messages.IsOpen) return;
         ShowTab(FilesTabItem, activate: false);
         FilesTab.ShowDropHint(true);
     }
+
+    /// <summary>When files were last dragged over the app: Windows says so again and again while they are over it.</summary>
+    private long lastDragOver;
+
+    /// <summary>Hides the drop outline once no drag has been over the app for a moment.</summary>
+    private System.Windows.Threading.DispatcherTimer? dragGone;
 
     /// <summary>The drag left the app: the drop outline goes.</summary>
     internal void FilesDragLeft(object sender, DragEventArgs e)
@@ -460,6 +468,17 @@ public partial class MainView : UserControl
         FrameworkElement over = sender as FrameworkElement ?? this;
         Point at = e.GetPosition(over);
         if (at.X <= 0 || at.Y <= 0 || at.X >= over.ActualWidth || at.Y >= over.ActualHeight) FilesTab.ShowDropHint(false);
+        // a drag cancelled over the app (Escape, or let go outside every window) says it left from where it last was,
+        // inside: the outline stayed. Windows keeps telling the app while a drag is over it, so once it has said
+        // nothing for a moment, the drag is gone
+        dragGone ??= new System.Windows.Threading.DispatcherTimer(TimeSpan.FromMilliseconds(250), System.Windows.Threading.DispatcherPriority.Background, (_, _) =>
+        {
+            if (Environment.TickCount64 - lastDragOver < 200) return;
+            dragGone!.Stop();
+            FilesTab.ShowDropHint(false);
+        }, Dispatcher);
+        dragGone.Stop();
+        dragGone.Start();
     }
 
     internal async void FilesDropped(object sender, DragEventArgs e)

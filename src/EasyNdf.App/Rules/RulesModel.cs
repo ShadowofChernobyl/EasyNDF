@@ -865,7 +865,20 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     /// "New rule": a new rule of a type after the selected one, selected. With no preset of the user's own open, one is
     /// made to hold it (see <see cref="NeedsPresetForNewRules"/>).
     /// </summary>
-    public void NewRule(string kind) => AddRule(RuleLoading.NewRule(kind));
+    public void NewRule(string kind)
+    {
+        JsonObject rule = RuleLoading.NewRule(kind);
+        // the name in the language shown: "New rule", "Neue Regel"
+        rule["Name"] = Texts.Get((string?)rule["Kind"] switch
+        {
+            "Add" => "Rules.NewRule.Name.Add", "Clone" => "Rules.NewRule.Name.Clone", "Remove" => "Rules.NewRule.Name.Remove",
+            "Replace" => "Rules.NewRule.Name.Replace", "Scale" => "Rules.NewRule.Name.Scale", "Formula" => "Rules.NewRule.Name.Formula",
+            "Table" => "Rules.NewRule.Name.Table", "Lookup" => "Rules.NewRule.Name.Lookup", "Text" => "Rules.NewRule.Name.Text",
+            "File" => "Rules.NewRule.Name.File", "Check" => "Rules.NewRule.Name.Check", "Group" => "Rules.NewRule.Name.Group",
+            "Variable" => "Rules.NewRule.Name.Variable", _ => "Rules.NewRule.Name.Edit",
+        });
+        AddRule(rule);
+    }
 
     /// <summary>A rule made elsewhere (such as the Units tab's "New Rule for This Unit"), added as <see cref="NewRule"/> adds one.</summary>
     public void AddRule(JsonObject rule)

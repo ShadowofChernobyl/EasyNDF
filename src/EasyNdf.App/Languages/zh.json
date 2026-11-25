@@ -2156,7 +2156,7 @@
     },
     "Divisions.Generate.Go.Tip": {
       "english": "Make the divisions in the open mod (one undo step)",
-      "text": "在开放模式下创建师（可撤销一步）",
+      "text": "在打开的模组中创建师（一步即可撤销）",
       "machine": true
     },
     "Divisions.Generate.Done": {
@@ -3690,11 +3690,6 @@
       "text": "{file}：导出内容与源文件相同。",
       "machine": true
     },
-    "Editor.GoTo.NotADescriptor": {
-      "english": "{name} is not a descriptor of the files read.",
-      "text": "{name} 不是已读取文件中的描述符。",
-      "machine": true
-    },
     "Editor.Find.NotFound": {
       "english": "\"{text}\" was not found.",
       "text": "未找到“{text}”。",
@@ -4697,11 +4692,6 @@
     "Editor.Syntax.DefinedIn": {
       "english": "In {file}, line {line}.",
       "text": "在{file}文件中，第{line}行。",
-      "machine": true
-    },
-    "Editor.Syntax.NotLoaded": {
-      "english": "Not in the files read.",
-      "text": "不在已加载的文件中。",
       "machine": true
     },
     "Editor.Syntax.Reading": {
@@ -5717,11 +5707,6 @@
     "Files.Details.Meta.NoEdits": {
       "english": "no edits",
       "text": "未编辑",
-      "machine": true
-    },
-    "Files.Details.Meta.VariableChanges": {
-      "english": "{count} variable change|{count} variable changes",
-      "text": "{count} 次变量更改",
       "machine": true
     },
     "Files.Details.RuleTip": {
@@ -8431,13 +8416,13 @@
       "machine": true
     },
     "Rules.Mod.TooLargeToCopy": {
-      "english": "\"{mod}\" is too large for the clipboard ({size} MB with the files it carries). Use Export Mod instead.",
-      "text": "“{mod}”对剪贴板来说太大（连同其携带的文件共 {size} MB）。请改用“导出模组”。",
+      "english": "\"{mod}\" is too large for the clipboard ({size} MB with the files it carries). Use Export Mod, To File instead.",
+      "text": "“{mod}”对剪贴板来说太大（连同其携带的文件共 {size} MB）。请改用“导出模组”→“到文件”。",
       "machine": true
     },
     "Rules.Mod.ClipboardEmpty": {
-      "english": "The clipboard holds no mod. Copy a mod's text first, or use Import Mod for a file.",
-      "text": "剪贴板中没有模组。请先复制模组的文本，或使用“导入模组”导入文件。",
+      "english": "The clipboard holds no mod. Copy a mod's text first, or use Import Mod, From File.",
+      "text": "剪贴板中没有模组。请先复制模组的文本，或使用“导入模组”→“从文件”。",
       "machine": true
     },
     "Rules.Mod.ClipboardName": {
@@ -15192,9 +15177,9 @@
       "machine": true
     },
     "Weapons.About.HarmlessToAllies": {
-      "english": "Doesn't damage your own or allied units. On for 343 weapons, mostly guns, machine guns and rifles.",
-      "text": "不会对己方或盟军单位造成伤害。适用于343种武器，主要是火炮、机枪和步枪。",
-      "machine": true
+      "english": "Doesn't damage your own or allied units. True for 343 weapons, mostly guns, machine guns and rifles.",
+      "text": "不会对己方或盟军单位造成伤害。343 种武器为 True，主要是火炮、机枪和步枪。",
+      "machine": false
     },
     "Weapons.About.FireChance": {
       "english": "Chance, from 0 to 1, that a shot landing starts the weapon's Fire, multiplied by how flammable the ground there is. Only weapons with a Fire use it: 0.05 to 1 in the game. With Ignores flammability on, every shot landing starts the Fire.",
@@ -15212,24 +15197,24 @@
       "machine": true
     },
     "Weapons.About.TopArmor": {
-      "english": "Always strikes the target's top armor. On for 41 weapons: bombs and cluster munitions.",
-      "text": "始终打击目标的顶部装甲。适用于41种武器：炸弹和集束弹药。",
-      "machine": true
+      "english": "Always strikes the target's top armor. True for 41 weapons: bombs and cluster munitions.",
+      "text": "始终打击目标的顶部装甲。41 种武器为 True：炸弹和集束弹药。",
+      "machine": false
     },
     "Weapons.About.TopArmorOnHit": {
-      "english": "A hit strikes the top armor. On for artillery, mortars and bombs (282 weapons).",
-      "text": "命中指击中顶部装甲。适用于火炮、迫击炮和炸弹（282种武器）。",
-      "machine": true
+      "english": "A hit strikes the top armor. True for artillery, mortars and bombs (282 weapons).",
+      "text": "命中时击中顶部装甲。火炮、迫击炮和炸弹为 True（282 种武器）。",
+      "machine": false
     },
     "Weapons.About.ArmorFromImpact": {
-      "english": "The armor side hit is worked out from where the shot lands, not from where it was fired. On for artillery, mortars and bombs.",
-      "text": "装甲侧面命中值是根据弹着点计算的，而非发射点。适用于火炮、迫击炮和炸弹。",
-      "machine": true
+      "english": "The armor side hit is worked out from where the shot lands, not from where it was fired. True for artillery, mortars and bombs.",
+      "text": "被击中的装甲面根据弹着点计算，而非发射点。火炮、迫击炮和炸弹为 True。",
+      "machine": false
     },
     "Weapons.About.IgnoresFlammability": {
-      "english": "Every shot landing starts the weapon's Fire, whatever the ground, without rolling Fire chance (which must still be above 0). Off: Fire chance is multiplied by how flammable the ground is: dense forest 0.8, light forest 0.6, buildings 0.2, rocks 0.1, open ground and water 0. On for the 21 true incendiaries (napalm, flamethrowers).",
-      "text": "每次命中都会触发该武器的“起火”效果，无论地面类型如何，且不进行“起火概率”掷骰（该概率仍需大于0）。 关闭：起火概率乘以地面的可燃性系数：密林 0.8，疏林 0.6，建筑物 0.2，岩石 0.1，开阔地和水面 0。对于21种真正的燃烧弹（凝固汽油弹、火焰喷射器），此选项保持开启。",
-      "machine": true
+      "english": "If True: every shot landing starts the weapon's Fire, whatever the ground, without rolling Fire chance (which must still be above 0). If False: Fire chance is multiplied by how flammable the ground is: dense forest 0.8, light forest 0.6, buildings 0.2, rocks 0.1, open ground and water 0. True for the 21 true incendiaries (napalm, flamethrowers).",
+      "text": "为 True 时：每次命中都会触发该武器的“起火”，无论地面类型，且不掷“起火概率”（该概率仍需大于 0）。为 False 时：起火概率乘以地面的可燃性：密林 0.8，疏林 0.6，建筑物 0.2，岩石 0.1，开阔地和水面 0。21 种真正的燃烧武器（凝固汽油弹、火焰喷射器）为 True。",
+      "machine": false
     },
     "Weapons.About.Ground": {
       "english": "Longest range against ground units.",
@@ -15377,9 +15362,9 @@
       "machine": true
     },
     "Weapons.About.FiresMoving": {
-      "english": "On: fires while the unit moves. Off: fires only while the unit is stopped.",
-      "text": "开启：单位移动时开火。关闭：仅在单位静止时开火。",
-      "machine": true
+      "english": "If True: fires while the unit moves. If False: fires only while the unit is stopped.",
+      "text": "为 True 时：单位移动时开火。为 False 时：仅在单位静止时开火。",
+      "machine": false
     },
     "Weapons.About.MustDeploy": {
       "english": "Must stop and deploy before firing, as howitzers do: the weapon is packed up while the unit moves, and fires again only once the unit has stopped and finished deploying. A unit carrying such a weapon needs a TWeaponDeploymentModuleDescriptor (its deploy and pack times), and a unit with that module needs at least one such weapon.",
@@ -15402,19 +15387,19 @@
       "machine": true
     },
     "Weapons.About.Reflex": {
-      "english": "Fires on its own at enemies it sees, without an attack order. Off for artillery, mortars and bombs.",
-      "text": "在未收到攻击命令的情况下，会自动向所见敌人开火。火炮、迫击炮和炸弹的此项功能默认关闭。",
-      "machine": true
+      "english": "Fires on its own at enemies it sees, without an attack order. False for artillery, mortars and bombs.",
+      "text": "无需攻击命令，自动向所见敌人开火。火炮、迫击炮和炸弹为 False。",
+      "machine": false
     },
     "Weapons.About.NoReflexOnPriority": {
-      "english": "No reflex shots while the unit has a priority target. On for guided missiles (187).",
-      "text": "当单位有优先目标时，不进行反射射击。对制导导弹（187）启用此功能。",
-      "machine": true
+      "english": "No reflex shots while the unit has a priority target. True for guided missiles (187).",
+      "text": "单位有优先目标时不进行反射射击。制导导弹为 True（187）。",
+      "machine": false
     },
     "Weapons.About.OnePerDistrict": {
-      "english": "On for most direct-fire weapons (677). In a town district, only one of the units the shot could hit is hit, picked at random, enemies first.",
-      "text": "适用于大多数直射武器（677）。在城镇区域内，被击中的单位仅限该射击可能命中的单位之一，随机选取，优先选择敌方单位。",
-      "machine": true
+      "english": "True for most direct-fire weapons (677). In a town district, only one of the units the shot could hit is hit, picked at random, enemies first.",
+      "text": "大多数直射武器为 True（677）。在城镇区域内，只命中该射击可能命中的单位之一，随机选取，优先敌方。",
+      "machine": false
     },
     "Weapons.About.ProjectileKind": {
       "english": "How the shot travels and lands: shell, artillery shell (whether it hits depends on its spread, and with Submunitions its bomblets are followed in flight), bomb, grenade, or guided missile (launched as a separate missile that flies to the target). Fake has no real projectile.",
@@ -15442,9 +15427,9 @@
       "machine": true
     },
     "Weapons.About.FireAndForget": {
-      "english": "On: once fired, the missile flies on without the unit that fired it. Off: while it flies, the missile checks that the unit that fired it still exists and, for direct fire, still sees the target; when either fails, its flight changes. On for 57 missiles.",
-      "text": "开启：发射后，导弹将脱离发射单位继续飞行。关闭：飞行过程中，导弹会检查发射单位是否仍存在，对于直接射击，还会检查是否仍能看到目标；若任一条件不满足，其飞行轨迹将发生改变。57型导弹采用“开启”模式。",
-      "machine": true
+      "english": "If True: once fired, the missile flies on without the unit that fired it. If False: while it flies, the missile checks that the unit that fired it still exists and, for direct fire, still sees the target; when either fails, its flight changes. True for 57 missiles.",
+      "text": "为 True 时：发射后，导弹脱离发射单位继续飞行。为 False 时：飞行中，导弹会检查发射单位是否仍存在，直射时还会检查其是否仍能看到目标；任一条件不满足，其飞行就会改变。57 种导弹为 True。",
+      "machine": false
     },
     "Weapons.About.Guidance": {
       "english": "Who the missile can fire at. Radar: not at drones (units tagged Non_Radar_Targetable). Anti-radar: only at units carrying a radar-guided weapon. None for the others (32 missiles have one).",
@@ -15462,14 +15447,14 @@
       "machine": true
     },
     "Weapons.About.ShotsInOrder": {
-      "english": "Off for guns, artillery and rockets (570). On: before a salvo, the game sorts where its shots will land across the line of fire (along it, for some shots), so they land in a sweep. Off: they land in the order they were picked.",
-      "text": "对于火炮、炮兵和火箭弹（570），该选项为“关闭”。开启时：齐射前，游戏会根据射击线（部分射击沿射击线分布）对弹着点进行排序，使弹着呈扫射状分布。关闭时：弹着点按选定顺序分布。",
-      "machine": true
+      "english": "False for guns, artillery and rockets (570). If True: before a salvo, the game sorts where its shots will land across the line of fire (along it, for some shots), so they land in a sweep. If False: they land in the order they were picked.",
+      "text": "火炮、炮兵和火箭弹为 False（570）。为 True 时：齐射前，游戏会沿射击线横向（部分射击为纵向）排列弹着点，使其呈扫射状落下。为 False 时：按选定顺序落下。",
+      "machine": false
     },
     "Weapons.About.AffectedByNumber": {
-      "english": "On for 252 weapons: machine guns, rifles and autocannons. Each shot's damage is multiplied by how many of the weapon are still in use: its Count (×) times the share of the unit's health left, rounded up, at least 1. A squad that has lost men hits less hard. Off: the Count doesn't multiply the damage.",
-      "text": "适用于252种武器：机枪、步枪和自动加农炮。每次射击的伤害值乘以该武器当前仍在使用数量：即其“数量”（×）乘以该单位剩余生命值的百分比（四舍五入，且不小于1）。人员减员的小队攻击力会降低。 关闭：数量值不再乘以伤害值。",
-      "machine": true
+      "english": "True for 252 weapons: machine guns, rifles and autocannons. Each shot's damage is multiplied by how many of the weapon are still in use: its Count (×) times the share of the unit's health left, rounded up, at least 1. A squad that has lost men hits less hard. If False: the Count doesn't multiply the damage.",
+      "text": "252 种武器为 True：机枪、步枪和自动炮。每次射击的伤害乘以该武器仍在使用的数量：其“数量”（×）乘以单位剩余生命值的比例，向上取整，至少为 1。减员的小队伤害更低。为 False 时：数量不乘以伤害。",
+      "machine": false
     },
     "Weapons.About.Noise": {
       "english": "How much firing gives the unit away: 1 to 5 in the game. The unit's firing noise starts at 1, and each shot adds (this − 1) ÷ Shots to full noise, so it reaches this value after that many shots. 1: firing doesn't give the unit away.",
@@ -15497,14 +15482,14 @@
       "machine": true
     },
     "Weapons.About.ShowsDamage": {
-      "english": "On: the weapon's damage counts in the damage the game shows for the unit (the highest of its weapons'). Off: it is left out of that figure.",
-      "text": "开启：该武器的伤害计入游戏显示的单位总伤害（即其所有武器伤害中的最高值）；关闭：该伤害不计入该数值。",
-      "machine": true
+      "english": "If True: the weapon's damage counts in the damage the game shows for the unit (the highest of its weapons'). If False: it is left out of that figure.",
+      "text": "为 True 时：该武器的伤害计入游戏为单位显示的伤害（取其武器中的最高值）。为 False 时：不计入该数值。",
+      "machine": false
     },
     "Weapons.About.ShowsSalvoAccuracy": {
-      "english": "On: the hit chance shown when aiming is the chance that at least one shot of the salvo hits. Off: it shows one shot's chance.",
-      "text": "开启：瞄准时显示的命中概率是指齐射中至少有一发命中目标的概率。关闭：显示单发子弹的命中概率。",
-      "machine": true
+      "english": "If True: the hit chance shown when aiming is the chance that at least one shot of the salvo hits. If False: it shows one shot's chance.",
+      "text": "为 True 时：瞄准时显示的命中率是齐射中至少一发命中的概率。为 False 时：显示单发的命中率。",
+      "machine": false
     },
     "Weapons.About.EffectSize": {
       "english": "The power given to the impact effect when the shot lands: medium (2) or ultra heavy (5).",
@@ -17795,9 +17780,9 @@
       "machine": true
     },
     "Help.Page.editor-desc.Html": {
-      "english": "<p class=\"wklead\">Under the text: the file's descriptors, with their properties on the right.</p><ul><li>Open a descriptor to see its contents and links, like a unit, its weapons and their ammunition.</li><li><b>Used by</b> lists everything referring to it; changing it changes it for all of them.</li><li>Double-click a descriptor to find it in the text.</li><li>The box above the list finds any descriptor by name.</li><li>The funnel button filters by property, like every descriptor with MaximumRangeGRU over 2000. Its number is how many conditions are on.</li></ul><h3>Filter</h3><ul><li>Each condition is a property, a test and a value. <b>all</b> or <b>any</b> above the list sets how many must match.</li><li>The Property list holds properties found in the descriptors shown: this file, or every read file under All files. (Name) and (Type) are always there.</li><li>A condition can have a <b>Name</b>, shown in the list instead of its details.</li><li>The checkbox turns a condition on or off. Right-click to disable, duplicate, move, cut, copy, paste or delete; the Mods tab's keys work too.</li><li>Quotes around values are ignored and text ignores case. \"is greater than\" and \"is less than\" compare numbers.</li><li>A filter works unsaved and stays on until cleared. <b>Save as...</b> keeps it by name; <b>Export</b> and <b>Import...</b> share saved filters as a file.</li></ul><h3>More</h3><ul><li>A descriptor in another file is found once that file is read. <b>Refresh</b> reads every file on the Files tab.</li><li><b>This file</b> lists this file's descriptors. <b>All files</b> follows links across files, like a unit to its weapon.</li><li>Alt+click a descriptor to find it in the text too, opening its file if needed.</li></ul><h3>Editing a Value</h3><ul><li>When the descriptor is in the open file and the text is editable, type over a value and press Enter.</li><li>A value that would break the descriptor is refused.</li><li>Multi-line values are changed in the text itself.</li></ul><div class=\"wkcall\"><b>Tip</b><span>Drag the bar between the two lists to resize them.</span></div>",
-      "text": "<p class=\"wklead\">文本下方：文件的描述符，其属性显示在右侧。</p><ul><li>打开一个描述符可查看其内容和链接，例如一个单位、其武器及其弹药。</li><li><b>被引用</b>列出了所有引用该条目的内容；修改该条目将同步更新所有引用处。</li><li>双击一个描述符可在文本中定位该内容。</li><li>列表上方的搜索框可按名称查找任何描述符。</li><li>漏斗按钮可按属性进行筛选，例如筛选所有 MaximumRangeGRU 值大于 2000 的描述符。该数字表示当前启用的筛选条件数量。</li></ul><h3>筛选</h3><ul><li>每个条件由一个属性、一个测试和一个值组成。列表上方的<b>全部</b>或<b>任意</b>用于设置必须匹配的条件数量。</li><li>“属性”列表包含在显示的描述符中找到的属性：此文件，或“所有文件”下的每个读取文件。(名称) 和 (类型) 始终存在。</li><li>条件可以有一个<b>名称</b>，该名称会显示在列表中，而非其详细信息。</li><li>复选框用于启用或禁用条件。右键单击可禁用、复制、移动、剪切、粘贴或删除；“模组”选项卡中的快捷键同样有效。</li><li>值周围的引号将被忽略，且文本不区分大小写。“大于”和“小于”用于比较数字。</li><li>过滤器在未保存时即可生效，并保持启用状态直至被清除。<b>另存为...</b>可按名称保存过滤器；<b>导出</b>和<b>导入...</b>则通过文件共享已保存的过滤器。</li></ul><h3>更多</h3><ul><li>读取其他文件后，会自动查找该文件中的描述符。<b>刷新操作</b>会读取“文件”选项卡中的所有文件。</li><li><b>此文件</b>列出了该文件的描述符。<b>所有文件</b>功能会追踪文件间的链接，例如单位与其武器之间的关联。</li><li>按住 Alt 键点击描述符，可在文本中定位该描述符，必要时会打开其所在文件。</li></ul><h3>编辑数值</h3><ul><li>当描述符位于已打开的文件中且文本可编辑时，直接覆盖原有值并按 Enter 键。</li><li>会导致描述符失效的值将被拒绝。</li><li>多行值需在文本中直接修改。</li></ul><div class=\"wkcall\"><b>提示</b><span>拖动两个列表之间的横条可调整其大小。</span></div>",
-      "machine": true
+      "english": "<p class=\"wklead\">Under the text: the file's descriptors, with their properties on the right.</p><ul><li>Open a descriptor to see its contents and links, like a unit, its weapons and their ammunition.</li><li><b>Used by</b> lists everything referring to it; changing it changes it for all of them.</li><li>Double-click a descriptor to find it in the text.</li><li>The box above the list finds any descriptor by name.</li><li>The funnel button filters by property, like every descriptor with MaximumRangeGRU over 2000. Its number is how many conditions are on.</li></ul><h3>Filter</h3><ul><li>Each condition is a property, a test and a value. <b>all</b> or <b>any</b> above the list sets how many must match.</li><li>The Property list holds properties found in the descriptors shown: this file, or every read file under All files. (Name) and (Type) are always there.</li><li>A condition can have a <b>Name</b>, shown in the list instead of its details.</li><li>The checkbox turns a condition on or off. Right-click to disable, duplicate, move, cut, copy, paste or delete; the Mods tab's keys work too.</li><li>Quotes around values are ignored and text ignores case. \"is greater than\" and \"is less than\" compare numbers.</li><li>A filter works unsaved and stays on until cleared. <b>Save as...</b> keeps it by name; <b>Export</b> and <b>Import...</b> share saved filters as a file.</li></ul><h3>More</h3><ul><li>Hover a name to see where it is declared, in any file on the Files tab, read or not. A few names, such as <span class=\"mono\">~/ETerrainType/Default</span>, are declared in no .ndf file; their tip says that no file on the Files tab declares them.</li><li>A descriptor in another file is found once that file is read. <b>Refresh</b> reads every file on the Files tab.</li><li><b>This file</b> lists this file's descriptors. <b>All files</b> follows links across files, like a unit to its weapon.</li><li>Alt+click a descriptor to find it in the text too, opening its file if needed.</li></ul><h3>Editing a Value</h3><ul><li>When the descriptor is in the open file and the text is editable, type over a value and press Enter.</li><li>A value that would break the descriptor is refused.</li><li>Multi-line values are changed in the text itself.</li></ul><div class=\"wkcall\"><b>Tip</b><span>Drag the bar between the two lists to resize them.</span></div>",
+      "text": "<p class=\"wklead\">文本下方：文件的描述符，其属性显示在右侧。</p><ul><li>打开一个描述符可查看其内容和链接，例如一个单位、其武器及其弹药。</li><li><b>被引用</b>列出了所有引用该条目的内容；修改该条目将同步更新所有引用处。</li><li>双击一个描述符可在文本中定位该内容。</li><li>列表上方的搜索框可按名称查找任何描述符。</li><li>漏斗按钮可按属性进行筛选，例如筛选所有 MaximumRangeGRU 值大于 2000 的描述符。该数字表示当前启用的筛选条件数量。</li></ul><h3>筛选</h3><ul><li>每个条件由一个属性、一个测试和一个值组成。列表上方的<b>全部</b>或<b>任意</b>用于设置必须匹配的条件数量。</li><li>“属性”列表包含在显示的描述符中找到的属性：此文件，或“所有文件”下的每个读取文件。(名称) 和 (类型) 始终存在。</li><li>条件可以有一个<b>名称</b>，该名称会显示在列表中，而非其详细信息。</li><li>复选框用于启用或禁用条件。右键单击可禁用、复制、移动、剪切、粘贴或删除；“模组”选项卡中的快捷键同样有效。</li><li>值周围的引号将被忽略，且文本不区分大小写。“大于”和“小于”用于比较数字。</li><li>过滤器在未保存时即可生效，并保持启用状态直至被清除。<b>另存为...</b>可按名称保存过滤器；<b>导出</b>和<b>导入...</b>则通过文件共享已保存的过滤器。</li></ul><h3>更多</h3><ul><li>将指针悬停在名称上，可查看它在“文件”选项卡中任一文件（无论是否已读取）里的声明位置。少数名称（如 <span class=\"mono\">~/ETerrainType/Default</span>）没有在任何 .ndf 文件中声明；其提示会说明“文件”选项卡中没有文件声明它们。</li><li>读取其他文件后，会自动查找该文件中的描述符。<b>刷新操作</b>会读取“文件”选项卡中的所有文件。</li><li><b>此文件</b>列出了该文件的描述符。<b>所有文件</b>功能会追踪文件间的链接，例如单位与其武器之间的关联。</li><li>按住 Alt 键点击描述符，可在文本中定位该描述符，必要时会打开其所在文件。</li></ul><h3>编辑数值</h3><ul><li>当描述符位于已打开的文件中且文本可编辑时，直接覆盖原有值并按 Enter 键。</li><li>会导致描述符失效的值将被拒绝。</li><li>多行值需在文本中直接修改。</li></ul><div class=\"wkcall\"><b>提示</b><span>拖动两个列表之间的横条可调整其大小。</span></div>",
+      "machine": false
     },
     "Help.Group.Armory": {
       "english": "Armory",
@@ -18429,11 +18414,6 @@
       "text": "（没有文件：请选择来源或检查文件筛选）",
       "machine": true
     },
-    "Editor.Syntax.NotRead": {
-      "english": "Not in the files read so far. {number} listed file is not read yet; Search all files looks in it too.|Not in the files read so far. {number} listed files are not read yet; Search all files looks in them too.",
-      "text": "不在已读取的文件中。列表中还有 {number} 个文件尚未读取；“搜索所有文件”也会在其中查找。",
-      "machine": true
-    },
     "Editor.Syntax.UnreadNote": {
       "english": "{number} listed file is not read yet.|{number} listed files are not read yet.",
       "text": "列表中还有 {number} 个文件尚未读取。",
@@ -18483,6 +18463,121 @@
       "english": "<h2>1.1.2</h2>\r\n<h3>Changed</h3>\r\n<ul>\r\n  <li>What's New after an update lists every version since the one you had, not only the newest.</li>\r\n</ul>\r\n",
       "text": "<h2>1.1.2</h2>\r\n<h3>更改</h3>\r\n<ul>\r\n  <li>更新后，“新内容”会列出自您原有版本以来的每个版本，而不仅是最新版本。</li>\r\n</ul>\r\n",
       "machine": true
+    },
+    "Units.Tabs.Field.Slots.OneDivision": {
+      "english": "This row is for {division} only. Other divisions keep theirs. The label and tooltip are for every division.",
+      "text": "此行仅适用于 {division}。其他师保留各自的行。标签和提示适用于所有师。",
+      "machine": true
+    },
+    "Main.WhatsNew.Title": {
+      "english": "What's New",
+      "text": "新功能",
+      "machine": true
+    },
+    "Rules.NewRule.Name.Edit": {
+      "english": "New rule",
+      "text": "新规则",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Add": {
+      "english": "New add descriptor",
+      "text": "新的添加描述符",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Clone": {
+      "english": "New clone descriptor",
+      "text": "新的克隆描述符",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Remove": {
+      "english": "New remove descriptors",
+      "text": "新的删除描述符",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Replace": {
+      "english": "New find and replace",
+      "text": "新的查找和替换",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Scale": {
+      "english": "New scale",
+      "text": "新比例",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Formula": {
+      "english": "New formula",
+      "text": "新公式",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Table": {
+      "english": "New table",
+      "text": "新表格",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Lookup": {
+      "english": "New lookup",
+      "text": "新查找",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Text": {
+      "english": "New texts",
+      "text": "新文本",
+      "machine": false
+    },
+    "Rules.NewRule.Name.File": {
+      "english": "New file",
+      "text": "新文件",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Check": {
+      "english": "New check",
+      "text": "新检查",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Group": {
+      "english": "New group",
+      "text": "新分组",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Variable": {
+      "english": "New variable",
+      "text": "新变量",
+      "machine": false
+    },
+    "Editor.Value.UnknownName.Number": {
+      "english": "{name} takes a number. {value} is not one, and no file read declares it.",
+      "text": "{name} 需要一个数字。{value} 不是数字，且已读取的文件中没有声明它。",
+      "machine": false
+    },
+    "Editor.Value.UnknownName.Boolean": {
+      "english": "{name} takes True or False. {value} is neither, and no file read declares it.",
+      "text": "{name} 需要 True 或 False。{value} 两者都不是，且已读取的文件中没有声明它。",
+      "machine": false
+    },
+    "Editor.Value.UnknownName.Why": {
+      "english": "Check the spelling, or that the file declaring it is on the Files tab.",
+      "text": "请检查拼写，或确认声明它的文件在“文件”选项卡中。",
+      "machine": false
+    },
+    "Editor.Syntax.LookingInListed": {
+      "english": "Not in the files read. Looking in the other listed files ({done} of {total}).",
+      "text": "不在已读取的文件中。正在其他列出的文件中查找（{done}/{total}）。",
+      "machine": false
+    },
+    "Editor.Syntax.NotListed": {
+      "english": "No file on the Files tab declares it.",
+      "text": "“文件”选项卡中没有文件声明它。",
+      "machine": false
+    },
+    "Editor.GoTo.NotListed": {
+      "english": "No file on the Files tab declares {name}.",
+      "text": "“文件”选项卡中没有文件声明 {name}。",
+      "machine": false
+    },
+    "Editor.GoTo.StillLooking": {
+      "english": "{name} is not in the files read. Still looking in the other listed files ({done} of {total}); try again in a moment.",
+      "text": "{name} 不在已读取的文件中。仍在其他列出的文件中查找（{done}/{total}）；请稍后再试。",
+      "machine": false
     }
   }
 }

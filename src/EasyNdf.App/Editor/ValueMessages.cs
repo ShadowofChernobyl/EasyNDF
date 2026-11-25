@@ -29,6 +29,8 @@ public static class ValueMessages
         ValueProblemKind.NoSuchImpact => Texts.Get("Editor.Value.NoSuchImpact", ("value", problem.Value.Trim('\'', '"'))),
         ValueProblemKind.MissingValue => Texts.Get("Editor.Value.MustBeSet", ("name", problem.Name)),
         ValueProblemKind.UnknownClass => Texts.Get("Editor.Value.UnknownClass", ("name", problem.Name), ("game", problem.Value)),
+        ValueProblemKind.UnknownName => Texts.Get(problem.Expected == "boolean" ? "Editor.Value.UnknownName.Boolean" : "Editor.Value.UnknownName.Number",
+            ("name", problem.Name), ("value", problem.Value)),
         ValueProblemKind.NumberGivenTwice => Texts.Get("Editor.Value.NumberGivenTwice", ("name", problem.Name), ("value", problem.Value), ("first", problem.OtherValue), ("second", problem.Key)),
         _ => Texts.Get("Editor.Value.Negative", ("name", problem.Name)),
     };
@@ -56,7 +58,8 @@ public static class ValueMessages
     /// works with a warning, which says what the value becomes.
     /// </summary>
     public static string WhyOf(ValueProblem problem) =>
-        Texts.Get(problem.IsWarning ? "Editor.Value.NegativeWhy"
+        Texts.Get(problem.Kind == ValueProblemKind.UnknownName ? "Editor.Value.UnknownName.Why"
+            : problem.IsWarning ? "Editor.Value.NegativeWhy"
             : problem.CrashesGame ? "Editor.Value.GameCrashes"
             : problem.Kind is ValueProblemKind.NoAmmoBox or ValueProblemKind.EmptyAmmoBox or ValueProblemKind.EmptyPack or ValueProblemKind.MountWithoutName
                 ? "Editor.Value.GenerationFailsFrom210942"

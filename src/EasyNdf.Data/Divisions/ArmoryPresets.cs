@@ -221,6 +221,20 @@ public static class ArmoryPresets
                 TakeBackWeapon(mod, weapon, (string?)armory[DivisionChangeRules.ChangeKey]);
                 continue;
             }
+            // a tab's rules (Edit Tab, the tab order): the tab's change is taken back whole, its name, tooltip and cost
+            // rows together; the order rule gives the game's order back. Without this they were made again at once
+            string tabChange = (string?)armory[DivisionChangeRules.ChangeKey] ?? "";
+            if (tabChange == "Order")
+            {
+                mod.TabOrder = null;
+                continue;
+            }
+            if (tabChange.StartsWith("Tab:", StringComparison.Ordinal) || tabChange.StartsWith("TabRow:", StringComparison.Ordinal))
+            {
+                string tab = tabChange[(tabChange.IndexOf(':') + 1)..];
+                mod.Tabs.RemoveAll(each => each.Factory == tab);
+                continue;
+            }
             string division = (string?)armory[DivisionChangeRules.DivisionKey] ?? "";
             if (DivisionChanges.EntryOf(mod, division) is not ModDivision entry) continue;
             if (entry.IsNew && DivisionChangeRules.PartOf(rule) == ArmoryPart.Battlegroups)

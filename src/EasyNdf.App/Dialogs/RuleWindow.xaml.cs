@@ -89,7 +89,8 @@ public partial class RuleWindow : UserControl
             ScanChoice.ClearValue(MaxWidthProperty);
             ScanChoice.ClearValue(Controls.FlexRow.GrowProperty);
             Controls.FlexRow.SetGrow(joined, 1);
-            Controls.FlexRow.SetBasis(joined, 150);
+            // small enough for Done and Cancel to stay on the line in German and Russian; a long name is cut short, with a tooltip
+            Controls.FlexRow.SetBasis(joined, 110);
             DockPanel.SetDock(scanFunnel, Dock.Right);
             joined.Children.Add(scanFunnel);
             joined.Children.Add(ScanChoice);
