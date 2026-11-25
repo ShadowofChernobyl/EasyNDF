@@ -173,13 +173,30 @@ public partial class MainView : UserControl
     /// The version button: what changed in the newest version only, read from the change log (from its first version
     /// heading to the next), so it follows the change log without being written twice.
     /// </summary>
-    public void ShowLatestChanges()
+    public void ShowLatestChanges() => ShowChangesSince(null);
+
+    /// <summary>
+    /// What's New with every version newer than <paramref name="since"/> (the version the user had before updating),
+    /// newest first; only the newest when that version is not known.
+    /// </summary>
+    public void ShowChangesSince(string? since)
     {
         string log = ChangeLogText();
         int first = log.IndexOf("<h2>", StringComparison.Ordinal);
         if (first < 0) { ShowChangeLog(); return; }
         int next = log.IndexOf("<h2>", first + 4, StringComparison.Ordinal);
         string latest = next < 0 ? log[first..] : log[first..next];
+        if (Version.TryParse(since, out Version? before))
+        {
+            var newer = new System.Text.StringBuilder();
+            foreach (string piece in log[first..].Split("<h2>", StringSplitOptions.RemoveEmptyEntries))
+            {
+                int end = piece.IndexOf("</h2>", StringComparison.Ordinal);
+                if (end < 0 || !Version.TryParse(piece[..end].Trim(), out Version? version) || version <= before) continue;
+                newer.Append("<h2>").Append(piece);
+            }
+            if (newer.Length > 0) latest = newer.ToString();
+        }
         (FrameworkElement text, _, _) = new Help.WikiRenderer(Help.PageLook.ChangeLog).Render(latest);
         TextWindow.Open("What's New", text);
     }
@@ -190,6 +207,8 @@ public partial class MainView : UserControl
     /// </summary>
     public void ShowLatestChangesAfterUpdate()
     {
+        string? before = AppData.Current.State[WhatsNewKey] is System.Text.Json.Nodes.JsonValue seen && seen.TryGetValue(out string? shown) ? shown
+            : AppData.Current.State["welcomed"] is System.Text.Json.Nodes.JsonValue welcomed && welcomed.TryGetValue(out string? first) ? first : null;
         if (!WhatsNewIsDue(AppData.Current.State, AppVersion))
         {
             RememberBundledMod();
@@ -197,14 +216,14 @@ public partial class MainView : UserControl
         }
         AppData.Current.State[WhatsNewKey] = AppVersion;
         AppData.Current.SaveState();
-        ShowLatestChangesThenOfferBundledMod();
+        ShowLatestChangesThenOfferBundledMod(before);
     }
 
     /// <summary>The question about the mod the app comes with first, then What's New: one popup at a time.</summary>
-    private async void ShowLatestChangesThenOfferBundledMod()
+    private async void ShowLatestChangesThenOfferBundledMod(string? before)
     {
         await OfferBundledModUpdate();
-        ShowLatestChanges();
+        ShowChangesSince(before);
     }
 
     /// <summary>Where the saved state keeps the version What's New was last shown for.</summary>

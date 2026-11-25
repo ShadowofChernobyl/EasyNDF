@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>EasyNDF</AssemblyName>
     <RootNamespace>EasyNdf.App</RootNamespace>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <ApplicationIcon>Assets\EasyNDF.ico</ApplicationIcon>
     <!-- Startup.cs: the installer's steps (Velopack) before the app; a build that names its own start keeps it -->
     <StartupObject Condition="'$(StartupObject)' == ''">EasyNdf.App.Startup</StartupObject>
@@ -75,4 +75,12 @@
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
   </ItemGroup>
 
+  <!--
+    A release build must start through Startup.cs: it runs the installer's steps (VelopackApp) before the app, and
+    without them the installed app never looks for updates (1.0.2 and 1.1.0 shipped that way). Any other start-up
+    object (a workbench build's) stops a Release build here.
+  -->
+  <Target Name="RequireInstallerStart" BeforeTargets="Build" Condition="'$(Configuration)' == 'Release' And '$(StartupObject)' != 'EasyNdf.App.Startup'">
+    <Error Text="A Release build of EasyNDF must start from EasyNdf.App.Startup (StartupObject is '$(StartupObject)'). Without it the installed app never looks for updates. Build releases from a clean copy of the repository." />
+  </Target>
 </Project>

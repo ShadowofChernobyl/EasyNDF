@@ -18478,6 +18478,11 @@
       "english": "<h2>1.1.1</h2>\r\n<h3>Fixed</h3>\r\n<ul>\r\n  <li>Updates: EasyNDF 1.0.2 and 1.1.0 never looked for a new version. This version does again. If you are on 1.0.2 or 1.1.0, install this one by hand from GitHub.</li>\r\n</ul>\r\n<h3>Added</h3>\r\n<ul>\r\n  <li>Settings &gt; Data: Check Now looks for a new version at once.</li>\r\n</ul>\r\n",
       "text": "<h2>1.1.1</h2>\r\n<h3>修复</h3>\r\n<ul>\r\n  <li>更新：EasyNDF 1.0.2 和 1.1.0 从不检查新版本。此版本已恢复检查。如果您使用的是 1.0.2 或 1.1.0，请从 GitHub 手动安装此版本。</li>\r\n</ul>\r\n<h3>新增</h3>\r\n<ul>\r\n  <li>设置 &gt; 数据：“立即检查”会立即查找新版本。</li>\r\n</ul>\r\n",
       "machine": true
+    },
+    "Help.ChangeLog.1.1.2.Html": {
+      "english": "<h2>1.1.2</h2>\r\n<h3>Changed</h3>\r\n<ul>\r\n  <li>What's New after an update lists every version since the one you had, not only the newest.</li>\r\n</ul>\r\n",
+      "text": "<h2>1.1.2</h2>\r\n<h3>更改</h3>\r\n<ul>\r\n  <li>更新后，“新内容”会列出自您原有版本以来的每个版本，而不仅是最新版本。</li>\r\n</ul>\r\n",
+      "machine": true
     }
   }
 }
