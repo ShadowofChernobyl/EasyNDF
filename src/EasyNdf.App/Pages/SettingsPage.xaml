@@ -307,7 +307,10 @@
                             </controls:WrapRow>
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.Updates}" Note="{t:Text Settings.Updates.Note}">
-                            <CheckBox x:Name="UpdatesSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="checkUpdates" />
+                            <controls:WrapRow Gap="6">
+                                <CheckBox x:Name="UpdatesSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="checkUpdates" VerticalAlignment="Center" />
+                                <Button Content="{t:Text Settings.CheckUpdatesNow}" ToolTip="{t:Text Settings.CheckUpdatesNow.Tip}" Click="CheckUpdatesClicked" />
+                            </controls:WrapRow>
                         </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.AskBundledMod}" Note="{t:Text Settings.AskBundledMod.Note}">
                             <CheckBox x:Name="AskBundledModSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="askBundledModUpdate" />

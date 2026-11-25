@@ -17,23 +17,41 @@ public static class Updates
     public const string Repository = "https://github.com/ShadowofChernobyl/EasyNDF";
 
     /// <summary>Looks for a newer release, in the background; says so when there is one. Nothing is said otherwise.</summary>
-    public static async void CheckSoon()
+    public static void CheckSoon()
     {
         if (App.RunsTests || AppData.Current.Settings["checkUpdates"]?.GetValue<bool>() == false) return;
+        Check(sayAll: false);
+    }
+
+    /// <summary>Settings › Data › Check Now: looks at once, whatever the Updates switch, and says what it found.</summary>
+    public static void CheckNow() => Check(sayAll: true);
+
+    private static async void Check(bool sayAll)
+    {
         UpdateManager manager;
         UpdateInfo? update;
         try
         {
             manager = new UpdateManager(new GithubSource(Repository, null, false));
-            if (!manager.IsInstalled) return;
+            if (!manager.IsInstalled)
+            {
+                if (sayAll) Notices.Say(Texts.Get("Main.Update.NotInstalled"), NoticeKind.Caution);
+                return;
+            }
+            if (sayAll) Notices.Say(Texts.Get("Main.Update.Checking"), NoticeKind.Working);
             update = await manager.CheckForUpdatesAsync();
         }
         // offline, or GitHub busy: the next start looks again
         catch (Exception problem) when (problem is not OutOfMemoryException)
         {
+            if (sayAll) Notices.Say(Texts.Get("Main.Update.CheckFailed", ("reason", problem.Message)), NoticeKind.Problem);
             return;
         }
-        if (update is null) return;
+        if (update is null)
+        {
+            if (sayAll) Notices.Say(Texts.Get("Main.Update.Latest", ("version", typeof(Updates).Assembly.GetName().Version?.ToString(3) ?? "")), NoticeKind.Done);
+            return;
+        }
         string version = update.TargetFullRelease.Version.ToString();
         Notices.Say(Texts.Get("Main.Update.Ready", ("version", version)), NoticeKind.Done,
             new NoticeAction(Texts.Get("Main.Update.Now"), () => Install(manager, update, version)));

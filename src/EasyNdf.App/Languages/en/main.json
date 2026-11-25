@@ -139,5 +139,9 @@
   "Main.BundledMod.Ask": "This version of EasyNDF comes with a newer {mod}. Update yours as well?\n\nUpdate replaces its rule sets and Armory changes with the new ones. Keep Both adds the new one beside yours, switched off.",
   "Main.BundledMod.Update": "Update",
   "Main.BundledMod.NotNow": "Not Now",
-  "Main.BundledMod.DontShow": "Please don't show again"
+  "Main.BundledMod.DontShow": "Please don't show again",
+  "Main.Update.Checking": "Looking for a new version…",
+  "Main.Update.Latest": "EasyNDF {version} is the latest version.",
+  "Main.Update.NotInstalled": "This copy of EasyNDF wasn't installed with EasyNDF-Setup.exe, so it can't update itself. Download the new version from GitHub.",
+  "Main.Update.CheckFailed": "Couldn't look for a new version: {reason}"
 }
