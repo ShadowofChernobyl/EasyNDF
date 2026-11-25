@@ -66,7 +66,7 @@
                             <TextBlock x:Name="SlotsLabel" Foreground="{DynamicResource muted}" Margin="0,7,0,3" />
                             <TextBox x:Name="SlotsBox" FontFamily="{DynamicResource mono}" FontSize="12" ToolTip="{t:Text Units.Tabs.Field.Slots.Tip}"
                                      AutomationProperties.LabeledBy="{Binding ElementName=SlotsLabel}" />
-                            <TextBlock Style="{StaticResource Note}" Margin="0,6,0,0" Text="{t:Text Units.Tabs.Field.Slots.Note}" />
+                            <TextBlock x:Name="SlotsNote" Style="{StaticResource Note}" Margin="0,6,0,0" />
                         </StackPanel>
                         <TextBlock x:Name="Problem" Foreground="{DynamicResource caution}" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed" />
                         <TextBlock x:Name="KeepNote" Style="{StaticResource Note}" Margin="0,6,0,0" Text="{t:Text Units.Tabs.Edit.KeepNote}" />

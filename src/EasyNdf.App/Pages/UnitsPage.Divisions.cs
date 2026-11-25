@@ -184,7 +184,7 @@ public partial class UnitsPage
         ShowModNote(EntryShown(descriptor));
         if (DivisionCardsContent.Content is not StackPanel view) return;
         Dictionary<string, Unit> shownUnits = ByDescriptor(shown);
-        DivisionGroup? group = DivisionGroups.Of(chosenDivision, shownUnits, Game, factory, unitsByDescriptor, withEmpty: true).FirstOrDefault();
+        DivisionGroup? group = DivisionGroups.Of(chosenDivision, shownUnits, Game, factory, unitsByDescriptor, withEmpty: true, tabOrder: TabsShown()).FirstOrDefault();
         if (group is not null) DivisionCards.RedrawHeading(view, group, foldedCategories.Contains(factory), CategoryFoldClicked, this);
     }
 
@@ -434,7 +434,7 @@ public partial class UnitsPage
         if (chosenDivision is null) return;
         Division division = chosenDivision;
         Dictionary<string, Unit> shownUnits = ByDescriptor(shown);
-        List<DivisionGroup> groups = DivisionGroups.Of(division, shownUnits, Game, filter.Factory, unitsByDescriptor, withEmpty: true);
+        List<DivisionGroup> groups = DivisionGroups.Of(division, shownUnits, Game, filter.Factory, unitsByDescriptor, withEmpty: true, tabOrder: TabsShown());
         Dictionary<string, int> inDivision = DivisionGroups.CountsByFactory(division, unitsByDescriptor);
         divisionCardColumns = CardRowView.ColumnsFor(DivisionCardsRoom());
         SessionLog.Write("Armory", $"Division {division.Name} ({division.CfgName}): {division.Units.Count} units in it, {inDivision.Values.Sum()} known to the source,"

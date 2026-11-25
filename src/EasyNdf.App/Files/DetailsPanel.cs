@@ -257,7 +257,7 @@ public sealed class DetailsPanel : DockPanel
         else runLine.Children.Add(ended);
 
         TextBlock counts = DetailsText.Line("muted");
-        counts.Text = Texts.Get("Files.Details.RunCounts", ("edits", DetailsCounts.Edits(run.Result.Edits)),
+        counts.Text = Texts.Get("Files.Details.RunCounts", ("edits", DetailsCounts.Edits(run.Result.AllEdits)),
             ("holds", FileStatus.Holds(run.Info.Descriptors, run.Info.Constants, run.Info.Unnamed)), ("milliseconds", Texts.Number(run.Milliseconds)));
         runLine.Children.Add(counts);
     }

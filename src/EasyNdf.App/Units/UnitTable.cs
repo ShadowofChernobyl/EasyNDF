@@ -67,12 +67,21 @@ public sealed record UnitTableColumn(string Key, double Width, Func<Unit, double
     /// first. Until the user drags a column, the Unit column (the first) also takes any room the others leave in a list
     /// this wide.
     /// </summary>
-    public static double[] Widths(IReadOnlyList<UnitTableColumn> columns, double listWidth, IReadOnlyDictionary<string, double> chosen)
+    /// <param name="headingWidth">The width a column's heading needs in the language shown: a column not dragged is made that wide, within its limits, so its heading is not cut short.</param>
+    public static double[] Widths(IReadOnlyList<UnitTableColumn> columns, double listWidth, IReadOnlyDictionary<string, double> chosen, Func<UnitTableColumn, double>? headingWidth = null)
     {
-        double[] widths = [.. columns.Select(column => column.Fit(chosen.TryGetValue(column.Key, out double width) ? width : column.Width))];
+        double[] widths = [.. columns.Select(column => column.Fit(chosen.TryGetValue(column.Key, out double width) ? width
+            : Math.Max(column.Width, column.Key == columns[0].Key ? 0 : headingWidth?.Invoke(column) ?? 0)))];
         // the Unit column fills the room until a column is dragged; from then on every column keeps its own width, and
         // dragging an edge moves only that edge
-        if (!chosen.ContainsKey(columns[0].Key)) widths[0] = Math.Max(widths[0], listWidth - widths.Skip(1).Sum());
+        if (!chosen.ContainsKey(columns[0].Key))
+        {
+            // headings widened for a language take their room from the Unit column, down to its least, before the
+            // table needs a sideways scrollbar it did not need in English
+            double before = columns.Skip(1).Sum(column => column.Fit(chosen.TryGetValue(column.Key, out double width) ? width : column.Width));
+            double least = listWidth - before >= widths[0] ? columns[0].Smallest : widths[0];
+            widths[0] = Math.Max(least, listWidth - widths.Skip(1).Sum());
+        }
         return widths;
     }
 

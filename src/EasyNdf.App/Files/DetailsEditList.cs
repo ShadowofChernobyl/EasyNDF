@@ -255,7 +255,7 @@ internal sealed class DetailsEditList : Bevel
         ruleCounts.Visibility = RunDetails.MakesNoEdits(stats.Kind) ? Visibility.Collapsed : Visibility.Visible;
         if (ruleCounts.Visibility != Visibility.Visible) return;
         // each count stays on one line: the line wraps between counts
-        ruleCounts.Inlines.Add(DetailsText.Piece(WithoutBreaks(DetailsCounts.Matched(stats.Matched)) + " · " + WithoutBreaks(DetailsCounts.Edits(stats.Edits)), null));
+        ruleCounts.Inlines.Add(DetailsText.Piece(WithoutBreaks(DetailsCounts.Matched(stats.Matched)) + " · " + WithoutBreaks(DetailsCounts.Edits(stats.AllEdits)), null));
         if (stats.Skipped == 0) return;
         ruleCounts.Inlines.Add(DetailsText.Piece(" · ", null));
         ruleCounts.Inlines.Add(DetailsText.Piece(WithoutBreaks(DetailsCounts.Skipped(stats.Skipped)), "caution"));
@@ -373,8 +373,8 @@ internal sealed class DetailsEditList : Bevel
                 }
                 break;
         }
-        if (stats.Edits > logged)
-            lines.Add(new EndNote(Texts.Get("Files.Details.ShowingFirst", ("shown", Texts.Number(logged)), ("edits", Texts.Number(stats.Edits)))));
+        if (stats.AllEdits > logged)
+            lines.Add(new EndNote(Texts.Get("Files.Details.ShowingFirst", ("shown", Texts.Number(logged)), ("edits", Texts.Number(stats.AllEdits)))));
         ShowHeadings(edits);
         list.ShowLines(lines, fromTheTop: true);
     }

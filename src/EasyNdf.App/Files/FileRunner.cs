@@ -1190,12 +1190,13 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
                 ValueErrors = valueErrors,
                 Unchanged = write && result.ParseError == "" && result.Edits == 0,
             };
-            entry.Edits = result.Edits;
+            // a changed variable counts as an edit in what is shown; whether the file's text changed is result.Edits
+            entry.Edits = result.AllEdits;
             entry.WarningCount = result.Warnings.Count;
             // When nothing at all changed, the status already says so.
-            entry.IdleRuleCount = result.Edits > 0 ? result.Stats.Count(RunRecord.IsIdle) : 0;
+            entry.IdleRuleCount = result.AllEdits > 0 ? result.Stats.Count(RunRecord.IsIdle) : 0;
 
-            string edits = Texts.Count("Files.Run.Edits", result.Edits, ("count", FileStatus.Count(result.Edits)));
+            string edits = Texts.Count("Files.Run.Edits", result.AllEdits, ("count", FileStatus.Count(result.AllEdits)));
             // "Hold back files that fail the safety check" off: written anyway, the row still red with what is wrong
             if (write && !settings.HoldBackFailing && text is not null && (result.ParseError != "" || valueErrors.Count > 0))
             {

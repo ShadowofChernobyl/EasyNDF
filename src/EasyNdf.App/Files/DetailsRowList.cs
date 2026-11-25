@@ -183,7 +183,7 @@ internal static class DetailsCounts
     {
         string kind = Rules.RuleKindNames.Of(rule.Kind);
         if (RunDetails.MakesNoEdits(rule.Kind)) return kind;
-        return Texts.Get("Files.Details.RuleTip", ("kind", kind), ("matched", Matched(rule.Matched)), ("edits", Edits(rule.Edits)), ("skipped", Skipped(rule.Skipped)));
+        return Texts.Get("Files.Details.RuleTip", ("kind", kind), ("matched", Matched(rule.Matched)), ("edits", Edits(rule.AllEdits)), ("skipped", Skipped(rule.Skipped)));
     }
 
     /// <summary>"2 errors".</summary>

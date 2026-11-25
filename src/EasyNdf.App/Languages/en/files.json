@@ -168,7 +168,6 @@
   "Files.Details.Meta.Texts": "texts",
   "Files.Details.Meta.Off": "off",
   "Files.Details.Meta.NoEdits": "no edits",
-  "Files.Details.Meta.VariableChanges": "{count} variable change|{count} variable changes",
   "Files.Details.RuleTip": "{kind}: {matched}, {edits}, {skipped}",
   "Files.Details.GroupTip.Idle": "{rules}, {idle} changed nothing",
   "Files.Details.OpenRule": "Open Rule",

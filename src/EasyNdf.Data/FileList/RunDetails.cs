@@ -215,7 +215,7 @@ public sealed class RunDetails
         RuleStats rule = Stats[index];
         return filter switch
         {
-            RuleFilter.WithEdits => rule.Edits > 0,
+            RuleFilter.WithEdits => rule.AllEdits > 0,
             RuleFilter.ChangedNothing => RunRecord.IsIdle(rule),
             RuleFilter.Skipped => rule.Skipped > 0,
             RuleFilter.Warnings => warnings.ContainsKey(index),

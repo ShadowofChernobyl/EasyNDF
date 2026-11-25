@@ -63,7 +63,9 @@ public partial class EditorPage
             case "name":
                 return NameTip(v, wrong, word, text, line, definedHere: true);
             case "ref":
-                return NameTip(v, wrong, SyntaxWords.ReferredName(word), text, line, definedHere: false);
+                // ~/ETerrainType/Default names a value inside ETerrainType, not an object called Default: the whole path is the name
+                return NameTip(v, wrong, word.StartsWith("~/", StringComparison.Ordinal) && word.IndexOf('/', 2) > 0 ? word[2..] : SyntaxWords.ReferredName(word),
+                    text, line, definedHere: false);
             case "const":
                 if (word is "True" or "False" or "true" or "false")
                     return SyntaxTips.Note(wrong, word, Texts.Get("Editor.Syntax.Kind.YesNo"), Texts.Get("Editor.Syntax.TrueFalse"));
@@ -145,13 +147,18 @@ public partial class EditorPage
         ReferenceIndex index = ReferenceIndex.Of([.. Files?.Entries ?? []]);
         bool known = index.Names.TryGetValue(name, out ReferenceIndex.Declared declared);
         (int Start, int End)? here = SyntaxWords.DeclarationIn(text, name);
+        // not in the files read: where a listed file that is not read yet declares it
+        ListedNames.Place? listed = null;
+        bool listedReady = true;
+        if (!known && here is null && !definedHere) listed = ListedNames.Find([.. Files?.Entries ?? []], name, out listedReady);
         bool inThisFile = definedHere || (here is not null && (!known || declared.Entry == v.Entry));
         // the read files' declaration is this one, unless this file declares its own (a private constant of the same
         // name in another file, or a file opened on its own): then only this file's uses are counted
         bool sameDeclaration = known && (!inThisFile || declared.Entry == v.Entry);
         string type = sameDeclaration && declared.Type != "" ? declared.Type
             : here is { } at ? SyntaxWords.TypeDeclaredOn(text[at.Start..Math.Min(text.Length, at.Start + 400)].Split('\n')[0], name) ?? "" : "";
-        string kind = type != "" ? type : inThisFile || known ? Texts.Get("Editor.Syntax.Kind.Constant") : Texts.Get("Editor.Syntax.Kind.Reference");
+        if (type == "" && listed is { } elsewhere) type = elsewhere.Type;
+        string kind = type != "" ? type : inThisFile || known || listed is not null ? Texts.Get("Editor.Syntax.Kind.Constant") : Texts.Get("Editor.Syntax.Kind.Reference");
         StackPanel tip = SyntaxTips.Start(wrong, name, kind);
 
         var said = new List<string>();
@@ -163,12 +170,14 @@ public partial class EditorPage
             said.Add((users > 0 ? Texts.Count("Editor.Syntax.UsedBy", users, ("number", Texts.Number(users))) : Texts.Get("Editor.Syntax.UsedByNone")) + UnreadNote());
         }
         else if (inThisFile) said.Add(UsedInFile(Math.Max(0, UsesInText(text, name) - 1)));
-        else
+        else if (listed is { } place) said.Add(Texts.Get("Editor.Syntax.DefinedIn", ("file", place.Entry.Name), ("line", Texts.Number(place.Line))));
+        else if (!listedReady)
         {
-            // only the files read so far are known: a name declared in a listed file that is not read yet is not "missing"
-            int unread = (Files?.Entries ?? []).Count(entry => entry.Source is not null) - index.Files.Count;
-            said.Add(unread > 0 ? Texts.Count("Editor.Syntax.NotRead", unread, ("number", Texts.Number(unread))) : Texts.Get("Editor.Syntax.NotLoaded"));
+            // the listed files' names are being gathered: until they are, the files read are all that is known
+            (int done, int total) = ListedNames.Progress;
+            said.Add(Texts.Get("Editor.Syntax.LookingInListed", ("done", Texts.Number(done)), ("total", Texts.Number(total))));
         }
+        else said.Add(Texts.Get("Editor.Syntax.NotListed"));
         if (said.Count > 0) SyntaxTips.Add(tip, string.Join(" ", said));
 
         if (inThisFile && here is { } span)

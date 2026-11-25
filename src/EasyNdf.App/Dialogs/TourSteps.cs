@@ -179,7 +179,7 @@ public sealed partial class TourOverlay
             new(T("Tour.Mods.RuleName"), () => rule.Parts?.NameBox, null, tab, LookOnly: false, SkipIf: InRuleSteps, OnEnter: () =>
             {
                 if (rule.Parts?.NameBox is TextBox name) { name.Focus(); name.SelectAll(); }
-            }, Show: InRule, Ready: () => rule.Parts?.NameBox?.Text.Trim() is { Length: > 0 } typed && typed != "New rule"),
+            }, Show: InRule, Ready: () => rule.Parts?.NameBox?.Text.Trim() is { Length: > 0 } typed && typed != Texts.Get("Rules.NewRule.Name.Edit")),
             new(T("Tour.Mods.Scope"), () => rule.Parts?.ScopeRow, null, tab, SkipIf: InRuleSteps, Show: InRule),
             new(T("Tour.Mods.Gate"), () => rule.Parts?.GateBox, null, tab, SkipIf: InRuleSteps, Show: InRule),
             new(T("Tour.Mods.Scan"), () => rule.ScanChoice, null, tab, SkipIf: InRuleSteps, Show: InRule),

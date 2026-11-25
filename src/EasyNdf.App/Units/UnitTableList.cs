@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using EasyNdf.App.Text;
 using EasyNdf.Data.Game;
@@ -129,7 +130,7 @@ public sealed class UnitTableList : ItemsControl
     public void Fill()
     {
         if (selection is null || actions is null) return;
-        widths = UnitTableColumn.Widths(columns, Room(), ChosenWidths());
+        widths = UnitTableColumn.Widths(columns, Room(), ChosenWidths(), HeadingWidth);
         headings.Show(game, columns, widths, sortKey, sortAscending);
         UnitTableColumn sortColumn = columns.First(column => column.Key == sortKey);
         List<Unit> sorted = sortColumn.Sort(units, sortAscending);
@@ -153,6 +154,15 @@ public sealed class UnitTableList : ItemsControl
             });
     }
 
+    /// <summary>The width a column's heading needs, with its padding and the sort arrow: German and Russian headings are longer.</summary>
+    private double HeadingWidth(UnitTableColumn column)
+    {
+        var text = new FormattedText(column.Heading(game), System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+            new Typeface(TextElement.GetFontFamily(headings), FontStyles.Normal, column.Key == sortKey ? FontWeights.Bold : FontWeights.Normal, FontStretches.Normal), TextElement.GetFontSize(headings), Brushes.Black, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        // the cell's padding (7 a side), and the arrow of the column sorted by
+        return Math.Ceiling(text.WidthIncludingTrailingWhitespace) + 16 + (column.Key == sortKey ? 14 : 0);
+    }
+
     /// <summary>The width the columns have across, beside the scrollbar, in the rows' own units: less when zoomed in.</summary>
     private double Room() => (ActualWidth - ScrollBarWidth) / Scale;
 
@@ -160,7 +170,7 @@ public sealed class UnitTableList : ItemsControl
     private void Resized(object sender, SizeChangedEventArgs e)
     {
         if (Visibility != Visibility.Visible || selection is null) return;
-        double[] fitted = UnitTableColumn.Widths(columns, Room(), ChosenWidths());
+        double[] fitted = UnitTableColumn.Widths(columns, Room(), ChosenWidths(), HeadingWidth);
         if (widths.Length == 0) Fill();
         else if (Math.Abs(fitted[0] - widths[0]) >= 1) ShowWidths(fitted);
     }
@@ -244,7 +254,7 @@ public sealed class UnitTableList : ItemsControl
     private void ResizeColumn(string key, double width)
     {
         KeptWidths()[key] = Math.Round(columns.First(column => column.Key == key).Fit(width));
-        ShowWidths(UnitTableColumn.Widths(columns, Room(), ChosenWidths()));
+        ShowWidths(UnitTableColumn.Widths(columns, Room(), ChosenWidths(), HeadingWidth));
     }
 
     /// <summary>

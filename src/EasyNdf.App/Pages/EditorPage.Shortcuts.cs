@@ -274,7 +274,15 @@ public partial class EditorPage
             await ShowDescriptor(declared.Entry, name);
             return;
         }
-        Say(Texts.Get("Editor.GoTo.NotADescriptor", ("name", name)) + UnreadNote(), NoticeKind.Caution);
+        if (ListedNames.Find([.. Files?.Entries ?? []], name, out bool ready) is { } listed)
+        {
+            RememberPlace();
+            await ShowDescriptor(listed.Entry, name);
+            return;
+        }
+        Say(ready ? Texts.Get("Editor.GoTo.NotListed", ("name", name))
+            : Texts.Get("Editor.GoTo.StillLooking", ("name", name), ("done", Texts.Number(ListedNames.Progress.Done)), ("total", Texts.Number(ListedNames.Progress.Total))),
+            NoticeKind.Caution);
     }
 
     /// <summary>

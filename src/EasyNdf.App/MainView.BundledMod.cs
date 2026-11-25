@@ -22,6 +22,12 @@ public partial class MainView
     /// <summary>The setting that lets the question be asked.</summary>
     public const string AskBundledModSetting = "askBundledModUpdate";
 
+    /// <summary>Where the saved state keeps that the question was answered Not Now, so the next start asks again.</summary>
+    public const string BundledModLaterKey = "bundledModLater";
+
+    /// <summary>Whether the question was answered Not Now at an earlier start.</summary>
+    private static bool BundledModAskedLater() => AppData.Current.State[BundledModLaterKey] is JsonValue later && later.TryGetValue(out bool yes) && yes;
+
     /// <summary>A short name for the bundled mod's text: another text, another name.</summary>
     public static string BundledModMark(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..16];
 
@@ -51,6 +57,8 @@ public partial class MainView
     private async Task OfferBundledModUpdate()
     {
         Mod bundled = DefaultMods.TacticalOverhaul;
+        JsonNode? offeredBefore = AppData.Current.State[BundledModKey]?.DeepClone();
+        AppData.Current.State.Remove(BundledModLaterKey);
         bool due = BundledModUpdateIsDue(AppData.Current.State, AppData.Current.Settings, DefaultMods.Text, AppData.Current.Mods.Select(mod => mod.Name), bundled.Name);
         AppData.Current.SaveState();
         if (!due || AppData.Current.Mods.FirstOrDefault(mod => mod.Name == bundled.Name) is not Mod existing) return;
@@ -84,7 +92,17 @@ public partial class MainView
             // beside the user's own, switched off: both on would change every value twice
             ModStack.SetOn(bundled, false);
         }
-        else return;
+        else
+        {
+            // Not Now: asked again at the next start, unless the question was turned off
+            if (never.IsChecked != true)
+            {
+                AppData.Current.State[BundledModKey] = offeredBefore;
+                AppData.Current.State[BundledModLaterKey] = true;
+                AppData.Current.SaveState();
+            }
+            return;
+        }
         // steps to undo taken before this would bring back rule sets that are gone
         History.Forget();
         AppData.Current.TellModsChanged(new ModsChange(PresetsAdded: true));

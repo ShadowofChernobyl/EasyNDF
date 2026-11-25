@@ -38,6 +38,7 @@
     <EmbeddedResource Include="Assets\Tutorial\Ammunition.ndf" LogicalName="TutorialAmmunition.ndf" />
     <!-- the File Editor's guide to WARNO's names: value types, descriptions, choices and limits (see Editor\EditorGuide.cs) -->
     <EmbeddedResource Include="Assets\EditorGuide.json.gz" LogicalName="EditorGuide.json.gz" />
+    <EmbeddedResource Include="Assets\KnownWords.txt" LogicalName="KnownWords.txt" />
     <EmbeddedResource Include="Assets\ReferenceTopics.json" LogicalName="ReferenceTopics.json" />
     <!-- the Help wiki's pages, copied from the HTML app -->
     <!-- the app's English texts, one file per part of the app (see Text\Texts.cs) -->

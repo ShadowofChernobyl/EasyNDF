@@ -3690,11 +3690,6 @@
       "text": "{file}: Der Export entspricht der Quelle.",
       "machine": true
     },
-    "Editor.GoTo.NotADescriptor": {
-      "english": "{name} is not a descriptor of the files read.",
-      "text": "{name} ist kein Deskriptor der gelesenen Dateien.",
-      "machine": true
-    },
     "Editor.Find.NotFound": {
       "english": "\"{text}\" was not found.",
       "text": "„{text}“ wurde nicht gefunden.",
@@ -4697,11 +4692,6 @@
     "Editor.Syntax.DefinedIn": {
       "english": "In {file}, line {line}.",
       "text": "In {file}, Zeile {line}.",
-      "machine": true
-    },
-    "Editor.Syntax.NotLoaded": {
-      "english": "Not in the files read.",
-      "text": "Nicht in den geladenen Dateien enthalten.",
       "machine": true
     },
     "Editor.Syntax.Reading": {
@@ -5717,11 +5707,6 @@
     "Files.Details.Meta.NoEdits": {
       "english": "no edits",
       "text": "keine Änderungen",
-      "machine": true
-    },
-    "Files.Details.Meta.VariableChanges": {
-      "english": "{count} variable change|{count} variable changes",
-      "text": "{count} Variablenänderung|{count} Variablenänderungen",
       "machine": true
     },
     "Files.Details.RuleTip": {
@@ -8422,7 +8407,7 @@
     },
     "Rules.ExportMod": {
       "english": "Export Mod",
-      "text": "Modus „Exportieren“",
+      "text": "Mod exportieren",
       "machine": true
     },
     "Rules.Mod.CopiedToClipboard": {
@@ -8431,13 +8416,13 @@
       "machine": true
     },
     "Rules.Mod.TooLargeToCopy": {
-      "english": "\"{mod}\" is too large for the clipboard ({size} MB with the files it carries). Use Export Mod instead.",
-      "text": "„{mod}“ ist zu groß für die Zwischenablage ({size} MB mit den enthaltenen Dateien). Verwende stattdessen „Mod exportieren“.",
+      "english": "\"{mod}\" is too large for the clipboard ({size} MB with the files it carries). Use Export Mod, To File instead.",
+      "text": "„{mod}“ ist zu groß für die Zwischenablage ({size} MB mit den enthaltenen Dateien). Verwenden Sie stattdessen „Mod exportieren“, „In Datei“.",
       "machine": true
     },
     "Rules.Mod.ClipboardEmpty": {
-      "english": "The clipboard holds no mod. Copy a mod's text first, or use Import Mod for a file.",
-      "text": "Die Zwischenablage enthält keine Mod. Kopiere zuerst den Text einer Mod oder verwende „Mod importieren“ für eine Datei.",
+      "english": "The clipboard holds no mod. Copy a mod's text first, or use Import Mod, From File.",
+      "text": "Die Zwischenablage enthält keinen Mod. Kopieren Sie zuerst den Text eines Mods, oder verwenden Sie „Mod importieren“, „Aus Datei“.",
       "machine": true
     },
     "Rules.Mod.ClipboardName": {
@@ -15192,9 +15177,9 @@
       "machine": true
     },
     "Weapons.About.HarmlessToAllies": {
-      "english": "Doesn't damage your own or allied units. On for 343 weapons, mostly guns, machine guns and rifles.",
-      "text": "Fügt eigenen oder verbündeten Einheiten keinen Schaden zu. Gilt für 343 Waffen, hauptsächlich Kanonen, Maschinengewehre und Gewehre.",
-      "machine": true
+      "english": "Doesn't damage your own or allied units. True for 343 weapons, mostly guns, machine guns and rifles.",
+      "text": "Fügt eigenen oder verbündeten Einheiten keinen Schaden zu. True bei 343 Waffen, hauptsächlich Kanonen, Maschinengewehre und Gewehre.",
+      "machine": false
     },
     "Weapons.About.FireChance": {
       "english": "Chance, from 0 to 1, that a shot landing starts the weapon's Fire, multiplied by how flammable the ground there is. Only weapons with a Fire use it: 0.05 to 1 in the game. With Ignores flammability on, every shot landing starts the Fire.",
@@ -15212,24 +15197,24 @@
       "machine": true
     },
     "Weapons.About.TopArmor": {
-      "english": "Always strikes the target's top armor. On for 41 weapons: bombs and cluster munitions.",
-      "text": "Trifft stets die oberste Panzerung des Ziels. Aktiv bei 41 Waffen: Bomben und Streumunition.",
-      "machine": true
+      "english": "Always strikes the target's top armor. True for 41 weapons: bombs and cluster munitions.",
+      "text": "Trifft stets die oberste Panzerung des Ziels. True bei 41 Waffen: Bomben und Streumunition.",
+      "machine": false
     },
     "Weapons.About.TopArmorOnHit": {
-      "english": "A hit strikes the top armor. On for artillery, mortars and bombs (282 weapons).",
-      "text": "Ein Treffer trifft die oberste Panzerung. Aktiviert für Artillerie, Mörser und Bomben (282 Waffen).",
-      "machine": true
+      "english": "A hit strikes the top armor. True for artillery, mortars and bombs (282 weapons).",
+      "text": "Ein Treffer trifft die oberste Panzerung. True bei Artillerie, Mörsern und Bomben (282 Waffen).",
+      "machine": false
     },
     "Weapons.About.ArmorFromImpact": {
-      "english": "The armor side hit is worked out from where the shot lands, not from where it was fired. On for artillery, mortars and bombs.",
-      "text": "Der Seitentreffer auf die Panzerung wird anhand der Einschlagstelle des Geschosses berechnet, nicht anhand des Abschussortes. Gilt für Artillerie, Mörser und Bomben.",
-      "machine": true
+      "english": "The armor side hit is worked out from where the shot lands, not from where it was fired. True for artillery, mortars and bombs.",
+      "text": "Die getroffene Panzerungsseite ergibt sich aus der Einschlagstelle des Schusses, nicht aus dem Abschussort. True bei Artillerie, Mörsern und Bomben.",
+      "machine": false
     },
     "Weapons.About.IgnoresFlammability": {
-      "english": "Every shot landing starts the weapon's Fire, whatever the ground, without rolling Fire chance (which must still be above 0). Off: Fire chance is multiplied by how flammable the ground is: dense forest 0.8, light forest 0.6, buildings 0.2, rocks 0.1, open ground and water 0. On for the 21 true incendiaries (napalm, flamethrowers).",
-      "text": "Jeder Treffer löst den Brand der Waffe aus, unabhängig vom Untergrund, ohne dass die Brandwahrscheinlichkeit gewürfelt wird (diese muss jedoch weiterhin über 0 liegen). Aus: Die Brandauslösungswahrscheinlichkeit wird mit der Entflammbarkeit des Untergrunds multipliziert: dichter Wald 0,8, lichter Wald 0,6, Gebäude 0,2, Felsen 0,1, offenes Gelände und Wasser 0. Ein für die 21 echten Brandwaffen (Napalm, Flammenwerfer).",
-      "machine": true
+      "english": "If True: every shot landing starts the weapon's Fire, whatever the ground, without rolling Fire chance (which must still be above 0). If False: Fire chance is multiplied by how flammable the ground is: dense forest 0.8, light forest 0.6, buildings 0.2, rocks 0.1, open ground and water 0. True for the 21 true incendiaries (napalm, flamethrowers).",
+      "text": "Wenn True: Jeder Treffer löst den Brand der Waffe aus, unabhängig vom Untergrund, ohne dass die Brandwahrscheinlichkeit gewürfelt wird (diese muss jedoch weiterhin über 0 liegen). Wenn False: Die Brandwahrscheinlichkeit wird mit der Entflammbarkeit des Untergrunds multipliziert: dichter Wald 0,8, lichter Wald 0,6, Gebäude 0,2, Felsen 0,1, offenes Gelände und Wasser 0. True bei den 21 echten Brandwaffen (Napalm, Flammenwerfer).",
+      "machine": false
     },
     "Weapons.About.Ground": {
       "english": "Longest range against ground units.",
@@ -15377,9 +15362,9 @@
       "machine": true
     },
     "Weapons.About.FiresMoving": {
-      "english": "On: fires while the unit moves. Off: fires only while the unit is stopped.",
-      "text": "Ein: Feuert, während sich die Einheit bewegt. Aus: Feuert nur, während die Einheit stillsteht.",
-      "machine": true
+      "english": "If True: fires while the unit moves. If False: fires only while the unit is stopped.",
+      "text": "Wenn True: Feuert, während sich die Einheit bewegt. Wenn False: Feuert nur, während die Einheit stillsteht.",
+      "machine": false
     },
     "Weapons.About.MustDeploy": {
       "english": "Must stop and deploy before firing, as howitzers do: the weapon is packed up while the unit moves, and fires again only once the unit has stopped and finished deploying. A unit carrying such a weapon needs a TWeaponDeploymentModuleDescriptor (its deploy and pack times), and a unit with that module needs at least one such weapon.",
@@ -15402,19 +15387,19 @@
       "machine": true
     },
     "Weapons.About.Reflex": {
-      "english": "Fires on its own at enemies it sees, without an attack order. Off for artillery, mortars and bombs.",
-      "text": "Feuert von selbst auf Feinde, die es erkennt, ohne dass ein Angriffsbefehl erteilt werden muss. Deaktiviert für Artillerie, Mörser und Bomben.",
-      "machine": true
+      "english": "Fires on its own at enemies it sees, without an attack order. False for artillery, mortars and bombs.",
+      "text": "Feuert von selbst auf Feinde, die es sieht, ohne Angriffsbefehl. False bei Artillerie, Mörsern und Bomben.",
+      "machine": false
     },
     "Weapons.About.NoReflexOnPriority": {
-      "english": "No reflex shots while the unit has a priority target. On for guided missiles (187).",
-      "text": "Keine Reflexschüsse, solange die Einheit ein Prioritätsziel hat. Aktiviert für Lenkraketen (187).",
-      "machine": true
+      "english": "No reflex shots while the unit has a priority target. True for guided missiles (187).",
+      "text": "Keine Reflexschüsse, solange die Einheit ein Prioritätsziel hat. True bei Lenkraketen (187).",
+      "machine": false
     },
     "Weapons.About.OnePerDistrict": {
-      "english": "On for most direct-fire weapons (677). In a town district, only one of the units the shot could hit is hit, picked at random, enemies first.",
-      "text": "Aktiviert für die meisten Direktfeuerwaffen (677). In einem Stadtbezirk wird nur eine der Einheiten getroffen, die der Schuss erreichen könnte; die Auswahl erfolgt zufällig, wobei Feinde Vorrang haben.",
-      "machine": true
+      "english": "True for most direct-fire weapons (677). In a town district, only one of the units the shot could hit is hit, picked at random, enemies first.",
+      "text": "True bei den meisten Direktfeuerwaffen (677). In einem Stadtbezirk wird nur eine der Einheiten getroffen, die der Schuss erreichen könnte, zufällig gewählt, Feinde zuerst.",
+      "machine": false
     },
     "Weapons.About.ProjectileKind": {
       "english": "How the shot travels and lands: shell, artillery shell (whether it hits depends on its spread, and with Submunitions its bomblets are followed in flight), bomb, grenade, or guided missile (launched as a separate missile that flies to the target). Fake has no real projectile.",
@@ -15442,9 +15427,9 @@
       "machine": true
     },
     "Weapons.About.FireAndForget": {
-      "english": "On: once fired, the missile flies on without the unit that fired it. Off: while it flies, the missile checks that the unit that fired it still exists and, for direct fire, still sees the target; when either fails, its flight changes. On for 57 missiles.",
-      "text": "Ein: Nach dem Abschuss fliegt die Rakete ohne die Einheit weiter, die sie abgefeuert hat. Aus: Während des Fluges überprüft die Rakete, ob die Einheit, die sie abgefeuert hat, noch existiert und – bei Direktfeuer – das Ziel noch sehen kann; wenn eine dieser Bedingungen nicht mehr erfüllt ist, ändert sich ihre Flugbahn. Bei 57 Raketen ist diese Option aktiviert.",
-      "machine": true
+      "english": "If True: once fired, the missile flies on without the unit that fired it. If False: while it flies, the missile checks that the unit that fired it still exists and, for direct fire, still sees the target; when either fails, its flight changes. True for 57 missiles.",
+      "text": "Wenn True: Nach dem Abschuss fliegt die Rakete ohne die Einheit weiter, die sie abgefeuert hat. Wenn False: Während des Fluges prüft die Rakete, ob die abfeuernde Einheit noch existiert und – bei Direktfeuer – das Ziel noch sieht; ist eines davon nicht mehr der Fall, ändert sich ihr Flug. True bei 57 Raketen.",
+      "machine": false
     },
     "Weapons.About.Guidance": {
       "english": "Who the missile can fire at. Radar: not at drones (units tagged Non_Radar_Targetable). Anti-radar: only at units carrying a radar-guided weapon. None for the others (32 missiles have one).",
@@ -15462,14 +15447,14 @@
       "machine": true
     },
     "Weapons.About.ShotsInOrder": {
-      "english": "Off for guns, artillery and rockets (570). On: before a salvo, the game sorts where its shots will land across the line of fire (along it, for some shots), so they land in a sweep. Off: they land in the order they were picked.",
-      "text": "Ausgeschaltet für Geschütze, Artillerie und Raketen (570). Eingeschaltet: Vor einer Salve sortiert das Spiel, wo die Schüsse entlang der Schusslinie (bei einigen Schüssen entlang derselben) einschlagen, sodass sie in einem Schwung einschlagen. Ausgeschaltet: Sie schlagen in der Reihenfolge ein, in der sie ausgewählt wurden.",
-      "machine": true
+      "english": "False for guns, artillery and rockets (570). If True: before a salvo, the game sorts where its shots will land across the line of fire (along it, for some shots), so they land in a sweep. If False: they land in the order they were picked.",
+      "text": "False bei Geschützen, Artillerie und Raketen (570). Wenn True: Vor einer Salve sortiert das Spiel die Einschlagpunkte quer zur Schusslinie (bei manchen Schüssen entlang), sodass sie in einem Schwung einschlagen. Wenn False: Sie schlagen in der Reihenfolge ein, in der sie gewählt wurden.",
+      "machine": false
     },
     "Weapons.About.AffectedByNumber": {
-      "english": "On for 252 weapons: machine guns, rifles and autocannons. Each shot's damage is multiplied by how many of the weapon are still in use: its Count (×) times the share of the unit's health left, rounded up, at least 1. A squad that has lost men hits less hard. Off: the Count doesn't multiply the damage.",
-      "text": "Aktiv für 252 Waffen: Maschinengewehre, Gewehre und Maschinenkanonen. Der Schaden jedes Schusses wird mit der Anzahl der noch im Einsatz befindlichen Waffen multipliziert: deren Anzahl (×) mal der aufgerundete Anteil der verbleibenden Gesundheit der Einheit, mindestens 1. Ein Trupp, der Männer verloren hat, trifft weniger hart. Aus: Die Anzahl multipliziert den Schaden nicht.",
-      "machine": true
+      "english": "True for 252 weapons: machine guns, rifles and autocannons. Each shot's damage is multiplied by how many of the weapon are still in use: its Count (×) times the share of the unit's health left, rounded up, at least 1. A squad that has lost men hits less hard. If False: the Count doesn't multiply the damage.",
+      "text": "True bei 252 Waffen: Maschinengewehre, Gewehre und Maschinenkanonen. Der Schaden jedes Schusses wird mit der Zahl der noch eingesetzten Waffen multipliziert: ihre Anzahl (×) mal dem Anteil der verbleibenden Gesundheit der Einheit, aufgerundet, mindestens 1. Ein Trupp, der Männer verloren hat, trifft schwächer. Wenn False: Die Anzahl multipliziert den Schaden nicht.",
+      "machine": false
     },
     "Weapons.About.Noise": {
       "english": "How much firing gives the unit away: 1 to 5 in the game. The unit's firing noise starts at 1, and each shot adds (this − 1) ÷ Shots to full noise, so it reaches this value after that many shots. 1: firing doesn't give the unit away.",
@@ -15497,14 +15482,14 @@
       "machine": true
     },
     "Weapons.About.ShowsDamage": {
-      "english": "On: the weapon's damage counts in the damage the game shows for the unit (the highest of its weapons'). Off: it is left out of that figure.",
-      "text": "Ein: Der Schaden der Waffe fließt in den vom Spiel angezeigten Gesamtschaden der Einheit ein (der höchste Wert ihrer Waffen). Aus: Er wird bei dieser Angabe nicht berücksichtigt.",
-      "machine": true
+      "english": "If True: the weapon's damage counts in the damage the game shows for the unit (the highest of its weapons'). If False: it is left out of that figure.",
+      "text": "Wenn True: Der Schaden der Waffe zählt zu dem Schaden, den das Spiel für die Einheit anzeigt (der höchste ihrer Waffen). Wenn False: Er bleibt bei dieser Angabe außen vor.",
+      "machine": false
     },
     "Weapons.About.ShowsSalvoAccuracy": {
-      "english": "On: the hit chance shown when aiming is the chance that at least one shot of the salvo hits. Off: it shows one shot's chance.",
-      "text": "Ein: Die beim Zielen angezeigte Trefferwahrscheinlichkeit ist die Wahrscheinlichkeit, dass mindestens ein Schuss der Salve trifft. Aus: Es wird die Trefferwahrscheinlichkeit eines einzelnen Schusses angezeigt.",
-      "machine": true
+      "english": "If True: the hit chance shown when aiming is the chance that at least one shot of the salvo hits. If False: it shows one shot's chance.",
+      "text": "Wenn True: Die beim Zielen angezeigte Trefferchance ist die Chance, dass mindestens ein Schuss der Salve trifft. Wenn False: Sie zeigt die Chance eines einzelnen Schusses.",
+      "machine": false
     },
     "Weapons.About.EffectSize": {
       "english": "The power given to the impact effect when the shot lands: medium (2) or ultra heavy (5).",
@@ -17795,9 +17780,9 @@
       "machine": true
     },
     "Help.Page.editor-desc.Html": {
-      "english": "<p class=\"wklead\">Under the text: the file's descriptors, with their properties on the right.</p><ul><li>Open a descriptor to see its contents and links, like a unit, its weapons and their ammunition.</li><li><b>Used by</b> lists everything referring to it; changing it changes it for all of them.</li><li>Double-click a descriptor to find it in the text.</li><li>The box above the list finds any descriptor by name.</li><li>The funnel button filters by property, like every descriptor with MaximumRangeGRU over 2000. Its number is how many conditions are on.</li></ul><h3>Filter</h3><ul><li>Each condition is a property, a test and a value. <b>all</b> or <b>any</b> above the list sets how many must match.</li><li>The Property list holds properties found in the descriptors shown: this file, or every read file under All files. (Name) and (Type) are always there.</li><li>A condition can have a <b>Name</b>, shown in the list instead of its details.</li><li>The checkbox turns a condition on or off. Right-click to disable, duplicate, move, cut, copy, paste or delete; the Mods tab's keys work too.</li><li>Quotes around values are ignored and text ignores case. \"is greater than\" and \"is less than\" compare numbers.</li><li>A filter works unsaved and stays on until cleared. <b>Save as...</b> keeps it by name; <b>Export</b> and <b>Import...</b> share saved filters as a file.</li></ul><h3>More</h3><ul><li>A descriptor in another file is found once that file is read. <b>Refresh</b> reads every file on the Files tab.</li><li><b>This file</b> lists this file's descriptors. <b>All files</b> follows links across files, like a unit to its weapon.</li><li>Alt+click a descriptor to find it in the text too, opening its file if needed.</li></ul><h3>Editing a Value</h3><ul><li>When the descriptor is in the open file and the text is editable, type over a value and press Enter.</li><li>A value that would break the descriptor is refused.</li><li>Multi-line values are changed in the text itself.</li></ul><div class=\"wkcall\"><b>Tip</b><span>Drag the bar between the two lists to resize them.</span></div>",
-      "text": "<p class=\"wklead\">Unterhalb des Textes: die Deskriptoren der Datei, deren Eigenschaften rechts angezeigt werden.</p><ul><li>Öffnen Sie einen Deskriptor, um dessen Inhalt und Verknüpfungen anzuzeigen, beispielsweise eine Einheit, deren Waffen und deren Munition.</li><li><b>Unter Verwendet von</b> werden alle Elemente aufgelistet, die darauf verweisen; wenn Sie es ändern, wird es für alle entsprechend angepasst.</li><li>Doppelklicken Sie auf einen Deskriptor, um ihn im Text zu finden.</li><li>Das Feld oberhalb der Liste ermöglicht die Suche nach jedem Deskriptor anhand seines Namens.</li><li>Die Trichter-Schaltfläche filtert nach Eigenschaften, beispielsweise alle Deskriptoren mit einem „MaximumRangeGRU“-Wert über 2000. Die angezeigte Zahl gibt an, wie viele Filterkriterien aktiv sind.</li></ul><h3>Filter</h3><ul><li>Jede Bedingung besteht aus einer Eigenschaft, einer Prüfung und einem Wert. Die Optionen <b>Alle</b> oder <b>Beliebige</b> oberhalb der Liste legen fest, wie viele Bedingungen erfüllt sein müssen.</li><li>Die Eigenschaftsliste enthält Eigenschaften, die in den angezeigten Deskriptoren zu finden sind: in dieser Datei oder in jeder gelesenen Datei unter „Alle Dateien“. (Name) und (Typ) sind immer vorhanden.</li><li>Eine Bedingung kann einen <b>Namen</b> haben, der anstelle ihrer Details in der Liste angezeigt wird.</li><li>Über das Kontrollkästchen wird eine Bedingung aktiviert oder deaktiviert. Klicken Sie mit der rechten Maustaste, um eine Bedingung zu deaktivieren, zu duplizieren, zu verschieben, auszuschneiden, zu kopieren, einzufügen oder zu löschen; die Tasten auf der Registerkarte „Mods“ funktionieren ebenfalls.</li><li>Anführungszeichen um Werte werden ignoriert, und bei Text wird die Groß-/Kleinschreibung nicht berücksichtigt. „ist größer als“ und „ist kleiner als“ vergleichen Zahlen.</li><li>Ein Filter funktioniert auch ohne Speichern und bleibt aktiv, bis er gelöscht wird. <b>Mit Speichern unter…</b> wird er unter dem angegebenen Namen gespeichert; über <b>„Exportieren</b> und <b>Importieren…“</b> können gespeicherte Filter als Datei ausgetauscht werden.</li></ul><h3>Mehr</h3><ul><li>Ein Deskriptor in einer anderen Datei wird gefunden, sobald diese Datei gelesen wird. <b>Aktualisieren</b> liest alle Dateien auf der Registerkarte „Dateien“.</li><li><b>Diese Datei</b> listet die Deskriptoren dieser Datei auf. <b>Alle Dateien</b> folgt Verknüpfungen zwischen Dateien, beispielsweise von einer Einheit zu ihrer Waffe.</li><li>Drücken Sie Alt+Klick auf einen Deskriptor, um ihn auch im Text zu finden, wobei die entsprechende Datei bei Bedarf geöffnet wird.</li></ul><h3>Einen Wert bearbeiten</h3><ul><li>Befindet sich der Deskriptor in der geöffneten Datei und ist der Text bearbeitbar, überschreiben Sie einen Wert und drücken Sie die Eingabetaste.</li><li>Ein Wert, der den Deskriptor ungültig machen würde, wird abgelehnt.</li><li>Mehrzeilige Werte werden direkt im Text geändert.</li></ul><div class=\"wkcall\"><b>Tipp</b><span>Ziehen Sie den Regler zwischen den beiden Listen, um deren Größe anzupassen.</span></div>",
-      "machine": true
+      "english": "<p class=\"wklead\">Under the text: the file's descriptors, with their properties on the right.</p><ul><li>Open a descriptor to see its contents and links, like a unit, its weapons and their ammunition.</li><li><b>Used by</b> lists everything referring to it; changing it changes it for all of them.</li><li>Double-click a descriptor to find it in the text.</li><li>The box above the list finds any descriptor by name.</li><li>The funnel button filters by property, like every descriptor with MaximumRangeGRU over 2000. Its number is how many conditions are on.</li></ul><h3>Filter</h3><ul><li>Each condition is a property, a test and a value. <b>all</b> or <b>any</b> above the list sets how many must match.</li><li>The Property list holds properties found in the descriptors shown: this file, or every read file under All files. (Name) and (Type) are always there.</li><li>A condition can have a <b>Name</b>, shown in the list instead of its details.</li><li>The checkbox turns a condition on or off. Right-click to disable, duplicate, move, cut, copy, paste or delete; the Mods tab's keys work too.</li><li>Quotes around values are ignored and text ignores case. \"is greater than\" and \"is less than\" compare numbers.</li><li>A filter works unsaved and stays on until cleared. <b>Save as...</b> keeps it by name; <b>Export</b> and <b>Import...</b> share saved filters as a file.</li></ul><h3>More</h3><ul><li>Hover a name to see where it is declared, in any file on the Files tab, read or not. A few names, such as <span class=\"mono\">~/ETerrainType/Default</span>, are declared in no .ndf file; their tip says that no file on the Files tab declares them.</li><li>A descriptor in another file is found once that file is read. <b>Refresh</b> reads every file on the Files tab.</li><li><b>This file</b> lists this file's descriptors. <b>All files</b> follows links across files, like a unit to its weapon.</li><li>Alt+click a descriptor to find it in the text too, opening its file if needed.</li></ul><h3>Editing a Value</h3><ul><li>When the descriptor is in the open file and the text is editable, type over a value and press Enter.</li><li>A value that would break the descriptor is refused.</li><li>Multi-line values are changed in the text itself.</li></ul><div class=\"wkcall\"><b>Tip</b><span>Drag the bar between the two lists to resize them.</span></div>",
+      "text": "<p class=\"wklead\">Unterhalb des Textes: die Deskriptoren der Datei, deren Eigenschaften rechts angezeigt werden.</p><ul><li>Öffnen Sie einen Deskriptor, um dessen Inhalt und Verknüpfungen anzuzeigen, beispielsweise eine Einheit, deren Waffen und deren Munition.</li><li><b>Unter Verwendet von</b> werden alle Elemente aufgelistet, die darauf verweisen; wenn Sie es ändern, wird es für alle entsprechend angepasst.</li><li>Doppelklicken Sie auf einen Deskriptor, um ihn im Text zu finden.</li><li>Das Feld oberhalb der Liste ermöglicht die Suche nach jedem Deskriptor anhand seines Namens.</li><li>Die Trichter-Schaltfläche filtert nach Eigenschaften, beispielsweise alle Deskriptoren mit einem „MaximumRangeGRU“-Wert über 2000. Die angezeigte Zahl gibt an, wie viele Filterkriterien aktiv sind.</li></ul><h3>Filter</h3><ul><li>Jede Bedingung besteht aus einer Eigenschaft, einer Prüfung und einem Wert. Die Optionen <b>Alle</b> oder <b>Beliebige</b> oberhalb der Liste legen fest, wie viele Bedingungen erfüllt sein müssen.</li><li>Die Eigenschaftsliste enthält Eigenschaften, die in den angezeigten Deskriptoren zu finden sind: in dieser Datei oder in jeder gelesenen Datei unter „Alle Dateien“. (Name) und (Typ) sind immer vorhanden.</li><li>Eine Bedingung kann einen <b>Namen</b> haben, der anstelle ihrer Details in der Liste angezeigt wird.</li><li>Über das Kontrollkästchen wird eine Bedingung aktiviert oder deaktiviert. Klicken Sie mit der rechten Maustaste, um eine Bedingung zu deaktivieren, zu duplizieren, zu verschieben, auszuschneiden, zu kopieren, einzufügen oder zu löschen; die Tasten auf der Registerkarte „Mods“ funktionieren ebenfalls.</li><li>Anführungszeichen um Werte werden ignoriert, und bei Text wird die Groß-/Kleinschreibung nicht berücksichtigt. „ist größer als“ und „ist kleiner als“ vergleichen Zahlen.</li><li>Ein Filter funktioniert auch ohne Speichern und bleibt aktiv, bis er gelöscht wird. <b>Mit Speichern unter…</b> wird er unter dem angegebenen Namen gespeichert; über <b>„Exportieren</b> und <b>Importieren…“</b> können gespeicherte Filter als Datei ausgetauscht werden.</li></ul><h3>Mehr</h3><ul><li>Zeigen Sie auf einen Namen, um zu sehen, wo er deklariert ist, in jeder Datei im Reiter „Dateien“, ob gelesen oder nicht. Einige Namen, etwa <span class=\"mono\">~/ETerrainType/Default</span>, sind in keiner .ndf-Datei deklariert; ihr Tooltip sagt, dass keine Datei im Reiter „Dateien“ sie deklariert.</li><li>Ein Deskriptor in einer anderen Datei wird gefunden, sobald diese Datei gelesen wird. <b>Aktualisieren</b> liest alle Dateien auf der Registerkarte „Dateien“.</li><li><b>Diese Datei</b> listet die Deskriptoren dieser Datei auf. <b>Alle Dateien</b> folgt Verknüpfungen zwischen Dateien, beispielsweise von einer Einheit zu ihrer Waffe.</li><li>Drücken Sie Alt+Klick auf einen Deskriptor, um ihn auch im Text zu finden, wobei die entsprechende Datei bei Bedarf geöffnet wird.</li></ul><h3>Einen Wert bearbeiten</h3><ul><li>Befindet sich der Deskriptor in der geöffneten Datei und ist der Text bearbeitbar, überschreiben Sie einen Wert und drücken Sie die Eingabetaste.</li><li>Ein Wert, der den Deskriptor ungültig machen würde, wird abgelehnt.</li><li>Mehrzeilige Werte werden direkt im Text geändert.</li></ul><div class=\"wkcall\"><b>Tipp</b><span>Ziehen Sie den Regler zwischen den beiden Listen, um deren Größe anzupassen.</span></div>",
+      "machine": false
     },
     "Help.Group.Armory": {
       "english": "Armory",
@@ -18429,11 +18414,6 @@
       "text": "(keine Dateien: Quelle wählen oder Dateifilter prüfen)",
       "machine": true
     },
-    "Editor.Syntax.NotRead": {
-      "english": "Not in the files read so far. {number} listed file is not read yet; Search all files looks in it too.|Not in the files read so far. {number} listed files are not read yet; Search all files looks in them too.",
-      "text": "Nicht in den bisher gelesenen Dateien. {number} aufgeführte Datei ist noch nicht gelesen; „Alle Dateien durchsuchen“ sucht auch darin.|Nicht in den bisher gelesenen Dateien. {number} aufgeführte Dateien sind noch nicht gelesen; „Alle Dateien durchsuchen“ sucht auch darin.",
-      "machine": true
-    },
     "Editor.Syntax.UnreadNote": {
       "english": "{number} listed file is not read yet.|{number} listed files are not read yet.",
       "text": "{number} aufgeführte Datei ist noch nicht gelesen.|{number} aufgeführte Dateien sind noch nicht gelesen.",
@@ -18483,6 +18463,121 @@
       "english": "<h2>1.1.2</h2>\r\n<h3>Changed</h3>\r\n<ul>\r\n  <li>What's New after an update lists every version since the one you had, not only the newest.</li>\r\n</ul>\r\n",
       "text": "<h2>1.1.2</h2>\r\n<h3>Geändert</h3>\r\n<ul>\r\n  <li>„Was ist neu“ listet nach einem Update jede Version seit der, die Sie hatten, nicht nur die neueste.</li>\r\n</ul>\r\n",
       "machine": true
+    },
+    "Units.Tabs.Field.Slots.OneDivision": {
+      "english": "This row is for {division} only. Other divisions keep theirs. The label and tooltip are for every division.",
+      "text": "Diese Reihe gilt nur für {division}. Andere Divisionen behalten ihre. Bezeichnung und Tooltip gelten für alle Divisionen.",
+      "machine": true
+    },
+    "Main.WhatsNew.Title": {
+      "english": "What's New",
+      "text": "Was ist neu",
+      "machine": true
+    },
+    "Rules.NewRule.Name.Edit": {
+      "english": "New rule",
+      "text": "Neue Regel",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Add": {
+      "english": "New add descriptor",
+      "text": "Neue Regel: Deskriptor hinzufügen",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Clone": {
+      "english": "New clone descriptor",
+      "text": "Neue Regel: Deskriptor klonen",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Remove": {
+      "english": "New remove descriptors",
+      "text": "Neue Regel: Deskriptoren entfernen",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Replace": {
+      "english": "New find and replace",
+      "text": "Neues Suchen und Ersetzen",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Scale": {
+      "english": "New scale",
+      "text": "Neue Skalierung",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Formula": {
+      "english": "New formula",
+      "text": "Neue Formel",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Table": {
+      "english": "New table",
+      "text": "Neue Tabelle",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Lookup": {
+      "english": "New lookup",
+      "text": "Neues Nachschlagen",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Text": {
+      "english": "New texts",
+      "text": "Neue Texte",
+      "machine": false
+    },
+    "Rules.NewRule.Name.File": {
+      "english": "New file",
+      "text": "Neue Datei",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Check": {
+      "english": "New check",
+      "text": "Neue Prüfung",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Group": {
+      "english": "New group",
+      "text": "Neue Gruppe",
+      "machine": false
+    },
+    "Rules.NewRule.Name.Variable": {
+      "english": "New variable",
+      "text": "Neue Variable",
+      "machine": false
+    },
+    "Editor.Value.UnknownName.Number": {
+      "english": "{name} takes a number. {value} is not one, and no file read declares it.",
+      "text": "{name} erwartet eine Zahl. {value} ist keine, und keine gelesene Datei deklariert es.",
+      "machine": false
+    },
+    "Editor.Value.UnknownName.Boolean": {
+      "english": "{name} takes True or False. {value} is neither, and no file read declares it.",
+      "text": "{name} erwartet True oder False. {value} ist keins von beiden, und keine gelesene Datei deklariert es.",
+      "machine": false
+    },
+    "Editor.Value.UnknownName.Why": {
+      "english": "Check the spelling, or that the file declaring it is on the Files tab.",
+      "text": "Prüfen Sie die Schreibweise oder ob die Datei, die es deklariert, im Reiter „Dateien“ steht.",
+      "machine": false
+    },
+    "Editor.Syntax.LookingInListed": {
+      "english": "Not in the files read. Looking in the other listed files ({done} of {total}).",
+      "text": "Nicht in den gelesenen Dateien. Die übrigen Dateien der Liste werden durchsucht ({done} von {total}).",
+      "machine": false
+    },
+    "Editor.Syntax.NotListed": {
+      "english": "No file on the Files tab declares it.",
+      "text": "Keine Datei im Reiter „Dateien“ deklariert es.",
+      "machine": false
+    },
+    "Editor.GoTo.NotListed": {
+      "english": "No file on the Files tab declares {name}.",
+      "text": "Keine Datei im Reiter „Dateien“ deklariert {name}.",
+      "machine": false
+    },
+    "Editor.GoTo.StillLooking": {
+      "english": "{name} is not in the files read. Still looking in the other listed files ({done} of {total}); try again in a moment.",
+      "text": "{name} ist nicht in den gelesenen Dateien. Die übrigen Dateien der Liste werden noch durchsucht ({done} von {total}); versuchen Sie es gleich noch einmal.",
+      "machine": false
     }
   }
 }

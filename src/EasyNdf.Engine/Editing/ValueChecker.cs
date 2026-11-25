@@ -69,6 +69,12 @@ public enum ValueProblemKind
     /// Key the one marked.
     /// </summary>
     NumberGivenTwice,
+
+    /// <summary>
+    /// A bare word given to a name that takes a number or True/False, which no file read declares: "HeightInMeters =
+    /// abc". A warning, as the word may be declared in a file not read. Expected is the kind the name takes.
+    /// </summary>
+    UnknownName,
 }
 
 /// <summary>A value the File Editor marks, and what is wrong with it.</summary>
@@ -107,7 +113,7 @@ public sealed record ValueProblem(int Position, int Length, ValueProblemKind Kin
     public string Key { get; init; } = "";
 
     /// <summary>Whether this is a warning (mod generation works) rather than an error (it fails).</summary>
-    public bool IsWarning => Kind == ValueProblemKind.NegativeInZeroOrMore;
+    public bool IsWarning => Kind is ValueProblemKind.NegativeInZeroOrMore or ValueProblemKind.UnknownName;
 
     /// <summary>Whether this error lets mod generation work but crashes the game in play.</summary>
     public bool CrashesGame => Kind == ValueProblemKind.NoSuchImpact;
@@ -131,10 +137,15 @@ public static partial class ValueChecker
     /// mounted weapon without one is marked; an older file's have none, which is right for it.
     /// </param>
     /// <param name="impacts">The impact names the file's MimeticImpactMapping.ndf maps; null checks no ImpactHappening.</param>
-    public static List<ValueProblem> Check(NdfDocument document, ValueGuide guide, int shift = 0, bool mountsNamed = false, IReadOnlySet<string>? impacts = null)
+    /// <param name="isDeclared">
+    /// Whether a word is a name some file declares; given, a bare word in a number or True/False that isn't is marked
+    /// (<see cref="ValueProblemKind.UnknownName"/>). Null marks no word.
+    /// </param>
+    public static List<ValueProblem> Check(NdfDocument document, ValueGuide guide, int shift = 0, bool mountsNamed = false, IReadOnlySet<string>? impacts = null,
+        Func<string, bool>? isDeclared = null)
     {
         var problems = new List<ValueProblem>();
-        var context = new CheckContext(guide, shift, mountsNamed, impacts);
+        var context = new CheckContext(guide, shift, mountsNamed, impacts, isDeclared);
         foreach (Declaration declaration in document.Declarations)
         {
             CheckValue(declaration.Value, context, problems);
@@ -170,13 +181,14 @@ public static partial class ValueChecker
     /// stretch of a larger text.
     /// </summary>
     /// <param name="impacts">The impact names the file's MimeticImpactMapping.ndf maps; null checks no ImpactHappening.</param>
-    public static List<ValueProblem> Check(string text, ValueGuide guide, int shift = 0, IReadOnlySet<string>? impacts = null)
+    /// <param name="isDeclared">Whether a word is a name some file declares; null marks no word (<see cref="ValueProblemKind.UnknownName"/>).</param>
+    public static List<ValueProblem> Check(string text, ValueGuide guide, int shift = 0, IReadOnlySet<string>? impacts = null, Func<string, bool>? isDeclared = null)
     {
         var problems = new List<ValueProblem>();
         bool mountsNamed = NamesMountedWeapons(text);
         foreach ((int start, int end) in NdfChecker.DeclarationStretches(text))
         {
-            try { problems.AddRange(Check(Parser.Parse(text[start..end]), guide, start + shift, mountsNamed, impacts)); }
+            try { problems.AddRange(Check(Parser.Parse(text[start..end]), guide, start + shift, mountsNamed, impacts, isDeclared)); }
             catch (NdfParseException) { }
             if (problems.Count >= MostProblems) break;
         }
@@ -201,7 +213,8 @@ public static partial class ValueChecker
     /// <param name="Shift">What is added to every position.</param>
     /// <param name="MountsNamed">Whether the file gives its mounted weapons their names (<see cref="NamesMountedWeapons"/>).</param>
     /// <param name="Impacts">The impact names the file's MimeticImpactMapping.ndf maps; null checks no ImpactHappening.</param>
-    private sealed record CheckContext(ValueGuide Guide, int Shift, bool MountsNamed, IReadOnlySet<string>? Impacts);
+    /// <param name="IsDeclared">Whether a word is a name some file declares; null marks no word.</param>
+    private sealed record CheckContext(ValueGuide Guide, int Shift, bool MountsNamed, IReadOnlySet<string>? Impacts, Func<string, bool>? IsDeclared = null);
 
     /// <summary>Checks a value and every value inside it.</summary>
     private static void CheckValue(NdfValue value, CheckContext context, List<ValueProblem> problems)
@@ -243,7 +256,7 @@ public static partial class ValueChecker
                 if (firstSet.TryGetValue(property.Name, out NdfValue? first) && first.Start is int firstStart)
                     problem = new ValueProblem(start + shift, end - start, ValueProblemKind.WrittenTwice, property.Name, "") { FirstPosition = firstStart + shift };
                 else if (value is ScalarValue scalar && guide.Find(item.TypeName, property.Name) is { IsTypeCertain: true } info)
-                    problem = ProblemWith(info, property.Name, scalar, start + shift, end - start);
+                    problem = ProblemWith(info, property.Name, scalar, start + shift, end - start) ?? UnknownWord(info, property.Name, scalar, start + shift, end - start, context.IsDeclared);
                 if (problem is null && IsUnmappedImpact(item.TypeName, property.Name, value, context.Impacts))
                     problem = new ValueProblem(start + shift, end - start, ValueProblemKind.NoSuchImpact, property.Name, ((ScalarValue)value).Text);
                 if (problem is not null)
@@ -411,6 +424,24 @@ public static partial class ValueChecker
         if (info.Limits.Any(limit => limit.IsBrokenBy(number))) return Problem(ValueProblemKind.OutsideLimit) with { Rules = info.Rules };
         if (type == "int (0 or more)" && found == "int" && number < 0) return Problem(ValueProblemKind.NegativeInZeroOrMore);
         return null;
+    }
+
+    /// <summary>
+    /// A bare word (not True or False, not a path) given to a name that takes a number or True/False, when no file
+    /// declares it: <see cref="ValueProblemKind.UnknownName"/>; null otherwise, or without <paramref name="isDeclared"/>.
+    /// </summary>
+    private static ValueProblem? UnknownWord(ValueInfo info, string name, ScalarValue value, int position, int length, Func<string, bool>? isDeclared)
+    {
+        if (isDeclared is null || value.Kind != ScalarKind.Identifier || IsBoolean(value.Text) || value.Text.Contains('/', StringComparison.Ordinal)) return null;
+        string expected = info.BaseValueType switch
+        {
+            "int" or "int (0 or more)" => "int",
+            "float" => "float",
+            "boolean" => "boolean",
+            _ => "",
+        };
+        if (expected == "" || isDeclared(value.Text)) return null;
+        return new ValueProblem(position, length, ValueProblemKind.UnknownName, name, value.Text) { Expected = expected };
     }
 
     /// <summary>Whether a value of one kind is right for a name taking another: an int fits a float.</summary>

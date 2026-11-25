@@ -32,7 +32,13 @@ public static class Updates
         UpdateInfo? update;
         try
         {
-            manager = new UpdateManager(new GithubSource(Repository, null, false));
+            // a copy started without the installer's start-up (a build run from its folder) has no installer to ask
+            try { manager = new UpdateManager(new GithubSource(Repository, null, false)); }
+            catch (Exception notSet) when (notSet.Message.Contains("VelopackLocator", StringComparison.Ordinal))
+            {
+                if (sayAll) Notices.Say(Texts.Get("Main.Update.NotInstalled"), NoticeKind.Caution);
+                return;
+            }
             if (!manager.IsInstalled)
             {
                 if (sayAll) Notices.Say(Texts.Get("Main.Update.NotInstalled"), NoticeKind.Caution);

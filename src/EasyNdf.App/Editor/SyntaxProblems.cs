@@ -38,7 +38,7 @@ public sealed class ProblemMark : TextSegment
 /// colour for a warning), and pointing at the line shows what is wrong. <see cref="Reveal"/> goes to a problem and
 /// tints its line until the caret leaves it.
 /// </summary>
-public sealed class SyntaxProblems : IBackgroundRenderer
+public sealed partial class SyntaxProblems : IBackgroundRenderer
 {
     /// <summary>How long after the last key the text is checked.</summary>
     private static readonly TimeSpan Pause = TimeSpan.FromMilliseconds(500);
@@ -261,6 +261,8 @@ public sealed class SyntaxProblems : IBackgroundRenderer
             TextDocument checkedText = document;
             ValueGuide? valueGuide = guide;
             IReadOnlySet<string>? impactNames = impacts;
+            Func<string, bool>? declaredElsewhere = DeclaredElsewhere?.Invoke();
+            string wholeText = checkedText.Text;
             // a large text checked before: only the declarations typed in since are checked again; the marks of the
             // others moved with the text as it changed
             if (marks is not null && checkedText.TextLength >= EditedDeclarations.LargeText && edited.Take() is { } stretches)
@@ -268,7 +270,7 @@ public sealed class SyntaxProblems : IBackgroundRenderer
                 int taken = edited.Count;
                 List<(int Start, string Text)> parts = [.. stretches.Select(stretch => (stretch.Start, checkedText.GetText(stretch.Start, stretch.End - stretch.Start)))];
                 List<(int Start, List<NdfProblem> Found, List<ValueProblem> Values)> checkedParts = await Task.Run(() =>
-                    parts.Select(part => (part.Start, NdfChecker.Check(part.Text), ValuesIn(part.Text, valueGuide, impactNames, part.Start))).ToList());
+                    parts.Select(part => (part.Start, NdfChecker.Check(part.Text), ValuesIn(part.Text, valueGuide, impactNames, part.Start, Declared(wholeText, declaredElsewhere)))).ToList());
                 if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
                 foreach ((int start, int end) in stretches)
                     foreach (ProblemMark old in marks.FindOverlappingSegments(start, end - start).ToList()) marks.Remove(old);
@@ -286,7 +288,7 @@ public sealed class SyntaxProblems : IBackgroundRenderer
             (List<NdfProblem> found, List<ValueProblem> foundValues) = await Task.Run(() =>
             {
                 string text = snapshot.Text;
-                return (NdfChecker.Check(text), ValuesIn(text, valueGuide, impactNames, 0));
+                return (NdfChecker.Check(text), ValuesIn(text, valueGuide, impactNames, 0, Declared(text, declaredElsewhere)));
             });
             // the text changed since, or another text is shown: the next check marks it
             if (mine != checkNumber || !ReferenceEquals(checkedText, document)) return;
@@ -311,8 +313,29 @@ public sealed class SyntaxProblems : IBackgroundRenderer
     }
 
     /// <summary>The values marked in a text (or a stretch of one, starting at <paramref name="shift"/>); none without a guide.</summary>
-    private static List<ValueProblem> ValuesIn(string text, ValueGuide? guide, IReadOnlySet<string>? impacts, int shift) =>
-        guide is null ? [] : ValueChecker.Check(text, guide, shift, impacts);
+    private static List<ValueProblem> ValuesIn(string text, ValueGuide? guide, IReadOnlySet<string>? impacts, int shift, Func<string, bool>? isDeclared = null) =>
+        guide is null ? [] : ValueChecker.Check(text, guide, shift, impacts, isDeclared);
+
+    /// <summary>
+    /// Gives, on the screen's thread before a check, whether a word is a name the files read declare (set by the File
+    /// Editor); null marks no bare word in a number.
+    /// </summary>
+    public Func<Func<string, bool>?>? DeclaredElsewhere { get; set; }
+
+    /// <summary>Whether a word is declared in the text itself or, by <paramref name="elsewhere"/>, in another file; null without <paramref name="elsewhere"/>.</summary>
+    private static Func<string, bool>? Declared(string text, Func<string, bool>? elsewhere)
+    {
+        if (elsewhere is null) return null;
+        HashSet<string>? own = null;
+        return word =>
+        {
+            own ??= [.. DeclaredName().Matches(text).Select(match => match.Groups[1].Value)];
+            return own.Contains(word) || elsewhere(word);
+        };
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(?m)^[ \t]*(?:export[ \t]+|private[ \t]+|public[ \t]+)?(\w+)[ \t]+is\b")]
+    private static partial System.Text.RegularExpressions.Regex DeclaredName();
 
     /// <summary>A syntax problem's mark, in a stretch of the text that starts at <paramref name="start"/>.</summary>
     private static ProblemMark SyntaxMark(NdfProblem problem, int start) =>

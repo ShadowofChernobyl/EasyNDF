@@ -16,6 +16,10 @@ public sealed class RuleStats
     /// <summary>How many times the rule's actions changed a variable: it wrote nothing for those, but did something.</summary>
     public int VariableChanges { get; set; }
 
+    /// <summary>Its edits as shown to the user: the values it changed and the variables it changed.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int AllEdits => Edits + VariableChanges;
+
     /// <summary>How many times it could not do what it was asked, for any reason.</summary>
     public int Skipped { get; set; }
 
@@ -54,6 +58,9 @@ public sealed class RunResult
 
     /// <summary>The total of all rules' edits.</summary>
     public int Edits => Stats.Sum(s => s.Edits);
+
+    /// <summary>The edits as shown to the user: <see cref="Edits"/> and the variables the rules changed.</summary>
+    public int AllEdits => Stats.Sum(s => s.AllEdits);
 }
 
 /// <summary>Settings for a run.</summary>

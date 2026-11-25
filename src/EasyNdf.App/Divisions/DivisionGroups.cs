@@ -29,7 +29,7 @@ public static class DivisionGroups
     /// </summary>
     /// <param name="allUnits">Every unit of the source by descriptor, for the game's order, which follows chains of upgrades through units the division does not have.</param>
     public static List<DivisionGroup> Of(Division division, IReadOnlyDictionary<string, Unit> units, GameTitle game, string factory,
-        IReadOnlyDictionary<string, Unit> allUnits, bool withEmpty = false)
+        IReadOnlyDictionary<string, Unit> allUnits, bool withEmpty = false, IReadOnlyList<string>? tabOrder = null)
     {
         IReadOnlyList<string> order = UnitNames.FactoriesOf(game);
         Dictionary<string, List<DivisionEntry>> byFactory = Entries(division, units)
@@ -39,7 +39,9 @@ public static class DivisionGroups
         if (withEmpty)
             categories = categories.Concat(order).Concat(division.Costs.Where(cost => cost.Value.Count > 0).Select(cost => cost.Key));
         var groups = new List<DivisionGroup>();
-        foreach (string category in categories.Distinct().OrderBy(category => OrderOf(order, category)))
+        Dictionary<string, int> tabPlace = (tabOrder ?? []).Select((tab, at) => (tab, at)).DistinctBy(each => each.tab).ToDictionary(each => each.tab, each => each.at, StringComparer.Ordinal);
+        // the order of the Armory's tabs when given (a mod's own order), else the game's
+        foreach (string category in categories.Distinct().OrderBy(category => tabPlace.TryGetValue(category, out int at) ? at : 1000 + OrderOf(order, category)))
         {
             if (factory != "" && category != factory) continue;
             List<DivisionEntry> entries = UnitGameOrder.Sort(byFactory.GetValueOrDefault(category) ?? [], entry => entry.Unit, allUnits);
