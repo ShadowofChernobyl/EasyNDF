@@ -18478,6 +18478,11 @@
       "english": "<h2>1.1.1</h2>\r\n<h3>Fixed</h3>\r\n<ul>\r\n  <li>Updates: EasyNDF 1.0.2 and 1.1.0 never looked for a new version. This version does again. If you are on 1.0.2 or 1.1.0, install this one by hand from GitHub.</li>\r\n</ul>\r\n<h3>Added</h3>\r\n<ul>\r\n  <li>Settings &gt; Data: Check Now looks for a new version at once.</li>\r\n</ul>\r\n",
       "text": "<h2>1.1.1</h2>\r\n<h3>Исправлено</h3>\r\n<ul>\r\n  <li>Обновления: EasyNDF 1.0.2 и 1.1.0 никогда не искали новую версию. Эта версия снова ищет. Если у вас 1.0.2 или 1.1.0, установите эту версию вручную с GitHub.</li>\r\n</ul>\r\n<h3>Добавлено</h3>\r\n<ul>\r\n  <li>Настройки &gt; Данные: «Проверить сейчас» сразу ищет новую версию.</li>\r\n</ul>\r\n",
       "machine": true
+    },
+    "Help.ChangeLog.1.1.2.Html": {
+      "english": "<h2>1.1.2</h2>\r\n<h3>Changed</h3>\r\n<ul>\r\n  <li>What's New after an update lists every version since the one you had, not only the newest.</li>\r\n</ul>\r\n",
+      "text": "<h2>1.1.2</h2>\r\n<h3>Изменено</h3>\r\n<ul>\r\n  <li>«Что нового» после обновления показывает все версии начиная с той, что была у вас, а не только последнюю.</li>\r\n</ul>\r\n",
+      "machine": true
     }
   }
 }
