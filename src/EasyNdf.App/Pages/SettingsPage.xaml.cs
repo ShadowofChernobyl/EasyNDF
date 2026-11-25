@@ -409,6 +409,9 @@ public partial class SettingsPage : UserControl
     }
 
     /// <summary>"Back up all mods": every preset of every mod in one file.</summary>
+    /// <summary>Check Now: looks for a newer version at once, and says what it found.</summary>
+    private void CheckUpdatesClicked(object sender, RoutedEventArgs e) => Updates.CheckNow();
+
     private void BackupClicked(object sender, RoutedEventArgs e)
     {
         int presets = AppData.Current.Mods.Sum(m => m.Presets.Count);

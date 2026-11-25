@@ -332,5 +332,7 @@
   "Settings.AddSourceFiles": "Add the source's files",
   "Settings.AddSourceFiles.Note": "Choosing a Source lists all its files, in place of the files of the source chosen before. Files added by hand stay. Off: Add Its Files, beside the Source, lists them.",
   "Settings.AskBundledMod": "Ask to update WTO",
-  "Settings.AskBundledMod.Note": "After an update of EasyNDF that brings a newer WARNO Tactical Overhaul, ask whether to update yours."
+  "Settings.AskBundledMod.Note": "After an update of EasyNDF that brings a newer WARNO Tactical Overhaul, ask whether to update yours.",
+  "Settings.CheckUpdatesNow": "Check Now",
+  "Settings.CheckUpdatesNow.Tip": "Look for a new version now"
 }
