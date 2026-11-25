@@ -320,6 +320,7 @@ public sealed class UnitChangeRules
         if (unit.Nation is string nation) actions.Add(Action("MotherCountry", SetValue, "'" + nation + "'"));
         if (unit.Side is string side) actions.Add(Action("Coalition", SetValue, "TWargameCoalition/" + side));
         if (unit.Role is string role) actions.Add(Action("UnitRole", SetValue, "'" + role + "'"));
+        if (unit.Factory is string factory) actions.Add(Action("FactoryType", SetValue, "Factory/" + factory));
         void Whole(string target, int? value)
         {
             if (value is int number) actions.Add(Action(target, SetValue, number.ToString(CultureInfo.InvariantCulture)));

@@ -42,6 +42,7 @@ public partial class WeaponsArmory : UserControl
         InitializeComponent();
         Panes.FoldedPlace = PaneSlot;
         Panes.SecondTitle = Texts.Get("Weapons.Pane.Title");
+        Texts.LanguageChanged += () => Panes.SecondTitle = Texts.Get("Weapons.Pane.Title");
         Table.WeaponClicked += Select;
         Table.WeaponRightClicked += OpenWeaponMenu;
         // the cards or the table, as last used. Compare is not come back to: the weapons compared are not kept, and it
@@ -173,7 +174,9 @@ public partial class WeaponsArmory : UserControl
     {
         if (filling) return;
         filter.Text = SearchBox.Text;
-        ShowAll();
+        // Tuned for speed: the pane of the weapon selected is left as it is. Typing changes the weapons listed, not the
+        // one selected, and building its pane again for every letter held the typing up. Keep it that way when tidying.
+        ShowAll(keepPane: true);
     }
 
     private void OnlyInUseClicked(object sender, RoutedEventArgs e)
@@ -342,7 +345,8 @@ public partial class WeaponsArmory : UserControl
     }
 
     /// <summary>Shows everything again: the lists' counts, the weapons the filters leave, and the Weapon pane.</summary>
-    private void ShowAll()
+    /// <param name="keepPane">Whether the pane of the weapon selected is left as it is, when only the filters changed.</param>
+    private void ShowAll(bool keepPane = false)
     {
         if (catalog is null) return;
         FillNationList();
@@ -381,7 +385,7 @@ public partial class WeaponsArmory : UserControl
         else ShowCards();
         CountText.Text = Texts.CountWide("Weapons.Shown", shown.Count);
         FootnoteText.Text = Texts.Get(view == WeaponView.Table ? "Weapons.Footnote.Table" : "Weapons.Footnote");
-        ShowPane();
+        if (!keepPane || PaneContent.Content is null) ShowPane();
         // once the list is laid out, so its rows' places are known
         if (scrollToSelected) Dispatcher.BeginInvoke(ScrollToSelected, System.Windows.Threading.DispatcherPriority.Loaded);
     }

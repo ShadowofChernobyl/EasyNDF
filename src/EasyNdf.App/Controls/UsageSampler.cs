@@ -103,7 +103,8 @@ public sealed class UsageSampler : IDisposable
             }
             probeSentAt = now;
         }
-        screen.BeginInvoke(DispatcherPriority.Input, () =>
+        // after layout and drawing, ahead of the mouse moves waiting: those are not the screen being slow
+        screen.BeginInvoke(DispatcherPriority.Loaded, () =>
         {
             double waited;
             lock (probing)

@@ -38,8 +38,9 @@ public partial class MainView
     /// <summary>The tab the user is on, and the Armory's sub-tab, such as "Armory › Divisions".</summary>
     private string WhereTheUserIs()
     {
-        string tab = (Tabs.SelectedItem as TabItem)?.Header as string ?? "";
-        return Tabs.SelectedItem == UnitsTabItem ? tab + " › " + UnitsTab.ShownPartName : tab;
+        TabItem? on = TabInUse();
+        string tab = on?.Header as string ?? "";
+        return on == UnitsTabItem ? tab + " › " + UnitsTab.ShownPartName : tab;
     }
 
     /// <summary>

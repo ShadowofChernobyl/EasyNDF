@@ -201,6 +201,8 @@ public static partial class ReferencePages
         List<string> names = [.. guide.NamesOf(type).Order(StringComparer.OrdinalIgnoreCase)];
         var html = new StringBuilder();
         string kind = IsDescriptor(type) ? "Help.Reference.DescriptorLead" : "Help.Reference.EntryLead";
+        // what the type is for comes first, when the guide says; then what kind it is and how many variables it takes
+        if (guide.AboutType(type) is string about) html.Append("<p class=\"wklead\">").Append(Escape(about)).Append("</p>");
         html.Append("<p class=\"wklead\">").Append(Escape(Texts.Count(kind, names.Count, ("count", names.Count)))).Append("</p>");
         ReferenceExamples.TypeExamples? examples = ReferenceExamples.IfRead?.GetValueOrDefault(type);
         if (examples is { Files.Count: > 0 })

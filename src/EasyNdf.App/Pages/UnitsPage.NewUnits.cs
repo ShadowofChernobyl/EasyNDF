@@ -30,6 +30,24 @@ public partial class UnitsPage
             _ = MainView.Of(this).Messages.Tell(reason, DialogIcon.Error);
             return;
         }
+        // the files every new unit is written into are asked for now, before anything is typed, not at Create after
+        // all five steps: a plain copy of the first unit is tried on a copy of the mod (weapon changes and a model of
+        // the user's own can still need more, which Create says)
+        if (ModelUnits().FirstOrDefault() is Unit first)
+        {
+            var trial = new ModUnit { Descriptor = ModUnit.NewDescriptor("New unit", first.Nation, TakenUnitDescriptors()), MadeFrom = first.Descriptor, Name = "New unit" };
+            List<string> missing = FilesMissingFor(mod =>
+            {
+                ModUnit added = trial.Copy();
+                added.DeckNumber = ModUnit.NextDeckNumber(GameUnits, mod);
+                mod.Units.Add(added);
+            });
+            if (missing.Count > 0)
+            {
+                _ = MainView.Of(this).Messages.Tell(Texts.Count("Divisions.FilesMissing", missing.Count, ("files", string.Join(", ", missing))), DialogIcon.Error);
+                return;
+            }
+        }
         MainView.Of(this).NewUnit.Open(ModelUnits(), Game, TakenUnitDescriptors(), ChooseUnitPicture, MakeUnit, gameUnits?.Catalog.ArmorLevels, this,
             Models.ModelViewer.CanShow(Game) ? ShowModel : null, loaded.Source, Models.ModelViewer.CanShow(Game) ? KeepModelFile : null);
     }

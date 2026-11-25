@@ -141,7 +141,7 @@ public partial class RulesPage
             return true;
         }
         if (StepTo(key, at, presets.Count) is not int to) return false;
-        Model.ClickPreset(presets[to], control: false, shift: shift);
+        PickPreset(presets[to], control: false, shift: shift);
         BringLineIntoView(PresetLines, to);
         return true;
     }
@@ -156,6 +156,7 @@ public partial class RulesPage
         {
             case Key.Enter:
                 if (Model.SelectedRules.Count == 1) { Model.SelectOnly(Model.SelectedRules[0]); OpenRuleWindow(); }
+                else if (Model.RulesToConfigure.Count > 1) OpenRuleWindow(several: true);
                 return true;
             case Key.Space:
                 if (at >= 0) Model.SetSelectedRulesOn(!rows[at].IsOn);
@@ -255,8 +256,16 @@ public partial class RulesPage
         }
         else if (activeList is KeyList.Presets or KeyList.Armory)
         {
-            // the preset list is kept in name order, so nothing moves up or down in it; the Armory's parts are one at a time
-            if (control && e.Key == Key.A && activeList == KeyList.Presets) { e.Handled = true; Model.SelectAllPresets(); }
+            // a rule set moves up or down among those of its group: the rule sets run in the list's order; the Armory's parts are one at a time
+            // a group whose heading was clicked last moves among the groups instead
+            if (control && e.Key is Key.Up or Key.Down && activeList == KeyList.Presets)
+            {
+                e.Handled = true;
+                int direction = e.Key == Key.Up ? -1 : +1;
+                if (keyGroup is string group && Model.PresetGroupExists(group)) Model.MovePresetGroup(group, direction);
+                else Model.MoveSelectedPresets(direction);
+            }
+            else if (control && e.Key == Key.A && activeList == KeyList.Presets) { e.Handled = true; Model.SelectAllPresets(); }
             else if (control && e.Key == Key.C) { e.Handled = true; CopyPresets(); }
             else if (control && e.Key == Key.X) { e.Handled = true; _ = CutPresets(); }
             else if (plain && e.Key == Key.Delete) { e.Handled = true; DeletePresetClicked(this, e); }
@@ -274,6 +283,7 @@ public partial class RulesPage
             {
                 e.Handled = true;
                 if (Model.SelectedRules.Count == 1) { Model.SelectOnly(Model.SelectedRules[0]); OpenRuleWindow(); }
+                else if (Model.RulesToConfigure.Count > 1) OpenRuleWindow(several: true);
             }
         }
     }
@@ -405,9 +415,13 @@ public partial class RulesPage
         }
         int count = Model.SelectedRules.Count;
         bool isOn = row.IsOn;
+        // several rules are configured as one; those the Armory made are left out
+        int together = Model.RulesToConfigure.Count;
         return
         [
-            new MenuChoice(Texts.Get("Common.Menu.Configure"), () => { Model.SelectOnly(row.Index); OpenRuleWindow(); }, IsEnabled: count == 1, Key: "Enter"),
+            count > 1
+                ? new MenuChoice(Texts.Get("Common.Menu.ConfigureSeveral", ("what", RulesModel.CountRules(Math.Max(together, 2)))), () => OpenRuleWindow(several: true), IsEnabled: together > 1, Key: "Enter")
+                : new MenuChoice(Texts.Get("Common.Menu.Configure"), () => { Model.SelectOnly(row.Index); OpenRuleWindow(); }, Key: "Enter"),
             new MenuChoice(Texts.Get("Common.Menu.Duplicate"), Model.DuplicateSelectedRules),
             new MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => MoveSelectedRules(-1), Key: "Ctrl+Up"),
             new MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => MoveSelectedRules(+1), Key: "Ctrl+Down"),
@@ -438,8 +452,12 @@ public partial class RulesPage
         tail = [new MenuChoice(Texts.Get("Rules.Menu.NewGroup"), () => NewPresetGroup(withSelected: false)), .. tail];
         if (UnderMouse<PresetGroupLine>(e.OriginalSource) is PresetGroupLine heading)
         {
+            keyGroup = heading.Name;
+            Model.Refresh();
             Menus.Show(owner,
             [
+                new MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => Model.MovePresetGroup(heading.Name, -1), Key: "Ctrl+Up"),
+                new MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => Model.MovePresetGroup(heading.Name, +1), Key: "Ctrl+Down"),
                 new MenuChoice(Texts.Get(heading.IsFolded ? "Rules.Menu.UnfoldGroup" : "Rules.Menu.FoldGroup"), () => Model.FoldPresetGroup(heading.Name, !heading.IsFolded)),
                 new MenuChoice(Texts.Get("Rules.Menu.RenameGroup"), () => RenamePresetGroup(heading.Name)),
                 new MenuChoice(Texts.Get("Rules.Menu.DeleteGroup"), () => Model.DeletePresetGroup(heading.Name), Tip: Texts.Get("Rules.Menu.DeleteGroup.Tip")),
@@ -450,7 +468,7 @@ public partial class RulesPage
         }
         if (PresetUnder(e.OriginalSource) is not ModPreset preset) { Menus.Show(owner, tail); return; }
 
-        if (!Model.IsSelected(preset)) Model.ClickPreset(preset, control: false, shift: false);
+        if (!Model.IsSelected(preset)) PickPreset(preset, control: false, shift: false);
         int count = Model.SelectedPresets.Count;
         string several = RulesModel.Count(count);
         Menus.Show(owner,
@@ -462,6 +480,9 @@ public partial class RulesPage
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.CutSeveral", ("what", several)) : Texts.Get("Common.Menu.Cut"), () => _ = CutPresets(), Key: "Ctrl+X"),
             new MenuChoice(count > 1 ? Texts.Get("Common.Menu.DeleteSeveral", ("what", several)) : Texts.Get("Common.Menu.Delete"), () => DeletePresetClicked(this, e), Key: "Delete"),
             Menus.Line,
+            // up or down among those of its group: the rule sets run in the list's order
+            new MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => Model.MoveSelectedPresets(-1), IsEnabled: !preset.IsArmoryPreset, Key: "Ctrl+Up"),
+            new MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => Model.MoveSelectedPresets(+1), IsEnabled: !preset.IsArmoryPreset, Key: "Ctrl+Down"),
             // the groups to move it to, its own ticked; a new one; or none
             MenuChoice.Submenu(Texts.Get("Rules.Menu.MoveToGroup"),
             [
@@ -552,7 +573,11 @@ public partial class RulesPage
                 Menus.Line,
                 new MenuChoice(Texts.Get("Common.Menu.Rename"), () => RenameModClicked(this, e), Key: "F2"),
                 new MenuChoice(Texts.Get("Rules.Menu.MakeCopy"), () => CopyModClicked(this, e)),
-                new MenuChoice(Texts.Get("Rules.ExportMod"), () => ExportModClicked(this, e)),
+                MenuChoice.Submenu(Texts.Get("Rules.ExportMod"),
+                [
+                    new MenuChoice(Texts.Get("Rules.Menu.ToFile"), () => ExportModClicked(this, e)),
+                    new MenuChoice(Texts.Get("Rules.Menu.ToClipboard"), () => CopyModToClipboardClicked(this, e)),
+                ]),
                 new MenuChoice(Texts.Get("Rules.Watermark"), () => WatermarkClicked(this, e)),
                 new MenuChoice(Texts.Get("Rules.Menu.DeleteMod"), () => DeleteModClicked(this, e), Key: "Del"),
                 Menus.Line,
@@ -562,7 +587,11 @@ public partial class RulesPage
         [
             .. onMod,
             new MenuChoice(Texts.Get("Rules.Menu.CreateNewMod"), () => NewModClicked(this, e)),
-            new MenuChoice(Texts.Get("Rules.ImportMod"), () => ImportModClicked(this, e)),
+            MenuChoice.Submenu(Texts.Get("Rules.Mod.ImportTitle"),
+            [
+                new MenuChoice(Texts.Get("Rules.Menu.FromFile"), () => ImportModClicked(this, e)),
+                new MenuChoice(Texts.Get("Rules.Menu.FromClipboard"), () => ImportModFromClipboardClicked(this, e)),
+            ]),
             new MenuChoice(Texts.Get("Rules.Menu.NewGroup"), () => NewModGroup(null)),
         ]);
     }

@@ -18,15 +18,28 @@ public static partial class Conditions
     public const string DescriptorType = "Descriptor Type";
 
     /// <summary>
-    /// True when the descriptor passes the conditions: all of them with gate "All", one of them otherwise.
+    /// True when the descriptor passes the conditions: all of them with gate "All"; otherwise every one marked
+    /// <see cref="Condition.MustBeTrue"/> and one of the others (when there are others).
     /// With no conditions the answer is <paramref name="whenNoConditions"/>.
     /// </summary>
     public static bool Pass(Declaration descriptor, List<Condition> conditions, bool gateIsAll, bool whenNoConditions)
     {
         if (conditions.Count == 0) return whenNoConditions;
-        return gateIsAll
-            ? conditions.All(c => Test(descriptor, c))
-            : conditions.Any(c => Test(descriptor, c));
+        if (gateIsAll) return conditions.All(c => Test(descriptor, c));
+        bool anyOther = false, otherPassed = false;
+        foreach (Condition c in conditions)
+        {
+            if (c.MustBeTrue)
+            {
+                if (!Test(descriptor, c)) return false;
+            }
+            else
+            {
+                anyOther = true;
+                otherPassed = otherPassed || Test(descriptor, c);
+            }
+        }
+        return !anyOther || otherPassed;
     }
 
     /// <summary>Every value of a property, at any depth: in objects by name, in lists as Index0, Index1..., in pairs as Value1 and Value2.</summary>

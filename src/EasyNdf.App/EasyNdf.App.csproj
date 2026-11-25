@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>EasyNDF</AssemblyName>
     <RootNamespace>EasyNdf.App</RootNamespace>
-    <Version>1.0.2</Version>
+    <Version>1.1.0</Version>
     <ApplicationIcon>Assets\EasyNDF.ico</ApplicationIcon>
     <!-- Startup.cs: the installer's steps (Velopack) before the app; a build that names its own start keeps it -->
     <StartupObject Condition="'$(StartupObject)' == ''">EasyNdf.App.Startup</StartupObject>
@@ -30,6 +30,8 @@
 
   <ItemGroup>
     <Resource Include="Assets\EasyNDF.ico" />
+    <Resource Include="Assets\Discord.ico" />
+    <Resource Include="Assets\StartSplash.png" />
     <!-- WARNO Tactical Overhaul, the mod the app comes with: the HTML app's #defaultMod -->
     <EmbeddedResource Include="Assets\DefaultMod.json" LogicalName="DefaultMod.json" />
     <!-- the tutorial's sample Ammunition.ndf (Files\TutorialSample.cs) -->

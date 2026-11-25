@@ -77,11 +77,12 @@ public sealed partial class UsageReadout
         gesture ??= new Gesture(kind, now);
         gesture.Steps++;
         gesture.LastStep = now;
-        // the step is over once the screen is free for a click again: its layout and drawing done
+        // the step is over once its layout and drawing are done. Not once the screen is free for a click (Input): the
+        // mouse moves waiting behind a fast drag go first there, so a whole drag read as one very long step
         if (stepStartedAt == 0)
         {
             stepStartedAt = Stopwatch.GetTimestamp();
-            Dispatcher.BeginInvoke(DispatcherPriority.Input, StepDone);
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, StepDone);
         }
         gestureQuiet ??= new DispatcherTimer(GestureEnds, DispatcherPriority.Background, (_, _) => FinishGesture(), Dispatcher) { IsEnabled = false };
         gestureQuiet.Stop();

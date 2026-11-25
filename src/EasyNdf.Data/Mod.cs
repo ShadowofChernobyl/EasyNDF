@@ -21,6 +21,24 @@ public sealed class Mod
     public List<ModPreset> Presets { get; set; } = [];
 
     /// <summary>
+    /// The rule sets in the order the Mods tab lists them, which is the order they run in: those in no group first, as
+    /// <see cref="Presets"/> holds them, then each group's, the groups as <see cref="PresetGroups"/> holds them; the
+    /// Armory's presets last, which are listed apart and run after a mod's rule sets. Moving a rule set or a group up
+    /// or down moves it in its list.
+    /// </summary>
+    public List<ModPreset> PresetsInOrder()
+    {
+        HashSet<string> groups = [.. PresetGroups.Select(group => group.Name)];
+        List<ModPreset> own = [.. Presets.Where(preset => !preset.IsArmoryPreset)];
+        return
+        [
+            .. own.Where(preset => preset.Group is null || !groups.Contains(preset.Group)),
+            .. PresetGroups.Select(group => group.Name).Distinct().SelectMany(group => own.Where(preset => preset.Group == group)),
+            .. Presets.Where(preset => preset.IsArmoryPreset),
+        ];
+    }
+
+    /// <summary>
     /// The groups the Rules tab lists the mod's rule sets in, by name, each folded or not; a rule set names its group
     /// (<see cref="ModPreset.Group"/>). A group may have no rule sets yet.
     /// </summary>
@@ -34,6 +52,12 @@ public sealed class Mod
 
     /// <summary>The mod's changes to the game's own units, made in the Armory's Unit pane.</summary>
     public List<Units.UnitEdit> UnitEdits { get; set; } = [];
+
+    /// <summary>The mod's changes to WARNO's Armory tabs: a label, a tooltip, a spare tab brought in with its cost row.</summary>
+    public List<Divisions.ModTab> Tabs { get; set; } = [];
+
+    /// <summary>The Armory tabs in the order the mod gives them, by the names the files give them; null to keep the game's order.</summary>
+    public List<string>? TabOrder { get; set; }
 
     /// <summary>The mod's changes to the game's own weapons, made in the Armory's Weapon pane.</summary>
     public List<Weapons.WeaponEdit> WeaponEdits { get; set; } = [];
@@ -95,6 +119,8 @@ public sealed class Mod
         Divisions = [.. Divisions.Select(division => Data.Divisions.ModDivision.FromJson(division.ToJson()))],
         Units = [.. Units.Select(unit => unit.Copy())],
         UnitEdits = [.. UnitEdits.Select(edit => edit.Copy())],
+        Tabs = [.. Tabs.Select(tab => tab.Copy())],
+        TabOrder = TabOrder is null ? null : [.. TabOrder],
         WeaponEdits = [.. WeaponEdits.Select(edit => edit.Copy())],
         Weapons = [.. Weapons.Select(weapon => weapon.Copy())],
         UnitDeckNumbers = new(UnitDeckNumbers, StringComparer.Ordinal),

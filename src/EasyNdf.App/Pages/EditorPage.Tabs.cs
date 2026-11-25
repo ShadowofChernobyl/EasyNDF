@@ -494,6 +494,8 @@ public partial class EditorPage
     {
         int at = openViews.IndexOf(v);
         if (at < 0) return;
+        // kept for Ctrl+Shift+T
+        if (v.Shown?.File.Entry is FileEntry closed) closedFiles.Add(closed);
         openViews.RemoveAt(at);
         shownViews.Remove(v);
         if (shownViews.Count == 0 && openViews.Count > 0) shownViews.Add(openViews[Math.Min(at, openViews.Count - 1)]);

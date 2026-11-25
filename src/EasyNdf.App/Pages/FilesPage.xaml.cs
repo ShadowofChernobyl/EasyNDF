@@ -775,7 +775,7 @@ public partial class FilesPage : UserControl
     private void ShowFilesWithErrors(FileEntry first)
     {
         MainView view = MainView.Of(this);
-        view.Tabs.SelectedItem = view.FilesTabItem;
+        view.ShowTab(view.FilesTabItem);
         Model.ShowOnly = ShowOnly.ErrorsOrWarnings;
         // a search that hides them is put aside
         if (!Model.Shown.Any(row => ReferenceEquals(row.Entry, first)) && Model.SearchText != "") Model.Search = "";
@@ -880,6 +880,8 @@ public partial class FilesPage : UserControl
     private async Task ExportChosen(ExportChoice choice)
     {
         if (!await DivisionsAreChecked() || !await WatermarksAreUpToDate()) return;
+        // a game mod folder a game update left behind: said before anything is written into it (not for a .zip)
+        if (choice.Zip is null && !await ExportFoldersAreUpToDate(choice.Folder)) return;
         HashSet<FileEntry>? skipped = await AskAboutEarlierExports();
         if (skipped is null || Model.IsCancelRequested) return;
         skipped.UnionWith(choice.LeftOut);
@@ -1259,7 +1261,8 @@ public partial class FilesPage : UserControl
     private void ShowArmoryRules(ArmoryPart part)
     {
         MainView view = MainView.Of(this);
-        view.Tabs.SelectedItem = view.RulesTabItem;
+        if (view.RefusedForOpenRule()) return;
+        view.ShowTab(view.RulesTabItem);
         view.RulesTab.Model.OpenArmoryPart(part);
     }
 

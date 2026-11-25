@@ -18,6 +18,12 @@ public abstract class UnitValues
     /// <summary>Its role, such as "armor"; null to keep the unit's.</summary>
     public string? Role { get; set; }
 
+    /// <summary>
+    /// The Armory tab it is in (WARNO's FactoryType, without "Factory/"), such as "Support"; null to keep the unit's.
+    /// Each division that offers the unit needs a cost row for the tab (<see cref="Divisions.TabRows"/>).
+    /// </summary>
+    public string? Factory { get; set; }
+
     /// <summary>A card picture of the user's own, kept with the app's data; null for the unit's own picture.</summary>
     public string? PictureFile { get; set; }
 
@@ -121,12 +127,13 @@ public abstract class UnitValues
         if (LoadoutChanges.Count > 0) yield return UnitField.Weapons;
         if (Nation is not null) yield return UnitField.Nation;
         if (Role is not null) yield return UnitField.Role;
+        if (Factory is not null) yield return UnitField.Factory;
         foreach (EditableStat stat in EditableStat.All)
             if (Given(stat.Field) is not null) yield return stat.Field;
     }
 
     /// <summary>Whether it gives any value at all.</summary>
-    public bool GivesAnything => Nation is not null || Side is not null || Role is not null || PictureFile is not null || OwnModel is not null || LoadoutChanges.Count > 0
+    public bool GivesAnything => Nation is not null || Side is not null || Role is not null || Factory is not null || PictureFile is not null || OwnModel is not null || LoadoutChanges.Count > 0
         || EditableStat.All.Any(stat => Given(stat.Field) is not null);
 
     /// <summary>
@@ -146,7 +153,7 @@ public abstract class UnitValues
         Name = name,
         Side = Side ?? unit.Side,
         Nation = Nation ?? unit.Nation,
-        Factory = unit.Factory,
+        Factory = Factory ?? unit.Factory,
         Role = Role ?? unit.Role,
         // the role's name in the game's own words goes with the game's role only
         RoleName = Role is null ? unit.RoleName : null,
@@ -205,6 +212,7 @@ public abstract class UnitValues
         AddIfGiven(json, "Nation", Nation);
         AddIfGiven(json, "Side", Side);
         AddIfGiven(json, "Role", Role);
+        AddIfGiven(json, "Factory", Factory);
         AddIfGiven(json, "PictureFile", PictureFile);
         AddIfGiven(json, "Cost", Cost);
         AddIfGiven(json, "Strength", Strength);
@@ -229,6 +237,7 @@ public abstract class UnitValues
         Nation = Text(json["Nation"]);
         Side = Text(json["Side"]);
         Role = Text(json["Role"]);
+        Factory = Text(json["Factory"]);
         PictureFile = Text(json["PictureFile"]);
         Cost = WholeNumber(json["Cost"]);
         Strength = WholeNumber(json["Strength"]);

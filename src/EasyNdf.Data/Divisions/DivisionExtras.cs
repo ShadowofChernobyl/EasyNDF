@@ -26,8 +26,55 @@ public static class DivisionExtras
     /// <summary>The dictionary file the Armory's texts go into for a game: WARNO's UNITS.csv, Steel Division 2's MODDING.csv.</summary>
     public static string NamesFileOf(GameTitle game) => game == GameTitle.SteelDivision2 ? SteelDivisionNamesFile : NamesFile;
 
-    /// <summary>Whether a file is the dictionary the Armory's texts go into for a game (<see cref="NamesFileOf"/>).</summary>
-    public static bool IsNamesFile(string fileName, GameTitle game) => string.Equals(fileName, NamesFileOf(game), StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// WARNO's dictionaries for its screens' texts, outside a battle and in one: an Armory tab's name and tooltip are
+    /// looked up in these, not in UNITS.csv (the game stops at its menu on a tab name it finds in neither).
+    /// </summary>
+    public static IReadOnlyList<string> InterfaceFiles { get; } = ["INTERFACE_OUTGAME.csv", "INTERFACE_INGAME.csv"];
+
+    /// <summary>Whether a file is one of WARNO's two dictionaries for its screens' texts (<see cref="InterfaceFiles"/>).</summary>
+    public static bool IsInterfaceFile(string fileName, GameTitle game) =>
+        game == GameTitle.Warno && InterfaceFiles.Contains(fileName, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether a file is a dictionary the Armory's texts go into for a game: its names file (<see cref="NamesFileOf"/>)
+    /// or, for the tabs' texts, one of WARNO's interface dictionaries.
+    /// </summary>
+    public static bool IsNamesFile(string fileName, GameTitle game) =>
+        string.Equals(fileName, NamesFileOf(game), StringComparison.OrdinalIgnoreCase) || IsInterfaceFile(fileName, game);
+
+    /// <summary>The dictionaries the Armory presets' rules give texts to: the names file, and the interface dictionaries for tab texts.</summary>
+    public static List<string> NamesFilesNeeded(IEnumerable<JsonNode?> rules, GameTitle game)
+    {
+        var files = new List<string>();
+        List<JsonNode?> all = [.. rules];
+        if (all.Any(NeedsNamesFile)) files.Add(NamesFileOf(game));
+        if (game == GameTitle.Warno && all.Any(GivesTabTexts)) files.AddRange(InterfaceFiles);
+        return files;
+    }
+
+    /// <summary>Whether a rule gives texts to a dictionary of this name: the interface dictionaries take the tab rules', the names file the others'.</summary>
+    public static bool NeedsNamesFile(JsonNode? rule, string fileName) =>
+        InterfaceFiles.Contains(fileName, StringComparer.OrdinalIgnoreCase) ? GivesTabTexts(rule) : NeedsNamesFile(rule);
+
+    /// <summary>The texts the rules give a dictionary of this name (see <see cref="NeedsNamesFile(JsonNode?, string)"/>).</summary>
+    public static List<DictionaryText> ArmoryTextsOf(IEnumerable<JsonNode?> rules, string fileName)
+    {
+        if (!InterfaceFiles.Contains(fileName, StringComparer.OrdinalIgnoreCase)) return ArmoryTextsOf(rules);
+        var texts = new List<DictionaryText>();
+        foreach (JsonNode? rule in RulesThatAreOn(rules))
+        {
+            if (!GivesTabTexts(rule) || JsonValues.IsFalse(rule!["Enabled"])) continue;
+            foreach ((string token, JsonNode? text) in (JsonObject)rule[DivisionChangeRules.ArmoryKey]![DivisionChangeRules.TextsKey]!)
+                if (texts.All(each => each.Token != token)) texts.Add(new DictionaryText(token, (string?)text ?? ""));
+        }
+        return texts;
+    }
+
+    /// <summary>Whether a rule is for an Armory tab's name and tooltip (<see cref="TabChangeRules"/>) and keeps texts for them.</summary>
+    private static bool GivesTabTexts(JsonNode? rule) =>
+        ((string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ChangeKey])?.StartsWith("Tab:", StringComparison.Ordinal) == true
+        && rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.TextsKey] is JsonObject { Count: > 0 };
 
     /// <summary>What was copied, or why not.</summary>
     /// <param name="Pictures">How many pictures were copied.</param>
@@ -98,7 +145,7 @@ public static class DivisionExtras
     public static bool NeedsNamesFile(JsonNode? rule) =>
         (string?)rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.ShowsKey] == "Name"
         || (rule?["Actions"] as JsonArray ?? []).Any(action => IsTextTarget((string?)action?["Target"]))
-        || (IsAddRule(rule) && rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.TextsKey] is JsonObject { Count: > 0 });
+        || (KeepsItsTexts(rule) && rule?[DivisionChangeRules.ArmoryKey]?[DivisionChangeRules.TextsKey] is JsonObject { Count: > 0 });
 
     /// <summary>
     /// Whether a rule's target is a text token whose text goes into the dictionary: a unit's name is one too, and Steel
@@ -108,6 +155,9 @@ public static class DivisionExtras
 
     /// <summary>Whether a rule adds a descriptor: its texts are kept by token, as it has no action to name them.</summary>
     private static bool IsAddRule(JsonNode? rule) => (string?)rule?["Kind"] == "Add";
+
+    /// <summary>Whether every text a rule keeps by token goes into the names file: a rule that adds a descriptor.</summary>
+    private static bool KeepsItsTexts(JsonNode? rule) => IsAddRule(rule);
 
     /// <summary>
     /// A UNITS.csv with the texts of the Armory presets' rules that are on: a line "TOKEN";"Text" for each, as the
@@ -254,7 +304,7 @@ public static class DivisionExtras
         {
             if (rule?[DivisionChangeRules.ArmoryKey] is not JsonObject armory || JsonValues.IsFalse(rule["Enabled"])) continue;
             JsonObject kept = armory[DivisionChangeRules.TextsKey] as JsonObject ?? [];
-            if (IsAddRule(rule))
+            if (KeepsItsTexts(rule))
                 foreach ((string token, JsonNode? text) in kept)
                     if (names.All(name => name.Token != token)) names.Add(new DictionaryText(token, (string?)text ?? ""));
             foreach (JsonNode? action in rule["Actions"] as JsonArray ?? [])

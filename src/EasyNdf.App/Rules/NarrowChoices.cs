@@ -39,6 +39,8 @@ internal static class NarrowChoices
     public static ComboBox OfOptions(ComboBox box, bool tipShowsChoice = false, string? ownTip = null)
     {
         box.ItemTemplate = OptionTemplate.Value;
+        // a letter typed on the dropdown goes to the first choice that starts with it
+        TextSearch.SetTextPath(box, nameof(ChoiceOption.Label));
         if (tipShowsChoice)
         {
             void ShowChoice() => box.ToolTip = box.SelectedItem is ChoiceOption option

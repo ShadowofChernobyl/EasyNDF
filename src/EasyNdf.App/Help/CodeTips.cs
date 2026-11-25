@@ -51,7 +51,8 @@ internal static class CodeTips
         return colour switch
         {
             "type" => SyntaxTips.Note(null, value, Texts.Get("Editor.Syntax.Kind.Type"),
-                Texts.Count("Editor.Syntax.Settings", guide.NamesOf(value).Count(), ("number", Texts.Number(guide.NamesOf(value).Count())))),
+                (guide.AboutType(value) is string about ? about + " " : "")
+                + Texts.Count("Editor.Syntax.Settings", guide.NamesOf(value).Count(), ("number", Texts.Number(guide.NamesOf(value).Count())))),
             "keyword" => SyntaxWords.KeywordNote(value) is { } note ? SyntaxTips.Note(null, value, Texts.Get("Editor.Syntax.Kind.Keyword"), Texts.Get(note)) : null,
             "comment" => SyntaxTips.Note(null, SyntaxWords.CommentMark(value, false), Texts.Get("Editor.Syntax.Kind.Comment"), Texts.Get("Editor.Syntax.Comment")),
             "const" when value is "True" or "False" or "true" or "false" => SyntaxTips.Note(null, value, Texts.Get("Editor.Syntax.Kind.YesNo"), Texts.Get("Editor.Syntax.TrueFalse")),

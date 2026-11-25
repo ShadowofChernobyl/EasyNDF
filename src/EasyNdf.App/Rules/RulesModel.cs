@@ -41,24 +41,60 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     public IReadOnlyList<string> ModNames => [.. Data.Mods.Select(m => m.Name)];
 
     /// <summary>
-    /// The open mod's presets of its own as listed: those in no group first, in name order as the HTML app sorts them,
-    /// then each group's (<see cref="Mod.PresetGroups"/>), the groups in name order; its Armory presets are listed apart
-    /// (<see cref="ArmoryPresetsOfOpenMod"/>).
+    /// The open mod's presets of its own as listed, which is the order they run in (<see cref="Mod.PresetsInOrder"/>):
+    /// those in no group first, then each group's (<see cref="Mod.PresetGroups"/>), the groups in the order given them; its Armory
+    /// presets are listed apart (<see cref="ArmoryPresetsOfOpenMod"/>).
     /// </summary>
-    public IReadOnlyList<ModPreset> Presets
+    public IReadOnlyList<ModPreset> Presets => [.. OpenMod.PresetsInOrder().Where(p => !p.IsArmoryPreset)];
+
+    /// <summary>
+    /// Ctrl+Up and Ctrl+Down on the rule sets: every selected rule set moves one place up or down among those of its
+    /// group (or of no group), and so runs earlier or later. One that would pass the first or last of them, or run into
+    /// another selected one held there, stays where it is.
+    /// </summary>
+    public void MoveSelectedPresets(int direction)
     {
-        get
+        IReadOnlyList<ModPreset> listed = Presets;
+        HashSet<string> groups = [.. OpenMod.PresetGroups.Select(group => group.Name)];
+        string? GroupOf(ModPreset preset) => preset.Group is string group && groups.Contains(group) ? group : null;
+        List<ModPreset> picked = [.. listed.Where(selectedPresets.Contains)];
+        if (picked.Count == 0) return;
+        var held = new HashSet<ModPreset>();
+        bool moved = false;
+        foreach (ModPreset preset in direction < 0 ? picked : Enumerable.Reverse(picked))
         {
-            StringComparer byName = StringComparer.Create(CultureInfo.InvariantCulture, false);
-            HashSet<string> groups = [.. OpenMod.PresetGroups.Select(group => group.Name)];
-            List<ModPreset> own = [.. OpenMod.Presets.Where(p => !p.IsArmoryPreset).OrderBy(p => p.Name, byName)];
-            return [.. own.Where(p => p.Group is null || !groups.Contains(p.Group)), .. own.Where(p => p.Group is string group && groups.Contains(group)).OrderBy(p => p.Group, byName)];
+            List<ModPreset> section = [.. Presets.Where(other => GroupOf(other) == GroupOf(preset))];
+            int at = section.IndexOf(preset), to = at + direction;
+            if (to < 0 || to >= section.Count || held.Contains(section[to]))
+            {
+                held.Add(preset);
+                continue;
+            }
+            // the two change places in the mod's own list, which the order of running follows
+            int mine = OpenMod.Presets.IndexOf(preset), theirs = OpenMod.Presets.IndexOf(section[to]);
+            (OpenMod.Presets[mine], OpenMod.Presets[theirs]) = (OpenMod.Presets[theirs], OpenMod.Presets[mine]);
+            moved = true;
         }
+        if (!moved) return;
+        Data.Save(OpenMod);
+        Refresh();
     }
 
     /// <summary>The open mod's groups of rule sets, in name order, as listed.</summary>
-    public IReadOnlyList<PresetGroup> PresetGroups =>
-        [.. OpenMod.PresetGroups.OrderBy(group => group.Name, StringComparer.Create(CultureInfo.InvariantCulture, false))];
+    public IReadOnlyList<PresetGroup> PresetGroups => [.. OpenMod.PresetGroups];
+
+    /// <summary>
+    /// Ctrl+Up and Ctrl+Down on a group's heading: the group moves one place up or down among the groups, with its rule
+    /// sets, and so they run earlier or later. The rule sets in no group stay above every group.
+    /// </summary>
+    public void MovePresetGroup(string name, int direction)
+    {
+        int at = OpenMod.PresetGroups.FindIndex(group => group.Name == name), to = at + direction;
+        if (at < 0 || to < 0 || to >= OpenMod.PresetGroups.Count) return;
+        (OpenMod.PresetGroups[at], OpenMod.PresetGroups[to]) = (OpenMod.PresetGroups[to], OpenMod.PresetGroups[at]);
+        Data.Save(OpenMod);
+        Refresh();
+    }
 
     /// <summary>Whether the open mod has a group of rule sets of that name.</summary>
     public bool PresetGroupExists(string name) => OpenMod.PresetGroups.Any(group => group.Name == name);
@@ -579,7 +615,7 @@ public sealed partial class RulesModel : INotifyPropertyChanged
         OpenPreset?.IsArmoryPreset == true && index >= 0 && index < Rules.Count && ArmoryPresets.IsLocked(Rules[index]);
 
     /// <summary>Whether the rule open in the rule window is locked: the window then only shows it.</summary>
-    public bool IsOpenRuleLocked => IsLocked(CurrentRule);
+    public bool IsOpenRuleLocked => !IsConfiguringSeveral && IsLocked(CurrentRule);
 
     /// <summary>
     /// Refuses a change to locked rules, saying where they are changed instead.
@@ -952,6 +988,13 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     public void FinishEditingRule()
     {
         if (!IsEditingRule) return;
+        if (IsConfiguringSeveral)
+        {
+            JsonObject merged = ruleBeforeEditing!;
+            ruleBeforeEditing = null;
+            FinishEditingSeveral(merged);
+            return;
+        }
         bool isChanged = HasUnsavedRuleChanges;
         ruleBeforeEditing = null;
         if (isChanged) SaveRules();
@@ -963,6 +1006,8 @@ public sealed partial class RulesModel : INotifyPropertyChanged
     {
         if (ruleBeforeEditing is not JsonObject before) return;
         ruleBeforeEditing = null;
+        // several rules as one: nothing was written into them yet
+        if (IsConfiguringSeveral) { ForgetSeveral(); Refresh(); return; }
         // put back in place, so the rule list and the windows still hold the same rule
         if (OpenRule is JsonObject rule) PutBack(rule, before);
         Refresh();

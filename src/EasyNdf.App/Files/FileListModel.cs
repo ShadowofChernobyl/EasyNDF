@@ -588,7 +588,12 @@ public sealed class FileListModel : INotifyPropertyChanged
             {
                 // the "Files already in the list" setting: ask, or always replace, or always skip
                 string duplicates = (string?)AppData.Current.Settings["dupes"] ?? "ask";
-                if (duplicates == "replace") choice = DuplicateChoice.Replace;
+                // the very file already listed, unchanged since (Add Its Files pressed twice): nothing to choose between
+                bool sameFile = existing.ArchivedContent is null && file.ArchivedContent is null
+                    && string.Equals(existing.Source, file.Source, StringComparison.OrdinalIgnoreCase)
+                    && existing.Size == file.Size && existing.Modified == file.Modified;
+                if (sameFile) choice = DuplicateChoice.Skip;
+                else if (duplicates == "replace") choice = DuplicateChoice.Replace;
                 else if (duplicates == "skip") choice = DuplicateChoice.Skip;
                 else if (choiceForAll is DuplicateChoice sameAsBefore) choice = sameAsBefore;
                 else

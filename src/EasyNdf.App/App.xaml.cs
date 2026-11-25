@@ -44,8 +44,13 @@ public partial class App : Application
         Text.Texts.UseSaved();
         ThemeManager.ApplySaved();
         Controls.ListText.ApplySaved();
+        // the start-up form's bar: the saved data, language and theme are read, and building the window is next
+        StartForm.Progress(0.38, 0.79);
         int frameAt = Array.IndexOf(e.Args, "--frame");
         MainWindow = new MainWindow(frameAt >= 0 && frameAt + 1 < e.Args.Length ? e.Args[frameAt + 1] : "");
+        // the start-up form's bar: the window is built, and showing it is the last step; the form closes once it is drawn
+        StartForm.Progress(0.79, 0.98);
+        MainWindow.ContentRendered += (_, _) => StartForm.Close();
         MainWindow.Show();
         // Windows' file and folder dialogs open in the middle of the app's screen, not where one was last left
         if (!RunsTests) Windowing.FileDialogPlacement.Start();

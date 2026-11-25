@@ -80,6 +80,7 @@ public sealed class SettingsStore(string settingsFolder)
         ["tooltips"] = true,
         // whether an installed EasyNDF looks for a newer release at start
         ["checkUpdates"] = true,
+        ["askBundledModUpdate"] = true,
         ["rememberWindow"] = true,
         // how many changes Ctrl+Z can take back
         ["undoSteps"] = "60",

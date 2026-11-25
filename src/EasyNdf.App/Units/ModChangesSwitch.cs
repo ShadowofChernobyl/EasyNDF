@@ -46,12 +46,20 @@ public sealed class ModChangesSwitch : StackPanel
     {
         Margin = new Thickness(0, 6, 0, 0);
         toggle.Style = (Style)Application.Current.FindResource("Toggle");
-        toggle.Content = Texts.Get("Units.ModChanges");
-        toggle.ToolTip = Texts.Get("Units.ModChanges.Tip");
         toggle.HorizontalAlignment = HorizontalAlignment.Left;
+        // its words follow the language chosen in Settings, without a restart
+        void ShowTexts()
+        {
+            toggle.Content = Texts.Get("Units.ModChanges");
+            toggle.ToolTip = Texts.Get("Units.ModChanges.Tip");
+            view.Text = Texts.Get("Units.ModChanges.View");
+            view.ToolTip = Texts.Get("Units.ModChanges.Mods.Tip");
+            editedLabel.Text = Texts.Get("Units.ModEdited");
+            edited.ToolTip = Texts.Get("Units.ModEdited.Tip");
+        }
+        ShowTexts();
+        Texts.LanguageChanged += ShowTexts;
         toggle.Click += (_, _) => Switch(toggle.IsChecked == true);
-        view.Text = Texts.Get("Units.ModChanges.View");
-        view.ToolTip = Texts.Get("Units.ModChanges.Mods.Tip");
         view.SetResourceReference(TextBlock.ForegroundProperty, "accent");
         view.FocusVisualStyle = Application.Current.TryFindResource("KeyboardFocusOutline") as Style;
         view.MouseLeftButtonUp += (_, e) =>
@@ -71,9 +79,7 @@ public sealed class ModChangesSwitch : StackPanel
         row.Children.Add(toggle);
         asSource.SetResourceReference(TextBlock.ForegroundProperty, "muted");
         asSource.Text = Texts.Get("Units.ModChanges.Off");
-        editedLabel.Text = Texts.Get("Units.ModEdited");
         editedLabel.SetResourceReference(TextBlock.ForegroundProperty, "muted");
-        edited.ToolTip = Texts.Get("Units.ModEdited.Tip");
         edited.SelectionChanged += (_, _) => EditedChosen();
         Children.Add(row);
         Children.Add(asSource);
@@ -220,7 +226,7 @@ public sealed class ModChangesSwitch : StackPanel
             e.Handled = true;
             popup.IsOpen = false;
             MainView main = MainView.Of(this);
-            main.Tabs.SelectedItem = main.RulesTabItem;
+            main.ShowTab(main.RulesTabItem);
         };
         // the keyboard goes into the list, so Escape closes it and the arrow keys scroll it; it comes back to "View" after
         popup.Opened += (_, _) => scroller.Focus();

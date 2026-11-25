@@ -1,0 +1,44 @@
+<!--
+  A tab in a window of its own (MainView.PopOut.cs): the app's title row with the tab's name, and the tab's page under
+  it. Closing the window puts the page back in the main window.
+-->
+<Window x:Class="EasyNdf.App.Windowing.PopOutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:t="clr-namespace:EasyNdf.App.Text"
+        xmlns:controls="clr-namespace:EasyNdf.App.Controls"
+        Title="EasyNDF" Icon="/Assets/EasyNDF.ico"
+        Width="1100" Height="720" MinWidth="600" MinHeight="420"
+        Background="{DynamicResource panel}">
+
+    <!-- the text settings of MainView, which its pages inherit there -->
+    <Grid x:Name="Root" Background="{DynamicResource panel}"
+          TextElement.Foreground="{DynamicResource ink}" TextElement.FontFamily="{DynamicResource ui-font}" TextElement.FontSize="12.5"
+          TextBlock.LineHeight="18.125" TextBlock.LineStackingStrategy="BlockLineHeight"
+          UseLayoutRounding="False" SnapsToDevicePixels="False" TextOptions.TextFormattingMode="Ideal">
+        <!-- "Interface size" scales this; the app's windows and questions are added to it while this window is in use -->
+        <Grid x:Name="Frame">
+            <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource panel}">
+                <DockPanel>
+                    <controls:Bevel x:Name="TitleRow" DockPanel.Dock="Top" BottomRight="{DynamicResource lo}" Edges="0,0,0,1" Padding="10,6">
+                        <DockPanel>
+                            <StackPanel x:Name="CaptionButtons" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" ToolTip="{t:Text Main.Minimize.Tip}" Click="Minimize_Click" />
+                                <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Content="&#xE922;" ToolTip="{t:Text Main.Maximize.Tip}" Click="Maximize_Click" />
+                                <Button x:Name="CloseButton" Style="{StaticResource CaptionButton}" Content="&#xE8BB;" Click="Close_Click" />
+                            </StackPanel>
+                            <DockPanel VerticalAlignment="Center">
+                                <controls:Bevel DockPanel.Dock="Left" TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}">
+                                    <controls:SpacedText Text="EasyNDF" Spacing="0.04" TextElement.FontWeight="Bold" TextElement.FontSize="13" Margin="6,0" VerticalAlignment="Center" />
+                                </controls:Bevel>
+                                <TextBlock x:Name="TabName" FontWeight="Bold" Margin="9.6,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                        </DockPanel>
+                    </controls:Bevel>
+                    <!-- the page, with the room the main window's tabs give it -->
+                    <ContentControl x:Name="PageHost" Margin="10" Focusable="False" KeyboardNavigation.TabNavigation="Cycle" />
+                </DockPanel>
+            </controls:Bevel>
+        </Grid>
+    </Grid>
+</Window>

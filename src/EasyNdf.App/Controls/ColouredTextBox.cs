@@ -59,12 +59,31 @@ public sealed class ColouredTextBox : FrameworkElement
         this.textHost = textHost;
         this.kind = kind;
         IsHitTestVisible = false;
-        box.TextChanged += (_, _) => InvalidateVisual();
+        // drawn again once the box has laid its new text out: until then it cannot say where a character is, and a box
+        // whose size did not change (one with scrollbars) was told of nothing else, so its text stayed blank
+        box.TextChanged += (_, _) => { InvalidateVisual(); DrawAgainSoon(); };
         box.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) => InvalidateVisual()));
         box.SizeChanged += (_, _) => InvalidateVisual();
         Loaded += (_, _) => Theming.ThemeManager.Applied += InvalidateVisual;
         Unloaded += (_, _) => Theming.ThemeManager.Applied -= InvalidateVisual;
     }
+
+    private bool drawsAgainSoon;
+
+    /// <summary>Draws the text again after the layout that is under way.</summary>
+    private void DrawAgainSoon()
+    {
+        if (drawsAgainSoon) return;
+        drawsAgainSoon = true;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            drawsAgainSoon = false;
+            InvalidateVisual();
+        });
+    }
+
+    /// <summary>How many times in a row nothing could be placed: a few more tries are made, not without end.</summary>
+    private int blankDraws;
 
     /// <summary>Draws each piece where the box puts its first character, inside the box.</summary>
     protected override void OnRender(DrawingContext drawing)
@@ -74,20 +93,30 @@ public sealed class ColouredTextBox : FrameworkElement
         // left and right, where the box shows its text (it scrolls sideways); up and down, the whole box, as the box's
         // own text area is shorter than the letters that hang below the line
         double left = textHost.TranslatePoint(new Point(0, 0), this).X;
-        var visible = new Rect(left, 0, textHost.ViewportWidth, ActualHeight);
+        // above the sideways scrollbar when the box shows one: the coloured text is drawn over the box, so without this
+        // its last line showed through the bar
+        double bottom = ActualHeight;
+        if (textHost.ComputedHorizontalScrollBarVisibility == Visibility.Visible)
+            bottom = Math.Min(bottom, textHost.TranslatePoint(new Point(0, 0), this).Y + textHost.ViewportHeight);
+        var visible = new Rect(left, 0, textHost.ViewportWidth, Math.Max(0, bottom));
         drawing.PushClip(new RectangleGeometry(visible));
         var typeface = new Typeface(box.FontFamily, box.FontStyle, box.FontWeight, box.FontStretch);
         double pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        bool placedAny = false;
         foreach (ColouredPiece piece in RuleTextColours.Pieces(text, kind))
         {
             Rect place = box.GetRectFromCharacterIndex(piece.Start);
             if (place.IsEmpty) continue;
+            placedAny = true;
             var shown = new FormattedText(text.Substring(piece.Start, piece.Length), CultureInfo.CurrentUICulture, box.FlowDirection, typeface,
                 box.FontSize, Brush(piece.Colour), pixelsPerDip);
             // at the top of the box's own glyphs for that character: the box puts its letters there whatever its line height
             drawing.DrawText(shown, box.TranslatePoint(place.TopLeft, this));
         }
         drawing.Pop();
+        // the box knows no character's place yet: tried again once it has laid its text out
+        if (placedAny) blankDraws = 0;
+        else if (blankDraws++ < 5) DrawAgainSoon();
     }
 
     private Brush Brush(string colour) => TryFindResource(colour) as Brush ?? Brushes.Gray;

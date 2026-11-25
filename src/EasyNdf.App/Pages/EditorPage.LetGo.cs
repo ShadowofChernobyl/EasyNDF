@@ -76,8 +76,34 @@ public partial class EditorPage
             if (v.LetGo is not null && v.Shown is null) await BringBack(v);
     }
 
+    /// <summary>The files being read again, so one asked for twice at once (the tab shown, and a descriptor wanted in it) is read once.</summary>
+    private readonly Dictionary<FileView, Task> bringingBack = [];
+
+    /// <summary>The files that are not put back where they were once read again: a descriptor is shown in them instead.</summary>
+    private readonly HashSet<FileView> noOldPlace = [];
+
     /// <summary>Reads a tab's file let go of again and shows it where it was, unless another file was put in that tab meanwhile.</summary>
     private async Task BringBack(FileView v)
+    {
+        if (bringingBack.TryGetValue(v, out Task? going))
+        {
+            await going;
+            return;
+        }
+        Task now = BringBackNow(v);
+        bringingBack[v] = now;
+        try
+        {
+            await now;
+        }
+        finally
+        {
+            bringingBack.Remove(v);
+            noOldPlace.Remove(v);
+        }
+    }
+
+    private async Task BringBackNow(FileView v)
     {
         if (v.LetGo is not LetGoFile kept) return;
         if (Files is null || !Files.Entries.Contains(kept.Entry))
@@ -98,7 +124,7 @@ public partial class EditorPage
             Show();
             return;
         }
-        if (v.Shown?.Entry != kept.Entry) return;
+        if (v.Shown?.Entry != kept.Entry || noOldPlace.Contains(v)) return;
         v.Editor.CaretOffset = Math.Min(kept.Caret, v.Editor.Document.TextLength);
         // the caret moved puts the line on screen; the old place is put back once laid out
         Dispatcher.BeginInvoke(() => v.Editor.ScrollToVerticalOffset(kept.Top), DispatcherPriority.Loaded);

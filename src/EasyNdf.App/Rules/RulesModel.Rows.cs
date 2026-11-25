@@ -35,7 +35,7 @@ public sealed partial class RulesModel
     private JsonNode? rowsBelongTo;
 
     /// <summary>The rule shown in the rule window: the current rule, or null when the preset has none.</summary>
-    public JsonObject? OpenRule => CurrentRule < Rules.Count ? Rules[CurrentRule] as JsonObject : null;
+    public JsonObject? OpenRule => mergedRule ?? (CurrentRule < Rules.Count ? Rules[CurrentRule] as JsonObject : null);
 
     /// <summary>The list of rows the keys act on in the rule window, the one clicked last; null for none.</summary>
     public string? ActiveRowList { get; set; }
@@ -219,6 +219,7 @@ public sealed partial class RulesModel
     public void DuplicateRows(string list)
     {
         if (IsOpenRuleLocked) { Say(Texts.Get("Rules.Locked.Refused"), NoticeKind.Caution); return; }
+        if (RefusedForMixedRows(list)) return;
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
         if (rows is null || picked.Count == 0) return;
@@ -237,6 +238,7 @@ public sealed partial class RulesModel
         JsonArray? rows = RowsOf(list);
         IReadOnlyList<int> picked = SelectedRowsOf(list);
         if (rows is null || picked.Count == 0) { Say(SelectRowsFirst, NoticeKind.Caution); return null; }
+        if (RefusedForMixedRows(list)) return null;
         var items = new JsonArray();
         foreach (int place in picked)
         {

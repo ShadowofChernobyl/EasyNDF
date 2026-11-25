@@ -55,7 +55,7 @@ public static class BattlegroupView
         if (cards.Count == 0) view.Children.Add(Muted(Texts.Get("Divisions.Battlegroup.Empty")));
         if (problems.Count > 0) view.Children.Add(ProblemsBox(problems, units));
         string firstSide = UnitNames.SidesOf(game)[0];
-        foreach (string type in UnitNames.FactoriesOf(game))
+        foreach (string type in UnitNames.FactoriesOf(game, units.Values))
         {
             List<int> places = [.. Enumerable.Range(0, cards.Count).Where(place => TypeOf(cards[place].Unit) == type)];
             int room = division.Costs.TryGetValue(type, out IReadOnlyList<int>? costs) ? costs.Count : 0;

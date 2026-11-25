@@ -358,7 +358,8 @@ public partial class NewUnitWindow : UserControl
         if (target == Step.OwnModel && modelUnit is not null && !ReferenceEquals(ownModelFor, modelUnit) && unitSource is not null)
         {
             ownModelFor = modelUnit;
-            OwnModelStep.Descriptor = null;
+            OwnModelStep.AwaitsName = true;
+            OwnModelStep.Descriptor = DescriptorSoFar();
             OwnModelStep.Open(modelUnit, unitSource, null);
         }
         if (target == Step.Stats) FillStatsStep();
@@ -467,7 +468,7 @@ public partial class NewUnitWindow : UserControl
         factoryCountTexts.Clear();
         Dictionary<string, int> counts = filter.FactoryCounts(units);
         FactoryTabs.Children.Add(FactoryTab("", Texts.Get("Units.Factory.All.Short"), Texts.Get("Units.Factory.All"), counts.Values.Sum()));
-        foreach (string factory in UnitNames.FactoriesOf(game))
+        foreach (string factory in UnitNames.FactoriesOf(game, units))
             FactoryTabs.Children.Add(FactoryTab(factory, UnitNames.FactoryShort(factory), UnitNames.Factory(factory), counts.GetValueOrDefault(factory)));
     }
 
@@ -754,7 +755,14 @@ public partial class NewUnitWindow : UserControl
         if (!IsOpen) return;
         ShowPreview();
         ShowButtons();
+        // the 3D Model step names the folder its files go into after the unit
+        OwnModelStep.Descriptor = DescriptorSoFar();
+        OwnModelStep.ShowDestination();
     }
+
+    /// <summary>The new unit's descriptor as the name typed so far makes it; null while there is no name.</summary>
+    private string? DescriptorSoFar() =>
+        modelUnit is not null && NameBox.Text.Trim() is { Length: > 0 } name ? ModUnit.NewDescriptor(name, ChosenNation() ?? modelUnit.Nation, takenDescriptors) : null;
 
     private void DetailChosen(object sender, SelectionChangedEventArgs e)
     {
@@ -1079,14 +1087,37 @@ public partial class NewUnitWindow : UserControl
         Create();
     }
 
-    private void CancelClicked(object sender, RoutedEventArgs e) => Close();
+    private void CancelClicked(object sender, RoutedEventArgs e) => _ = CloseAsking();
+
+    /// <summary>Whether a question about dropping the entries is open, so a second click or key does not ask again.</summary>
+    private bool askingToClose;
+
+    /// <summary>
+    /// Closes the window by Cancel, ×, Escape or a click outside it: once a unit to copy is chosen or a name typed, it
+    /// asks first, as the rule window does, since a stray click would otherwise drop all five steps' entries.
+    /// </summary>
+    private async Task CloseAsking()
+    {
+        if (askingToClose || !IsOpen) return;
+        bool begun = modelUnit is not null || NameBox.Text.Trim() != "";
+        if (begun)
+        {
+            askingToClose = true;
+            try
+            {
+                if (!await MainView.Of(this).Messages.Confirm(Texts.Get("Rules.DiscardChanges"), Texts.Get("Rules.Discard"), DialogIcon.Warning)) return;
+            }
+            finally { askingToClose = false; }
+        }
+        Close();
+    }
 
     private void KeyPressed(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
             e.Handled = true;
-            Close();
+            _ = CloseAsking();
         }
         else if (e.Key == Key.Enter && step == Step.Weapons && CreateButton.IsEnabled)
         {
@@ -1102,7 +1133,7 @@ public partial class NewUnitWindow : UserControl
 
     private void BackdropPressed(object sender, MouseButtonEventArgs e)
     {
-        if (ReferenceEquals(e.OriginalSource, Backdrop)) Close();
+        if (ReferenceEquals(e.OriginalSource, Backdrop)) _ = CloseAsking();
     }
 
     private void BoxPressed(object sender, MouseButtonEventArgs e) => e.Handled = true;

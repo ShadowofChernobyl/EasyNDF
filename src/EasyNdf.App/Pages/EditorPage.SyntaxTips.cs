@@ -86,10 +86,12 @@ public partial class EditorPage
     private StackPanel TypeTip((string, string, bool)? wrong, string type, ValueGuide guide, string text)
     {
         var said = new List<string>();
+        // what the type is for, then the counts
+        if (guide.AboutType(type) is string about) said.Add(about);
         int settings = guide.NamesOf(type).Count();
         if (settings > 0) said.Add(Texts.Count("Editor.Syntax.Settings", settings, ("number", Texts.Number(settings))));
         int named = NamedOfType(type);
-        if (named > 0) said.Add(Texts.Count("Editor.Syntax.NamedObjects", named, ("number", Texts.Number(named))));
+        if (named > 0) said.Add(Texts.Count("Editor.Syntax.NamedObjects", named, ("number", Texts.Number(named))) + UnreadNote());
         said.Add(UsedInFile(UsesInText(text, type)));
         return SyntaxTips.Note(wrong, type, Texts.Get("Editor.Syntax.Kind.Type"), string.Join(" ", said));
     }
@@ -123,6 +125,17 @@ public partial class EditorPage
         return tip;
     }
 
+    /// <summary>How many of the Files tab's files are not read yet: what a tip counts or finds leaves them out.</summary>
+    private int UnreadFiles()
+    {
+        List<FileEntry> listed = [.. (Files?.Entries ?? []).Where(entry => entry.Source is not null)];
+        return listed.Count - ReferenceIndex.Of([.. Files?.Entries ?? []]).Files.Count;
+    }
+
+    /// <summary>" N listed files are not read yet." after a count over the files read, or "" when all are read.</summary>
+    private string UnreadNote() =>
+        UnreadFiles() is > 0 and int unread ? " " + Texts.Count("Editor.Syntax.UnreadNote", unread, ("number", Texts.Number(unread))) : "";
+
     /// <summary>
     /// A name's tip: its type, where it is declared, how many descriptors of the read files use it, and its first
     /// settings. One declared in another read file shows "Reading its settings…" until that file is read.
@@ -147,10 +160,15 @@ public partial class EditorPage
         if (sameDeclaration)
         {
             int users = index.UsersOf(name).Count;
-            said.Add(users > 0 ? Texts.Count("Editor.Syntax.UsedBy", users, ("number", Texts.Number(users))) : Texts.Get("Editor.Syntax.UsedByNone"));
+            said.Add((users > 0 ? Texts.Count("Editor.Syntax.UsedBy", users, ("number", Texts.Number(users))) : Texts.Get("Editor.Syntax.UsedByNone")) + UnreadNote());
         }
         else if (inThisFile) said.Add(UsedInFile(Math.Max(0, UsesInText(text, name) - 1)));
-        else said.Add(Texts.Get("Editor.Syntax.NotLoaded"));
+        else
+        {
+            // only the files read so far are known: a name declared in a listed file that is not read yet is not "missing"
+            int unread = (Files?.Entries ?? []).Count(entry => entry.Source is not null) - index.Files.Count;
+            said.Add(unread > 0 ? Texts.Count("Editor.Syntax.NotRead", unread, ("number", Texts.Number(unread))) : Texts.Get("Editor.Syntax.NotLoaded"));
+        }
         if (said.Count > 0) SyntaxTips.Add(tip, string.Join(" ", said));
 
         if (inThisFile && here is { } span)

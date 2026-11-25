@@ -57,6 +57,16 @@ public sealed class SourceChoice : ComboBox
     private readonly List<TextBlock> modNames = [];
 
     /// <summary>
+    /// The box shows a picture of the item chosen, as wide as the item: it starts at the left, as the text of the other
+    /// items does, in place of the middle of the box.
+    /// </summary>
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        if (GetTemplateChild("SelectionBox") is ContentPresenter box) box.HorizontalAlignment = HorizontalAlignment.Left;
+    }
+
+    /// <summary>
     /// A mod's name, with its game, no wider than the box: the box shows a picture of the item chosen, so a longer one
     /// ran past the arrow and was cut off with no way to read it. Cut short with "…", it shows whole on hover, and the
     /// box's tooltip names it whole.
@@ -101,15 +111,35 @@ public sealed class SourceChoice : ComboBox
         UnitSource? chosen = selection?.Chosen;
         IReadOnlyList<UnitSource> sources = selection?.Sources ?? [];
         if (chosen is null) Items.Add(new ComboBoxItem { Content = Texts.Get("Units.ChooseSource"), Tag = "none", IsEnabled = false });
-        foreach (UnitSource game in sources.Where(source => source.Mod is null))
-            Items.Add(new ComboBoxItem { Content = game.Name, Tag = game, ToolTip = game.Folder });
+        // two installs of one game read the same: each is then told apart by its folder, dimmed after the name as a
+        // file's folder is beside another file of its name ("WARNO (WARNO212400\)")
+        List<UnitSource> games = [.. sources.Where(source => source.Mod is null)];
+        static string KeyOf(UnitSource game) => game.GameFolder.Replace('\\', '/').TrimEnd('/') + "/" + game.Game.Name;
+        var names = new Rules.PropertyScans(new Dictionary<string, EasyNdf.Data.ScanInfo>(), [.. games.Select(KeyOf)]);
+        string FolderOf(UnitSource game) => names.Folder(KeyOf(game)) is { Length: > 0 } folder ? " " + Rules.PropertyScans.FolderTag(folder) : "";
+        foreach (UnitSource game in games)
+        {
+            string folder = FolderOf(game);
+            if (folder == "")
+            {
+                Items.Add(new ComboBoxItem { Content = game.Name, Tag = game, ToolTip = game.Folder });
+                continue;
+            }
+            var dimmed = new Run(folder);
+            dimmed.SetResourceReference(TextElement.ForegroundProperty, "muted");
+            var shown = new TextBlock { Inlines = { new Run(game.Name), dimmed }, FontWeight = FontWeights.Normal, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Left };
+            modNames.Add(shown);
+            Items.Add(new ComboBoxItem { Content = shown, Tag = game, ToolTip = game.Folder });
+        }
         List<UnitSource> mods = [.. sources.Where(source => source.Mod is not null)];
         if (mods.Count > 0)
         {
             Items.Add(new ComboBoxItem { Content = CategoryHeading(Texts.Get("Units.Mods")), IsEnabled = false });
             foreach (UnitSource mod in mods)
             {
-                var game = new Run("  " + mod.Game.Name);
+                // a mod of a game installed twice names which install it is in, as the game's own line does
+                UnitSource? install = games.FirstOrDefault(each => each.GameFolder == mod.GameFolder);
+                var game = new Run("  " + mod.Game.Name + (install is null ? "" : FolderOf(install)));
                 game.SetResourceReference(TextElement.ForegroundProperty, "muted");
                 // never bold: the box shows a picture of the chosen item, which the list draws bold while it is chosen
                 var name = new TextBlock { Inlines = { new Run(mod.Name), game }, FontWeight = FontWeights.Normal, TextTrimming = TextTrimming.CharacterEllipsis };

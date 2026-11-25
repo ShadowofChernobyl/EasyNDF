@@ -379,6 +379,20 @@ public sealed class Parser
             return new AssignValue(word, ReadValue());
         }
 
+        // "Type meta ( ... ) ( ... )", as the game's own script templates are written: the meta block between the type
+        // and the object's body is skipped; it stays in the text as written
+        if (IsWord(i, "meta") && IsPunct(i + 1, "("))
+        {
+            int depth = 0, at = i + 1;
+            for (; tokens.Has(at); at++)
+            {
+                if (IsPunct(at, "(")) depth++;
+                else if (IsPunct(at, ")") && --depth == 0) break;
+            }
+            if (!tokens.Has(at)) throw Error("expected \")\"");
+            i = at + 1;
+        }
+
         // An object: the word is followed by "(" and then "Name =", "Name is", or ")".
         // (The first member may be "export Name is", "private Name is" or "public Name is".)
         int firstName = IsKind(i + 1, TokenKind.Identifier) && TextAt(i + 1) is "export" or "private" or "public" && IsKind(i + 2, TokenKind.Identifier) ? i + 2 : i + 1;

@@ -58,6 +58,8 @@ public sealed class WeaponTable : UserControl
     public WeaponTable()
     {
         rows = new ItemsControl { Focusable = false };
+        // the headings are texts: a change of language writes them anew
+        Texts.LanguageChanged += FillHeadings;
         VirtualizingPanel.SetIsVirtualizing(rows, true);
         VirtualizingPanel.SetVirtualizationMode(rows, VirtualizationMode.Recycling);
         VirtualizingPanel.SetScrollUnit(rows, ScrollUnit.Pixel);

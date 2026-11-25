@@ -194,6 +194,10 @@ public sealed partial class TourOverlay : Grid
     {
         view = MainView.Find(this);
         if (view is null) return;
+        // not over a rule left open: its window would cover what the tutorial points at
+        if (view.RefusedForOpenRule()) return;
+        // the tutorial points at the tabs and their pages in the main window
+        view.ReturnAllTabs();
         steps = AllSteps(view);
         // nothing is exported during a tutorial: the Export window only shows what would be written
         view.ExportWindow.TourOnly = true;
@@ -235,7 +239,7 @@ public sealed partial class TourOverlay : Grid
         while ((steps[at].SkipIf?.Invoke() == true || byUser && steps[at].Show is null && steps[at].Undone?.Invoke() == true) && at + direction >= 0 && at + direction < steps.Count)
             at += direction;
         Step shown = steps[at];
-        if (shown.Tab is TabItem tab && view is not null) view.Tabs.SelectedItem = tab;
+        if (shown.Tab is TabItem tab && view is not null) view.ShowTab(tab);
         shown.Show?.Invoke();
         // gone back to a step that is done already: it waits for Next (or for its work to be undone, and done again)
         held = byUser && shown.Done?.Invoke() == true;

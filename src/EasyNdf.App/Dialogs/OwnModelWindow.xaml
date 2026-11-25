@@ -18,6 +18,8 @@
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xD7;" ToolTip="{t:Text Common.TextWindow.CloseEscape.Tip}"
                                 AutomationProperties.Name="{t:Text Common.TextWindow.CloseEscape.Tip}" Click="CancelClicked" />
+                        <!-- the window as large as the app's own, or back to its usual size; kept for the next time -->
+                        <Button x:Name="FullSizeButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,6,0" Click="FullSizeClicked" />
                         <TextBlock Text="{t:Text Units.OwnModel.Window.Title}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource accent}" VerticalAlignment="Center" />
                         <TextBlock x:Name="UnitText" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="10,1,0,0" TextTrimming="CharacterEllipsis" />
                     </DockPanel>

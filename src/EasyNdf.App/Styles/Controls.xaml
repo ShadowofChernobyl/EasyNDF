@@ -637,7 +637,7 @@
                                 </ControlTemplate>
                             </ToggleButton.Template>
                         </ToggleButton>
-                        <ContentPresenter Margin="6,4,22,4" IsHitTestVisible="False" VerticalAlignment="Center"
+                        <ContentPresenter x:Name="SelectionBox" Margin="6,4,22,4" IsHitTestVisible="False" VerticalAlignment="Center"
                                           Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
                         <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" VerticalOffset="1" AllowsTransparency="True" Focusable="False">
                             <controls:Bevel TopLeft="{DynamicResource hi}" BottomRight="{DynamicResource lo}" Background="{DynamicResource well}" Padding="2"
@@ -717,6 +717,10 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Track" Property="Background" Value="{DynamicResource toggle}" />
                             <Setter TargetName="Knob" Property="Margin" Value="18,2,0,0" />
+                        </Trigger>
+                        <!-- neither on nor off (several rules that differ): the knob in the middle -->
+                        <Trigger Property="IsChecked" Value="{x:Null}">
+                            <Setter TargetName="Knob" Property="Margin" Value="10,2,0,0" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Track" Property="TopLeft" Value="{DynamicResource accent}" />
@@ -1024,6 +1028,8 @@
                             <!-- the tick: the HTML app's clip-path polygon on an 8 pixel square in the middle -->
                             <Path x:Name="Mark" Width="8" Height="8" Fill="{DynamicResource accent}" Visibility="Collapsed"
                                   Data="M 0.96,3.68 L 0,4.96 L 3.2,8 L 8,1.44 L 6.88,0.32 L 3.04,5.44 Z" />
+                            <!-- neither ticked nor not (several rows that differ): a bar -->
+                            <Rectangle x:Name="Half" Width="8" Height="2" Fill="{DynamicResource accent}" Visibility="Collapsed" />
                         </Grid>
                         <ContentPresenter x:Name="Label" Margin="4,0,0,0" VerticalAlignment="Center" />
                     </DockPanel>
@@ -1033,6 +1039,9 @@
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="Mark" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="{x:Null}">
+                            <Setter TargetName="Half" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger SourceName="BoxArea" Property="IsMouseOver" Value="True">
                             <Setter TargetName="Box" Property="TopLeft" Value="{DynamicResource accent}" />

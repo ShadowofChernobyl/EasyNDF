@@ -1090,7 +1090,7 @@ public partial class ModelViewer : UserControl
     // ---- the marks on the model ----
 
     /// <summary>A round number in the mark colour, as on the model and in the list.</summary>
-    private static Border NumberDisc(int number, double opacity)
+    internal static Border NumberDisc(int number, double opacity)
     {
         var disc = new Border
         {

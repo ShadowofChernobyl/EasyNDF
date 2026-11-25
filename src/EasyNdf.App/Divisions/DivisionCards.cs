@@ -195,8 +195,24 @@ public static class DivisionCards
         System.Windows.Automation.AutomationProperties.SetName(fold, (string)fold.ToolTip);
         fold.Click += (_, _) => foldClicked(factory);
         var name = new TextBlock { Text = UnitNames.Factory(group.Factory), FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
-        var counts = new TextBlock { Text = Counts(group), Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        // "6 units · 7 cards · 14 pts"; where the heading is too narrow for it (a small window with both panes open),
+        // the numbers alone, "6 · 7 · 14", with the whole text in the tooltip, rather than a text cut off
+        string full = Counts(group), brief = BriefCounts(group);
+        var counts = new TextBlock { Text = full, ToolTip = full, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         counts.SetResourceReference(TextBlock.ForegroundProperty, "muted");
+        double fullWidth = -1;
+        counts.SizeChanged += (_, _) =>
+        {
+            if (fullWidth < 0)
+            {
+                var probe = new TextBlock { Text = full, FontFamily = counts.FontFamily, FontSize = counts.FontSize };
+                probe.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                fullWidth = probe.DesiredSize.Width;
+            }
+            // it is the line's last part, so its width is the room left, whichever text it shows
+            string wanted = counts.ActualWidth < fullWidth ? brief : full;
+            if (counts.Text != wanted) counts.Text = wanted;
+        };
         var add = new Button
         {
             Content = Texts.Get("Divisions.Heading.AddUnits"), Style = (Style)Application.Current.FindResource("HeadingButton"),
@@ -304,6 +320,11 @@ public static class DivisionCards
         if (group.Costs.Count == 0) return units + " · " + Texts.Get("Divisions.Heading.NoCards");
         return string.Join(" · ", units, Texts.Count("Divisions.Heading.Cards", group.Costs.Count), Texts.Count("Divisions.Heading.Points", group.Costs.Sum()));
     }
+
+    /// <summary>The same numbers without their words, for a heading too narrow for them: "6 · 7 · 14", or "0 · 0".</summary>
+    private static string BriefCounts(DivisionGroup group) => group.Costs.Count == 0
+        ? Texts.Number(group.Entries.Count) + " · " + Texts.Number(0)
+        : string.Join(" · ", Texts.Number(group.Entries.Count), Texts.Number(group.Costs.Count), Texts.Number(group.Costs.Sum()));
 
     /// <summary>
     /// Under a type with no units shown: that the division has none of that type (its heading's "+ Add Units…" adds

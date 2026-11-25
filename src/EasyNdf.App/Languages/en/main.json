@@ -1,7 +1,7 @@
 {
   "Main.Close.Ask": "Closing EasyNDF now would lose:",
   "Main.Close.EditorEdits": "the edits to {file} in the File Editor, not yet saved",
-  "Main.Close.RuleChanges": "the changes to the rule open in its window, not yet confirmed with Done",
+  "Main.Close.RuleChanges": "the changes to the rule open in its popup, not yet confirmed with Done",
   "Main.Close.Export": "the rest of the export that is running: files it has not reached are not exported",
   "Main.Close.Anyway": "Close Anyway",
   "Main.Error": "Something went wrong: {error}\n\nEasyNDF keeps running. Check that what you were doing was done.",
@@ -128,5 +128,16 @@
   "Main.Usage.MB": "{n} MB",
   "Main.Usage.GB": "{n} GB",
   "Main.Usage.MBPerSecond": "{n} MB/s",
-  "Main.Usage.Milliseconds": "{n} ms"
+  "Main.Usage.Milliseconds": "{n} ms",
+  "Main.PopOut.Open": "Open in New Window",
+  "Main.PopOut.Show": "Show Window",
+  "Main.PopOut.Return": "Return to Main Window",
+  "Main.PopOut.Placeholder": "{tab} is open in its own window.",
+  "Main.PopOut.Close.Tip": "Close: {tab} returns to the main window",
+  "Main.PopOut.Tour": "Not while the tutorial runs.",
+  "Main.RuleOpen": "Finish the open rule first.",
+  "Main.BundledMod.Ask": "This version of EasyNDF comes with a newer {mod}. Update yours as well?\n\nUpdate replaces its rule sets and Armory changes with the new ones. Keep Both adds the new one beside yours, switched off.",
+  "Main.BundledMod.Update": "Update",
+  "Main.BundledMod.NotNow": "Not Now",
+  "Main.BundledMod.DontShow": "Please don't show again"
 }

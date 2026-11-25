@@ -56,14 +56,16 @@ public partial class MainView : UserControl
         {
             if (!ReferenceEquals(e.OriginalSource, Tabs)) return;
             SessionLog.Write("Tab", WhereTheUserIs());
-            if (Tabs.SelectedItem == EditorTabItem) EditorTab.Refresh();
-            // a large file in the editor is let go of a while after its tab is left (EditorPage.LetGo.cs)
-            else if (e.RemovedItems.Contains(EditorTabItem)) EditorTab.TabLeft();
+            if (Tabs.SelectedItem == EditorTabItem) { if (!IsPoppedOut(EditorTabItem)) EditorTab.Refresh(); }
+            // a large file in the editor is let go of a while after its tab is left (EditorPage.LetGo.cs); in a window
+            // of its own, the editor is still shown
+            else if (e.RemovedItems.Contains(EditorTabItem) && !IsPoppedOut(EditorTabItem)) EditorTab.TabLeft();
         };
         Memory.WhenIdle = PackUnusedRuleSets;
         Watermark.AppVersion = AppVersion;
         RowWindow.OpenChanged += RuleWindow.ShowBeside;
         RuleWindow.ListedFiles = () => FilesTab.Model.Entries;
+        RuleWindow.FilesModel = () => FilesTab.Model;
         RuleWindow.ReadFile = FilesTab.ReadInBackground;
         FilesTab.Model.FilesChanged += RuleWindow.FilesChanged;
         FilesTab.Model.RowReplaced += entry => _ = EditorTab.ReadAgain(entry);
@@ -79,7 +81,7 @@ public partial class MainView : UserControl
         SettingChanged += key => { if (key is "indentGuides" or "") EditorTab.RedrawIndentGuides(); };
         SettingChanged += key => { if (key is "lineNumbers" or "wordWrap" or "") EditorTab.ApplyViewSettings(); };
         SettingChanged += key => { if (key is "treeShowsAll" or "") _ = EditorTab.RebuildTree(); };
-        SettingChanged += key => { if (key is "uiScale" or "") ApplyScale(); };
+        SettingChanged += key => { if (key is "uiScale" or "") { ApplyScale(); ScaleTabWindows(); } };
         SettingChanged += key => { if (key is "armoryMarks" or "armoryFileNames" or "") UnitsTab.MarksSettingChanged(); };
         // the usage readout measures only while it is switched on (Settings, Debug)
         SettingChanged += key => { if (key is "usageReadout" or "usageEvery" or "") Readout.Apply(); };
@@ -95,6 +97,10 @@ public partial class MainView : UserControl
         HelpPopup.ShowPage += ShowHelpPage;
         PreviewMouseDown += CloseHelpPopupOnClickElsewhere;
         PreviewKeyDown += CloseHelpPopupOnEscape;
+        WatchTabsForPopOut();
+        WatchMouseButtons();
+        WatchRuleLayer();
+        HoldBackWhileAskedElsewhere();
     }
 
     /// <summary>"Interface size": everything in the window is drawn larger or smaller, as a browser's zoom does.</summary>
@@ -117,15 +123,13 @@ public partial class MainView : UserControl
     }
 
     /// <summary>
-    /// Shows a page on the Help tab (the ? popup's See more, the HTML app's <c>qMore</c>): the windows in the way close
-    /// first, as their × closes them.
+    /// Shows a page on the Help tab (the ? popup's See more, the HTML app's <c>qMore</c>): the Watermark window in the
+    /// way closes first, as its × closes it. An open rule stays as it is, on the Mods tab.
     /// </summary>
     public void ShowHelpPage(string id)
     {
-        RowWindow.Close();
         Watermark.Cancel();
-        RuleWindow.Close();
-        Tabs.SelectedItem = HelpTabItem;
+        ShowTab(HelpTabItem);
         HelpTab.Go(id);
     }
 
@@ -178,6 +182,44 @@ public partial class MainView : UserControl
         string latest = next < 0 ? log[first..] : log[first..next];
         (FrameworkElement text, _, _) = new Help.WikiRenderer(Help.PageLook.ChangeLog).Render(latest);
         TextWindow.Open("What's New", text);
+    }
+
+    /// <summary>
+    /// What's New, shown by itself once after each update: when the version running is not the one What's New was last
+    /// shown for. A first start shows the Welcome window instead, which counts as having seen that version.
+    /// </summary>
+    public void ShowLatestChangesAfterUpdate()
+    {
+        if (!WhatsNewIsDue(AppData.Current.State, AppVersion))
+        {
+            RememberBundledMod();
+            return;
+        }
+        AppData.Current.State[WhatsNewKey] = AppVersion;
+        AppData.Current.SaveState();
+        ShowLatestChangesThenOfferBundledMod();
+    }
+
+    /// <summary>The question about the mod the app comes with first, then What's New: one popup at a time.</summary>
+    private async void ShowLatestChangesThenOfferBundledMod()
+    {
+        await OfferBundledModUpdate();
+        ShowLatestChanges();
+    }
+
+    /// <summary>Where the saved state keeps the version What's New was last shown for.</summary>
+    public const string WhatsNewKey = "whatsNew";
+
+    /// <summary>
+    /// Whether What's New has yet to be shown for a version: the app was started before (its Welcome window was closed,
+    /// which keeps the version then running), and neither then nor since was this the version.
+    /// </summary>
+    public static bool WhatsNewIsDue(System.Text.Json.Nodes.JsonObject state, string version)
+    {
+        static string? Text(System.Text.Json.Nodes.JsonNode? kept) =>
+            kept is System.Text.Json.Nodes.JsonValue value && value.TryGetValue(out string? text) ? text : null;
+        if (state["welcomed"] is null || version == "") return false;
+        return (Text(state[WhatsNewKey]) ?? Text(state["welcomed"])) != version;
     }
 
     /// <summary>The change log window: what changed in each version, newest first.</summary>
@@ -257,7 +299,11 @@ public partial class MainView : UserControl
     {
         DependencyObject? at = element;
         while (at is not null and not MainView)
+        {
+            // a tab in a window of its own, and the windows shown over it there, belong to the view the tab came from
+            if (at is Windowing.PopOutWindow own) return own.View;
             at = (at is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(at) : null) ?? LogicalTreeHelper.GetParent(at);
+        }
         return at as MainView;
     }
 
@@ -319,13 +365,17 @@ public partial class MainView : UserControl
     /// A key the focused control did not take: on the Files tab, Ctrl+A selects every row shown and Delete removes the
     /// selected rows. Nothing happens while the message window is open.
     /// </summary>
-    public void HandleShortcut(KeyEventArgs e)
+    /// <param name="e">The key.</param>
+    /// <param name="ownWindow">The tab whose own window the key was pressed in; null in the main window.</param>
+    public void HandleShortcut(KeyEventArgs e, TabItem? ownWindow = null)
     {
+        // the tab the key is for: none on the main window's note about a tab that is in a window of its own
+        TabItem? on = ownWindow ?? (Tabs.SelectedItem is TabItem shown && !IsPoppedOut(shown) ? shown : null);
         // the Watermark window takes its own keys
-        bool onArmory = Tabs.SelectedItem == UnitsTabItem;
-        bool onEditor = Tabs.SelectedItem == EditorTabItem;
+        bool onArmory = on == UnitsTabItem;
+        bool onEditor = on == EditorTabItem;
         // not on Settings, whose changes Undo never takes back, nor on Help and About, which change nothing
-        if (Messages.IsOpen || Watermark.IsOpen || (Tabs.SelectedItem != FilesTabItem && Tabs.SelectedItem != RulesTabItem && !onArmory && !onEditor)) return;
+        if (Messages.IsOpen || Watermark.IsOpen || (on != FilesTabItem && on != RulesTabItem && !onArmory && !onEditor)) return;
         // nor under the Add Units window or a unit's pop-up: they act on the division as it was when they opened, so
         // an Undo beneath them would be overwritten by their Done, or leave them adding to a division gone
         if (AddUnits.IsOpen || NewUnit.IsOpen || Floating.IsOpen || GenerateDivisions.IsOpen || GenerationSettings.IsOpen || ExportWindow.IsOpen) return;
@@ -342,21 +392,35 @@ public partial class MainView : UserControl
             ICSharpCode.AvalonEdit.Editing.TextArea => true,
             _ => false,
         };
-        if (!inTextBox && !RuleWindow.IsOpen && keys.HasFlag(ModifierKeys.Control) && !keys.HasFlag(ModifierKeys.Alt))
+        if (!inTextBox && keys.HasFlag(ModifierKeys.Control) && !keys.HasFlag(ModifierKeys.Alt) && (e.Key == Key.Z || e.Key == Key.Y))
         {
-            if (e.Key == Key.Z && !shift) { e.Handled = true; Undo(); return; }
-            if (e.Key == Key.Y || (e.Key == Key.Z && shift)) { e.Handled = true; Redo(); return; }
+            // under the open rule nothing happens; in another of the app's windows, a note says why
+            if (IsRuleOpen)
+            {
+                if (on != RulesTabItem) { e.Handled = true; RefusedForOpenRule(show: false); return; }
+            }
+            else
+            {
+                e.Handled = true;
+                if (redoKey) Redo();
+                else Undo();
+                return;
+            }
         }
+        // the File Editor's own keys, when the keys are not in its page (a click on its empty part leaves them on the
+        // tab row): in the page, it has seen the key already
+        if (onEditor && !e.Handled) EditorTab.HandleKeysFromOutside(e);
         if (onArmory || onEditor) return;
-        if (RuleWindow.IsOpen) RuleWindow.HandleShortcut(e, RulesTab.Paste);
-        else if (Tabs.SelectedItem == FilesTabItem) FilesTab.HandleShortcut(e);
+        // the rule window takes the keys of the window it is over, not those of the Files tab in a window of its own
+        if (RuleWindow.IsOpen && on == RulesTabItem) RuleWindow.HandleShortcut(e, RulesTab.Paste);
+        else if (on == FilesTabItem) FilesTab.HandleShortcut(e);
         else RulesTab.HandleShortcut(e);
     }
 
     // ---- files dragged onto the app from outside it ----
 
     /// <summary>Files dragged over the app: the Files tab comes to the front, since that is where they will land.</summary>
-    private void FilesDraggedOver(object sender, DragEventArgs e)
+    internal void FilesDraggedOver(object sender, DragEventArgs e)
     {
         e.Handled = true;
         if (!e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -366,18 +430,20 @@ public partial class MainView : UserControl
         }
         e.Effects = DragDropEffects.Copy;
         if (Messages.IsOpen) return;
-        Tabs.SelectedItem = FilesTabItem;
+        ShowTab(FilesTabItem, activate: false);
         FilesTab.ShowDropHint(true);
     }
 
     /// <summary>The drag left the app: the drop outline goes.</summary>
-    private void FilesDragLeft(object sender, DragEventArgs e)
+    internal void FilesDragLeft(object sender, DragEventArgs e)
     {
-        Point at = e.GetPosition(this);
-        if (at.X <= 0 || at.Y <= 0 || at.X >= ActualWidth || at.Y >= ActualHeight) FilesTab.ShowDropHint(false);
+        // the main view, or the root of a tab's own window
+        FrameworkElement over = sender as FrameworkElement ?? this;
+        Point at = e.GetPosition(over);
+        if (at.X <= 0 || at.Y <= 0 || at.X >= over.ActualWidth || at.Y >= over.ActualHeight) FilesTab.ShowDropHint(false);
     }
 
-    private async void FilesDropped(object sender, DragEventArgs e)
+    internal async void FilesDropped(object sender, DragEventArgs e)
     {
         e.Handled = true;
         FilesTab.ShowDropHint(false);

@@ -38,6 +38,25 @@ public partial class RuleWindow : UserControl
     /// <summary>The files on the Files tab (set by the main view): they fill the Property scan list.</summary>
     public Func<IReadOnlyList<FileEntry>> ListedFiles { get; set; } = () => [];
 
+    /// <summary>The Files tab's list, whose search and Show only are the file filter of the dropdowns of files here.</summary>
+    public Func<FileListModel?> FilesModel { get; set; } = () => null;
+
+    /// <summary>The funnel beside the Property scan's dropdown.</summary>
+    private Controls.FileFilterFunnel? scanFunnel;
+
+    /// <summary>
+    /// Whether the file filter lets a scanned or listed file (by its scan key) into a dropdown. A file that is not on
+    /// the Files tab passes: the filter has nothing to say about it.
+    /// </summary>
+    private Func<string, bool> FileFilterPass()
+    {
+        FileListModel? list = FilesModel();
+        if (list is null || (list.ShowOnly == EasyNdf.Data.FileList.ShowOnly.All && list.Search == "")) return _ => true;
+        var byKey = new Dictionary<string, FileEntry>();
+        foreach (FileEntry entry in ListedFiles()) if (entry.Source is not null) byKey.TryAdd(FileListModel.ScanKey(entry), entry);
+        return key => !byKey.TryGetValue(key, out FileEntry? entry) || Controls.FileFilterFunnel.LetsThrough(list, entry);
+    }
+
     /// <summary>Reads a file on the Files tab, which scans it (set by the main view).</summary>
     public Func<FileEntry, Task> ReadFile { get; set; } = _ => Task.CompletedTask;
 
@@ -57,6 +76,25 @@ public partial class RuleWindow : UserControl
         // a long file name is cut with "…" in the box and its list, which stays inside the window; the tooltip names it whole
         NarrowChoices.OfOptions(ScanChoice, tipShowsChoice: true, ownTip: Texts.Get("Rules.RuleWindow.ScanChoice.Tip"));
         ScanChoice.SelectionChanged += ScanChosen;
+        // the file filter's funnel after the dropdown, as on the Editor tab: the same filter
+        scanFunnel = new Controls.FileFilterFunnel(() => FilesModel()) { Margin = new Thickness(-1, 0, 0, 0) };
+        scanFunnel.Changed += () => { ShowScan(); editor?.RefillFiles?.Invoke(); };
+        if (ScanChoice.Parent is Panel foot)
+        {
+            // the dropdown and its funnel are one item of the row: together they take the room the dropdown had, and
+            // give way before Done and Cancel are pushed to a second line
+            int at = foot.Children.IndexOf(ScanChoice);
+            foot.Children.RemoveAt(at);
+            var joined = new DockPanel { MaxWidth = ScanChoice.MaxWidth };
+            ScanChoice.ClearValue(MaxWidthProperty);
+            ScanChoice.ClearValue(Controls.FlexRow.GrowProperty);
+            Controls.FlexRow.SetGrow(joined, 1);
+            Controls.FlexRow.SetBasis(joined, 150);
+            DockPanel.SetDock(scanFunnel, Dock.Right);
+            joined.Children.Add(scanFunnel);
+            joined.Children.Add(ScanChoice);
+            foot.Children.Insert(at, joined);
+        }
         AppData.Current.ScansChanged += ScansChanged;
         Scroller.ScrollChanged += (_, _) => Editor.MinHeight = Math.Max(0, Scroller.ViewportHeight - 20);
         ShowScan();
@@ -69,9 +107,13 @@ public partial class RuleWindow : UserControl
     public event Action? Closed;
 
     /// <summary>Opens the window on the Rules tab's selected rule (the HTML app's <c>ruleOpen</c>).</summary>
-    public void Open(RulesModel rules, UndoHistory undo)
+    /// <param name="rules">The Rules tab's data.</param>
+    /// <param name="undo">The tab's history, which files nothing while the window is open.</param>
+    /// <param name="several">Whether it opens on all the selected rules as one (see <see cref="Mixed"/>).</param>
+    public void Open(RulesModel rules, UndoHistory undo, bool several = false)
     {
-        if (rules.OpenRule is null) return;
+        if (several) { if (!rules.StartEditingSeveral()) return; }
+        else if (rules.OpenRule is null) return;
         if (!ReferenceEquals(model, rules))
         {
             if (model is not null) model.PropertyChanged -= ModelChanged;
@@ -83,7 +125,7 @@ public partial class RuleWindow : UserControl
         model.ActiveRowList = null;
         Build();
         // the changes are kept until Done, and nothing is filed for Undo meanwhile: Cancel is the window's undo
-        model.StartEditingRule();
+        if (!several) model.StartEditingRule();
         history.IsPaused = true;
         Visibility = Visibility.Visible;
         Scroller.ScrollToTop();
@@ -129,7 +171,7 @@ public partial class RuleWindow : UserControl
         shownRule = rule;
         ForgetScans();
         string kind = RuleEditor.KindOf(rule);
-        Title.Text = RuleEditor.TitleOf(kind);
+        Title.Text = model.IsConfiguringSeveral ? Text.TitleCase.Of(RulesModel.CountRules(model.SeveralCount)) : RuleEditor.TitleOf(kind);
         // the Add Descriptor window is wider, for the descriptor's text: 64rem, or 96% of the app
         Box.Width = kind == "Add" ? Math.Min(1024, (ActualWidth > 0 ? ActualWidth + 2 * PageBorder : 1280) * 0.96) : UsualWidth();
         ShowScan();
@@ -147,6 +189,7 @@ public partial class RuleWindow : UserControl
         {
             list.MenuAsked += ShowRowMenu;
             list.RowOpenAsked += OpenRow;
+            list.SeveralOpenAsked += OpenRows;
         }
     }
 
@@ -183,7 +226,7 @@ public partial class RuleWindow : UserControl
     {
         Close();
         MainView view = MainView.Of(this);
-        view.Tabs.SelectedItem = view.UnitsTabItem;
+        view.ShowTab(view.UnitsTabItem);
         view.UnitsTab.ShowWhatRuleChanges(rule);
     }
 
@@ -219,6 +262,13 @@ public partial class RuleWindow : UserControl
     {
         if (model is null || Rows is null) return;
         Rows.Open(model, list, index, NamesFor, model.OpenRule is { } rule ? ScanListsFor(rule) : null);
+    }
+
+    /// <summary>Opens the condition or action window on a list's selected rows as one.</summary>
+    internal void OpenRows(string list)
+    {
+        if (model is null || Rows is null) return;
+        Rows.OpenSeveral(model, list, model.SelectedRowsOf(list), NamesFor, model.OpenRule is { } rule ? ScanListsFor(rule) : null);
     }
 
     /// <summary>
@@ -289,11 +339,15 @@ public partial class RuleWindow : UserControl
         string sourceKey = scans.Find(sourceFile);
         // only a Lookup rule lists the files, for its other file: a game's 4,000 of them take a moment to name
         if (RuleEditor.KindOf(rule) != "Lookup") return new ScanLists(current.Names, current.Titles, current.Types, [], sourceKey != "", scans.Of(sourceFile).Names);
-        List<ChoiceOption> files = [.. scans.Keys.Select(key => new ChoiceOption(
+        // the other file is chosen among the files on the Files tab, where it must be: not among every file ever scanned
+        scans = scans.OnFilesTab(sourceFile);
+        sourceKey = scans.Find(sourceFile);
+        Func<string, bool> pass = FileFilterPass();
+        List<ChoiceOption> files = [.. scans.Keys.Where(key => key == sourceKey || pass(key)).Select(key => new ChoiceOption(
             key == sourceKey ? sourceFile : scans.ShortName(key), PropertyScans.BaseName(key),
             scans.Folder(key) is { Length: > 0 } folder ? PropertyScans.FolderTag(folder) : ""))];
         // the files on the Files tab not read yet are offered too, as the Property scan offers them; the one chosen is read
-        foreach (string key in scans.Unread)
+        foreach (string key in scans.Unread.Where(pass))
         {
             // named as a scanned file is: its name, with the folders that set it apart from another file of that name
             string folder = scans.Folder(key);
@@ -302,7 +356,8 @@ public partial class RuleWindow : UserControl
             files.Add(new ChoiceOption(reference, PropertyScans.BaseName(key), dim));
         }
         if (sourceKey == "" && sourceFile != "") ReadForLookup(sourceFile);
-        return new ScanLists(current.Names, current.Titles, current.Types, files, sourceKey != "", scans.Of(sourceFile).Names);
+        return new ScanLists(current.Names, current.Titles, current.Types, files, sourceKey != "", scans.Of(sourceFile).Names,
+            NewFunnel: () => new Controls.FileFilterFunnel(() => FilesModel()), SourceFilesNow: () => ScanListsFor(rule).SourceFiles, FilterChanged: ShowScan);
     }
 
     /// <summary>The files being read for a Lookup rule's other file, so each is read once.</summary>
@@ -352,14 +407,16 @@ public partial class RuleWindow : UserControl
         else
         {
             if (current == "") options.Add(new ChoiceOption("", Texts.Get("Rules.Editor.Lookup.ChooseFile")));
-            options.AddRange(scans.Keys.Select(key => new ChoiceOption(key, PropertyScans.BaseName(key), DimFolder(scans, key))));
-            options.AddRange(scans.Unread.Select(key => new ChoiceOption(key, PropertyScans.BaseName(key),
+            Func<string, bool> pass = FileFilterPass();
+            options.AddRange(scans.Keys.Where(key => key == current || pass(key)).Select(key => new ChoiceOption(key, PropertyScans.BaseName(key), DimFolder(scans, key))));
+            options.AddRange(scans.Unread.Where(key => key == current || pass(key)).Select(key => new ChoiceOption(key, PropertyScans.BaseName(key),
                 (DimFolder(scans, key) is { Length: > 0 } folder ? folder + " " : "") + Texts.Get("Files.Status.NotReadYet"))));
         }
         showingScan = true;
         ScanChoice.ItemsSource = options;
         ScanChoice.SelectedItem = options.FirstOrDefault(o => o.Value == current) ?? options[0];
         showingScan = false;
+        scanFunnel?.ShowButton();
         ScanNote.Text = current != ""
             ? Texts.Get("Rules.Scan.Properties", ("count", scans.Of(current).Names.Count.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)), ("file", scans.Label(current)))
             : Texts.Get("Rules.Scan.Hint");
@@ -589,7 +646,9 @@ public partial class RuleWindow : UserControl
         string several = RulesModel.CountRows(list, count);
         Controls.Menus.Show(view,
         [
-            new Controls.MenuChoice(Texts.Get("Common.Menu.Configure"), () => OpenRow(list, index), IsEnabled: count == 1, Key: "Enter"),
+            count > 1
+                ? new Controls.MenuChoice(Texts.Get("Common.Menu.ConfigureSeveral", ("what", several)), () => OpenRows(list), Key: "Enter")
+                : new Controls.MenuChoice(Texts.Get("Common.Menu.Configure"), () => OpenRow(list, index), IsEnabled: count == 1, Key: "Enter"),
             new Controls.MenuChoice(Texts.Get("Common.Menu.Duplicate"), () => model.DuplicateRows(list)),
             new Controls.MenuChoice(Texts.Get("Common.Menu.MoveUp"), () => model.MoveRows(list, -1), Key: "Ctrl+Up"),
             new Controls.MenuChoice(Texts.Get("Common.Menu.MoveDown"), () => model.MoveRows(list, +1), Key: "Ctrl+Down"),

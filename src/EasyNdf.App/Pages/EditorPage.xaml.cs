@@ -95,6 +95,16 @@ public partial class EditorPage : UserControl
         /// <summary>Its colours.</summary>
         public NdfColourizer? Colourizer;
 
+        /// <summary>
+        /// The text's descriptors and what could not be read of them, read while its lines and colours were worked out,
+        /// for the first listing of them (<see cref="RefreshDescriptors"/>); null once used, and for a text not read so.
+        /// </summary>
+        /// <remarks>Tuned for speed: read after the text showed, a 26 MB file's descriptors came two thirds of a second later.</remarks>
+        public Task<(List<EasyNdf.Engine.Viewer.OutlineEntry> List, string Error)>? FirstOutline;
+
+        /// <summary>The document as <see cref="FirstOutline"/> read it: a text changed since is read again.</summary>
+        public ITextSourceVersion? OutlineVersion;
+
         /// <summary>Whether it is an export (or its changed lines), read-only.</summary>
         public bool IsExport;
 
@@ -160,6 +170,7 @@ public partial class EditorPage : UserControl
         view = MakeView();
         StartDescriptors();
         PreviewKeyDown += FindBarKeys;
+        PreviewKeyDown += ShortcutKeys;
         PreviewKeyDown += (_, e) => { if (!e.Handled && SearchOptionKey(e)) e.Handled = true; };
         PreviewKeyDown += (_, e) => { if (!e.Handled && e.Key == Key.F1 && Keyboard.Modifiers == ModifierKeys.None && OpenHelpAtCaret()) e.Handled = true; };
         Editor.SearchOptions.Changed += ShowSearchOptions;
@@ -248,7 +259,7 @@ public partial class EditorPage : UserControl
     private async Task Open(FileEntry entry, bool showTab)
     {
         if (entry.Source is null) return;
-        if (showTab) MainView.Of(this).Tabs.SelectedItem = MainView.Of(this).EditorTabItem;
+        if (showTab) MainView.Of(this).ShowTab(MainView.Of(this).EditorTabItem);
         if (TabOf(entry) is FileView open)
         {
             Bring(open);
@@ -257,8 +268,11 @@ public partial class EditorPage : UserControl
         using Work.Job job = Work.Start(Texts.Get("Main.Usage.Job.Opening", ("file", entry.Name)));
         FileView into = NewTab();
         Note.Text = Texts.Get("Editor.Viewer.ReadingFile", ("file", entry.Name));
+        // opened to show a descriptor: the card stays, on a step of its own, until that descriptor is shown
+        bool finds = wanted is { Quiet: false };
+        string[] steps = [Texts.Get("Editor.Loading.Reading"), Texts.Get("Editor.Loading.Colouring"), Texts.Get("Editor.Loading.Showing")];
         int loading = StartLoading(Texts.Get("Editor.Loading.Opening", ("file", entry.Name)), entry.Folder,
-            Texts.Get("Editor.Loading.Reading"), Texts.Get("Editor.Loading.Colouring"), Texts.Get("Editor.Loading.Showing"));
+            finds ? [.. steps, Texts.Get("Editor.Loading.FindingDescriptor")] : steps);
         try
         {
             string text = await Task.Run(() => FileContent.Text(entry));
@@ -273,7 +287,8 @@ public partial class EditorPage : UserControl
         }
         finally
         {
-            EndLoading(loading);
+            if (finds && wanted is not null && ReferenceEquals(view, into) && into.Shown?.Entry == entry) HoldUntilFound(loading, steps.Length);
+            else EndLoading(loading);
         }
     }
 
@@ -304,7 +319,8 @@ public partial class EditorPage : UserControl
         // a file opened now takes the place of one let go of
         into.LetGo = null;
         Thread screen = Thread.CurrentThread;
-        ShownText prepared = await Task.Run(() => Prepared(name, text, entry, screen));
+        bool isNdf = !Data.Divisions.FileAndTextRules.IsDictionaryFile(name);
+        ShownText prepared = await Task.Run(() => Prepared(name, text, entry, screen, readsDescriptors: isNdf));
         if (load != into.Loads) return;
         if (loading != 0)
         {
@@ -318,19 +334,42 @@ public partial class EditorPage : UserControl
     }
 
     /// <summary>A text to show, its line ends made "\n", its document handed to <paramref name="owner"/> once made.</summary>
-    private static ShownText Prepared(string name, string text, FileEntry? entry, Thread owner)
+    /// <param name="readsDescriptors">Whether its descriptors are read alongside, for their first listing (<see cref="ShownText.FirstOutline"/>).</param>
+    private static ShownText Prepared(string name, string text, FileEntry? entry, Thread owner, bool readsDescriptors = false)
     {
         bool windowsLineEnds = text.Contains("\r\n", StringComparison.Ordinal);
         if (text.Length > 0 && text[0] == '﻿') text = text[1..];
         text = text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
-        var document = new TextDocument(text);
-        var colourizer = new NdfColourizer(document);
-        document.SetOwnerThread(owner);
+        var (document, colourizer, outline, version) = PreparedDocument(text, owner, readsDescriptors);
         return new ShownText
         {
             Name = name, Entry = entry, HasWindowsLineEnds = windowsLineEnds, Original = text,
-            Document = document, Colourizer = colourizer,
+            Document = document, Colourizer = colourizer, FirstOutline = outline, OutlineVersion = version,
         };
+    }
+
+    /// <summary>
+    /// A text's document and colours, handed to <paramref name="owner"/>, and with <paramref name="readsDescriptors"/>
+    /// its descriptors, read on another thread meanwhile. Called away from the screen's thread for a large text.
+    /// </summary>
+    /// <remarks>
+    /// Tuned for speed: the descriptors of WARNO's 26 MB units file take two thirds of a second to read, about as long
+    /// as its lines and colours. Read side by side, the descriptor asked for shows that much sooner.
+    /// </remarks>
+    private static (TextDocument Document, NdfColourizer Colourizer, Task<(List<EasyNdf.Engine.Viewer.OutlineEntry> List, string Error)>? Outline, ITextSourceVersion? Version)
+        PreparedDocument(string text, Thread owner, bool readsDescriptors)
+    {
+        // it never fails: what could not be read is kept as the message the Descriptor Tree shows
+        Task<(List<EasyNdf.Engine.Viewer.OutlineEntry> List, string Error)>? outline = !readsDescriptors ? null : Task.Run(() =>
+        {
+            try { return (EasyNdf.Engine.Viewer.DescriptorViewer.Outline(text), ""); }
+            catch (Exception problem) when (problem is EasyNdf.Engine.Ndf.NdfParseException or ArgumentException) { return (new List<EasyNdf.Engine.Viewer.OutlineEntry>(), problem.Message); }
+        });
+        var document = new TextDocument(text);
+        var colourizer = new NdfColourizer(document);
+        ITextSourceVersion? version = outline is null ? null : document.Version;
+        document.SetOwnerThread(owner);
+        return (document, colourizer, outline, version);
     }
 
     private async void FilePicked(object sender, SelectionChangedEventArgs e)
@@ -717,6 +756,7 @@ public partial class EditorPage : UserControl
     private void FindBoxChanged(object sender, TextChangedEventArgs e)
     {
         if (((TextBox)sender).Text == "") ClearPointedLine();
+        if (ReferenceEquals(sender, FindBox)) FindCountText.Text = "";
     }
 
     /// <summary>Unmarks the line that Find, Go to line, a search result or a descriptor marked.</summary>

@@ -76,7 +76,7 @@ public partial class UnitsPage
         return [.. needed.Where(file => !entries.Any(entry => entry.Source is not null && entry.Game == Game && UnitReader.SameFile(file, entry.Name)))];
     }
 
-    private JsonArray RulesOf(Mod mod) => ArmoryPresets.RulesFor(mod, GameDivisions, Texts.Catalog, UnitNameOf, GameBattlegroupCards, GameUnits, GameWeapons, GameLoadouts);
+    private JsonArray RulesOf(Mod mod) => ArmoryPresets.RulesFor(mod, GameDivisions, Texts.Catalog, UnitNameOf, GameBattlegroupCards, GameUnits, GameWeapons, GameLoadouts, ShownTabs());
 
     /// <summary>
     /// The source's loadouts before the open mod's rules, which units' weapon changes are made on: without them, no
@@ -144,7 +144,7 @@ public partial class UnitsPage
     {
         // made again without some changes' rules, those changes would go unseen (see WhyRulesCannotBeMade)
         if (WhyRulesCannotBeMade() is not null) return;
-        ArmoryPresets.Update(OpenMod, GameDivisions, Texts.Catalog, UnitNameOf, ArmoryPartTexts.Name, GameBattlegroupCards, GameUnits, GameWeapons, GameLoadouts);
+        ArmoryPresets.Update(OpenMod, GameDivisions, Texts.Catalog, UnitNameOf, ArmoryPartTexts.Name, GameBattlegroupCards, GameUnits, GameWeapons, GameLoadouts, ShownTabs());
         AppData.Current.Save(OpenMod);
     }
 
@@ -201,7 +201,7 @@ public partial class UnitsPage
 
     /// <summary>Whether a mod has changes made in the Armory, which its Armory presets hold as rules.</summary>
     private static bool HasArmoryChanges(Mod mod) =>
-        mod.Divisions.Count > 0 || mod.Units.Count > 0 || mod.UnitEdits.Count > 0 || mod.WeaponEdits.Count > 0 || mod.Weapons.Count > 0;
+        mod.Divisions.Count > 0 || mod.Units.Count > 0 || mod.UnitEdits.Count > 0 || mod.WeaponEdits.Count > 0 || mod.Weapons.Count > 0 || mod.Tabs.Count > 0 || mod.TabOrder is not null;
 
     /// <summary>
     /// The division marks (<see cref="DivisionMarks"/>) compare the division shown with the source's own, before any

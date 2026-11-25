@@ -45,6 +45,14 @@ public partial class RowWindow : UserControl
     private JsonObject? ruleOfRow;
     private TextBox? commentText;
 
+    /// <summary>
+    /// The rows the window is open on as one (see <see cref="Mixed"/>); none when on a single row. The row shown is then
+    /// one made of them, and what was changed in it is written into each when the window closes.
+    /// </summary>
+    private List<JsonObject> severalRows = [];
+
+    private bool IsSeveral => severalRows.Count > 0;
+
     /// <summary>Builds the window, closed.</summary>
     public RowWindow()
     {
@@ -72,6 +80,7 @@ public partial class RowWindow : UserControl
     /// <param name="scanned">The scanned descriptor names and types, suggested in a condition's Value; none when left out.</param>
     public void Open(RulesModel rules, string rowList, int place, Func<string, IReadOnlyList<string>> names, ScanLists? scanned = null)
     {
+        KeepSeveral();
         scan = scanned ?? ScanLists.None;
         if (rules.RowsOf(rowList) is not JsonArray rows || place < 0 || place >= rows.Count) return;
         if (!ReferenceEquals(model, rules))
@@ -100,10 +109,60 @@ public partial class RowWindow : UserControl
         });
     }
 
+    /// <summary>Opens the window on several rows of a list of the open rule, as one row.</summary>
+    /// <param name="rules">The Rules tab's data.</param>
+    /// <param name="rowList">Which list.</param>
+    /// <param name="places">The rows' places in it.</param>
+    /// <param name="names">The scanned property names that fill the Operand or Target dropdown, for a list.</param>
+    /// <param name="scanned">The scanned descriptor names and types, suggested in a condition's Value; none when left out.</param>
+    public void OpenSeveral(RulesModel rules, string rowList, IReadOnlyList<int> places, Func<string, IReadOnlyList<string>> names, ScanLists? scanned = null)
+    {
+        KeepSeveral();
+        if (rules.RowsOf(rowList) is not JsonArray rows) return;
+        List<JsonObject> picked = [.. places.Where(place => place >= 0 && place < rows.Count).Select(place => rows[place]).OfType<JsonObject>()];
+        if (picked.Count < 2) return;
+        scan = scanned ?? ScanLists.None;
+        if (!ReferenceEquals(model, rules))
+        {
+            if (model is not null) model.PropertyChanged -= ModelChanged;
+            model = rules;
+            model.PropertyChanged += ModelChanged;
+        }
+        namesFor = names;
+        list = rowList;
+        index = places[0];
+        severalRows = picked;
+        row = Mixed.Merge(picked);
+        rowBeforeEditing = row.DeepClone() as JsonObject;
+        ruleOfRow = rules.OpenRule;
+        bool wasOpen = IsOpen;
+        Visibility = Visibility.Visible;
+        if (!wasOpen) OpenChanged?.Invoke(true);
+        rules.ActiveRowList = rowList;
+        Draw();
+        rules.Refresh();
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+        {
+            if (Form.Children.OfType<TextBox>().FirstOrDefault() is TextBox name) name.Focus();
+        });
+    }
+
+    /// <summary>Several rows as one: what was changed is written into each of them.</summary>
+    private void KeepSeveral()
+    {
+        if (!IsSeveral) return;
+        List<JsonObject> rows = severalRows;
+        severalRows = [];
+        if (row is null || rowBeforeEditing is null || JsonNode.DeepEquals(row, rowBeforeEditing)) return;
+        Mixed.Apply(rowBeforeEditing, row, rows);
+        model?.SaveRules();
+    }
+
     /// <summary>Done: closes the window, keeping its changes; its list keeps the keys.</summary>
     public void Close()
     {
         if (!IsOpen) return;
+        KeepSeveral();
         Visibility = Visibility.Collapsed;
         row = null;
         rowBeforeEditing = null;
@@ -143,6 +202,14 @@ public partial class RowWindow : UserControl
     private void ModelChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (!IsOpen || model is null) return;
+        if (IsSeveral)
+        {
+            // the window stays while every one of its rows is still in the list
+            if (model.RowsOf(list) is JsonArray still && severalRows.All(each => IndexIn(still, each) >= 0)) return;
+            severalRows = [];
+            Close();
+            return;
+        }
         JsonArray? rows = model.RowsOf(list);
         int found = rows is null || row is null ? -1 : IndexIn(rows, row);
         bool otherRule = !ReferenceEquals(model.OpenRule, ruleOfRow);
@@ -166,8 +233,17 @@ public partial class RowWindow : UserControl
     /// <summary>"1 of 3", and ‹ › only where there is a row to go to.</summary>
     private void ShowPosition()
     {
+        if (IsSeveral)
+        {
+            Position.Text = RulesModel.CountRows(list, severalRows.Count);
+            // the row its words are in is told they grew (see SnappedRow)
+            (Position.Parent as UIElement)?.InvalidateMeasure();
+            PreviousButton.IsEnabled = NextButton.IsEnabled = false;
+            return;
+        }
         int count = model?.RowsOf(list)?.Count ?? 0;
         Position.Text = Texts.Get("Rules.Row.Position", ("number", index + 1), ("count", count));
+        (Position.Parent as UIElement)?.InvalidateMeasure();
         PreviousButton.IsEnabled = index > 0;
         NextButton.IsEnabled = index < count - 1;
     }
@@ -184,16 +260,24 @@ public partial class RowWindow : UserControl
         ShowPosition();
         Form.Children.Clear();
         commentText = null;
+        if (IsSeveral || Mixed.Has(row))
+        {
+            // several rows as one: what a change does, and what "..." stands for
+            var several = new TextBlock { Margin = new Thickness(0, 0, 0, 9) };
+            several.SetResourceReference(StyleProperty, "Note");
+            several.Inlines.AddRange(Text.RichText.Pieces(Texts.Get("Rules.Mass.Rows.Note"), bold: text => new Run(text), code: CodeRun, plain: text => new Run(text)));
+            Form.Children.Add(several);
+        }
 
         AddLabel(Texts.Get("Rules.Row.Name"), first: true);
         AddText("Name", Texts.Get("Editor.Filter.NameBox.Hint"), mono: false);
 
         string subject = isAction ? "Target" : "Operand", custom = isAction ? "CustomTarget" : "CustomOperand";
-        var customTick = new CheckBox { Content = Texts.Get("Rules.Row.Custom"), IsChecked = JsonValues.IsTruthy(row["ManualOverride"]), ToolTip = Texts.Get("Rules.Row.Custom.Tip"), Name = "ManualOverride" };
+        var customTick = new CheckBox { Content = Texts.Get("Rules.Row.Custom"), IsChecked = Mixed.Checked(row["ManualOverride"]), ToolTip = Texts.Get("Rules.Row.Custom.Tip"), Name = "ManualOverride" };
         customTick.SetResourceReference(StyleProperty, "Tick");
         customTick.Click += (_, _) => CustomClicked(customTick.IsChecked == true);
         AddLabel(isAction ? Texts.Get("Rules.Row.Target") : Texts.Get("Rules.Row.Operand"), right: customTick);
-        if (JsonValues.IsTruthy(row["ManualOverride"]))
+        if (Mixed.IsOn(row["ManualOverride"]))
         {
             TextBox customBox = AddText(custom, isAction ? Texts.Get("Rules.Row.CustomTarget") : Texts.Get("Rules.Row.CustomOperand"), mono: true);
             Controls.ColouredTextBox.SetKind(customBox, RuleTextKind.Path);
@@ -202,7 +286,9 @@ public partial class RowWindow : UserControl
         else
         {
             IEnumerable<string> special = isAction ? RuleEditor.SpecialOperands.Skip(1) : RuleEditor.SpecialOperands;
-            AddChoice(subject, [.. special, .. namesFor(list)], mono: true, notInListSuffix: " " + Texts.Get("Rules.Row.NotInScan"));
+            // an Edit rule's action can be aimed at a variable in reach, to change it for the rules after
+            IEnumerable<string> variables = isAction && AimsAtVariables ? Variables().Select(variable => "{" + variable.Text + "}") : [];
+            AddChoice(subject, [.. special, .. variables, .. namesFor(list)], mono: true, notInListSuffix: " " + Texts.Get("Rules.Row.NotInScan"));
         }
 
         AddLabel(Texts.Get("Rules.Row.Operator"));
@@ -211,6 +297,23 @@ public partial class RowWindow : UserControl
         AddLabel(Texts.Get("Rules.Row.Value"), tip: Texts.Get("Rules.Row.Value.Tip"));
         AddValueBox();
 
+        if (!isAction)
+        {
+            // "any of these, but always this one": needed even when the rule's conditions are matched by Any
+            var must = new CheckBox { Content = Texts.Get("Rules.Row.MustBeTrue"), IsChecked = Mixed.Checked(row["MustBeTrue"]), ToolTip = Texts.Get("Rules.Row.MustBeTrue.Tip"), Name = "MustBeTrue",
+                Margin = new Thickness(0, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+            must.SetResourceReference(StyleProperty, "Toggle");
+            must.Click += (_, _) => Changed("MustBeTrue", must.IsChecked == true);
+            Form.Children.Add(must);
+        }
+        if (isAction && VariableAimedAt() is not null)
+        {
+            // once for the rule unless ticked: "Multiply 1.5" on a rule that matches 300 units would else be done 300 times
+            var perMatch = new CheckBox { Content = Texts.Get("Rules.Row.PerMatch"), IsChecked = Mixed.Checked(row["PerMatch"]), ToolTip = Texts.Get("Rules.Row.PerMatch.Tip"), Name = "PerMatch", Margin = new Thickness(0, 9, 0, 0) };
+            perMatch.SetResourceReference(StyleProperty, "Tick");
+            perMatch.Click += (_, _) => Changed("PerMatch", perMatch.IsChecked == true);
+            Form.Children.Add(perMatch);
+        }
         if (isAction) AddComment();
         if (focused is { Length: > 0 } && Form.Children.OfType<FrameworkElement>().Concat(Form.Children.OfType<Panel>().SelectMany(p => p.Children.OfType<FrameworkElement>()))
                 .FirstOrDefault(c => c.Name == focused) is FrameworkElement again)
@@ -251,7 +354,19 @@ public partial class RowWindow : UserControl
         Controls.Suggestions.Attach(box, RuleSuggestions.Value(list == RulesModel.Actions,
             operand: () => JsonValues.AsText(shownRow[JsonValues.IsTruthy(shownRow["ManualOverride"]) ? "CustomOperand" : "Operand"]),
             operation: () => JsonValues.AsText(shownRow["Operator"]), scan, Variables));
-        void FitLines() => box.Height = Math.Min(8, box.Text.Split('\n').Length) * CodeLineHeight + 10;
+        void FitLines()
+        {
+            double lines = Math.Min(8, box.Text.Split('\n').Length) * CodeLineHeight + 10;
+            box.Height = lines;
+            // a sideways scrollbar takes the last line's place: once the box has laid its text out and shows one, the
+            // box is made taller by the bar, so every line stays in sight above it
+            box.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+            {
+                if (box.Template?.FindName("PART_ContentHost", box) is ScrollViewer host && host.ComputedHorizontalScrollBarVisibility == Visibility.Visible
+                    && Math.Abs(box.Height - lines) < 0.5)
+                    box.Height = lines + 14;
+            });
+        }
         FitLines();
         box.TextChanged += (_, _) =>
         {
@@ -270,6 +385,8 @@ public partial class RowWindow : UserControl
         string current = JsonValues.AsText(row![field]);
         var options = new List<ChoiceOption>();
         if (current == "") options.Add(new ChoiceOption("", Texts.Get("Rules.Row.Choose")));
+        // rows that do not share the choice: "..." until one is chosen for them all
+        else if (Mixed.Is(row[field])) options.Add(new ChoiceOption(Mixed.Mark, Mixed.Mark));
         else if (!choices.Contains(current))
             options.Add(notInListSuffix is null ? new ChoiceOption("", Texts.Get("Rules.Row.Choose")) : new ChoiceOption(current, current + notInListSuffix));
         options.AddRange(choices.Select(c => new ChoiceOption(c, c)));
@@ -304,7 +421,7 @@ public partial class RowWindow : UserControl
         on.Margin = new Thickness(0, 13, 0, 0);
         on.HorizontalAlignment = HorizontalAlignment.Left;
         Form.Children.Add(on);
-        if (JsonValues.IsTruthy(comment["Enabled"]))
+        if (Mixed.IsOn(comment["Enabled"]))
         {
             commentText = new TextBox { Text = JsonValues.AsText(comment["Text"]), Name = "CommentText", Margin = new Thickness(0, 3, 0, 0) };
             ShowAutomaticComment();
@@ -356,7 +473,7 @@ public partial class RowWindow : UserControl
     {
         var text = new TextBlock();
         text.Inlines.AddRange(label);
-        var tick = new CheckBox { Content = text, IsChecked = JsonValues.IsTruthy(comment[field]), Name = "Comment" + field, ToolTip = CommentTips.GetValueOrDefault(field) };
+        var tick = new CheckBox { Content = text, IsChecked = Mixed.Checked(comment[field]), Name = "Comment" + field, ToolTip = CommentTips.GetValueOrDefault(field) };
         tick.SetResourceReference(StyleProperty, "Tick");
         tick.Click += (_, _) => CommentChanged(comment, field, tick.IsChecked == true);
         return tick;
@@ -367,7 +484,8 @@ public partial class RowWindow : UserControl
     {
         if (commentText is null || row is null) return;
         string automatic = "";
-        try
+        // rows that differ have no one comment to show
+        if (!Mixed.Has(row)) try
         {
             var asRule = new JsonArray(new JsonObject { ["Kind"] = "Edit", ["Actions"] = new JsonArray(row.DeepClone()) });
             if (RuleLoading.LoadForEngine(asRule).FirstOrDefault()?.Actions?.FirstOrDefault() is { } action) automatic = NdfEngine.AutomaticComment(action);
@@ -381,10 +499,20 @@ public partial class RowWindow : UserControl
     private void Changed(string field, object value)
     {
         if (row is null || model is null) return;
+        bool aimedAtVariable = VariableAimedAt() is not null;
         row[field] = value is bool flag ? JsonValue.Create(flag) : JsonValue.Create((string)value);
         model.SaveRules();
         if (field is "Value" or "Operator") ShowAutomaticComment();
+        // "for each match" shows only for an action aimed at a variable
+        if (field is "Target" or "CustomTarget" && aimedAtVariable != (VariableAimedAt() is not null)) Draw();
     }
+
+    /// <summary>Whether the open rule's actions can be aimed at a variable: an Edit rule's can.</summary>
+    private bool AimsAtVariables => list == RulesModel.Actions && RuleEditor.KindOf(model?.OpenRule ?? []) == "Edit";
+
+    /// <summary>The variable the action shown is aimed at ("{Name}" as its target, Name a variable in reach); null for a property.</summary>
+    private string? VariableAimedAt() =>
+        AimsAtVariables && Files.SharedVariables.AimedAt(row) is string name && Variables().Any(variable => variable.Text == name) ? name : null;
 
     /// <summary>"Custom": the name is typed instead of chosen; it starts as the one chosen.</summary>
     private void CustomClicked(bool on)
@@ -393,7 +521,7 @@ public partial class RowWindow : UserControl
         bool isAction = list == RulesModel.Actions;
         string custom = isAction ? "CustomTarget" : "CustomOperand", chosen = isAction ? "Target" : "Operand";
         row["ManualOverride"] = on;
-        if (on && JsonValues.AsText(row[custom]) == "") row[custom] = row[chosen]?.DeepClone();
+        if (on && !Mixed.Is(row[chosen]) && JsonValues.AsText(row[custom]) == "") row[custom] = row[chosen]?.DeepClone();
         model?.SaveRules();
         Draw();
     }

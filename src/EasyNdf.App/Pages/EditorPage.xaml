@@ -289,7 +289,7 @@
                             </controls:Bevel>
                         </Popup>
                     </Grid>
-                    <ComboBox x:Name="FilePick" ToolTip="{t:Text Editor.FilePick.Tip}" ItemTemplate="{StaticResource TrimmedFileChoice}" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
+                    <ComboBox x:Name="FilePick" TextSearch.TextPath="Label" ToolTip="{t:Text Editor.FilePick.Tip}" ItemTemplate="{StaticResource TrimmedFileChoice}" SelectionChanged="FilePicked" PreviewMouseRightButtonUp="FilePickRightClicked" />
                 </DockPanel>
                 <Button x:Name="OpenFileButton" Content="{t:Text Editor.OpenFile}" ToolTip="{t:Text Editor.OpenFile.Tip}" Click="OpenFileClicked" />
                 <!-- the find bar stays out of the way until it is asked for, as in Sublime Text -->
@@ -338,6 +338,10 @@
                             </Canvas>
                         </ToggleButton>
                     </StackPanel>
+                </Grid>
+                <!-- which match is selected, "3 of 17": beside the box, where a notice for every Enter was in the way -->
+                <Grid>
+                    <TextBlock x:Name="FindCountText" Foreground="{DynamicResource muted}" VerticalAlignment="Center" MinWidth="0" />
                 </Grid>
                 <Button x:Name="PreviousButton" Style="{StaticResource IconButton}" Content="&#x2191;" ToolTip="{t:Text Editor.Previous.Tip}" AutomationProperties.Name="{t:Text Editor.Previous.Name}" IsEnabled="False" Click="PreviousClicked" controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />
                 <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#x2193;" ToolTip="{t:Text Editor.Next.Tip}" AutomationProperties.Name="{t:Text Editor.Next.Name}" IsEnabled="False" Click="NextClicked" controls:OffReason.Text="{t:Text Editor.NoFileOpen.Off}" />

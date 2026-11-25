@@ -13,6 +13,10 @@ public partial class AboutPage : UserControl
     public AboutPage()
     {
         InitializeComponent();
+        // the Discord button's picture: the .ico's frame for 32 pixels, sharp at 16 on screens scaled up to 200%
+        var frames = System.Windows.Media.Imaging.BitmapDecoder.Create(new Uri("pack://application:,,,/Assets/Discord.ico"),
+            System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad).Frames;
+        DiscordIcon.Source = frames.OrderBy(frame => Math.Abs(frame.PixelWidth - 32)).First();
         ShowPage();
         Texts.LanguageChanged += ShowPage;
     }
@@ -50,11 +54,19 @@ public partial class AboutPage : UserControl
     /// <summary>EasyNDF's Ko-fi page, where people who like the app can support it.</summary>
     public const string SupportPage = "https://ko-fi.com/shadowofchernobyl";
 
+    /// <summary>EasyNDF's Discord server, for questions, mods and news.</summary>
+    public const string DiscordPage = "https://discord.gg/BZbRjgxr5b";
+
     /// <summary>"Support on Ko-fi": opens the Ko-fi page in the browser.</summary>
-    private void SupportClicked(object sender, RoutedEventArgs e)
+    private void SupportClicked(object sender, RoutedEventArgs e) => OpenPage(SupportPage);
+
+    /// <summary>"Discord": opens the server's invitation in the browser.</summary>
+    private void DiscordClicked(object sender, RoutedEventArgs e) => OpenPage(DiscordPage);
+
+    private static void OpenPage(string page)
     {
         // a browser that cannot be started (none set, or blocked) leaves the app as it was
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(SupportPage) { UseShellExecute = true }); }
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(page) { UseShellExecute = true }); }
         catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException) { }
     }
 }

@@ -13,6 +13,9 @@ public sealed class RuleStats
     /// <summary>How many values it changed (or descriptors it added, cloned or removed).</summary>
     public int Edits { get; set; }
 
+    /// <summary>How many times the rule's actions changed a variable: it wrote nothing for those, but did something.</summary>
+    public int VariableChanges { get; set; }
+
     /// <summary>How many times it could not do what it was asked, for any reason.</summary>
     public int Skipped { get; set; }
 
@@ -45,6 +48,9 @@ public sealed class RunResult
     public required List<List<EditLogEntry>> Logs { get; init; }
 
     public required List<RunWarning> Warnings { get; init; }
+
+    /// <summary>The variables as the last rule left them, by name: a rule's action may change one.</summary>
+    public IReadOnlyDictionary<string, string> Variables { get; init; } = new Dictionary<string, string>();
 
     /// <summary>The total of all rules' edits.</summary>
     public int Edits => Stats.Sum(s => s.Edits);
@@ -81,4 +87,15 @@ public sealed class RunOptions
 
     /// <summary>The "Decimal places" setting, or null for no limit.</summary>
     public int? DecimalPlaces { get; init; }
+
+    /// <summary>
+    /// Where each rule set begins among the rules, in order, with the shared variables (those of a mod, or of all mods)
+    /// as they stand when it begins. With none, the rules are one rule set and every Variable rule is its own.
+    /// </summary>
+    public IReadOnlyList<RuleSegment> Segments { get; init; } = [];
 }
+
+/// <summary>A rule set among the rules of a run (<see cref="RunOptions.Segments"/>).</summary>
+/// <param name="Start">The index of its first rule.</param>
+/// <param name="Shared">The shared variables it can use, by name, with their values as it begins.</param>
+public sealed record RuleSegment(int Start, IReadOnlyDictionary<string, string> Shared);

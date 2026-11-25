@@ -309,6 +309,9 @@
                         <controls:SettingRow Label="{t:Text Settings.Updates}" Note="{t:Text Settings.Updates.Note}">
                             <CheckBox x:Name="UpdatesSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="checkUpdates" />
                         </controls:SettingRow>
+                        <controls:SettingRow Label="{t:Text Settings.AskBundledMod}" Note="{t:Text Settings.AskBundledMod.Note}">
+                            <CheckBox x:Name="AskBundledModSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="askBundledModUpdate" />
+                        </controls:SettingRow>
                         <controls:SettingRow Label="{t:Text Settings.ModFiles.CleanUp.Label}" Note="{t:Text Settings.ModFiles.CleanUp.Note}">
                             <controls:WrapRow Gap="6">
                                 <Button Content="{t:Text Settings.ModFiles.CleanUp}" ToolTip="{t:Text Settings.ModFiles.CleanUp.Tip}" Click="CleanUpClicked" />

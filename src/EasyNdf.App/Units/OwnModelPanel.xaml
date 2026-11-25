@@ -26,16 +26,26 @@
 
         <!-- the model, its size, and the checks under it -->
         <DockPanel Grid.Column="0">
+            <!-- the checks: how many of each kind beside the heading, the wrong ones first; the grip under the list shares the height with the view -->
             <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
-                <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.OwnModel.Checks}" /></controls:Bevel>
-                <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <DockPanel>
+                    <StackPanel x:Name="CheckCounts" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" />
+                    <controls:Bevel Style="{StaticResource Heading}"><TextBlock Text="{t:Text Units.OwnModel.Checks}" /></controls:Bevel>
+                </DockPanel>
+                <ScrollViewer x:Name="ChecksScroller" MaxHeight="150" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                     <StackPanel x:Name="ChecksPanel" />
                 </ScrollViewer>
+                <controls:ResizeGrip x:Name="ChecksGrip" ToolTip="{t:Text Common.ResizeGrip.Tip}" />
             </StackPanel>
             <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
                 <Button x:Name="ResetButton" DockPanel.Dock="Left" Content="{t:Text Units.Model.ResetView}" Click="ResetClicked" />
                 <CheckBox x:Name="MarksSwitch" DockPanel.Dock="Left" Style="{StaticResource Toggle}" Content="{t:Text Units.OwnModel.ShowParts}" ToolTip="{t:Text Units.OwnModel.ShowParts.Tip}"
                           IsChecked="True" VerticalAlignment="Center" Margin="12,0,0,0" Click="MarksSwitchClicked" />
+                <!-- which marks, as in the unit's 3D view: the firing points or the turrets' centres -->
+                <ToggleButton x:Name="FiringPointsChoice" DockPanel.Dock="Left" Style="{StaticResource PressedToggle}" Content="{t:Text Units.Model.FiringPoints}"
+                              IsChecked="True" Padding="6,3" Margin="12,0,0,0" Click="MarkKindClicked" />
+                <ToggleButton x:Name="TurretCentresChoice" DockPanel.Dock="Left" Style="{StaticResource PressedToggle}" Content="{t:Text Units.Model.TurretCentres}"
+                              Padding="6,3" Margin="-1,0,0,0" Click="MarkKindClicked" />
                 <TextBlock x:Name="TriangleText" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" VerticalAlignment="Center" Margin="10,0,0,0" />
                 <TextBlock x:Name="SizeText" DockPanel.Dock="Right" Foreground="{DynamicResource muted}" VerticalAlignment="Center" ToolTip="{t:Text Units.Model.Size.Tip}" />
                 <Border />

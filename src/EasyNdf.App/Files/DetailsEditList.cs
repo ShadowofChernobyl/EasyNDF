@@ -495,7 +495,8 @@ internal sealed class DetailsEditList : Bevel
         name.VerticalAlignment = VerticalAlignment.Center;
         DetailsText.Add(name.Inlines, group.Title, null, find);
         var line = new DockPanel { MinHeight = 22 };
-        if (group.Name != "")
+        // a variable an action changed is nowhere in the file
+        if (group.Name != "" && !(group.Name.StartsWith('{') && group.Name.EndsWith('}')))
         {
             var show = new Button { Content = Texts.Get("Files.Details.ShowInEditor"), ToolTip = Texts.Get("Files.Details.ShowInEditor.Tip"), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             show.SetResourceReference(StyleProperty, "SmallButton");

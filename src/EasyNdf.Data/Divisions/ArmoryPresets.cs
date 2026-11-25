@@ -53,21 +53,48 @@ public static class ArmoryPresets
     /// <param name="gameLoadouts">The game's loadouts, which the mod's changes to units' weapons are made on.</param>
     public static void Update(Mod mod, IReadOnlyList<Division> game, TextCatalog texts, Func<string, string> unitName,
         Func<ArmoryPart, string> presetName, IReadOnlySet<string>? gameCards = null, IReadOnlyList<Units.Unit>? gameUnits = null,
-        IReadOnlyList<Weapons.Weapon>? gameWeapons = null, IReadOnlyDictionary<string, Weapons.Loadout>? gameLoadouts = null)
+        IReadOnlyList<Weapons.Weapon>? gameWeapons = null, IReadOnlyDictionary<string, Weapons.Loadout>? gameLoadouts = null,
+        IReadOnlyDictionary<string, string>? shownTabs = null)
     {
-        Dictionary<ArmoryPart, JsonArray> made = SplitByPart(RulesFor(mod, game, texts, unitName, gameCards, gameUnits ?? [], gameWeapons ?? [], gameLoadouts));
+        Dictionary<ArmoryPart, JsonArray> made = SplitByPart(RulesFor(mod, game, texts, unitName, gameCards, gameUnits ?? [], gameWeapons ?? [], gameLoadouts, shownTabs));
         foreach (ArmoryPart part in Parts) UpdatePart(mod, part, made.GetValueOrDefault(part) ?? [], presetName(part));
     }
 
     /// <summary>The rules made from the Armory's changes: the divisions', then the units', then the weapons'.</summary>
     public static JsonArray RulesFor(Mod mod, IReadOnlyList<Division> game, TextCatalog texts, Func<string, string> unitName,
         IReadOnlySet<string>? gameCards, IReadOnlyList<Units.Unit> gameUnits, IReadOnlyList<Weapons.Weapon> gameWeapons,
-        IReadOnlyDictionary<string, Weapons.Loadout>? gameLoadouts = null)
+        IReadOnlyDictionary<string, Weapons.Loadout>? gameLoadouts = null, IReadOnlyDictionary<string, string>? shownTabs = null)
     {
         JsonArray rules = DivisionChangeRules.For(mod, game, texts, unitName, gameCards);
+        foreach (JsonNode? rule in TabRulesFor(mod, game, texts, gameUnits, shownTabs)) rules.Add(rule!.DeepClone());
         foreach (JsonNode? rule in Units.UnitChangeRules.For(mod, gameUnits, texts, gameLoadouts, unitName, gameWeapons)) rules.Add(rule!.DeepClone());
         foreach (JsonNode? rule in Weapons.WeaponChangeRules.For(mod, gameWeapons, texts, loadout => UnitsWithLoadout(gameUnits, loadout), gameLoadouts)) rules.Add(rule!.DeepClone());
         return rules;
+    }
+
+    /// <summary>
+    /// The rules for the mod's changes to the Armory's tabs (<see cref="TabChangeRules"/>): each unit's tab is the
+    /// game's, or the one the mod gives it, or the one the Armory shows it in (<paramref name="shownTabs"/>, which
+    /// follows the rule sets too); each division is as the mod leaves it.
+    /// </summary>
+    private static JsonArray TabRulesFor(Mod mod, IReadOnlyList<Division> game, TextCatalog texts, IReadOnlyList<Units.Unit> gameUnits, IReadOnlyDictionary<string, string>? shownTabs)
+    {
+        if (mod.Tabs.Count == 0 && mod.TabOrder is null) return [];
+        var tabOf = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (Units.Unit unit in gameUnits) tabOf[unit.Descriptor] = unit.Factory;
+        foreach (var (descriptor, tab) in shownTabs ?? new Dictionary<string, string>()) tabOf[descriptor] = tab;
+        foreach (Units.UnitEdit edit in mod.UnitEdits.Where(edit => edit.Factory is not null)) tabOf[edit.Descriptor] = edit.Factory!;
+        foreach (Units.ModUnit added in mod.Units)
+            tabOf[added.Descriptor] = added.Factory ?? tabOf.GetValueOrDefault(added.MadeFrom) ?? "";
+        List<Division> divisions = [.. game.Select(division =>
+            mod.Divisions.FirstOrDefault(change => !change.IsNew && change.StartsFrom == division.Descriptor) is ModDivision change ? change.Apply(division) : division)];
+        string TabName(string tab) => ModTab.Of(mod, tab)?.Label is { Length: > 0 } label ? label : tab;
+        return TabChangeRules.For(mod, divisions, tabOf, texts.Get("Divisions.Tabs.Group"), (what, tab) => what switch
+        {
+            "Order" => texts.Get("Divisions.Tabs.Rule.Order"),
+            "Name" => texts.Get("Divisions.Tabs.Rule.Name", ("tab", TabName(tab))),
+            _ => texts.Get("Divisions.Tabs.Rule.Row", ("tab", TabName(tab))),
+        });
     }
 
     /// <summary>The names of the game's units with a loadout (WeaponDescriptor), for the name of a rule that changes it.</summary>

@@ -388,6 +388,39 @@ public sealed class ModFileViews
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool CreateHardLink(string newFile, string existingFile, IntPtr security);
 
+    // ---- as the app closes ----
+
+    /// <summary>
+    /// Takes away the folders of mods that are gone and that hold no file: a mod deleted leaves its folder behind for
+    /// the session, so that Undo brings the mod back with what it carried. One that still holds files (pictures, the
+    /// files of File rules) stays for "Clean Up Mod Files", which says what it takes. Returns how many went.
+    /// </summary>
+    /// <param name="stems">Every mod: the name of its file without ".mod.json".</param>
+    public int RemoveEmptyFoldersOfGoneMods(IEnumerable<string> stems)
+    {
+        var kept = new HashSet<string>(stems, StringComparer.OrdinalIgnoreCase);
+        int removed = 0;
+        lock (gate)
+        {
+            try
+            {
+                foreach (string folder in ModFolders().ToList())
+                {
+                    if (kept.Contains(Path.GetFileName(folder))) continue;
+                    // the folder's own lists are not files of the mod; anything else is
+                    bool holdsFiles = Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories)
+                        .Any(file => Path.GetFileName(file) is not (ListName or OldListName));
+                    if (holdsFiles) continue;
+                    Directory.Delete(folder, recursive: true);
+                    removed++;
+                }
+            }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException) { }
+            if (removed > 0) lock (indexGate) index = null;
+        }
+        return removed;
+    }
+
     // ---- Clean Up Mod Files ----
 
     /// <summary>What a clean-up would take away, and the room it would give back.</summary>

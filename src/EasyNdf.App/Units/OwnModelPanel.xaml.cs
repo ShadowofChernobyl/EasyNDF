@@ -43,6 +43,14 @@ public partial class OwnModelPanel : UserControl
         InitializeComponent();
         wantedTexturesHeight = AppData.Current.State[TexturesHeightKey]?.GetValue<double>() is double kept and >= LeastListHeight ? kept : TexturesHeight;
         TexturesBox.Height = wantedTexturesHeight;
+        ChecksGrip.Target = ChecksScroller;
+        ChecksGrip.HeightChosen += ChooseChecksHeight;
+        ChecksGrip.HeightSettled += () =>
+        {
+            AppData.Current.State[ChecksHeightKey] = double.IsNaN(ChecksScroller.Height) ? null : ChecksScroller.Height;
+            AppData.Current.SaveState();
+        };
+        if (AppData.Current.State[ChecksHeightKey]?.GetValue<double>() is double keptChecks) ChooseChecksHeight(keptChecks);
         TexturesGrip.Target = TexturesBox;
         TexturesGrip.HeightChosen += ChooseTexturesHeight;
         TexturesGrip.HeightSettled += () =>
@@ -50,6 +58,26 @@ public partial class OwnModelPanel : UserControl
             AppData.Current.State[TexturesHeightKey] = TexturesBox.Height;
             AppData.Current.SaveState();
         };
+    }
+
+    /// <summary>Where the checks list's height is kept, as its grip leaves it.</summary>
+    private const string ChecksHeightKey = "ownModelChecksHeight";
+
+    /// <summary>
+    /// The checks list's height from its grip: from two rows up to what leaves the view its least height; a
+    /// double-click gives the list its own height back, up to a few rows.
+    /// </summary>
+    private void ChooseChecksHeight(double? height)
+    {
+        if (height is not double wanted)
+        {
+            ChecksScroller.Height = double.NaN;
+            ChecksScroller.MaxHeight = 150;
+            return;
+        }
+        ChecksScroller.MaxHeight = double.PositiveInfinity;
+        double most = ActualHeight > 0 ? Math.Max(44, ActualHeight - 300) : 400;
+        ChecksScroller.Height = Math.Clamp(wanted, 44, most);
     }
 
     /// <summary>Where the textures list's height is kept, as its grip leaves it.</summary>
@@ -167,6 +195,16 @@ public partial class OwnModelPanel : UserControl
     /// <summary>The descriptor of the unit the model is for, once known, for the folder its files go into.</summary>
     public string? Descriptor { get; set; }
 
+    /// <summary>
+    /// Whether the unit is still being made and has no name yet (the New Unit window, whose 3D Model step comes before
+    /// its Name step): the folder is then shown with the name to come, not with the copied unit's, which it never is.
+    /// </summary>
+    public bool AwaitsName { get; set; }
+
+    /// <summary>Shows the folder the model's files go into again, after <see cref="Descriptor"/> changed.</summary>
+    public void ShowDestination() =>
+        DestinationPath.Text = Destination(Descriptor is null ? null : OwnModel.KeyFor(Descriptor)) ?? "—";
+
     /// <summary>Lets go of the 3D view and the files read, when the window closes.</summary>
     public void Close()
     {
@@ -256,7 +294,8 @@ public partial class OwnModelPanel : UserControl
         if (copiedModel?.Path is not string path) return null;
         string[] parts = path.Split('/');
         string folder = parts.Length >= 3 ? string.Join('/', parts[..^2]) : "Assets/3D/Units";
-        return folder + "/" + (key ?? OwnModel.KeyFor("Descriptor_Unit_" + (copied?.Descriptor.Split("Descriptor_Unit_")[^1] ?? "Unit"))) + "/";
+        key ??= AwaitsName ? "EZ_" + Texts.Get("Units.OwnModel.NameToCome") : OwnModel.KeyFor("Descriptor_Unit_" + (copied?.Descriptor.Split("Descriptor_Unit_")[^1] ?? "Unit"));
+        return folder + "/" + key + "/";
     }
 
     private void ShowTextures()
@@ -352,6 +391,12 @@ public partial class OwnModelPanel : UserControl
     private FrameworkElement PartRow(ExpectedPart part, int index)
     {
         Grid row = PartColumns();
+        if (part.Role is PartRole.Turret or PartRole.Gun or PartRole.GunMount or PartRole.FiringPoint)
+        {
+            row.Background = Brushes.Transparent;
+            row.MouseEnter += (_, _) => LightTurret(part.Number);
+            row.MouseLeave += (_, _) => LightTurret(-1);
+        }
         var name = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         name.Children.Add(new TextBlock { Text = PartName(part), TextTrimming = TextTrimming.CharacterEllipsis });
         var code = new TextBlock { Text = part.IsGroup ? Texts.Count("Units.OwnModel.Part.Count", part.Names.Count, ("count", part.Names.Count)) : part.Names[0],
@@ -452,14 +497,28 @@ public partial class OwnModelPanel : UserControl
             if (midFile is null && lowFile is null) checks.Add(new FitCheck(CheckLevel.Caution, "Units.OwnModel.Check.NoLevels", []));
             else checks.Add(new FitCheck(CheckLevel.Good, "Units.OwnModel.Check.Levels", []));
         }
-        foreach (FitCheck check in checks) ChecksPanel.Children.Add(CheckRow(check));
+        // what is wrong first, then what is worth knowing, then what is right: a long list shows what needs doing at its top
+        foreach (FitCheck check in checks.OrderByDescending(check => check.Level)) ChecksPanel.Children.Add(CheckRow(check));
+        CheckCounts.Children.Clear();
+        foreach (CheckLevel level in new[] { CheckLevel.Problem, CheckLevel.Caution, CheckLevel.Good })
+        {
+            int count = checks.Count(check => check.Level == level);
+            if (count == 0) continue;
+            var said = new TextBlock { Text = SignOf(level) + " " + Texts.Number(count), FontWeight = FontWeights.Bold, Margin = new Thickness(10, 0, 0, 0) };
+            said.SetResourceReference(TextBlock.ForegroundProperty, ColourOf(level));
+            CheckCounts.Children.Add(said);
+        }
     }
+
+    private static string SignOf(CheckLevel level) => level switch { CheckLevel.Good => "✓", CheckLevel.Caution => "!", _ => "✕" };
+
+    private static string ColourOf(CheckLevel level) => level switch { CheckLevel.Good => "ok", CheckLevel.Caution => "caution", _ => "warn" };
 
     private FrameworkElement CheckRow(FitCheck check)
     {
         var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
-        var sign = new TextBlock { Text = check.Level switch { CheckLevel.Good => "✓", CheckLevel.Caution => "!", _ => "✕" }, Width = 18, FontWeight = FontWeights.Bold };
-        sign.SetResourceReference(TextBlock.ForegroundProperty, check.Level switch { CheckLevel.Good => "ok", CheckLevel.Caution => "caution", _ => "warn" });
+        var sign = new TextBlock { Text = SignOf(check.Level), Width = 18, FontWeight = FontWeights.Bold };
+        sign.SetResourceReference(TextBlock.ForegroundProperty, ColourOf(check.Level));
         DockPanel.SetDock(sign, Dock.Left);
         row.Children.Add(sign);
         var body = new StackPanel();
@@ -593,38 +652,81 @@ public partial class OwnModelPanel : UserControl
         camera.Aim(centre, RadiusOf(mesh), width, height);
         var pose = new Matrix4x4[Math.Max(1, mesh.Nodes.Count)];
         Array.Fill(pose, Matrix4x4.Identity);
-        renderer.Draw(new FrameView(camera.ViewProjection, camera.Eye, camera.Far, 0, Vector3.Zero), pose);
+        var view = new FrameView(camera.ViewProjection, camera.Eye, camera.Far, 0, Vector3.Zero);
+        renderer.Draw(view, pose);
         if (!ReferenceEquals(Picture.Source, renderer.Picture)) Picture.Source = renderer.Picture;
+        // which marks the model hides, as in the unit's 3D view: checked now and then while the view is dragged, and when it stops
+        long now = Environment.TickCount64;
+        if (Marks.Visibility == Visibility.Visible && (!dragging || now - lastHiddenCheck > 150))
+        {
+            lastHiddenCheck = now;
+            (hiddenDistances, hiddenWidth, hiddenHeight) = renderer.Distances(view, pose);
+        }
         PlaceMarks(mesh);
     }
 
-    /// <summary>A mark on each turret, gun and firing point of the model shown, in the colour of its row.</summary>
+    private long lastHiddenCheck;
+    private float[]? hiddenDistances;
+    private int hiddenWidth, hiddenHeight;
+
+    /// <summary>Whether the marks are the firing points (or the turrets' centres), and the turret whose row is under the mouse.</summary>
+    private bool showFiringPoints = true;
+    private int litTurret = -1;
+
+    /// <summary>
+    /// The marks of the unit's 3D view (<see cref="ModelViewer.NumberDisc"/>): a round number, the turret's, on each
+    /// firing point or on each turret's centre, as chosen under the view; those of the turret whose row is under the
+    /// mouse are larger. Names beside the marks ran into each other on a model with several turrets: the Parts list
+    /// names each one.
+    /// </summary>
     private void PlaceMarks(ModelMesh mesh)
     {
         Marks.Children.Clear();
         foreach (ModelNode node in mesh.Nodes)
         {
-            string? label = node.Name switch
-            {
-                var name when name.StartsWith("tourelle", StringComparison.Ordinal) => Texts.Get("Units.OwnModel.Part.Turret", ("number", Number(name))),
-                var name when name.StartsWith("canon", StringComparison.Ordinal) => Texts.Get("Units.OwnModel.Part.Gun", ("number", Number(name))),
-                var name when name.StartsWith("fx_tourelle", StringComparison.Ordinal) && name.Contains("_tir_", StringComparison.Ordinal) => Texts.Get("Units.OwnModel.Part.FiringPoint", ("number", Number(name))),
-                _ => null,
-            };
-            if (label is null) continue;
+            bool isFiringPoint = node.Name.StartsWith("fx_tourelle", StringComparison.Ordinal) && node.Name.Contains("_tir_", StringComparison.Ordinal);
+            bool isTurret = node.Name.StartsWith("tourelle", StringComparison.Ordinal);
+            if (showFiringPoints ? !isFiringPoint : !isTurret) continue;
             (double x, double y, double depth) = camera.Project(node.Place);
             if (double.IsNaN(x) || depth <= 0) continue;
-            var ring = new Ellipse { Width = 12, Height = 12, StrokeThickness = 2 };
-            ring.SetResourceReference(Shape.StrokeProperty, "ok");
-            Canvas.SetLeft(ring, x - 6);
-            Canvas.SetTop(ring, y - 6);
-            Marks.Children.Add(ring);
-            var text = new TextBlock { Text = label, FontSize = 11.5 };
-            text.SetResourceReference(TextBlock.ForegroundProperty, "ok");
-            Canvas.SetLeft(text, x + 9);
-            Canvas.SetTop(text, y - 20);
-            Marks.Children.Add(text);
+            int turret = Number(node.Name);
+            // dimmed when the model is in front of it, unless its turret's row is under the mouse; while the view is
+            // dragged the last check stands until the next one
+            bool hidden = false;
+            if (hiddenDistances is float[] distances)
+            {
+                int px = (int)(x / Marks.ActualWidth * hiddenWidth), py = (int)(y / Marks.ActualHeight * hiddenHeight);
+                if (px >= 0 && py >= 0 && px < hiddenWidth && py < hiddenHeight && Marks.ActualWidth > 0)
+                    hidden = distances[py * hiddenWidth + px] * camera.Far < Vector3.Distance(node.Place, camera.Eye) - RadiusOf(mesh) * 0.06;
+            }
+            Border disc = ModelViewer.NumberDisc(turret, hidden && turret != litTurret ? 0.5 : 1);
+            Canvas.SetLeft(disc, x - 9);
+            Canvas.SetTop(disc, y - 9);
+            if (turret == litTurret)
+            {
+                disc.RenderTransformOrigin = new Point(0.5, 0.5);
+                disc.RenderTransform = new ScaleTransform(1.45, 1.45);
+                Panel.SetZIndex(disc, 2);
+            }
+            Marks.Children.Add(disc);
         }
+    }
+
+    /// <summary>Firing Points or Turret Centres under the view: one is always pressed.</summary>
+    private void MarkKindClicked(object sender, RoutedEventArgs e)
+    {
+        showFiringPoints = ReferenceEquals(sender, FiringPointsChoice);
+        FiringPointsChoice.IsChecked = showFiringPoints;
+        TurretCentresChoice.IsChecked = !showFiringPoints;
+        Draw();
+    }
+
+    /// <summary>A part's row under the mouse: its turret's marks grow, as a turret's row does in the unit's 3D view.</summary>
+    private void LightTurret(int turret)
+    {
+        if (litTurret == turret) return;
+        litTurret = turret;
+        if (shownMesh is ModelMesh mesh && Marks.Visibility == Visibility.Visible) PlaceMarks(mesh);
     }
 
     private static int Number(string name)
@@ -656,7 +758,12 @@ public partial class OwnModelPanel : UserControl
 
     private void ViewReleased(object sender, MouseButtonEventArgs e)
     {
-        if (dragging && e.ChangedButton == MouseButton.Left) ViewFrame.ReleaseMouseCapture();
+        if (dragging && e.ChangedButton == MouseButton.Left)
+        {
+            ViewFrame.ReleaseMouseCapture();
+            dragging = false;
+            Draw();
+        }
     }
 
     private void ViewCaptureLost(object sender, MouseEventArgs e) => dragging = false;
@@ -744,9 +851,12 @@ public partial class OwnModelPanel : UserControl
         ShowAll();
     }
 
-    /// <summary>The Parts switch under the view: shows or hides the turret, gun and firing point marks on the model.</summary>
-    private void MarksSwitchClicked(object sender, RoutedEventArgs e) =>
+    /// <summary>The Parts switch under the view: shows or hides the marks on the model.</summary>
+    private void MarksSwitchClicked(object sender, RoutedEventArgs e)
+    {
         Marks.Visibility = MarksSwitch.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        Draw();
+    }
 
     private void TexturesClicked(object sender, RoutedEventArgs e)
     {
