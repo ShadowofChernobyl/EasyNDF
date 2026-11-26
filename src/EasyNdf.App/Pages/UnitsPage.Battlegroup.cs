@@ -28,7 +28,7 @@ public partial class UnitsPage : IBattlegroupEditing
         if (chosenDivision is null) return;
         battlegroupColumns = CardRowView.ColumnsFor(RoomIn(BattlegroupScroller));
         bool hasPlace = chosenDivision.Battlegroup is not null || IsNewInMod(chosenDivision);
-        BattlegroupContent.Content = BattlegroupView.Build(chosenDivision, unitsByDescriptor, Game, selection, battlegroupColumns, this,
+        BattlegroupContent.Content = BattlegroupView.Build(WithTabRows(chosenDivision), unitsByDescriptor, Game, selection, battlegroupColumns, this,
             (button, type) => BattlegroupCardPopup.Open(button, type, () => chosenDivision, unitsByDescriptor, ((IUnitActions)this).IsFirstSide, this),
             foldedBattlegroupCategories, BattlegroupFoldClicked, hasPlace, cardsTried, WhyChosen, TabsShown());
     }

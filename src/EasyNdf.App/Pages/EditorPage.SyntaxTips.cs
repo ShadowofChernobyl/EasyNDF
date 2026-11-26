@@ -65,12 +65,12 @@ public partial class EditorPage
             case "ref":
                 // ~/ETerrainType/Default names a value inside ETerrainType, not an object called Default: the whole path is the name
                 return NameTip(v, wrong, word.StartsWith("~/", StringComparison.Ordinal) && word.IndexOf('/', 2) > 0 ? word[2..] : SyntaxWords.ReferredName(word),
-                    text, line, definedHere: false);
+                    text, line, definedHere: false, AboutPlace(guide, document, offset));
             case "const":
                 if (word is "True" or "False" or "true" or "false")
                     return SyntaxTips.Note(wrong, word, Texts.Get("Editor.Syntax.Kind.YesNo"), Texts.Get("Editor.Syntax.TrueFalse"));
                 if (word == "nil") return SyntaxTips.Note(wrong, word, Texts.Get("Editor.Syntax.Kind.NoValue"), Texts.Get("Editor.Syntax.Nil"));
-                return NameTip(v, wrong, word, text, line, definedHere: false);
+                return NameTip(v, wrong, word, text, line, definedHere: false, AboutPlace(guide, document, offset));
             case "number" or "string":
                 // a template value's default, or a constant's value: the tip of what it belongs to
                 if (SyntaxWords.ValueDeclaredOn(line) is { } declaredValue && SyntaxWords.TemplateAround(text, offset) is { } template
@@ -142,7 +142,8 @@ public partial class EditorPage
     /// A name's tip: its type, where it is declared, how many descriptors of the read files use it, and its first
     /// settings. One declared in another read file shows "Reading its settings…" until that file is read.
     /// </summary>
-    private StackPanel NameTip(FileView v, (string, string, bool)? wrong, string name, string text, string line, bool definedHere)
+    /// <param name="aboutPlace">What the setting the reference is given to does, for a reference whose type has no description.</param>
+    private StackPanel NameTip(FileView v, (string, string, bool)? wrong, string name, string text, string line, bool definedHere, string? aboutPlace = null)
     {
         ReferenceIndex index = ReferenceIndex.Of([.. Files?.Entries ?? []]);
         bool known = index.Names.TryGetValue(name, out ReferenceIndex.Declared declared);
@@ -160,17 +161,21 @@ public partial class EditorPage
         if (type == "" && listed is { } elsewhere) type = elsewhere.Type;
         string kind = type != "" ? type : inThisFile || known || listed is not null ? Texts.Get("Editor.Syntax.Kind.Constant") : Texts.Get("Editor.Syntax.Kind.Reference");
         StackPanel tip = SyntaxTips.Start(wrong, name, kind);
+        // what it is for: its type's description, else what the setting it is given to does
+        if (!definedHere && ((type != "" ? v.Guide?.AboutType(type) : null) ?? aboutPlace) is { Length: > 0 } about) SyntaxTips.Add(tip, about);
 
         var said = new List<string>();
+        // where it is declared, the file name a link that opens it there
+        (FileEntry? Entry, int Line)? where = null;
         if (definedHere) said.Add(Texts.Get("Editor.Syntax.DefinedHere"));
-        else if (inThisFile && here is { } own) said.Add(Texts.Get("Editor.Syntax.DefinedIn", ("file", v.Name), ("line", Texts.Number(SyntaxWords.LineOf(text, own.Start)))));
+        else if (inThisFile && here is { } own) where = (null, SyntaxWords.LineOf(text, own.Start));
         if (sameDeclaration)
         {
             int users = index.UsersOf(name).Count;
             said.Add((users > 0 ? Texts.Count("Editor.Syntax.UsedBy", users, ("number", Texts.Number(users))) : Texts.Get("Editor.Syntax.UsedByNone")) + UnreadNote());
         }
         else if (inThisFile) said.Add(UsedInFile(Math.Max(0, UsesInText(text, name) - 1)));
-        else if (listed is { } place) said.Add(Texts.Get("Editor.Syntax.DefinedIn", ("file", place.Entry.Name), ("line", Texts.Number(place.Line))));
+        else if (listed is { } place) where = (place.Entry, place.Line);
         else if (!listedReady)
         {
             // the listed files' names are being gathered: until they are, the files read are all that is known
@@ -178,6 +183,7 @@ public partial class EditorPage
             said.Add(Texts.Get("Editor.Syntax.LookingInListed", ("done", Texts.Number(done)), ("total", Texts.Number(total))));
         }
         else said.Add(Texts.Get("Editor.Syntax.NotListed"));
+        if (where is var (whereEntry, whereLine)) tip.Children.Add(DefinedInLink(v, whereEntry, name, whereLine));
         if (said.Count > 0) SyntaxTips.Add(tip, string.Join(" ", said));
 
         if (inThisFile && here is { } span)
@@ -207,10 +213,98 @@ public partial class EditorPage
         if (at < 0) return;
         tip.Children.RemoveAt(at);
         if (!file.ByName.TryGetValue(name, out OutlineEntry? found)) return;
-        tip.Children.Insert(at, ValueTips.Words(Texts.Get("Editor.Syntax.DefinedIn", ("file", entry.Name), ("line", Texts.Number(SyntaxWords.LineOf(file.Text, found.Start))))));
+        tip.Children.Insert(at, DefinedInLink(FileViewOf(tip), entry, name, SyntaxWords.LineOf(file.Text, found.Start)));
         string declaration = file.Text[found.Start..found.End];
         if (await Task.Run(() => SyntaxWords.KeyValuesOf(declaration)) is { } values) SyntaxTips.AddKeyValues(tip, name, values);
     }
+
+    /// <summary>
+    /// "In AcknowTypes.ndf, line 95." with the file's name a link: it opens the file at the name's declaration (another
+    /// file, read then if it was not), or goes to the line (this file, for <paramref name="entry"/> null).
+    /// </summary>
+    private TextBlock DefinedInLink(FileView? v, FileEntry? entry, string name, int line)
+    {
+        const string Mark = "\u0001";
+        string sentence = Texts.Get("Editor.Syntax.DefinedIn", ("file", Mark), ("line", Texts.Number(line)));
+        var words = new TextBlock { TextWrapping = System.Windows.TextWrapping.Wrap, Margin = new System.Windows.Thickness(0, 2, 0, 0) };
+        int at = sentence.IndexOf(Mark, StringComparison.Ordinal);
+        string fileName = entry?.Name ?? v?.Name ?? "";
+        var link = new System.Windows.Documents.Hyperlink(new System.Windows.Documents.Run(fileName))
+        {
+            Style = (System.Windows.Style)FindResource("CrumbLink"),
+            ToolTip = Texts.Get("Editor.Tip.OpenAt.Tip", ("file", fileName), ("line", Texts.Number(line))),
+        };
+        link.Click += async (_, _) =>
+        {
+            v?.SyntaxProblems.CloseTip();
+            if (entry is null && v is not null) { RememberPlace(); PointAt(line - 1); }
+            else if (entry is not null)
+            {
+                RememberPlace();
+                await ShowDescriptor(entry, name);
+            }
+        };
+        if (at < 0) words.Inlines.Add(link);
+        else
+        {
+            words.Inlines.Add(new System.Windows.Documents.Run(sentence[..at]));
+            words.Inlines.Add(link);
+            words.Inlines.Add(new System.Windows.Documents.Run(sentence[(at + Mark.Length)..]));
+        }
+        return words;
+    }
+
+    /// <summary>The box a tip belongs to: the one shown.</summary>
+    private FileView? FileViewOf(StackPanel tip) => view;
+
+    /// <summary>What the setting at a place of the text does, as the guide describes it; null when it doesn't.</summary>
+    private static string? AboutPlace(ValueGuide guide, TextDocument document, int offset)
+    {
+        (string Type, string Name)? setting = EditorPlaces.At(document, offset) is { Name.Length: > 0 } place ? (place.ObjectType, place.Name) : SettingAround(document, offset);
+        return setting is var (type, name) && guide.Find(type, name) is { Description.Length: > 0 } info ? info.Description : null;
+    }
+
+    /// <summary>
+    /// The setting an array item belongs to, and the type of its object: "AcknowUnitTypes = [ ~/X ]" inside
+    /// "TTypeUnitModuleDescriptor ( … )". Found by going back over the brackets; null when the place is in none.
+    /// </summary>
+    private static (string Type, string Name)? SettingAround(TextDocument document, int offset)
+    {
+        string? setting = null;
+        int depth = 0;
+        for (int at = offset - 1; at >= Math.Max(0, offset - 200_000); at--)
+        {
+            char c = document.GetCharAt(at);
+            if (c is ')' or ']') depth++;
+            else if (c is '(' or '[')
+            {
+                if (depth > 0) { depth--; continue; }
+                string before = WordsBefore(document, at);
+                if (c == '[')
+                {
+                    // the first array around the place names the setting: "AcknowUnitTypes = [", "Map = MAP ["
+                    if (setting is null && SettingOpening().Match(before) is { Success: true } named) setting = named.Groups[1].Value;
+                    continue;
+                }
+                // the object around: its type is the word before its "("
+                return setting is not null && TypeOpening().Match(before) is { Success: true } typed ? (typed.Groups[1].Value, setting) : null;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>Up to 200 characters before a place, the line breaks kept, for the words in front of a bracket.</summary>
+    private static string WordsBefore(TextDocument document, int at)
+    {
+        int from = Math.Max(0, at - 200);
+        return document.GetText(from, at - from);
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(\w+)\s*=\s*(?:MAP\s*)?$")]
+    private static partial System.Text.RegularExpressions.Regex SettingOpening();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(\w+)\s*$")]
+    private static partial System.Text.RegularExpressions.Regex TypeOpening();
 
     /// <summary>"Used 951 times in this file."</summary>
     private static string UsedInFile(int count) => Texts.Count("Editor.Syntax.UsedInFile", count, ("number", Texts.Number(count)));

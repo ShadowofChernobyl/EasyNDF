@@ -84,32 +84,87 @@ public partial class UnitsPage
     private MenuChoice NewTabChoice() =>
         new(Texts.Get("Units.Tabs.Menu.New"), () => _ = NewTab(), IsEnabled: SpareTabsLeft().Count > 0, Tip: SpareTabsLeft().Count > 0 ? "" : Texts.Get("Units.Tabs.New.None"));
 
-    /// <summary>Edit Tab: the label, the tooltip and, for a spare tab, the cost row; a box left empty keeps the game's.</summary>
+    /// <summary>
+    /// Edit Tab: the label and the tooltip; a box left empty keeps the game's. A spare tab's cost rows are the mod's
+    /// still: they are set per division in the Divisions view, which the window's link opens on the tab.
+    /// </summary>
     private async Task EditTab(string tab)
     {
         bool isSpare = TabChangeRules.SpareTabs.Contains(tab) && !TabChangeRules.HasGameDescription(tab) || tab == "Defense";
         ModTab now = ModTab.Of(OpenMod, tab)?.Copy() ?? new ModTab { Factory = tab };
+        // a spare tab its divisions have no costs for gets the usual row, so the mod's generation does not stop
         if (isSpare && now.Slots is null && !DivisionsHaveRowFor(tab)) now.Slots = [.. TabChangeRules.UsualSlots];
-        // a division shown: its own cost row is the one edited; the tab's name and tooltip are the game's, for all
-        string? division = part is ArmoryPart.Divisions or ArmoryPart.Battlegroups ? chosenDivision?.Descriptor : null;
-        List<int>? forAll = now.Slots;
-        if (division is not null && now.Slots is not null) now.Slots = [.. now.SlotsOf(division)!];
-        if (await MainView.Of(this).TabEditor.Edit(now, GameTextsOf(tab), withSlots: now.Slots is not null, division is null ? null : chosenDivision!.Name) is not ModTab kept) return;
-        // the popup gives back what it shows: the other divisions' own rows are the mod's still
+        Dialogs.TabWindow window = MainView.Of(this).TabEditor;
+        if (await window.Edit(now, GameTextsOf(tab)) is not ModTab kept) return;
+        kept.Slots = now.Slots;
         kept.SlotsFor = now.SlotsFor is null ? null : new Dictionary<string, List<int>>(now.SlotsFor, StringComparer.Ordinal);
-        if (division is not null && kept.Slots is not null)
-        {
-            kept.SlotsFor ??= new Dictionary<string, List<int>>(StringComparer.Ordinal);
-            if (forAll is not null && kept.Slots.SequenceEqual(forAll)) kept.SlotsFor.Remove(division);
-            else kept.SlotsFor[division] = kept.Slots;
-            if (kept.SlotsFor.Count == 0) kept.SlotsFor = null;
-            kept.Slots = forAll;
-        }
         ChangeTabs(mod =>
         {
             mod.Tabs.RemoveAll(each => each.Factory == tab);
             if (!kept.ChangesNothing) mod.Tabs.Add(kept);
         });
+        if (window.WentToCosts) ShowCostsOf(tab);
+    }
+
+    /// <summary>
+    /// The Divisions view on a tab, in Cards, where its heading has the division's cost buttons: the division shown
+    /// when it offers a unit of the tab, else the first listed that does (a division without one has no row for it).
+    /// </summary>
+    private void ShowCostsOf(string tab)
+    {
+        if (view != UnitView.Cards) ViewClicked(CardsButton, new RoutedEventArgs());
+        bool Offers(Division division) => division.Units.Any(unit => unitsByDescriptor.TryGetValue(unit.Unit, out Unit? found) && found.Factory == tab);
+        if (chosenDivision is null || !Offers(chosenDivision))
+            if (divisions.FirstOrDefault(Offers) is Division offering) ChooseDivision(offering);
+        filter.Factory = tab;
+        if (part != ArmoryPart.Divisions) ShowPart(ArmoryPart.Divisions);
+        else ShowAll();
+    }
+
+    /// <summary>
+    /// The cost row a division gets for a tab of the mod's that the division has no costs for (a spare tab), when it
+    /// offers a unit of the tab: the division's own row, else the tab's (<see cref="TabChangeRules"/> adds it as the
+    /// mod is generated). Null for any other tab or division.
+    /// </summary>
+    private List<int>? TabRowOf(Division division, string tab)
+    {
+        if (Game != GameTitle.Warno || division.Costs.ContainsKey(tab) || ModTab.Of(OpenMod, tab) is not ModTab own) return null;
+        if (!division.Units.Any(unit => unitsByDescriptor.TryGetValue(unit.Unit, out Unit? found) && found.Factory == tab)) return null;
+        return own.SlotsOf(division.Descriptor) is { Count: > 0 } row ? [.. row] : null;
+    }
+
+    /// <summary>A division as the Armory shows it: with the cost rows the mod's tabs give it (<see cref="TabRowOf"/>).</summary>
+    private Division WithTabRows(Division division)
+    {
+        Dictionary<string, IReadOnlyList<int>>? costs = null;
+        foreach (ModTab tab in OpenMod.Tabs)
+            if (TabRowOf(division, tab.Factory) is List<int> row)
+            {
+                costs ??= new Dictionary<string, IReadOnlyList<int>>(division.Costs, StringComparer.Ordinal);
+                costs[tab.Factory] = row;
+            }
+        return costs is null ? division : division with { Costs = costs };
+    }
+
+    /// <summary>
+    /// A cost button changed a tab row the mod's tab gives (<see cref="TabRowOf"/>): the row becomes the division's own,
+    /// for the tab. False when the tab gives the division no row: its costs are changed as any other.
+    /// </summary>
+    private bool ChangeTabRow(string tab, Action<List<int>> change)
+    {
+        if (chosenDivision is not Division division || TabRowOf(division, tab) is not List<int> row) return false;
+        change(row);
+        if (row.Count == 0) row.Add(1);
+        string descriptor = division.Descriptor;
+        ChangeTabs(mod =>
+        {
+            if (ModTab.Of(mod, tab) is not ModTab own) return;
+            own.SlotsFor ??= new Dictionary<string, List<int>>(StringComparer.Ordinal);
+            if (own.Slots is not null && row.SequenceEqual(own.Slots)) own.SlotsFor.Remove(descriptor);
+            else own.SlotsFor[descriptor] = row;
+            if (own.SlotsFor.Count == 0) own.SlotsFor = null;
+        });
+        return true;
     }
 
     /// <summary>
@@ -132,18 +187,20 @@ public partial class UnitsPage
     /// <summary>Whether the source's divisions have cost rows for a tab already: Defense has, in every division.</summary>
     private bool DivisionsHaveRowFor(string tab) => GameDivisions.Count > 0 && GameDivisions.All(division => division.Costs.ContainsKey(tab));
 
-    /// <summary>New Tab: one of the spare tabs left, with its label, tooltip and cost row.</summary>
+    /// <summary>New Tab: one of the spare tabs left, with its label and tooltip, and the usual cost row for its divisions.</summary>
     private async Task NewTab()
     {
         List<string> left = SpareTabsLeft();
         if (left.Count == 0) return;
-        if (await MainView.Of(this).TabEditor.New([.. left.Select(tab => (tab, UnitNames.FactoryShort(tab)))], GameTextsOf) is not ModTab made) return;
-        if (DivisionsHaveRowFor(made.Factory)) made.Slots = null;
+        Dialogs.TabWindow window = MainView.Of(this).TabEditor;
+        if (await window.New([.. left.Select(tab => (tab, UnitNames.FactoryShort(tab)))], GameTextsOf) is not ModTab made) return;
+        made.Slots = DivisionsHaveRowFor(made.Factory) ? null : [.. TabChangeRules.UsualSlots];
         ChangeTabs(mod =>
         {
             mod.Tabs.RemoveAll(each => each.Factory == made.Factory);
             mod.Tabs.Add(made);
         });
+        if (window.WentToCosts) ShowCostsOf(made.Factory);
     }
 
     /// <summary>Move Left and Move Right: the tab changes places with the one beside it, in the game and here.</summary>

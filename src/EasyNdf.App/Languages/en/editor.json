@@ -398,5 +398,6 @@
   "Editor.Syntax.LookingInListed": "Not in the files read. Looking in the other listed files ({done} of {total}).",
   "Editor.Syntax.NotListed": "No file on the Files tab declares it.",
   "Editor.GoTo.NotListed": "No file on the Files tab declares {name}.",
-  "Editor.GoTo.StillLooking": "{name} is not in the files read. Still looking in the other listed files ({done} of {total}); try again in a moment."
+  "Editor.GoTo.StillLooking": "{name} is not in the files read. Still looking in the other listed files ({done} of {total}); try again in a moment.",
+  "Editor.Tip.OpenAt.Tip": "Open {file} at line {line}"
 }
