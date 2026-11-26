@@ -15,7 +15,8 @@ namespace EasyNdf.App;
 /// <remarks>
 /// The app's windows, questions and notifications (the layer <c>Overlays</c>) are shown in whichever of the app's
 /// windows is in use, so a question asked from a page appears over that page. While one of them is open, the app's
-/// other windows take no clicks or keys, as the pages under it take none.
+/// other windows take no clicks or keys, as the pages under it take none; a viewer (the 3D viewer, the License and
+/// change log) holds back nothing but the window it is in.
 /// </remarks>
 public partial class MainView
 {
@@ -185,22 +186,35 @@ public partial class MainView
     public bool AnyOverlayOpen => Overlays.Children.OfType<FrameworkElement>().Any(each =>
         each.Visibility == Visibility.Visible && !ReferenceEquals(each, Notifications) && !ReferenceEquals(each, ReadingCover) && !ReferenceEquals(each, HelpPopup));
 
+    /// <summary>
+    /// Whether an open overlay is one only to look at (the 3D viewer, the License and change log): the app's other
+    /// windows stay in use beside it, so a tab's own window can be worked in while the main window shows a model.
+    /// </summary>
+    private bool IsViewer(FrameworkElement each) => ReferenceEquals(each, ModelViewer) || ReferenceEquals(each, TextWindow);
+
+    /// <summary>Whether a window or question is open that the app's other windows wait for: any but a viewer (<see cref="IsViewer"/>).</summary>
+    private bool AnyHoldingOverlayOpen => Overlays.Children.OfType<FrameworkElement>().Any(each =>
+        each.Visibility == Visibility.Visible && !ReferenceEquals(each, Notifications) && !ReferenceEquals(each, ReadingCover)
+        && !ReferenceEquals(each, HelpPopup) && !IsViewer(each));
+
     /// <summary>The window the overlays are shown in.</summary>
     private Window? OverlayWindow => Window.GetWindow(Overlays);
 
     /// <summary>
     /// One of the app's windows came into use. The overlays move into it, unless one of them is open in another window:
-    /// then that window comes back to the front, as the owner of a question does.
+    /// then that window comes back to the front, as the owner of a question does. A viewer open in another window
+    /// stays there, and this window is used beside it.
     /// </summary>
     /// <param name="host">Where that window shows the overlays: <c>Page</c> for the main window.</param>
     internal void WindowCameIntoUse(Panel host)
     {
         if (ReferenceEquals(Overlays.Parent, host)) return;
-        if (AnyOverlayOpen)
+        if (AnyHoldingOverlayOpen)
         {
             Dispatcher.BeginInvoke(() => OverlayWindow?.Activate());
             return;
         }
+        if (AnyOverlayOpen) return;
         HostOverlaysIn(host);
     }
 
@@ -237,7 +251,7 @@ public partial class MainView
     /// Whether a window of the app takes no clicks or keys just now: one of the app's windows or questions is open in
     /// another of them.
     /// </summary>
-    internal bool IsHeldBack(Panel host) => !ReferenceEquals(Overlays.Parent, host) && AnyOverlayOpen;
+    internal bool IsHeldBack(Panel host) => !ReferenceEquals(Overlays.Parent, host) && AnyHoldingOverlayOpen;
 
     /// <summary>Clicks and keys in the main window do nothing while a question is open in a tab's window.</summary>
     private void HoldBackWhileAskedElsewhere()

@@ -228,13 +228,8 @@
   "Units.Tabs.Field.TipMore": "Tooltip, More",
   "Units.Tabs.Grip.Tip": "Drag to resize the box",
   "Units.Tabs.Field.Tip.Tip": "What the game shows when the mouse rests on the tab",
-  "Units.Tabs.Field.Slots": "Slots in a Division",
-  "Units.Tabs.Field.Slots.Tip": "The cost of each card slot, cheapest first, with commas between: 1, 1, 2, 3",
-  "Units.Tabs.Field.Slots.Note": "Every division that offers a unit of the tab gets this row. A division whose ready-made deck has more cards of the tab gets more slots at the last cost.",
-  "Units.Tabs.Slots.NotNumbers": "Slots must be whole numbers with commas between, such as 1, 1, 2, 3.",
   "Units.Tabs.New.Note": "WARNO has four spare tabs. A mod cannot add others, but each can carry any label.",
   "Units.Tabs.New.None": "All four spare tabs are in use.",
-  "Units.Tabs.Edit.KeepNote": "A box left empty keeps the game's own text.",
   "Units.Menu.NewRuleForUnit": "New Rule for This Unit…",
   "Units.Menu.NewRuleForShown": "New Rule for the Units Shown…",
   "Units.Menu.NewRuleForAmmunition": "New Rule for This Ammunition…",
@@ -1020,5 +1015,7 @@
   "Units.OwnModel.Parts.ModelPart": "Model Part",
   "Units.OwnModel.Parts.Note.Base": "The parts of {unit} that move, and the model part each one uses.",
   "Units.OwnModel.NameToCome": "(the new unit's name)",
-  "Units.Tabs.Field.Slots.OneDivision": "This row is for {division} only. Other divisions keep theirs. The label and tooltip are for every division."
+  "Units.Tabs.Costs.Note": "Card slots and their costs are set per division, under the tab's heading in the",
+  "Units.Tabs.Costs.Link": "Divisions view ›",
+  "Units.Tabs.Reset.Tip": "Back to the game's text"
 }

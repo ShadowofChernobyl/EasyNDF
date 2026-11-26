@@ -38,14 +38,17 @@ public partial class UnitsPage
     // ---- Cards ----
 
     /// <summary>
-    /// The Cards view: the units in groups by role, the biggest group first, each a heading and rows of tiles, as many
-    /// across as fit.
+    /// The Cards view: the units in groups by role, each a heading and rows of tiles, as many across as fit. The groups
+    /// follow the tab row: a role comes at the place of the tab most of its units are in, the biggest first within a tab.
     /// </summary>
     private void ShowCards()
     {
         cardColumns = CardRowView.ColumnsFor(CardsRoom());
         var lines = new List<CardLine>();
-        IEnumerable<IGrouping<string, Unit>> groups = shown.GroupBy(unit => unit.Role).OrderByDescending(group => group.Count());
+        Dictionary<string, int> tabPlace = TabsShown().Select((tab, at) => (tab, at)).DistinctBy(each => each.tab).ToDictionary(each => each.tab, each => each.at, StringComparer.Ordinal);
+        int PlaceOf(IGrouping<string, Unit> group) =>
+            tabPlace.GetValueOrDefault(group.GroupBy(unit => unit.Factory).OrderByDescending(tab => tab.Count()).First().Key, int.MaxValue);
+        IEnumerable<IGrouping<string, Unit>> groups = shown.GroupBy(unit => unit.Role).OrderBy(PlaceOf).ThenByDescending(group => group.Count());
         foreach (IGrouping<string, Unit> group in groups)
         {
             List<Unit> units = [.. group];

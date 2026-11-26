@@ -581,6 +581,8 @@ public partial class UnitsPage : IDivisionEditing
     private void ChangeCostsNow(string factory, Action<List<int>> change)
     {
         if (chosenDivision is null) return;
+        // a row the mod's spare tab gives the division becomes the division's own row for the tab
+        if (ChangeTabRow(factory, change)) return;
         Dictionary<string, List<int>> costs = chosenDivision.Costs.ToDictionary(cost => cost.Key, cost => cost.Value.ToList());
         if (!costs.TryGetValue(factory, out List<int>? list)) costs[factory] = list = [];
         change(list);

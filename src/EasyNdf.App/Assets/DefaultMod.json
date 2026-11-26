@@ -35,7 +35,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is GAU-8",
+              "Name": "GAU-8 30mm ammunition is in the file",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_GatlingAir_GAU8_30mm",
@@ -44,7 +44,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is GAU-8 (AP)",
+              "Name": "GAU-8 30mm armor-piercing ammunition is in the file",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_GatlingAir_AP_GAU8_30mm",
@@ -68,7 +68,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is BMP-2 HE Autocannon (24A2)",
+              "Name": "BMP-2 30mm high-explosive ammunition (24A2) is in the file",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_AutoCanon_HE_30mm_24A2_BMP",
@@ -77,7 +77,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is BMP-2 HE Autocannon (2A42)",
+              "Name": "BMP-2 30mm high-explosive ammunition (2A42) is in the file",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_AutoCanon_HE_30mm_2A42_BMP",
@@ -86,7 +86,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is BMP-2 AP Autocannon (24A2)",
+              "Name": "BMP-2 30mm armor-piercing ammunition (24A2) is in the file",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_AutoCanon_AP_30mm_24A2_BMP",
@@ -95,7 +95,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is BMP-2 AP Autocannon (2A42)",
+              "Name": "BMP-2 30mm armor-piercing ammunition (2A42) is in the file",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_AutoCanon_AP_30mm_2A42_BMP",
@@ -119,7 +119,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is Thermobaric Rocket Artillery",
+              "Name": "TOS-1 220mm thermobaric rockets are in the file",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_RocketArt_thermobaric_220mm",
@@ -163,7 +163,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Autocannon",
+              "Name": "Is AutoCannon",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_AutoCanon",
@@ -181,7 +181,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Aircraft Gatling",
+              "Name": "Is GatlingAir",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_GatlingAir",
@@ -190,7 +190,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Aircraft Rocket",
+              "Name": "Is RocketAir",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_RocketAir",
@@ -199,7 +199,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Infantry Rocket",
+              "Name": "Is RocketInf",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_RocketInf",
@@ -289,7 +289,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Artillery (Direct Fire)",
+              "Name": "Is artillery direct-fire (name ends in \"Direct\")",
               "Operand": "Descriptor Title",
               "Operator": "Ends With",
               "Value": "Direct",
@@ -298,7 +298,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Artillery (Direct, Named Mid-Title)",
+              "Name": "Is Artillery (_Direct_)",
               "Operand": "Descriptor Title",
               "Operator": "Contains",
               "Value": "_Direct_",
@@ -309,7 +309,7 @@
           ],
           "Actions": [
             {
-              "Name": "Double Ground Range",
+              "Name": "Multiply range against ground by the range multiplier",
               "Target": "MaximumRangeGRU",
               "Operator": "Multiply [int, float]",
               "Value": "{RangeMultiplier}",
@@ -326,7 +326,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Anti-Helicopter Range",
+              "Name": "Multiply range against helicopters by the range multiplier",
               "Target": "MaximumRangeHelicopterGRU",
               "Operator": "Multiply [int, float]",
               "Value": "{RangeMultiplier}",
@@ -343,7 +343,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Anti-Airplane Range",
+              "Name": "Multiply range against planes by the range multiplier",
               "Target": "MaximumRangeAirplaneGRU",
               "Operator": "Multiply [int, float]",
               "Value": "{RangeMultiplier}",
@@ -379,7 +379,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Autocannon",
+              "Name": "Is AutoCannon",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_AutoCanon",
@@ -388,7 +388,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Infantry Rocket",
+              "Name": "Is RocketInf",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_RocketInf",
@@ -485,7 +485,7 @@
           ],
           "Actions": [
             {
-              "Name": "Double Spread at Minimum Range",
+              "Name": "Multiply MinRange Dispersion by 2x",
               "Target": "DispersionAtMinRangeGRU",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -750,7 +750,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Increase Shots Before Full Noise",
+              "Name": "Increase ShotsBeforeMaxNoise",
               "Target": "ShotsBeforeMaxNoise",
               "Operator": "Multiply [int, float]",
               "Value": "5",
@@ -767,7 +767,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Increase Supply Cost",
+              "Name": "Increase SupplyCost",
               "Target": "SupplyCost",
               "Operator": "Multiply [int, float]",
               "Value": "5",
@@ -822,7 +822,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Time Between Effects",
+              "Name": "Set Time Between Fx",
               "Target": "TimeBetweenTwoFx",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "0.3",
@@ -920,7 +920,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Time Between Effects",
+              "Name": "Set Time Between Fx",
               "Target": "TimeBetweenTwoFx",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "2.0",
@@ -1040,7 +1040,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Thermobaric Rocket Artillery",
+              "Name": "Is Thermobaric ",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_RocketArt_thermobaric_220mm",
@@ -1078,7 +1078,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Thermobaric Rocket Artillery",
+              "Name": "Is Thermobaric ",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_RocketArt_thermobaric_220mm_x24",
@@ -1136,7 +1136,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Time Between Shots to 0.1",
+              "Name": "Set the time between shots to 0.1 s",
               "Target": "TimeBetweenTwoShots",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "0.1",
@@ -1153,7 +1153,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Time Between Effects to 0.1",
+              "Name": "Set the time between firing effects to 0.1 s",
               "Target": "TimeBetweenTwoFx",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "0.1",
@@ -1170,7 +1170,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Shots per Salvo to 8",
+              "Name": "Set 8 shots per salvo",
               "Target": "ShotsCountPerSalvo",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8",
@@ -1187,7 +1187,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Shots Shown per Salvo to 8",
+              "Name": "Show 8 rounds per salvo",
               "Target": "AffichageMunitionParSalve",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8",
@@ -1204,7 +1204,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Supply Cost to 8",
+              "Name": "Set the supply cost to 8",
               "Target": "SupplyCost",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8.0",
@@ -1221,7 +1221,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Shots Before Full Noise to 8",
+              "Name": "Set 8 shots before full noise",
               "Target": "ShotsBeforeMaxNoise",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8",
@@ -1238,7 +1238,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Spread at Maximum Range to 148",
+              "Name": "Set the spread at maximum range to 148",
               "Target": "DispersionAtMaxRangeGRU",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "148",
@@ -1255,7 +1255,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Reduce Accuracy When Stopped to 66%",
+              "Name": "Lower accuracy when stationary to 66%",
               "Target": "EBaseHitValueModifier/Idling",
               "Operator": "Multiply [int, float]",
               "Value": "0.66",
@@ -1272,7 +1272,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Reduce Accuracy When Moving to 66%",
+              "Name": "Lower accuracy when moving to 66%",
               "Target": "EBaseHitValueModifier/Moving",
               "Operator": "Multiply [int, float]",
               "Value": "0.66",
@@ -1319,7 +1319,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Time Between Shots to 0.2",
+              "Name": "Set the time between shots to 0.2 s",
               "Target": "TimeBetweenTwoShots",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "0.2",
@@ -1336,7 +1336,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Time Between Effects to 0.2",
+              "Name": "Set the time between firing effects to 0.2 s",
               "Target": "TimeBetweenTwoFx",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "0.2",
@@ -1353,7 +1353,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Shots per Salvo to 8",
+              "Name": "Set 8 shots per salvo",
               "Target": "ShotsCountPerSalvo",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8",
@@ -1370,7 +1370,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Shots Shown per Salvo to 8",
+              "Name": "Show 8 rounds per salvo",
               "Target": "AffichageMunitionParSalve",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8",
@@ -1387,7 +1387,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Supply Cost to 8",
+              "Name": "Set the supply cost to 8",
               "Target": "SupplyCost",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8.0",
@@ -1404,7 +1404,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Shots Before Full Noise to 8",
+              "Name": "Set 8 shots before full noise",
               "Target": "ShotsBeforeMaxNoise",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8",
@@ -1421,7 +1421,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Spread at Maximum Range to 148",
+              "Name": "Set the spread at maximum range to 148",
               "Target": "DispersionAtMaxRangeGRU",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "148",
@@ -1438,7 +1438,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Reduce Accuracy When Stopped to 66%",
+              "Name": "Lower accuracy when stationary to 66%",
               "Target": "EBaseHitValueModifier/Idling",
               "Operator": "Multiply [int, float]",
               "Value": "0.66",
@@ -1455,7 +1455,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Reduce Accuracy When Moving to 66%",
+              "Name": "Lower accuracy when moving to 66%",
               "Target": "EBaseHitValueModifier/Moving",
               "Operator": "Multiply [int, float]",
               "Value": "0.66",
@@ -1511,7 +1511,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is Missile Ammunition",
+              "Name": "Descriptor Type Starts With TAmmunitionDescriptor",
               "Operand": "Descriptor Type",
               "Operator": "Starts With",
               "Value": "TAmmunitionDescriptor",
@@ -1546,7 +1546,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Any Descriptor",
+              "Name": "Descriptor Exists",
               "Operand": "Descriptor Type",
               "Operator": "Starts With",
               "Value": "TAmmunitionDescriptor",
@@ -1557,7 +1557,7 @@
           ],
           "Actions": [
             {
-              "Name": "Double Ground Range",
+              "Name": "Multiply the maximum range by the range multiplier",
               "Target": "MaximumRangeGRU",
               "Operator": "Multiply [int, float]",
               "Value": "{RangeMultiplier}",
@@ -1574,7 +1574,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Anti-Airplane Range",
+              "Name": "Multiply range against planes by the range multiplier",
               "Target": "MaximumRangeAirplaneGRU",
               "Operator": "Multiply [int, float]",
               "Value": "{RangeMultiplier}",
@@ -1591,7 +1591,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Anti-Helicopter Range",
+              "Name": "Multiply range against helicopters by the range multiplier",
               "Target": "MaximumRangeHelicopterGRU",
               "Operator": "Multiply [int, float]",
               "Value": "{RangeMultiplier}",
@@ -1618,7 +1618,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is SAM",
+              "Name": "If Ammo_SAM",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_SAM",
@@ -1627,7 +1627,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is MANPAD",
+              "Name": "If Ammo_MANPAD",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_MANPAD",
@@ -1636,7 +1636,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Mistral",
+              "Name": "If Ammo_Mistral",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Ammo_Mistral",
@@ -1645,7 +1645,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Not the Mistral Celtic x4 (Kept as the Game Has It)",
+              "Name": "Is not Ammo_Mistral_Celtic_x4 (kept as the game has it)",
               "Operand": "Descriptor Title",
               "Operator": "Does Not Contain",
               "Value": "Ammo_Mistral_Celtic_x4",
@@ -1657,7 +1657,7 @@
           ],
           "Actions": [
             {
-              "Name": "Triple Aiming Time",
+              "Name": "Multiply AimingTime x 3",
               "Target": "AimingTime",
               "Operator": "Multiply [int, float]",
               "Value": "3",
@@ -1674,7 +1674,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Time Between Shots",
+              "Name": "Multiply TimeBetweenTwoShots x 2",
               "Target": "TimeBetweenTwoShots",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -1691,7 +1691,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Time Between Salvos",
+              "Name": "Multiply TimeBetweenTwoSalvos x 2",
               "Target": "TimeBetweenTwoSalvos",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -1733,7 +1733,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Has no deployment shift module",
+              "Name": "Has no forward deployment yet",
               "Operand": "Entire Descriptor",
               "Operator": "Does Not Contain",
               "Value": "TDeploymentShiftModuleDescriptor",
@@ -1744,7 +1744,7 @@
           ],
           "Actions": [
             {
-              "Name": "Add Forward Deployment Module (1000 m)",
+              "Name": "Add forward deployment",
               "Target": "ModulesDescriptors",
               "Operator": "Insert [array]",
               "Value": "FirstIndex:TDeploymentShiftModuleDescriptor // Modified; Module added for forward deployability\\n        (\\n            DeploymentShiftGRU = 1000\\n        )",
@@ -1918,7 +1918,7 @@
           "Conditions": [],
           "Actions": [
             {
-              "Name": "Set Helicopter Stun Recovery to 999",
+              "Name": "Let stunned helicopters recover at once",
               "Target": "Helico_StunDamagesRegen",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "999",
@@ -1935,7 +1935,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Helicopter Stun Limit to 9999",
+              "Name": "Raise the stun a helicopter can take to 9999",
               "Target": "Helico_MaxStunDamages",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "9999",
@@ -1979,7 +1979,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is a City District (Big, Mid, Small or HLM)",
+              "Name": "Is a town district (big, medium, small or apartment blocks)",
               "Operand": "Descriptor Title",
               "Operator": "Contains Any Of",
               "Value": "Descriptor_District_Big_District, Descriptor_District_Mid_District, Descriptor_District_Small_District, Descriptor_District_HLM_District",
@@ -1990,7 +1990,7 @@
           ],
           "Actions": [
             {
-              "Name": "Keep the District When Fully Damaged",
+              "Name": "Keep ruins standing at full damage",
               "Target": "KillWhenDamagesReachMax",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "false",
@@ -2025,14 +2025,15 @@
           "LogicGate": "All",
           "Params": {},
           "DataTypeToString": "Rule",
-          "Enabled": true
+          "Enabled": true,
+          "Collapsed": false
         },
         {
           "Name": "Add 25% Damage Resistance to Stunned Infantry",
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is the Stunned Infantry Effect",
+              "Name": "Descriptor Title Is Equal To UnitEffect_Infanterie_Cowering_Rampe",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "UnitEffect_Infanterie_Cowering_Rampe",
@@ -2043,7 +2044,7 @@
           ],
           "Actions": [
             {
-              "Name": "Add 25% Damage Resistance",
+              "Name": "Reduce damage taken by 25%",
               "Target": "EffectsDescriptors",
               "Operator": "Insert [array]",
               "Value": "LastIndex:TUnitEffectIncreaseDamageTakenDescriptor // Modified; Added for infantry damage resistance while stunned\n        (\n            ModifierType        = ~/ModifierType_Pourcentage\n            BonusDamage         = -25\n            DamageType          = EDamageType/Physical\n        )",
@@ -2070,7 +2071,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is the Resolute Effect",
+              "Name": "Descriptor Title Is Equal To UnitEffect_resolute",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "UnitEffect_resolute",
@@ -2081,7 +2082,7 @@
           ],
           "Actions": [
             {
-              "Name": "Add 15% Shorter Time Between Salvos",
+              "Name": "Shorten the time between salvos to 85%",
               "Target": "EffectsDescriptors",
               "Operator": "Insert [array]",
               "Value": "LastIndex:TUnitEffectAlterWeaponTempsEntreDeuxSalvesDescriptor // Modified; Added to mirror the old Reservist trait\n        (\n            ModifierType  = ~/ModifierType_Multiplicatif\n            ModifierValue = 0.85\n        )",
@@ -2098,7 +2099,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Add +5 Accuracy When Moving",
+              "Name": "Add 5 to accuracy when moving",
               "Target": "EffectsDescriptors",
               "Operator": "Insert [array]",
               "Value": "LastIndex:TUnitEffectIncreaseWeaponPrecisionMouvementDescriptor\n        (\n            ModifierType  = ~/ModifierType_Additionnel\n            ModifierValue = 5\n        )",
@@ -2115,7 +2116,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Add +5 Accuracy When Stopped",
+              "Name": "Add 5 to accuracy when stationary",
               "Target": "EffectsDescriptors",
               "Operator": "Insert [array]",
               "Value": "LastIndex:TUnitEffectIncreaseWeaponPrecisionArretDescriptor\n        (\n            ModifierType  = ~/ModifierType_Additionnel\n            ModifierValue = 5\n        )",
@@ -2132,7 +2133,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Add 20% Shorter Aiming Time",
+              "Name": "Shorten the aiming time to 80%",
               "Target": "EffectsDescriptors",
               "Operator": "Insert [array]",
               "Value": "LastIndex:TBonusWeaponAimtimeEffectDescriptor\n        (\n            ModifierType  = ~/ModifierType_Multiplicatif\n            ModifierValue = 0.80\n        )",
@@ -2175,7 +2176,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is the Game Constants",
+              "Name": "Descriptor Title Is Equal To Constantes",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "Constantes",
@@ -2210,7 +2211,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is the Game Constants",
+              "Name": "Descriptor Title Is Equal To Constantes",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "Constantes",
@@ -2221,7 +2222,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Stun Duration to 8 Seconds",
+              "Name": "StunEffectDuration Set To 8.0",
               "Target": "StunEffectDuration",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "8.0",
@@ -2248,7 +2249,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is the Game Constants",
+              "Name": "Descriptor Title Is Equal To Constantes",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "Constantes",
@@ -2259,7 +2260,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Command Radius at Level 1 to 636",
+              "Name": "Set the first commander level's radius to 636 (was 424)",
               "Target": "CommanderRadiusEffectByLevelGRU",
               "Operator": "Replace [array]",
               "Value": "0:636 // Modified; Default value is 424",
@@ -2276,7 +2277,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Command Radius at Level 2 to 847",
+              "Name": "Set the second commander level's radius to 847 (was 565)",
               "Target": "CommanderRadiusEffectByLevelGRU",
               "Operator": "Replace [array]",
               "Value": "1:847 // Modified; Default value is 565",
@@ -2293,7 +2294,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Command Radius at Level 3 to 954",
+              "Name": "Set the third commander level's radius to 954 (was 636)",
               "Target": "CommanderRadiusEffectByLevelGRU",
               "Operator": "Replace [array]",
               "Value": "2:954 // Modified; Default value is 636",
@@ -2355,7 +2356,7 @@
           ],
           "Actions": [
             {
-              "Name": "Increase Top Speed by 50%",
+              "Name": "Increase the maximum speed by 50%",
               "Target": "MaxSpeedGRU",
               "Operator": "Multiply [int, float]",
               "Value": "1.5",
@@ -2372,7 +2373,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Increase Acceleration by 50%",
+              "Name": "Increase the acceleration by 50%",
               "Target": "MaxAccelerationGRU",
               "Operator": "Multiply [int, float]",
               "Value": "1.5",
@@ -2414,7 +2415,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is the Standard Supply Settings",
+              "Name": "Descriptor Title Is Equal To StandardSupply",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "StandardSupply",
@@ -2448,7 +2449,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is the Standard Supply Settings",
+              "Name": "Descriptor Title Is Equal To StandardSupply",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "StandardSupply",
@@ -2459,7 +2460,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Supply Range to 663",
+              "Name": "DefaultSupplyRangeGRU Set To 663",
               "Target": "DefaultSupplyRangeGRU",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "663",
@@ -2502,7 +2503,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is the Strategic Constants",
+              "Name": "Descriptor Title Is Equal To StrategicConstantes",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "StrategicConstantes",
@@ -2537,7 +2538,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is the Strategic Constants",
+              "Name": "Descriptor Title Is Equal To StrategicConstantes",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "StrategicConstantes",
@@ -2548,7 +2549,7 @@
           ],
           "Actions": [
             {
-              "Name": "Double Income When Attacking",
+              "Name": "Double the first side's ticket income by number of units",
               "Target": "DefaultTicketsPointsIncomeByPawnNumber",
               "Operator": "Replace [array]",
               "Value": "0:[ 0, 12, 14, 16, 18, 20] // Modified; Default value is [ 0, 6, 7, 8, 9, 10]",
@@ -2565,7 +2566,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Income When Defending",
+              "Name": "Double the second side's ticket income by number of units",
               "Target": "DefaultTicketsPointsIncomeByPawnNumber",
               "Operator": "Replace [array]",
               "Value": "1:[ 0, 12, 14, 16, 18, 20] // Modified; Default value is [ 0, 6, 7, 8, 9, 10]",
@@ -2607,7 +2608,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Dense Forest",
+              "Name": "Name Is Equal To ForetDense",
               "Operand": "Name",
               "Operator": "Is Equal To",
               "Value": "ForetDense",
@@ -2618,7 +2619,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Concealment From the Air to 40",
+              "Name": "DissimulationModifierGroundAir Set To 40",
               "Target": "DissimulationModifierGroundAir",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "40",
@@ -2635,7 +2636,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Concealment From the Ground to 45",
+              "Name": "DissimulationModifierGroundGround Set To 45",
               "Target": "DissimulationModifierGroundGround",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "45",
@@ -2652,7 +2653,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Height to 7 m",
+              "Name": "HeightInMeters Set To 7",
               "Target": "HeightInMeters",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "7",
@@ -2682,7 +2683,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Light Forest",
+              "Name": "Name Is Equal To ForetLegere",
               "Operand": "Name",
               "Operator": "Is Equal To",
               "Value": "ForetLegere",
@@ -2693,7 +2694,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Concealment From the Air to 35",
+              "Name": "DissimulationModifierGroundAir Set To 35",
               "Target": "DissimulationModifierGroundAir",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "35",
@@ -2710,7 +2711,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Concealment From the Ground to 45",
+              "Name": "DissimulationModifierGroundGround Set To 45",
               "Target": "DissimulationModifierGroundGround",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "45",
@@ -2727,7 +2728,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Height to 5 m",
+              "Name": "HeightInMeters Set To 5",
               "Target": "HeightInMeters",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "5",
@@ -2744,7 +2745,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Block Vision",
+              "Name": "BloqueVision Set To true",
               "Target": "BloqueVision",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "true",
@@ -2774,7 +2775,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Small Building",
+              "Name": "Name Is Equal To PetitBatiment",
               "Operand": "Name",
               "Operator": "Is Equal To",
               "Value": "PetitBatiment",
@@ -2783,7 +2784,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is Building",
+              "Name": "Name Is Equal To Batiment",
               "Operand": "Name",
               "Operator": "Is Equal To",
               "Value": "Batiment",
@@ -2794,7 +2795,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Concealment Bonus to 5",
+              "Name": "ConcealmentBonus Set To 5",
               "Target": "ConcealmentBonus",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "5",
@@ -2824,7 +2825,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Ruin",
+              "Name": "Name Is Equal To Ruin",
               "Operand": "Name",
               "Operator": "Is Equal To",
               "Value": "Ruin",
@@ -2835,7 +2836,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Concealment From the Air to 80",
+              "Name": "DissimulationModifierGroundAir Set To 80",
               "Target": "DissimulationModifierGroundAir",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "80",
@@ -2852,7 +2853,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Concealment From the Ground to 86",
+              "Name": "DissimulationModifierGroundGround Set To 86",
               "Target": "DissimulationModifierGroundGround",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "86",
@@ -2897,7 +2898,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is the LOS Tool",
+              "Name": "Descriptor Title Is Equal To FeedbackLineOfSightDescriptor",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "FeedbackLineOfSightDescriptor",
@@ -2931,7 +2932,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is the LOS Tool",
+              "Name": "Descriptor Title Is Equal To FeedbackLineOfSightDescriptor",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "FeedbackLineOfSightDescriptor",
@@ -2942,7 +2943,7 @@
           ],
           "Actions": [
             {
-              "Name": "Set Render Range to 6750",
+              "Name": "RenderRangeGRU Set To 6750",
               "Target": "RenderRangeGRU",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "6750",
@@ -2959,7 +2960,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Set Default Vision Range to 6750",
+              "Name": "DefaultVisionRangeGRU Set To 6750",
               "Target": "DefaultVisionRangeGRU",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "6750",
@@ -3001,7 +3002,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is the Unit Label Settings",
+              "Name": "Descriptor Title Is Equal To SpecificInGameUnitLabelResources",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "SpecificInGameUnitLabelResources",
@@ -3035,7 +3036,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is the Unit Label Settings",
+              "Name": "Descriptor Title Is Equal To SpecificInGameUnitLabelResources",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "SpecificInGameUnitLabelResources",
@@ -3046,7 +3047,7 @@
           ],
           "Actions": [
             {
-              "Name": "Keep Labels Fully Opaque",
+              "Name": "OpacityControlByFloat Set To TEugBMutableFloat(Value = 1.0)",
               "Target": "OpacityControlByFloat",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "TEugBMutableFloat(Value = 1.0)",
@@ -3126,7 +3127,7 @@
           ],
           "Actions": [
             {
-              "Name": "Remove the Facing Module",
+              "Name": "Remove Facing Info",
               "Target": "ModulesDescriptors",
               "Operator": "Remove [array]",
               "Value": "~/FacingInfosModuleDescriptor,",
@@ -3143,7 +3144,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Leave a Comment at the Top of the Descriptor",
+              "Name": "Leave Comment At Top of Descriptor",
               "Target": "Descriptor Type",
               "Operator": "Append [string]",
               "Value": " /* Modified by WTO - \"~/FacingInfosModuleDescriptor,\" Removed to disable Auto-Orientation; */",
@@ -3170,7 +3171,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Any Descriptor",
+              "Name": "Descriptor Exists",
               "Operand": "Descriptor Type",
               "Operator": "Starts With",
               "Value": "TEntityDescriptor",
@@ -3181,7 +3182,7 @@
           ],
           "Actions": [
             {
-              "Name": "Make Fuel Last 10x Longer",
+              "Name": "FuelMoveDuration * 10",
               "Target": "FuelMoveDuration",
               "Operator": "Multiply [int, float]",
               "Value": "10",
@@ -3264,7 +3265,7 @@
           ],
           "Actions": [
             {
-              "Name": "Use the Vehicle Stun Levels",
+              "Name": "Set DamageLevelsPack",
               "Target": "StunDamageLevelsPack",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "~/DamageLevelsPackDescriptor_Unit_packStun_Vehicule",
@@ -3330,7 +3331,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is Any Descriptor",
+              "Name": "Descriptor Exists",
               "Operand": "Descriptor Type",
               "Operator": "Starts With",
               "Value": "TEntityDescriptor",
@@ -3341,7 +3342,7 @@
           ],
           "Actions": [
             {
-              "Name": "Increase Road Speed Bonus by 20%",
+              "Name": "SpeedBonusFactorOnRoad * 1.2",
               "Target": "SpeedBonusFactorOnRoad",
               "Operator": "Multiply [int, float]",
               "Value": "1.2",
@@ -3389,7 +3390,7 @@
           ],
           "Actions": [
             {
-              "Name": "Triple Supply Capacity",
+              "Name": "SupplyCapacity * 3",
               "Target": "SupplyCapacity",
               "Operator": "Multiply [int, float]",
               "Value": "3",
@@ -3446,7 +3447,7 @@
           ],
           "Actions": [
             {
-              "Name": "Double Vision Range (Standard)",
+              "Name": "Double Vision Range (Std.)",
               "Target": "EVisionRange/Standard",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -3463,7 +3464,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Vision Range (High Altitude)",
+              "Name": "Double Vision Range (H.A.)",
               "Target": "EVisionRange/HighAltitude",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -3480,7 +3481,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Vision Range (Low Altitude)",
+              "Name": "Double Vision Range (L.A.)",
               "Target": "EVisionRange/LowAltitude",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -3497,7 +3498,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Optical Strength (Standard)",
+              "Name": "Double Optical Strength (Std.)",
               "Target": "EOpticalStrength/Standard",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -3514,7 +3515,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Optical Strength (High Altitude)",
+              "Name": "Double Optical Strength (H.A.)",
               "Target": "EOpticalStrength/HighAltitude",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -3531,7 +3532,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Double Optical Strength (Low Altitude)",
+              "Name": "Double Optical Strength (L.A.)",
               "Target": "EOpticalStrength/LowAltitude",
               "Operator": "Multiply [int, float]",
               "Value": "2",
@@ -3578,7 +3579,7 @@
           ],
           "Actions": [
             {
-              "Name": "Increase Vision Range (Standard) by 20%",
+              "Name": "Double Vision Range (Std.)",
               "Target": "EVisionRange/Standard",
               "Operator": "Multiply [int, float]",
               "Value": "1.2",
@@ -3595,7 +3596,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Increase Vision Range (High Altitude) by 20%",
+              "Name": "Double Vision Range (H.A.)",
               "Target": "EVisionRange/HighAltitude",
               "Operator": "Multiply [int, float]",
               "Value": "1.2",
@@ -3612,7 +3613,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Increase Vision Range (Low Altitude) by 20%",
+              "Name": "Double Vision Range (L.A.)",
               "Target": "EVisionRange/LowAltitude",
               "Operator": "Multiply [int, float]",
               "Value": "1.2",
@@ -3629,7 +3630,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Increase Optical Strength (Standard) by 20%",
+              "Name": "Double Optical Strength (Std.)",
               "Target": "EOpticalStrength/Standard",
               "Operator": "Multiply [int, float]",
               "Value": "1.2",
@@ -3646,7 +3647,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Increase Optical Strength (High Altitude) by 20%",
+              "Name": "Double Optical Strength (H.A.)",
               "Target": "EOpticalStrength/HighAltitude",
               "Operator": "Multiply [int, float]",
               "Value": "1.2",
@@ -3663,7 +3664,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Increase Optical Strength (Low Altitude) by 20%",
+              "Name": "Double Optical Strength (L.A.)",
               "Target": "EOpticalStrength/LowAltitude",
               "Operator": "Multiply [int, float]",
               "Value": "1.2",
@@ -3700,7 +3701,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Is A-10 Thunderbolt",
+              "Name": "Descriptor Title Starts With Descriptor_Unit_A10_Thunderbolt_",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Descriptor_Unit_A10_Thunderbolt_",
@@ -3709,7 +3710,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Is OA-10A",
+              "Name": "Descriptor Title Starts With Descriptor_Unit_OA10A_US",
               "Operand": "Descriptor Title",
               "Operator": "Starts With",
               "Value": "Descriptor_Unit_OA10A_US",
@@ -3720,7 +3721,7 @@
           ],
           "Actions": [
             {
-              "Name": "Add 40 Points to the Price",
+              "Name": "Add 40 to the price",
               "Target": "$/GFX/Resources/Resource_CommandPoints",
               "Operator": "Add [int, float]",
               "Value": "40",
@@ -3763,7 +3764,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Unit has vehicle smoke",
+              "Name": "Has vehicle smoke launchers",
               "Operand": "Entire Descriptor",
               "Operator": "Contains",
               "Value": "Ammo_SMOKE_Vehicle_Grenadex8",
@@ -3772,7 +3773,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Unit does not have Trophy System",
+              "Name": "Has no Trophy active protection",
               "Operand": "Entire Descriptor",
               "Operator": "Does Not Contain",
               "Value": "Ammo_APS",
@@ -3809,7 +3810,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Leave a Comment",
+              "Name": "Append Comment",
               "Target": "Salves",
               "Operator": "Append [string]",
               "Value": " // Modified by WTO; Smoke ammo set to 3",
@@ -3836,7 +3837,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Unit has vehicle smoke",
+              "Name": "Has vehicle smoke launchers",
               "Operand": "Entire Descriptor",
               "Operator": "Contains",
               "Value": "Ammo_SMOKE_Vehicle_Grenadex8",
@@ -3845,7 +3846,7 @@
               "DataTypeToString": "Condition"
             },
             {
-              "Name": "Unit has trophy system",
+              "Name": "Has Trophy active protection",
               "Operand": "Entire Descriptor",
               "Operator": "Contains",
               "Value": "Ammo_APS",
@@ -3899,7 +3900,7 @@
               "DataTypeToString": "Action"
             },
             {
-              "Name": "Leave a Comment",
+              "Name": "Append Comment",
               "Target": "Salves",
               "Operator": "Append [string]",
               "Value": " // Modified by WTO",
@@ -3937,7 +3938,7 @@
           "Kind": "Check",
           "Conditions": [
             {
-              "Name": "Is the KSM-65",
+              "Name": "Descriptor Title Is Equal To WeaponDescriptor_AT_KSM65_100mm_SOV",
               "Operand": "Descriptor Title",
               "Operator": "Is Equal To",
               "Value": "WeaponDescriptor_AT_KSM65_100mm_SOV",
@@ -4001,7 +4002,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Avoids side lanes",
+              "Name": "If AI avoids the side lanes",
               "Operand": "Entire Descriptor",
               "Operator": "Contains",
               "Value": "Filler",
@@ -4012,7 +4013,7 @@
           ],
           "Actions": [
             {
-              "Name": "Avoid No Lanes",
+              "Name": "Let the AI use every lane",
               "Target": "AvoidedCorridorTags",
               "Operator": "Set To [list, object]",
               "Value": "[]",
@@ -4042,7 +4043,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Limits itself to its own lanes",
+              "Name": "If AI keeps to its own lanes",
               "Operand": "Entire Descriptor",
               "Operator": "Contains",
               "Value": "ConsiderOnlyAssignedCorridors",
@@ -4053,7 +4054,7 @@
           ],
           "Actions": [
             {
-              "Name": "Consider Every Lane",
+              "Name": "Let the AI use lanes other than its own",
               "Target": "ConsiderOnlyAssignedCorridors",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "false",
@@ -4088,7 +4089,7 @@
           "Kind": "Edit",
           "Conditions": [
             {
-              "Name": "Limits itself to its own lanes",
+              "Name": "If AI keeps to its own lanes",
               "Operand": "Entire Descriptor",
               "Operator": "Contains",
               "Value": "ConsiderOnlyAssignedCorridors",
@@ -4099,7 +4100,7 @@
           ],
           "Actions": [
             {
-              "Name": "Consider Every Lane",
+              "Name": "Let the AI use lanes other than its own",
               "Target": "ConsiderOnlyAssignedCorridors",
               "Operator": "Set To [int, float, string, boolean]",
               "Value": "false",
