@@ -678,7 +678,9 @@ public partial class ModConflictsWindow : UserControl
         if (picked is not { } value || EntryOf(value.FileKey) is not FileEntry entry) return;
         MainView view = MainView.Of(this);
         Close();
-        _ = view.EditorTab.ShowDescriptorInExport(entry, value.Value.Descriptor);
+        // a constant is listed under "(constants)", which is no one thing in the file: the constant itself is shown
+        string name = value.Value.Descriptor == "(constants)" && value.Value.Property != "" ? value.Value.Property : value.Value.Descriptor;
+        _ = view.EditorTab.ShowDescriptorInExport(entry, name);
     }
 
     /// <summary>Find again: a Preview of the files, which finds the conflicts again without saving anything; the window follows.</summary>

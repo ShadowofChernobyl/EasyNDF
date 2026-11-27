@@ -27,6 +27,8 @@ public static class WindowPlace
     /// <param name="key">The name its place is kept under: "window" for the main window.</param>
     public static void Keep(Window window, string key = "window")
     {
+        // full screen is never kept: the window is put back first, so its place is the one it had before F11
+        FullScreen.Leave(window);
         if (!IsOn) { AppData.Current.State.Remove(key); return; }
         // while maximized or minimized, the size to come back to is the one it had before
         Rect normal = window.WindowState == WindowState.Normal ? new Rect(window.Left, window.Top, window.Width, window.Height) : window.RestoreBounds;

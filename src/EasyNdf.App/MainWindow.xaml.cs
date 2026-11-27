@@ -15,6 +15,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         StateChanged += (_, _) => View.ShowWindowState(WindowState);
+        // F11: full screen, or back (Windowing/FullScreen.cs)
+        FullScreen.Watch(this, View, () => View.ShowWindowState(WindowState));
         // Every key not taken by the control that has the focus ends up here, even when nothing has the focus.
         KeyDown += (_, e) => View.HandleShortcut(e);
         // the app's windows and questions are shown in whichever of its windows is in use (MainView.PopOut.cs)
@@ -31,9 +33,11 @@ public partial class MainWindow : Window
             }
             // the tabs in windows of their own come back first, each window keeping its place
             View.CloseTabWindows();
-            // the last two are kept in the state the first one saves
+            // the Editor's open files and the window's place go into the state, saved here; the file list has a file of
+            // its own (since the file list moved out of the state, nothing else saved these as the app closed)
             View.EditorTab.KeepOpenFile();
             WindowPlace.Keep(this);
+            AppData.Current.SaveState();
             View.FilesTab.KeepSession();
             AppData.Current.SaveWhatWaits();
             // a mod deleted this session can no longer be brought back by Undo: its folder goes, when it holds nothing
@@ -42,6 +46,8 @@ public partial class MainWindow : Window
         };
         WindowPlace.SizeForFirstTime(this);
         WindowPlace.Restore(this);
+        // a window that opens maximized raised no change of state: its maximize button shows Restore from the start
+        View.ShowWindowState(WindowState);
         Loaded += async (_, _) =>
         {
             await View.FilesTab.ReopenSession();
