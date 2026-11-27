@@ -175,6 +175,8 @@ public sealed class AppData
     public void ResetLook(bool deleteOwnThemes)
     {
         foreach (string key in LookStateKeys) State.Remove(key);
+        // the places of the tabs' own windows too ("window" and the tab's name, as WindowPlace keeps them)
+        foreach (string key in State.Select(each => each.Key).Where(key => key.StartsWith("window", StringComparison.Ordinal)).ToList()) State.Remove(key);
         JsonObject defaults = SettingsStore.DefaultSettings();
         foreach (string key in LookSettingKeys)
         {

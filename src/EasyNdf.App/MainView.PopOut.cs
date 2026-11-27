@@ -23,6 +23,9 @@ public partial class MainView
     /// <summary>The tabs open in windows of their own, each with its window.</summary>
     private readonly Dictionary<TabItem, PopOutWindow> poppedOut = [];
 
+    /// <summary>Whether a refresh of the Editor in a window of its own is on its way (MainView.xaml.cs).</summary>
+    private bool editorRefreshWaits;
+
     /// <summary>The page of each such tab, to put back.</summary>
     private readonly Dictionary<TabItem, object?> pagesOut = [];
 
@@ -32,6 +35,11 @@ public partial class MainView
     /// <summary>The tab row's right-click menu, and the click on a dimmed tab.</summary>
     private void WatchTabsForPopOut()
     {
+        // another language: the main window's note on each tab in a window of its own is written again in it
+        Texts.LanguageChanged += () => Dispatcher.BeginInvoke(() =>
+        {
+            foreach (TabItem tab in poppedOut.Keys) tab.Content = PlaceholderFor(tab, tab.Header as string ?? "");
+        });
         Tabs.PreviewMouseRightButtonUp += (_, e) =>
         {
             if (TabAt(e.OriginalSource) is not TabItem tab) return;
@@ -66,7 +74,10 @@ public partial class MainView
             ]
             :
             [
-                new MenuChoice(Texts.Get("Main.PopOut.Open"), () => PopOut(tab), IsEnabled: !tour, Tip: tour ? Texts.Get("Main.PopOut.Tour") : ""),
+                // greyed with the reason, where PopOut would refuse: the tutorial, or a rule open (in a tab's own window
+                // too, where the main window's clicks still work)
+                new MenuChoice(Texts.Get("Main.PopOut.Open"), () => PopOut(tab), IsEnabled: !tour && !IsRuleOpen,
+                    Tip: tour ? Texts.Get("Main.PopOut.Tour") : IsRuleOpen ? Texts.Get("Main.RuleOpen") : ""),
             ]).FontWeight = FontWeights.Normal;
     }
 
@@ -88,6 +99,9 @@ public partial class MainView
         Tabs.SelectedItem = tab;
         if (activate && poppedOut.Count > 0 && Window.GetWindow(this) is Window main && !main.IsActive)
         {
+            // the main window gives the focus back to what last had it as it comes into use: a tab's heading would choose
+            // its tab again (Show in File Editor from a tab's own window showed the tab before), so it is this tab's now
+            if (FocusManager.GetFocusedElement(main) is TabItem focused && focused != tab) FocusManager.SetFocusedElement(main, tab);
             if (main.WindowState == WindowState.Minimized) main.WindowState = WindowState.Normal;
             main.Activate();
         }
@@ -108,6 +122,9 @@ public partial class MainView
         window.SetScale(Page.LayoutTransform);
         if (Tabs.SelectedItem == tab && NeighbourOf(tab) is TabItem other) Tabs.SelectedItem = other;
         window.Closed += (_, _) => Return(tab);
+        // the Editor in a window of its own catches up with the Files tab as its window comes into use, as it does in
+        // the main window when its tab is chosen
+        if (tab == EditorTabItem) window.Activated += (_, _) => EditorTab.Refresh();
         window.Show();
         SessionLog.Write("Tab", name + " opened in its own window");
         if (tab == EditorTabItem) EditorTab.Refresh();
@@ -185,6 +202,16 @@ public partial class MainView
     /// </summary>
     public bool AnyOverlayOpen => Overlays.Children.OfType<FrameworkElement>().Any(each =>
         each.Visibility == Visibility.Visible && !ReferenceEquals(each, Notifications) && !ReferenceEquals(each, ReadingCover) && !ReferenceEquals(each, HelpPopup));
+
+    /// <summary>
+    /// Whether F11 is held back (<see cref="FullScreen"/>): one of the app's windows or questions, the ? popup, the rule
+    /// popup, the tutorial or another window of the app (such as the Theme Designer) is open. Full screen and a popup
+    /// never change on the same key.
+    /// </summary>
+    internal bool BlocksFullScreen =>
+        AnyOverlayOpen || HelpPopup.IsOpen || IsRuleOpen || Tour.IsRunning || Messages.IsOpen || Watermark.IsOpen
+        || AddUnits.IsOpen || NewUnit.IsOpen || Floating.IsOpen || GenerateDivisions.IsOpen || GenerationSettings.IsOpen || ExportWindow.IsOpen
+        || Application.Current.Windows.OfType<Window>().Any(each => each.IsVisible && each is not MainWindow and not PopOutWindow);
 
     /// <summary>
     /// Whether an open overlay is one only to look at (the 3D viewer, the License and change log): the app's other

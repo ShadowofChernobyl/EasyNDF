@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>EasyNDF</AssemblyName>
     <RootNamespace>EasyNdf.App</RootNamespace>
-    <Version>1.1.3</Version>
+    <Version>1.1.4</Version>
     <ApplicationIcon>Assets\EasyNDF.ico</ApplicationIcon>
     <!-- Startup.cs: the installer's steps (Velopack) before the app; a build that names its own start keeps it -->
     <StartupObject Condition="'$(StartupObject)' == ''">EasyNdf.App.Startup</StartupObject>

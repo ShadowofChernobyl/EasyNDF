@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using EasyNdf.App.Dialogs;
 using EasyNdf.App.Text;
+using EasyNdf.App.Windowing;
 
 namespace EasyNdf.App;
 
@@ -68,6 +69,14 @@ public partial class MainView : UserControl
         RuleWindow.FilesModel = () => FilesTab.Model;
         RuleWindow.ReadFile = FilesTab.ReadInBackground;
         FilesTab.Model.FilesChanged += RuleWindow.FilesChanged;
+        // the Editor in a window of its own is shown beside the Files tab: files added or taken out reach its list at
+        // once, as one refresh however many changes come together
+        FilesTab.Model.FilesChanged += () =>
+        {
+            if (!IsPoppedOut(EditorTabItem) || editorRefreshWaits) return;
+            editorRefreshWaits = true;
+            Dispatcher.BeginInvoke(() => { editorRefreshWaits = false; if (IsPoppedOut(EditorTabItem)) EditorTab.Refresh(); }, System.Windows.Threading.DispatcherPriority.Background);
+        };
         FilesTab.Model.RowReplaced += entry => _ = EditorTab.ReadAgain(entry);
         // a file added, removed, switched on or off, or given another preset changes the values the Armory shows
         FilesTab.Model.PropertyChanged += (_, _) => UnitsTab.ModValuesMayHaveChanged();
@@ -340,7 +349,8 @@ public partial class MainView : UserControl
     /// <summary>Shows whether the window is maximized: the maximize button becomes a restore button.</summary>
     public void ShowWindowState(WindowState state)
     {
-        bool maximized = state == WindowState.Maximized;
+        // full screen (F11) shows Restore too: the button leaves it
+        bool maximized = state == WindowState.Maximized || (Window.GetWindow(this) is Window window && FullScreen.IsOn(window));
         MaximizeButton.Content = maximized ? "" : "";
         MaximizeButton.ToolTip = maximized ? Texts.Get("Main.Restore.Tip") : Texts.Get("Main.Maximize.Tip");
     }
@@ -494,6 +504,7 @@ public partial class MainView : UserControl
     private void Maximize_Click(object sender, RoutedEventArgs e)
     {
         Window window = Window.GetWindow(this);
+        if (FullScreen.IsOn(window)) { FullScreen.Leave(window); ShowWindowState(window.WindowState); return; }
         window.WindowState = window.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     }
 

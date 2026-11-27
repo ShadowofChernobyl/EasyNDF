@@ -99,6 +99,8 @@ public sealed class CustomTitleBar
     {
         IntPtr windowsAnswer = DefWindowProc(handle, WmNcHitTest, wParam, lParam);
         if (windowsAnswer != HtClient) return windowsAnswer;
+        // full screen (F11): the window neither moves nor resizes; its title row's buttons still work
+        if (FullScreen.IsOn(window)) return HtClient;
 
         int screenX = unchecked((short)(long)lParam), screenY = unchecked((short)((long)lParam >> 16));
         GetWindowRect(handle, out Rect32 bounds);
