@@ -164,6 +164,10 @@ public partial class SettingsPage : UserControl
             DecimalsBox.Text = Number("decimals", 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
             DecimalsRow.Note = Texts.Get("Settings.DecimalsRow.Note");
             DecimalsRow.NoteIsWarning = false;
+            int firstDeck = Number(EasyNdf.Data.Units.ModUnit.FirstDeckNumberSetting, 0);
+            FirstDeckBox.Text = firstDeck > 0 ? firstDeck.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+            FirstDeckRow.Note = Texts.Get("Settings.FirstDeckNumber.Note");
+            FirstDeckRow.NoteIsWarning = false;
             foreach (CheckBox toggle in new[] { CommentsSwitch, StampSwitch, WrapSwitch, FolderTreeSwitch, FitSwitch, AssignSwitch, ConfirmSwitch, SessionSwitch, SourceFilesSwitch, PanesScaleSwitch, GuidesSwitch, PairsSwitch,
                 AskFolderSwitch, StructureSwitch, ZipSwitch, HoldBackSwitch, WatermarkFirstSwitch, RememberFolderSwitch, BackupSwitch, OpenFolderSwitch, LineNumbersSwitch, WordWrapSwitch, ReopenFileSwitch, TooltipsSwitch, WindowSwitch, TreeAllSwitch, ArmoryMarksSwitch,
                 ArmoryFileNamesSwitch, MonitorScalingSwitch, UsageSwitch, LogSwitch, UpdatesSwitch, AskBundledModSwitch })
@@ -266,12 +270,38 @@ public partial class SettingsPage : UserControl
         if (e.Key != Key.Enter) return;
         e.Handled = true;
         if (sender == CapBox) TakeCap();
+        else if (sender == FirstDeckBox) TakeFirstDeck();
         else TakeDecimals();
     }
 
     private void CapLeft(object sender, KeyboardFocusChangedEventArgs e) => TakeCap();
 
     private void DecimalsLeft(object sender, KeyboardFocusChangedEventArgs e) => TakeDecimals();
+
+    private void FirstDeckLeft(object sender, KeyboardFocusChangedEventArgs e) => TakeFirstDeck();
+
+    /// <summary>
+    /// "First deck number for new units": a whole number from 1 to 65535 (deck codes keep it in 16 bits), or empty for
+    /// none (one after the highest in use); anything else is refused and the old value kept.
+    /// </summary>
+    private void TakeFirstDeck()
+    {
+        string typed = FirstDeckBox.Text.Trim().Replace(",", "", StringComparison.Ordinal);
+        int before = Number(EasyNdf.Data.Units.ModUnit.FirstDeckNumberSetting, 0);
+        string shownBefore = before > 0 ? before.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+        if (typed == shownBefore) return;
+        if (typed != "" && (!typed.All(char.IsAsciiDigit) || !int.TryParse(typed, out int number) || number < 1 || number > 65535))
+        {
+            FirstDeckBox.Text = shownBefore;
+            FirstDeckRow.Note = Texts.Get("Settings.FirstDeckNumber.Refused");
+            FirstDeckRow.NoteIsWarning = true;
+            return;
+        }
+        if (typed == "") Settings.Remove(EasyNdf.Data.Units.ModUnit.FirstDeckNumberSetting);
+        else Settings[EasyNdf.Data.Units.ModUnit.FirstDeckNumberSetting] = int.Parse(typed, System.Globalization.CultureInfo.InvariantCulture);
+        AppData.Current.SaveSettings();
+        Show();
+    }
 
     /// <summary>"Edits listed per rule": a whole number from 0 to 20000; anything else is refused and the old number kept.</summary>
     private void TakeCap()
@@ -422,7 +452,7 @@ public partial class SettingsPage : UserControl
         }
         var dialog = new SaveFileDialog { Title = Texts.Get("Settings.BackUpAllMods"), FileName = "EasyNDF mods backup.json", Filter = Texts.Get("Settings.ModFiles") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
-        try { File.WriteAllText(dialog.FileName, ModFiles.BackupText(AppData.Current.Mods, AppData.Current.ModFileStore)); }
+        try { File.WriteAllText(dialog.FileName, ModFiles.BackupText(AppData.Current.Mods, AppData.Current.ModFileStore, Mods.ModPictures.Read)); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             _ = View.Messages.Tell(Texts.Get("Settings.Backup.NotSaved", ("reason", error.Message)), DialogIcon.Error);
@@ -434,7 +464,7 @@ public partial class SettingsPage : UserControl
     /// <summary>"Restore backup...": the mods in it are added on the Rules tab, as Import mod adds them.</summary>
     private async void RestoreClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = Texts.Get("Settings.Restore.Title"), Filter = Texts.Get("Settings.ModFiles"), Multiselect = true };
+        var dialog = new OpenFileDialog { Title = Texts.Get("Settings.Restore.Title"), Filter = Texts.Get("Settings.ModFilesAndPackages"), Multiselect = true };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         View.ShowTab(View.RulesTabItem);
         await View.RulesTab.ImportModFiles(dialog.FileNames);

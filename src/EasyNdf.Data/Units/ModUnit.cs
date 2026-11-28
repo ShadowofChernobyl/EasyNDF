@@ -66,12 +66,31 @@ public sealed class ModUnit : UnitValues
         : descriptor;
 
     /// <summary>
-    /// The next deck number free for a unit: one more than the highest the game's units and the mod's new ones have.
+    /// The next deck number free for a unit: one more than the highest the game's units and the mod's new ones have,
+    /// or, with a first number set (Settings › Armory), the first free one from it on.
     /// </summary>
-    public static int NextDeckNumber(IEnumerable<Unit> game, Mod mod)
+    /// <param name="firstNumber">The first number new units get; 0 for none.</param>
+    public static int NextDeckNumber(IEnumerable<Unit> game, Mod mod, int firstNumber = 0)
     {
-        int highest = game.Select(unit => unit.DeckNumber ?? 0).Concat(mod.Units.Select(unit => unit.DeckNumber ?? 0)).DefaultIfEmpty(0).Max();
-        return highest + 1;
+        IEnumerable<int> inUse = game.Select(unit => unit.DeckNumber ?? 0).Concat(mod.Units.Select(unit => unit.DeckNumber ?? 0));
+        return firstNumber > 0 ? CountFrom(inUse, firstNumber, int.MaxValue) + 1 : inUse.DefaultIfEmpty(0).Max() + 1;
+    }
+
+    /// <summary>The setting for the first deck number new units get (Settings › Armory); 0 or missing for none.</summary>
+    public const string FirstDeckNumberSetting = "firstDeckNumber";
+
+    /// <summary>
+    /// The number to count up from for the next deck number: the highest in use below <paramref name="below"/>, or,
+    /// with a first number, the highest in use from it on, and never less than one before it. A number the game gives
+    /// its own new units in an update then never meets one given to a mod's units, while the game stays below it.
+    /// </summary>
+    /// <param name="inUse">The numbers in use.</param>
+    /// <param name="firstNumber">The first number new units get; 0 for none.</param>
+    /// <param name="below">Numbers from this one on are left out (a mod's far-off number, such as 99999).</param>
+    public static int CountFrom(IEnumerable<int> inUse, int firstNumber, int below)
+    {
+        int highest = inUse.Where(number => number < below && (firstNumber <= 0 || number >= firstNumber)).DefaultIfEmpty(0).Max();
+        return firstNumber > 0 ? Math.Max(firstNumber - 1, highest) : highest;
     }
 
     /// <summary>

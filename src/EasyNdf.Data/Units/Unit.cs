@@ -119,6 +119,13 @@ public sealed class Unit
     public double? Optics { get; init; }
 
     /// <summary>
+    /// Whether its optics are a plane's, spotting from the air: WARNO's planes keep 0 under EOpticalStrength/Standard
+    /// and their optics under LowAltitude and HighAltitude (the same number in every plane of the game), so
+    /// <see cref="Optics"/> is read from LowAltitude and a change is written to both.
+    /// </summary>
+    public bool OpticsInFlight { get; init; }
+
+    /// <summary>
     /// How far it sees: in WARNO's GRU; in Steel Division 2, in metres as the game shows them (see
     /// <see cref="MetresScale"/>).
     /// </summary>

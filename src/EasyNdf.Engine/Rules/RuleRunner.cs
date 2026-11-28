@@ -157,10 +157,52 @@ public sealed partial class RuleRunner
             if (rule is null) continue;
             if (rule.Kind == "Group") { groupOn = rule.Enabled; continue; }
             if (!groupOn || rule.Kind != "Variable" || !rule.Enabled || rule.Params is null) continue;
+            bool sharedScope = rule.P.TextOr("VarScope", "RuleSet") != "RuleSet";
+            // "Read from a file": each row of the file is one variable, its name and its value
+            if (DataFileRows(rule, "Variable") is List<List<string>> rows)
+            {
+                foreach ((string rowName, string rowValue) in VariableRows(rows))
+                    if (!(shared is not null && sharedScope && shared.ContainsKey(rowName))) variables[rowName] = rowValue;
+                continue;
+            }
             string name = JsText.Trim(rule.P.TextOr("VarName", ""));
             if (name == "") continue;
             if (shared is not null && rule.P.TextOr("VarScope", "RuleSet") != "RuleSet" && shared.ContainsKey(name)) continue;
             variables[name] = JsText.Trim(rule.P.Text("Value"));
+        }
+    }
+
+    /// <summary>
+    /// The rows of the data file a Table or Variable rule reads ("Read from a file"), read again at every run; null
+    /// when the rule names none, so it uses its own text. A file that cannot be read gives no rows, and says so.
+    /// </summary>
+    private List<List<string>>? DataFileRows(Rule rule, string kind)
+    {
+        string path = JsText.Trim(rule.P.TextOr("DataFile", ""));
+        if (path == "") return null;
+        string? text = (options.ReadDataFile ?? RunOptions.DataFileReader)?.Invoke(path);
+        if (text is null)
+        {
+            FileNote(rule.Name ?? kind, kind, "The file \"" + path + "\" could not be read. Nothing was read from it.");
+            warnings.Add(new RunWarning(rule.Name ?? kind, "The file \"" + path + "\" could not be read."));
+            return [];
+        }
+        return TableText.Read(text);
+    }
+
+    /// <summary>
+    /// A data file's variables: each row's first two cells, the name and the value; a first row naming "Name" is a
+    /// heading. Rows without a name are left out.
+    /// </summary>
+    public static IEnumerable<(string Name, string Value)> VariableRows(List<List<string>> rows)
+    {
+        for (int i = 0; i < rows.Count; i++)
+        {
+            List<string> row = rows[i];
+            if (row.Count == 0) continue;
+            string name = JsText.Trim(row[0]);
+            if (name == "" || (i == 0 && string.Equals(name, "Name", StringComparison.OrdinalIgnoreCase))) continue;
+            yield return (name, row.Count > 1 ? JsText.Trim(row[1]) : "");
         }
     }
 
@@ -409,6 +451,7 @@ public sealed partial class RuleRunner
                 Name = top.Name,
                 Value = obj,
                 IsStandIn = true,
+                Parent = top,
                 Label = (top.Name != "" ? top.Name + " > " : "") + obj.TypeName + name,
             };
         }
@@ -967,7 +1010,7 @@ public sealed partial class RuleRunner
     private void RunTable(Rule rule, List<Condition> conditions, bool gateIsAll)
     {
         var p = rule.P;
-        var rows = TableText.Read(p.Text("Text"));
+        var rows = DataFileRows(rule, "Table") ?? TableText.Read(p.Text("Text"));
         if (rows.Count < 2 || rows[0].Count < 2)
         {
             current.Skipped++;
@@ -1139,6 +1182,9 @@ public sealed partial class RuleRunner
     }
 
     /// <summary>Check: changes nothing; warns when the number of matching descriptors is not as expected.</summary>
+    /// <summary>The type of a failed Check rule's warning when the rule stops the export.</summary>
+    public const string StopsExport = "stop";
+
     private void RunCheck(Rule rule, Scope scope)
     {
         var p = rule.P;
@@ -1172,7 +1218,8 @@ public sealed partial class RuleRunner
             : (mode == "atMost" ? "at most " : mode == "exactly" ? "exactly " : "at least ") + JsNumber.ToText(want);
         string note = JsText.Trim(p.TextOr("Message", "")) != "" ? JsText.Trim(Substitute(p.Text("Message"))) + " " : "";
         string text = note + "Expected " + expected + ", found " + n + ".";
-        Warn(text);
+        // "Stop the export": the app stops the export before any file is written (FileRunner.FailedStoppingChecks)
+        Warn(text, p.IsOn("StopExport") ? StopsExport : null);
         FileNote(current.Name, "Check", "Failed. " + text);
     }
 

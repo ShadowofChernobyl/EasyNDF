@@ -214,6 +214,10 @@
                         <controls:SettingRow Label="{t:Text Settings.ArmoryFileNames}" Note="{t:Text Settings.ArmoryFileNames.Note}">
                             <CheckBox x:Name="ArmoryFileNamesSwitch" Style="{StaticResource Toggle}" Click="SwitchClicked" Tag="armoryFileNames" />
                         </controls:SettingRow>
+                        <controls:SettingRow x:Name="FirstDeckRow" Label="{t:Text Settings.FirstDeckNumber}">
+                            <TextBox x:Name="FirstDeckBox" Style="{StaticResource MonoBox}" Width="172"
+                                     LostKeyboardFocus="FirstDeckLeft" KeyDown="BoxKeyDown" />
+                        </controls:SettingRow>
                     </controls:SettingGrid>
                 </StackPanel>
             </controls:Bevel>

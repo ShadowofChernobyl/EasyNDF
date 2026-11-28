@@ -2,7 +2,7 @@
 
 The rule engine: it reads an NDF file, runs a mod's rules over it, and writes the edited file. It has no user interface.
 
-It is a port of the HTML app's engine (the `<script id="engine-src">` part of the page), and must give **byte-for-byte the same output**. 
+It began as a port of the HTML app's engine (the `<script id="engine-src">` part of the page). The HTML app is frozen since EasyNDF 1.1.4: it keeps the features it has, and new rule features come to this engine only. The `...MatchesHtmlApp` tests compare with what the HTML app gave before it was frozen; when a new feature changes such a result on purpose, the case is updated.
 
 ## Using it
 

@@ -308,13 +308,13 @@ public sealed class UnitChangeRules
     /// <param name="unit">The values given.</param>
     /// <param name="gameUnit">The unit they are given to (for a new unit, its model), as the game has it: its scales.</param>
     private List<JsonObject> ValueActions(UnitValues unit, Unit gameUnit) =>
-        game == GameTitle.SteelDivision2 ? SteelDivisionValueActions(unit, gameUnit) : WarnoValueActions(unit);
+        game == GameTitle.SteelDivision2 ? SteelDivisionValueActions(unit, gameUnit) : WarnoValueActions(unit, gameUnit);
 
     /// <summary>
     /// WARNO's actions for the values given: whole numbers as the game writes them, and the optics, vision and
     /// stealth with a decimal point.
     /// </summary>
-    private static List<JsonObject> WarnoValueActions(UnitValues unit)
+    private static List<JsonObject> WarnoValueActions(UnitValues unit, Unit gameUnit)
     {
         var actions = new List<JsonObject>();
         if (unit.Nation is string nation) actions.Add(Action("MotherCountry", SetValue, "'" + nation + "'"));
@@ -338,7 +338,13 @@ public sealed class UnitChangeRules
         Whole("MaxSpeedInKmph", unit.Speed);
         Whole("DisplayRoadSpeedInKmph", unit.RoadSpeed);
         Whole("FuelCapacity", unit.Fuel);
-        Decimal("OpticalStrengths" + ActionApplier.PathSeparator + "EOpticalStrength/Standard", unit.Optics);
+        if (gameUnit.OpticsInFlight)
+        {
+            // a plane's optics, read from LowAltitude: both altitudes get the new number, Standard stays 0
+            Decimal("OpticalStrengths" + ActionApplier.PathSeparator + "EOpticalStrength/LowAltitude", unit.Optics);
+            Decimal("OpticalStrengths" + ActionApplier.PathSeparator + "EOpticalStrength/HighAltitude", unit.Optics);
+        }
+        else Decimal("OpticalStrengths" + ActionApplier.PathSeparator + "EOpticalStrength/Standard", unit.Optics);
         Decimal("VisionRangesGRU" + ActionApplier.PathSeparator + "EVisionRange/Standard", unit.Vision);
         Decimal("UnitConcealmentBonus", unit.Stealth);
         return actions;

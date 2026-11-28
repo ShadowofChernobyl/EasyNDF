@@ -157,6 +157,9 @@ public static class UnitReader
         // what transports go by: the unit's tags; as a transport, the tags it carries and its seats; the seats it takes in one
         var fields = new UnitFields(unit);
         ObjectValue? tags = fields.ModuleOf("TTagsModuleDescriptor");
+        // a plane (TAirplaneModuleDescriptor; helicopters have none) spots from the air: its optics are LowAltitude's
+        NdfValue? optics = fields.Find("OpticalStrengths");
+        bool opticsInFlight = fields.ModuleOf("TAirplaneModuleDescriptor") is not null && NumberFor(optics, "LowAltitude") is not null;
         ObjectValue? transporter = fields.ModuleOf("TTransporterModuleDescriptor");
         ObjectValue? transportable = fields.ModuleOf("TTransportableModuleDescriptor");
         // a Steel Division 2 defence has its name token and picture in its TDefenseUIModuleDescriptor (Name, Vignette)
@@ -191,7 +194,8 @@ public static class UnitReader
             RoadSpeed = Number(fields.Find("DisplayRoadSpeedInKmph")) ?? Number(fields.Find("RealRoadSpeed")),
             AccelerationGru = Number(fields.Find("MaxAccelerationGRU")),
             DecelerationGru = Number(fields.Find("MaxDecelerationGRU")),
-            Optics = NumberFor(fields.Find("OpticalStrengths"), "Standard") ?? Number(fields.Find("OpticalStrength")),
+            Optics = opticsInFlight ? NumberFor(optics, "LowAltitude") : NumberFor(optics, "Standard") ?? Number(fields.Find("OpticalStrength")),
+            OpticsInFlight = opticsInFlight,
             Vision = vision,
             MetresScale = metresScale,
             Stealth = Number(fields.Find("UnitConcealmentBonus")),

@@ -115,6 +115,12 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         {
             if (write)
             {
+                // Check rules set to stop the export run first, on their own: one that fails stops it before any file is written
+                if (await FailedStoppingChecks(list) is { Count: > 0 } failed)
+                {
+                    SayStopped(failed);
+                    return;
+                }
                 await GiveDeckNumbers(list);
                 // DeckSerializer.ndf may run now only for the rules just added: it goes where the other files go
                 foreach (FileEntry entry in FilesThatRun(model.Entries, everyFile).Where(e => skipped?.Contains(e) != true).Except(list).ToList())
@@ -186,6 +192,45 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         SayValueErrors(finished, write);
         await SayTabRowProblems(finished);
         CheckDeckNames(finished, write);
+    }
+
+    /// <summary>
+    /// The Check rules set to stop the export ("Stop the export") that fail, with their files: each file holding one is
+    /// run once without writing, before the export writes anything. None when no file holds one.
+    /// </summary>
+    private async Task<List<(FileEntry Entry, RunWarning Warning)>> FailedStoppingChecks(List<FileEntry> list)
+    {
+        var failed = new List<(FileEntry, RunWarning)>();
+        List<FileEntry> holding = [.. list.Where(entry => !WritesDictionary(entry) && StackFor(entry).SelectMany(part => part.Rules).Any(StopsExport))];
+        if (holding.Count == 0) return failed;
+        var generatedInputs = new Dictionary<Data.Game.GameTitle, List<GeneratedListsMaker.Input>>();
+        foreach (FileEntry entry in holding)
+        {
+            if (model.IsCancelRequested) break;
+            model.ShowProgress(entry.Name, failed.Count, holding.Count);
+            FileWork work = WorkFor(entry, model.Entries, generatedInputs);
+            if (FillGeneratedLists(work.Stack, work.GeneratedInputs) is not null) continue;
+            (RunResult result, _) = await Task.Run(() => RunStack(entry, work.Stack, work.Content.Text(), wantText: false, logLimit: 0, work.OtherFiles));
+            failed.AddRange(result.Warnings.Where(warning => warning.Type == RuleRunner.StopsExport).Select(warning => (entry, warning)));
+        }
+        return failed;
+    }
+
+    /// <summary>Whether a rule is a Check rule, switched on, set to stop the export when it fails.</summary>
+    private static bool StopsExport(JsonNode? rule) =>
+        (string?)rule?["Kind"] == "Check" && !JsonValues.IsFalse(rule["Enabled"]) && JsonValues.IsTruthy(rule["Params"]?["StopExport"]);
+
+    /// <summary>The export stopped by failed Check rules: each file says which of its rules stopped it, and the note names the first.</summary>
+    private void SayStopped(List<(FileEntry Entry, RunWarning Warning)> failed)
+    {
+        foreach (var group in failed.GroupBy(each => each.Entry))
+        {
+            group.Key.Message = Texts.Get("Files.Run.Stopped.Row", ("rule", group.First().Warning.Rule));
+            group.Key.IsError = true;
+            model.RowChanged(group.Key);
+        }
+        (FileEntry entry, RunWarning warning) = failed[0];
+        model.Warn(Texts.Get("Files.Run.Stopped", ("rule", warning.Rule), ("file", entry.Name), ("message", warning.Message)));
     }
 
     /// <summary>Whether a file's export is checked for values that would stop mod generation: WARNO's files are, as the guide is WARNO's.</summary>
@@ -484,7 +529,8 @@ public sealed class FileRunner(FileListModel model, RunSettings settings)
         // into deck codes, so they stay within 16 bits; each one given is skipped over by the next
         HashSet<int> inUse = [.. units.Values.Select(unit => unit.DeckNumber ?? 0)
             .Concat(gameMods.SelectMany(mod => mod.Units.Select(unit => unit.DeckNumber ?? 0).Concat(mod.UnitDeckNumbers.Values)))];
-        int nextFree = inUse.Where(number => number < MostDeckNumber).DefaultIfEmpty(0).Max();
+        int firstNumber = AppData.Current.Settings[Data.Units.ModUnit.FirstDeckNumberSetting]?.GetValue<int>() ?? 0;
+        int nextFree = Data.Units.ModUnit.CountFrom(inUse, firstNumber, MostDeckNumber);
         int TakeNext()
         {
             do nextFree++; while (inUse.Contains(nextFree));

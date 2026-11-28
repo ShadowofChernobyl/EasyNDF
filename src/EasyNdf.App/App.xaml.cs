@@ -23,6 +23,8 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // Table and Variable rules that read a data file read it through the app (Files/DataFiles.cs)
+        Engine.Rules.RunOptions.DataFileReader = Files.DataFiles.Read;
         Controls.CssTextPosition.Register();
         Controls.SmoothScrolling.Register();
         Controls.LongText.Register();

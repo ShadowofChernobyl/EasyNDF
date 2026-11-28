@@ -129,8 +129,14 @@ public sealed class RuleEditor
     {
         // "Variable name", as the rule's own name is in the box above it
         TextBox nameBox = TextField("VarName", Texts.Get("Rules.Editor.VarNameHint.ForExampleRangeMultiplier"), mono: true);
+        // a data file gives the variables instead, one a row: the name and value boxes then have no say
+        bool fromFile = JsonValues.AsText(parameters["DataFile"]).Trim() != "";
+        nameBox.IsEnabled = !fromFile;
         AddRow(Texts.Get("Rules.Editor.VariableName"), nameBox);
-        AddRow(Texts.Get("Rules.Editor.Value"), TextField("Value", Texts.Get("Rules.Editor.ValueHint.ForExample2"), mono: true));
+        TextBox valueBox = TextField("Value", Texts.Get("Rules.Editor.ValueHint.ForExample2"), mono: true);
+        valueBox.IsEnabled = !fromFile;
+        AddRow(Texts.Get("Rules.Editor.Value"), valueBox);
+        AddDataFileRow("Rules.Editor.DataFile.VariableNote");
         // where it can be used: its own rule set unless said otherwise; the note under it follows the choice
         AddRow(Texts.Get("Rules.Editor.Variable.Scope"), Choice("VarScope",
         [
@@ -239,8 +245,11 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         AddRow(Texts.Get("Rules.Editor.EachValueIs"), Choice("Op", [("Set To", Texts.Get("Rules.Editor.Choice.SetTo.SetAsThe")), ("Multiply", Texts.Get("Rules.Editor.Choice.Multiply.MultipliedIntoThe")), ("Add", Texts.Get("Rules.Editor.Choice.Add.AddedToThe"))]));
         AddCommentRow();
         // textarea rows="12": twelve lines of the code font, 4 pixels in at the top and bottom
+        AddDataFileRow("Rules.Editor.DataFile.TableNote");
         var table = TextArea("Text", "Name,MaxSpeedInKmph,FuelCapacity\nDescriptor_Unit_A,70,500\nDescriptor_Unit_B,,650");
         table.Height = 12 * 17.390625 + 8 + 2;
+        // a data file gives the table instead: the box keeps its text, unused
+        table.IsEnabled = JsonValues.AsText(parameters["DataFile"]).Trim() == "";
         parts.Add(table);
         AddNote(Note("Rules.Editor.Table.Note"));
         // a row is applied only to a descriptor that also meets these
@@ -377,6 +386,9 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         if (JsonValues.AsText(parameters["Expect"]) != "none") expect.Add(TextField("Count", Texts.Get("Rules.Editor.ValueHint.Number"), mono: true));
         AddRow(Texts.Get("Rules.Editor.Expect"), [.. expect]);
         AddRow(Texts.Get("Rules.Editor.MessageWhenItFails"), TextField("Message", Texts.Get("Rules.Editor.MessageHint.OptionalNoteTo"), mono: false));
+        CheckBox stop = Tick("StopExport", Texts.Get("Rules.Editor.StopExport"));
+        stop.ToolTip = Texts.Get("Rules.Editor.StopExport.Tip");
+        AddRow(Texts.Get("Rules.Editor.WhenItFails"), stop);
         AddConditions(Texts.Get("Rules.Editor.ConditionsOptional"), EveryDescriptor);
     }
 
@@ -473,6 +485,29 @@ AddNote(Note("Rules.Editor.Formula.Note"));
         FlexRow.SetBasis(box, 144);
         box.TextChanged += (_, _) => { parameters[key] = box.Text; changed(); };
         return box;
+    }
+
+    /// <summary>
+    /// "Read from a file": a data file (.csv, .tsv or .txt) the rule reads at every run instead of its own text, typed
+    /// or chosen with Browse…, and a note on what it holds. A file inside the Mods folder is kept by its path below it.
+    /// </summary>
+    private void AddDataFileRow(string noteKey)
+    {
+        TextBox file = TextField("DataFile", Texts.Get("Rules.Editor.DataFile.Hint"), mono: true);
+        string shown = file.Text;
+        file.LostKeyboardFocus += (_, _) => { if (file.Text != shown) rebuild(); };
+        var browse = new Button { Content = Texts.Get("Rules.Editor.DataFile.Browse"), ToolTip = Texts.Get("Rules.Editor.DataFile.Browse.Tip") };
+        browse.Click += (_, _) =>
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog { Title = Texts.Get("Rules.Editor.DataFile.Title"), Filter = Texts.Get("Rules.Editor.DataFile.Filter") + "|*.csv;*.tsv;*.txt" };
+            if (dialog.ShowDialog(Window.GetWindow(browse)) != true) return;
+            parameters["DataFile"] = Files.DataFiles.PathToKeep(dialog.FileName);
+            changed();
+            rebuild();
+        };
+        AddRow(Texts.Get("Rules.Editor.DataFile"), file, browse);
+        string path = shown.Trim();
+        AddNote(Note(path != "" && Files.DataFiles.Read(path) is null ? "Rules.Editor.DataFile.NotRead" : noteKey));
     }
 
     /// <summary>A text box coloured as what it holds: a formula or a property name. A property name gets suggestions too.</summary>

@@ -64,3 +64,6 @@
 
 # NDF test files must stay byte-for-byte as written: no line-ending conversion.
 *.ndf -text
+
+# test sources hold NDF text in raw strings: always LF, so the expected text is the same on every machine
+tests/**/*.cs text eol=lf

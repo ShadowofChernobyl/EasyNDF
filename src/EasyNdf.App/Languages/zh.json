@@ -8911,8 +8911,8 @@
       "machine": true
     },
     "Rules.Editor.Check.Note": {
-      "english": "Changes nothing. Counts the descriptors that meet the conditions and warns on the Files tab when the count is not as expected, such as after a game update renamed something.",
-      "text": "不进行任何更改。仅统计满足条件的描述符，并在“文件”选项卡中发出警告，例如当游戏更新后某些文件被重命名，导致计数与预期不符时。",
+      "english": "Changes nothing. Counts the descriptors that meet the conditions and warns on the Files tab when the count is not as expected, such as after a game update renamed something. Tick Stop the export to stop the export instead.",
+      "text": "不进行任何更改。仅统计满足条件的描述符，并在“文件”选项卡中发出警告，例如当游戏更新后某些文件被重命名，导致计数与预期不符时。勾选“停止导出”可改为停止导出。",
       "machine": true
     },
     "Rules.Editor.Scope.RemoveTypeNote": {
@@ -8921,8 +8921,8 @@
       "machine": true
     },
     "Rules.Editor.Scope.TypeNote": {
-      "english": "Runs on every object of this type, at any depth. Conditions and targets see only that object. Descriptor Title is the title of its descriptor; Descriptor Type is its own type.",
-      "text": "对该类型的每个对象运行，无论嵌套深度如何。条件和目标仅视该对象。描述符标题是其描述符的标题；描述符类型是其自身类型。",
+      "english": "Runs on every object of this type, at any depth. Conditions and targets see only that object. Descriptor Title is the title of its descriptor; Descriptor Type is its own type. Start a condition's property with Parent: to test the descriptor holding the object.",
+      "text": "对该类型的每个对象运行，无论嵌套深度如何。条件和目标仅视该对象。描述符标题是其描述符的标题；描述符类型是其自身类型。在条件的属性前加上 Parent: 可检查包含该对象的描述符。",
       "machine": true
     },
     "Rules.Editor.Scope.ConstantsNote": {
@@ -9203,11 +9203,6 @@
     "Rules.Mod.ImportFailed": {
       "english": "Could not import: {problems}",
       "text": "无法导入：{problems}",
-      "machine": true
-    },
-    "Rules.Mod.ExportFilter": {
-      "english": "Mod files (*.mod.json)|*.mod.json",
-      "text": "模组文件 (*.mod.json)|*.mod.json",
       "machine": true
     },
     "Rules.Mod.NotSaved": {
@@ -17565,8 +17560,8 @@
       "machine": true
     },
     "Help.Page.export.Html": {
-      "english": "<h3>Preview</h3><p>Runs your rules and shows what would change. Nothing is saved.</p><h3>Export</h3><ul><li>Runs your rules and writes the edited files. <b>Export</b> opens the Export popup first.</li><li><b>Export to:</b> type a folder, <b>Browse...</b>, or click a recent one.</li><li><b>What will be written</b> lists every file, the File rules' files included, as <b>new</b> or <b>replaces</b>. Filter it by name, or show only new or replacing files.</li><li>A red warning shows when files would overwrite the files they were added from. Tick the box to allow it.</li><li><b>Save as zip...</b> packs the last export's files into one .zip, folders kept.</li></ul><h3>Export Options</h3><p>Set in the Export popup; most are on the Settings tab too. The popup keeps what you leave it with.</p><ul><li><b>Changed only</b>, <b>All that are on</b> or <b>Selected</b>: which files are written.</li><li><b>Keep folder structure:</b> off, every file goes straight into the folder.</li><li><b>Pack into one .zip:</b> writes one dated .zip into the folder instead of loose files.</li><li><b>Hold back files that fail the safety check:</b> off, they're written anyway, their rows still red.</li><li><b>Update watermark first:</b> asks about the watermark of every mod with one, not only those set to ask.</li><li><b>Use this folder for every file:</b> off, files with their own export folder keep it.</li><li><b>Remember this folder for these files:</b> off, files keep the folder they had.</li><li><b>Ask for the export folder each time</b> (Settings): every Export asks where to write, starting in the folder used last.</li><li>Also: keep source comments, line endings, back up overwritten files, the \"Edited with EasyNDF\" comment, open the folder after export.</li></ul><h3>Export Folders</h3><p>Select files and press <b>Export folder...</b>, or right-click a row &gt; <b>Choose export folder...</b>. EasyNDF only writes over the file it read when you tick the warning's box.</p><h3>Safety Check</h3><p>Every edited file is checked before saving. If a change would break it, the row turns red and the file is held back, unless <b>Hold back files that fail the safety check</b> is off. <b>Save anyway</b> lets you inspect it.</p><p>A deck number given to two divisions or units in <span class=\"mono\">DeckSerializer.ndf</span> is reported too: each needs its own.</p><h3>While It Runs</h3><ul><li>Each row shows its stage: Waiting, Working, then the result, like <i>Exported to \"MyMod\": 12 edits</i>.</li><li>A bar under the buttons shows the current file and progress. <b>Cancel</b> stops after that file; files already written stay.</li><li>Files are written whole or not at all, so a crash or closing the app never leaves half a file. Closing during an export asks first.</li></ul><h3>Where Files Go</h3><ul><li>Files keep the subfolders they had when their folder was added, so exporting into a mod folder puts everything in place.</li><li>With <b>Files to export</b> set to every file, unchanged files and files without rules are copied as they are.</li></ul><h3>Warnings</h3><ul><li>An unreadable number, a failed Check rule, or a rule that changed nothing turns the status yellow; Details explains. The export still happens.</li><li>A change with no effect, like 0 &times; 2 or setting a value it already has, isn't counted or commented.</li></ul><div class=\"wkcall\"><b>Note</b><span>Rules run on whatever you add. On an earlier export they apply twice: &times;2 becomes &times;4.</span></div><h3>Tab Warnings</h3><p>After Preview or Export, a warning names any division that offers units in an Armory tab its cost matrix has no row for, and any ready-made deck that holds more packs of a tab than the division has slots. The game would stop while generating such a mod. Give the tab a row, or more slots: in the Armory, right-click the tab &gt; <b>Edit Tab…</b> &gt; <b>Slots in a Division</b>, or edit <span class=\"mono\">DivisionCostMatrix.ndf</span>.</p>",
-      "text": "<h3>预览</h3><p>运行您的规则并显示可能发生的变化。不会保存任何内容。</p><h3>导出</h3><ul><li>运行您的规则并写入编辑后的文件。<b>选择导出</b>会先打开“导出”弹窗。</li><li><b>导出到：</b>输入文件夹路径、点击<b>“浏览</b>...”或选择最近使用的文件夹。</li><li><b>将写入的内容</b>列出了所有文件（包括“文件规则”中的文件），并标注为<b>新建</b>或<b>替换</b>。可按名称筛选，或仅显示新建或替换的文件。</li><li>当文件将覆盖其来源文件时，会显示红色警告。勾选复选框以允许此操作。</li><li><b>另存为 zip...</b>将上次导出的文件打包为一个 .zip 文件，并保留文件夹结构。</li></ul><h3>导出选项</h3><p>可在“导出”弹窗中进行设置；其中大多数也在“设置”选项卡中。该弹窗会保留您的设置。</p><ul><li><b>仅已更改的</b>、<b>所有文件或已选中的</b>：指定要导出的文件。</li><li><b>保留文件夹结构：</b>关闭时，每个文件将直接放入文件夹中。</li><li><b>打包为一个 .zip 文件：</b>将一个带日期的 .zip 文件写入文件夹，而不是散乱的文件。</li><li><b>暂不导出未通过安全检查的文件：</b>关闭时，这些文件仍会被导出，其行仍显示为红色。</li><li><b>先更新水印：</b>会询问每个带有水印的模组的水印设置，而不仅仅是那些设置为“询问”的模组。</li><li><b>对每个文件都使用此文件夹：</b>关闭，具有独立导出文件夹的文件将保留原文件夹。</li><li><b>为这些文件记住此文件夹：</b>关闭，文件保留原有的文件夹。</li><li><b>每次都询问导出文件夹</b>（设置）：每次导出都会询问写入位置，从上次使用的文件夹开始。</li><li>此外：保留源代码注释、行尾符、备份被覆盖的文件、“使用 EasyNDF 编辑”注释，以及导出后打开文件夹。</li></ul><h3>导出文件夹</h3><p>选择文件并点击<b>导出文件夹...</b>，或右键单击一行 &gt; <b>选择导出文件夹...</b>。只有勾选警告框时，EasyNDF 才会覆盖其读取的文件。</p><h3>安全检查</h3><p>每个编辑后的文件在保存前都会经过检查。如果某项更改会导致文件损坏，该行将变为红色，且文件会被暂缓保存——除非<b>暂缓通过安全检查的文件选项</b>处于关闭状态。<b>点击仍要保存</b>可查看该文件。</p><p>若 <span class=\"mono\">DeckSerializer.ndf</span> 中同一个卡组编号被分配给两个师或单位，也会报告：每个都需要自己的编号。</p><h3>运行过程中</h3><ul><li>每行都会显示其处理阶段：等待、处理中，随后显示结果，例如<i>“已导出至‘MyMod’：12处修改”</i>。</li><li>按钮下方的进度条显示当前文件及进度。<b>点击取消</b>将停止处理该文件后的操作；已写入的文件将保留。</li><li>文件要么完整写入，要么完全不写入，因此即使发生崩溃或关闭应用程序，也不会留下不完整的文件。在导出过程中关闭应用程序时，系统会先进行确认。</li></ul><h3>文件存储位置</h3><ul><li>文件会保留其父文件夹添加时所处的子文件夹结构，因此导出到模组文件夹时，所有内容都会被正确放置。</li><li>当<b>要导出的文件</b>设置为“所有文件”时，未更改的文件和没有规则的文件将按原样复制。</li></ul><h3>警告</h3><ul><li>若遇到无法读取的数字、规则检查失败或未产生任何变化的规则，状态将变为黄色；“详细信息”中会给出说明。导出操作仍会继续进行。</li><li>无实际效果的更改（例如 0 × 2 或将值设置为其原有值）不会被计数或标注。</li></ul><div class=\"wkcall\"><b>注意</b><span>规则会作用于您添加的任何内容。在早期导出中，规则会应用两次：×2 会变为 ×4。</span></div><h3>选项卡警告</h3><p>预览或导出之后，警告会列出这样的师：它在军械库的某个选项卡中提供单位，但其费用矩阵没有该选项卡的行；还会列出这样的预设卡组：其中某个选项卡的卡包数量多于该师的槽位。游戏在生成这样的模组时会停止。请为该选项卡添加一行或增加槽位：在军械库中右键该选项卡 &gt; <b>编辑标签页…</b> &gt; <b>师内槽位</b>，或编辑 <span class=\"mono\">DivisionCostMatrix.ndf</span>。</p>",
+      "english": "<h3>Preview</h3><p>Runs your rules and shows what would change. Nothing is saved.</p><h3>Export</h3><ul><li>Runs your rules and writes the edited files. <b>Export</b> opens the Export popup first.</li><li><b>Export to:</b> type a folder, <b>Browse...</b>, or click a recent one.</li><li><b>What will be written</b> lists every file, the File rules' files included, as <b>new</b> or <b>replaces</b>. Filter it by name, or show only new or replacing files.</li><li>A red warning shows when files would overwrite the files they were added from. Tick the box to allow it.</li><li><b>Save as zip...</b> packs the last export's files into one .zip, folders kept.</li></ul><h3>Export Options</h3><p>Set in the Export popup; most are on the Settings tab too. The popup keeps what you leave it with.</p><ul><li><b>Changed only</b>, <b>All that are on</b> or <b>Selected</b>: which files are written.</li><li><b>Keep folder structure:</b> off, every file goes straight into the folder.</li><li><b>Pack into one .zip:</b> writes one dated .zip into the folder instead of loose files.</li><li><b>Hold back files that fail the safety check:</b> off, they're written anyway, their rows still red.</li><li><b>Update watermark first:</b> asks about the watermark of every mod with one, not only those set to ask.</li><li><b>Use this folder for every file:</b> off, files with their own export folder keep it.</li><li><b>Remember this folder for these files:</b> off, files keep the folder they had.</li><li><b>Ask for the export folder each time</b> (Settings): every Export asks where to write, starting in the folder used last.</li><li>Also: keep source comments, line endings, back up overwritten files, the \"Edited with EasyNDF\" comment, open the folder after export.</li></ul><h3>Export Folders</h3><p>Select files and press <b>Export folder...</b>, or right-click a row &gt; <b>Choose export folder...</b>. EasyNDF only writes over the file it read when you tick the warning's box.</p><h3>Safety Check</h3><p>Every edited file is checked before saving. If a change would break it, the row turns red and the file is held back, unless <b>Hold back files that fail the safety check</b> is off. <b>Save anyway</b> lets you inspect it.</p><p>A deck number given to two divisions or units in <span class=\"mono\">DeckSerializer.ndf</span> is reported too: each needs its own.</p><h3>While It Runs</h3><ul><li>Each row shows its stage: Waiting, Working, then the result, like <i>Exported to \"MyMod\": 12 edits</i>.</li><li>A bar under the buttons shows the current file and progress. <b>Cancel</b> stops after that file; files already written stay.</li><li>Files are written whole or not at all, so a crash or closing the app never leaves half a file. Closing during an export asks first.</li></ul><h3>Where Files Go</h3><ul><li>Files keep the subfolders they had when their folder was added, so exporting into a mod folder puts everything in place.</li><li>With <b>Files to export</b> set to every file, unchanged files and files without rules are copied as they are.</li></ul><h3>Warnings</h3><ul><li>An unreadable number, a failed Check rule, or a rule that changed nothing turns the status yellow; Details explains. The export still happens, unless the failed Check rule has <b>Stop the export</b> ticked: then no file is written.</li><li>A change with no effect, like 0 &times; 2 or setting a value it already has, isn't counted or commented.</li></ul><div class=\"wkcall\"><b>Note</b><span>Rules run on whatever you add. On an earlier export they apply twice: &times;2 becomes &times;4.</span></div><h3>Tab Warnings</h3><p>After Preview or Export, a warning names any division that offers units in an Armory tab its cost matrix has no row for, and any ready-made deck that holds more packs of a tab than the division has slots. The game would stop while generating such a mod. Give the tab a row, or more slots: in the Armory, right-click the tab &gt; <b>Edit Tab…</b> &gt; <b>Slots in a Division</b>, or edit <span class=\"mono\">DivisionCostMatrix.ndf</span>.</p>",
+      "text": "<h3>预览</h3><p>运行您的规则并显示可能发生的变化。不会保存任何内容。</p><h3>导出</h3><ul><li>运行您的规则并写入编辑后的文件。<b>选择导出</b>会先打开“导出”弹窗。</li><li><b>导出到：</b>输入文件夹路径、点击<b>“浏览</b>...”或选择最近使用的文件夹。</li><li><b>将写入的内容</b>列出了所有文件（包括“文件规则”中的文件），并标注为<b>新建</b>或<b>替换</b>。可按名称筛选，或仅显示新建或替换的文件。</li><li>当文件将覆盖其来源文件时，会显示红色警告。勾选复选框以允许此操作。</li><li><b>另存为 zip...</b>将上次导出的文件打包为一个 .zip 文件，并保留文件夹结构。</li></ul><h3>导出选项</h3><p>可在“导出”弹窗中进行设置；其中大多数也在“设置”选项卡中。该弹窗会保留您的设置。</p><ul><li><b>仅已更改的</b>、<b>所有文件或已选中的</b>：指定要导出的文件。</li><li><b>保留文件夹结构：</b>关闭时，每个文件将直接放入文件夹中。</li><li><b>打包为一个 .zip 文件：</b>将一个带日期的 .zip 文件写入文件夹，而不是散乱的文件。</li><li><b>暂不导出未通过安全检查的文件：</b>关闭时，这些文件仍会被导出，其行仍显示为红色。</li><li><b>先更新水印：</b>会询问每个带有水印的模组的水印设置，而不仅仅是那些设置为“询问”的模组。</li><li><b>对每个文件都使用此文件夹：</b>关闭，具有独立导出文件夹的文件将保留原文件夹。</li><li><b>为这些文件记住此文件夹：</b>关闭，文件保留原有的文件夹。</li><li><b>每次都询问导出文件夹</b>（设置）：每次导出都会询问写入位置，从上次使用的文件夹开始。</li><li>此外：保留源代码注释、行尾符、备份被覆盖的文件、“使用 EasyNDF 编辑”注释，以及导出后打开文件夹。</li></ul><h3>导出文件夹</h3><p>选择文件并点击<b>导出文件夹...</b>，或右键单击一行 &gt; <b>选择导出文件夹...</b>。只有勾选警告框时，EasyNDF 才会覆盖其读取的文件。</p><h3>安全检查</h3><p>每个编辑后的文件在保存前都会经过检查。如果某项更改会导致文件损坏，该行将变为红色，且文件会被暂缓保存——除非<b>暂缓通过安全检查的文件选项</b>处于关闭状态。<b>点击仍要保存</b>可查看该文件。</p><p>若 <span class=\"mono\">DeckSerializer.ndf</span> 中同一个卡组编号被分配给两个师或单位，也会报告：每个都需要自己的编号。</p><h3>运行过程中</h3><ul><li>每行都会显示其处理阶段：等待、处理中，随后显示结果，例如<i>“已导出至‘MyMod’：12处修改”</i>。</li><li>按钮下方的进度条显示当前文件及进度。<b>点击取消</b>将停止处理该文件后的操作；已写入的文件将保留。</li><li>文件要么完整写入，要么完全不写入，因此即使发生崩溃或关闭应用程序，也不会留下不完整的文件。在导出过程中关闭应用程序时，系统会先进行确认。</li></ul><h3>文件存储位置</h3><ul><li>文件会保留其父文件夹添加时所处的子文件夹结构，因此导出到模组文件夹时，所有内容都会被正确放置。</li><li>当<b>要导出的文件</b>设置为“所有文件”时，未更改的文件和没有规则的文件将按原样复制。</li></ul><h3>警告</h3><ul><li>若遇到无法读取的数字、规则检查失败或未产生任何变化的规则，状态将变为黄色；“详细信息”中会给出说明。导出操作仍会继续进行，除非未通过的检查规则勾选了<b>停止导出</b>：此时不会写入任何文件。</li><li>无实际效果的更改（例如 0 × 2 或将值设置为其原有值）不会被计数或标注。</li></ul><div class=\"wkcall\"><b>注意</b><span>规则会作用于您添加的任何内容。在早期导出中，规则会应用两次：×2 会变为 ×4。</span></div><h3>选项卡警告</h3><p>预览或导出之后，警告会列出这样的师：它在军械库的某个选项卡中提供单位，但其费用矩阵没有该选项卡的行；还会列出这样的预设卡组：其中某个选项卡的卡包数量多于该师的槽位。游戏在生成这样的模组时会停止。请为该选项卡添加一行或增加槽位：在军械库中右键该选项卡 &gt; <b>编辑标签页…</b> &gt; <b>师内槽位</b>，或编辑 <span class=\"mono\">DivisionCostMatrix.ndf</span>。</p>",
       "machine": true
     },
     "Help.Page.export-look.Title": {
@@ -17660,8 +17655,8 @@
       "machine": true
     },
     "Help.Page.applies.Html": {
-      "english": "<p class=\"wklead\">A rule normally looks at each descriptor in a file. For files built differently, some rules have an <b>Applies to</b> choice:</p><ul><li><b>Each object of one type:</b> things inside other things, like one terrain in Terrains.ndf.</li><li><b>Top-level constants:</b> lines like <span class=\"mono\">Helico_MaxStunDamages is 450</span>.</li></ul><h3>Which Rules</h3><p>Edit, Remove descriptors, Find and replace, Scale, Formula, Lookup and Check.</p><h3>Objects of One Type</h3><ul><li>Give the type, like <span class=\"mono\">TGameplayTerrain</span>, then a condition such as Name Is Equal To <span class=\"mono\">ForetDense</span>.</li><li>Conditions and targets see only that object.</li><li>Descriptor Title is the title of the descriptor holding the object, so title conditions still pick the unit.</li><li>A Group above the rule still tests the whole descriptor.</li></ul><h3>Top-level Constants</h3><p>As in DamageModules.ndf. Together they count as one descriptor with each constant as a property, so the target is the constant's name.</p><div class=\"wkcall\"><b>Tip</b><span>Details names such an object by its descriptor, type and Name, if it has one.</span></div>",
-      "text": "<p class=\"wklead\">一条规则通常会检查文件中的每个描述符。对于结构不同的文件，某些规则提供<b>适用对象</b>选项：</p><ul><li><b>同一类型的每个对象：</b>嵌套在其他对象中的内容，例如 Terrains.ndf 中的某个地形。</li><li><b>顶级常量：</b>如<span class=\"mono\">Helico_MaxStunDamages is 450</span>这类行。</li></ul><h3>哪些规则</h3><p>“编辑”、“删除描述符”、“查找和替换”、“缩放”、“公式”、“查找”和“检查”。</p><h3>同一类型的对象</h3><ul><li>先指定类型，例如 <span class=\"mono\">TGameplayTerrain</span>，然后指定一个条件，例如“名称等于 <span class=\"mono\">ForetDense</span>”。</li><li>条件和目标仅针对该对象。</li><li>描述符标题是指包含该对象的描述符的标题，因此标题条件仍会选中该单元。</li><li>规则上方的“组”仍会测试整个描述符。</li></ul><h3>顶级常量</h3><p>如 DamageModules.ndf 所示。它们共同构成一个描述符，每个常量作为该描述符的一个属性，因此目标即为常量的名称。</p><div class=\"wkcall\"><b>Tip</b><span>Details 根据该对象的描述符、类型及其名称（如有）来命名该对象。</span></div>",
+      "english": "<p class=\"wklead\">A rule normally looks at each descriptor in a file. For files built differently, some rules have an <b>Applies to</b> choice:</p><ul><li><b>Each object of one type:</b> things inside other things, like one terrain in Terrains.ndf.</li><li><b>Top-level constants:</b> lines like <span class=\"mono\">Helico_MaxStunDamages is 450</span>.</li></ul><h3>Which Rules</h3><p>Edit, Remove descriptors, Find and replace, Scale, Formula, Lookup and Check.</p><h3>Objects of One Type</h3><ul><li>Give the type, like <span class=\"mono\">TGameplayTerrain</span>, then a condition such as Name Is Equal To <span class=\"mono\">ForetDense</span>.</li><li>Conditions and targets see only that object.</li><li>To test the descriptor holding the object instead, start the condition's property with <b>Parent:</b>, as in <span class=\"mono\">Parent: TagSet</span> Contains Infanterie for the armor of infantry units only. Tick <b>Custom</b> to type it.</li><li>Descriptor Title is the title of the descriptor holding the object, so title conditions still pick the unit.</li><li>A Group above the rule still tests the whole descriptor.</li></ul><h3>Top-level Constants</h3><p>As in DamageModules.ndf. Together they count as one descriptor with each constant as a property, so the target is the constant's name.</p><div class=\"wkcall\"><b>Tip</b><span>Details names such an object by its descriptor, type and Name, if it has one.</span></div>",
+      "text": "<p class=\"wklead\">一条规则通常会检查文件中的每个描述符。对于结构不同的文件，某些规则提供<b>适用对象</b>选项：</p><ul><li><b>同一类型的每个对象：</b>嵌套在其他对象中的内容，例如 Terrains.ndf 中的某个地形。</li><li><b>顶级常量：</b>如<span class=\"mono\">Helico_MaxStunDamages is 450</span>这类行。</li></ul><h3>哪些规则</h3><p>“编辑”、“删除描述符”、“查找和替换”、“缩放”、“公式”、“查找”和“检查”。</p><h3>同一类型的对象</h3><ul><li>先指定类型，例如 <span class=\"mono\">TGameplayTerrain</span>，然后指定一个条件，例如“名称等于 <span class=\"mono\">ForetDense</span>”。</li><li>条件和目标仅针对该对象。</li><li>若要改为检查包含该对象的描述符，请在条件的属性前加上 <b>Parent:</b>，例如 <span class=\"mono\">Parent: TagSet</span> 包含 Infanterie，仅针对步兵单位的装甲。勾选<b>自定义</b>即可输入。</li><li>描述符标题是指包含该对象的描述符的标题，因此标题条件仍会选中该单元。</li><li>规则上方的“组”仍会测试整个描述符。</li></ul><h3>顶级常量</h3><p>如 DamageModules.ndf 所示。它们共同构成一个描述符，每个常量作为该描述符的一个属性，因此目标即为常量的名称。</p><div class=\"wkcall\"><b>Tip</b><span>Details 根据该对象的描述符、类型及其名称（如有）来命名该对象。</span></div>",
       "machine": true
     },
     "Help.Page.conditions.Title": {
@@ -17670,8 +17665,8 @@
       "machine": true
     },
     "Help.Page.conditions.Html": {
-      "english": "<p class=\"wklead\">Conditions pick which descriptors a rule changes.</p><h3>The Three Boxes</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Box</th><th>Holds</th><th>Example</th></tr></thead><tbody><tr><td>Operand</td><td>What to look at: name, type, all text, or a property.</td><td>Descriptor Title</td></tr><tr><td>Operator</td><td>The test.</td><td>Starts With</td></tr><tr><td>Value</td><td>What to test against.</td><td><span class=\"mono\">Ammo_Canon</span></td></tr></tbody></table></div><h3>Tests</h3><ul><li><b>Text:</b> Starts With, Ends With, Contains, Does Not Contain, Is Equal To, Is Not Equal To.</li><li><b>Numbers:</b> Is Less Than, Is Greater Than, and their \"Or Equal To\" forms.</li><li><b>Lists:</b> Contains Any Of, Contains All Of; separate values with commas.</li></ul><div class=\"wkcall wkwarn\"><b>Careful</b><span>\"Does Not Contain\" and \"Is Not Equal To\" are also true when the descriptor lacks the property.</span></div><h3>Several Conditions</h3><p><b>Any</b>: one must match. <b>All</b>: every one must. Set it beside the <b>Conditions</b> heading. With no conditions, an Edit rule set to <b>Any</b> matches nothing.</p><h3>Shortcuts</h3><ul><li><kbd>Enter</kbd> or double-click opens the selected condition.</li><li><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> copy it to another rule.</li><li><kbd>Ctrl</kbd>+<kbd>&uarr;</kbd>/<kbd>&darr;</kbd> move it.</li></ul><h3>One List Item</h3><p>Tick <b>Custom</b> and write the list name with the item in square brackets: <span class=\"mono\">Salves[0]</span> (from 0), <span class=\"mono\">Salves[FirstIndex]</span>, <span class=\"mono\">Salves[LastIndex]</span> or <span class=\"mono\">Salves[LastIndex-1]</span>.</p><h3>Good to Know</h3><ul><li>Properties are found at any depth in the descriptor.</li><li>Quoted values match with or without quotes.</li><li>Conditions read values in one fixed layout, whatever the spacing, and never see comments.</li><li>Hover an operand for its full name.</li></ul>",
-      "text": "<p class=\"wklead\">条件用于选择规则将要修改的描述符。</p><h3>三个框</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>框</th><th>包含</th><th>示例</th></tr></thead><tbody><tr><td>操作数</td><td>关注内容：名称、类型、所有文本或某个属性。</td><td>描述符标题</td></tr><tr><td>运算符</td><td>测试。</td><td>以...开头</td></tr><tr><td>值</td><td>用于测试的对象。</td><td><span class=\"mono\">Ammo_Canon</span></td></tr></tbody></table></div><h3>测试</h3><ul><li><b>文本：</b>以…开头、以…结尾、包含、不包含、等于、不等于。</li><li><b>数字：</b>小于、大于及其“或等于”形式。</li><li><b>列表：</b>包含其中任意一个、包含所有；用逗号分隔各个值。</li></ul><div class=\"wkcall wkwarn\"><b>注意</b><span>“不包含”和“不等于”在描述符不具备该属性时也成立。</span></div><h3>多个条件</h3><p><b>任意</b>：至少有一个必须匹配。<b>全部</b>：每个都必须匹配。将其设置在<b>条件</b>标题旁边。若没有条件，设为<b>任意</b>的“编辑规则”不会匹配任何内容。</p><h3>快捷方式</h3><ul><li><kbd>Enter</kbd>或双击可打开所选条件。</li><li><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> 可将其复制到另一条规则中。</li><li><kbd>Ctrl</kbd> + <kbd>&uarr;</kbd> / <kbd>&darr;</kbd> 可将其移动。</li></ul><h3>单个列表项</h3><p>勾选<b>自定义</b>，并在方括号中输入列表名称及项目：<span class=\"mono\">Salves[0]</span>（从 0 开始）、<span class=\"mono\">Salves[FirstIndex]</span>、<span class=\"mono\">Salves[LastIndex]</span> 或 <span class=\"mono\">Salves[LastIndex-1]</span>。</p><h3>知识点</h3><ul><li>属性可在描述符的任何深度处找到。</li><li>带引号的值无论是否带引号都会匹配。</li><li>条件会以一种固定布局读取值，无论间距如何，且永远不会看到注释。</li><li>将鼠标悬停在操作数上可查看其全名。</li></ul>",
+      "english": "<p class=\"wklead\">Conditions pick which descriptors a rule changes.</p><h3>The Three Boxes</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>Box</th><th>Holds</th><th>Example</th></tr></thead><tbody><tr><td>Operand</td><td>What to look at: name, type, all text, or a property.</td><td>Descriptor Title</td></tr><tr><td>Operator</td><td>The test.</td><td>Starts With</td></tr><tr><td>Value</td><td>What to test against.</td><td><span class=\"mono\">Ammo_Canon</span></td></tr></tbody></table></div><h3>Tests</h3><ul><li><b>Text:</b> Starts With, Ends With, Contains, Does Not Contain, Is Equal To, Is Not Equal To.</li><li><b>Numbers:</b> Is Less Than, Is Greater Than, and their \"Or Equal To\" forms.</li><li><b>Lists:</b> Contains Any Of, Contains All Of; separate values with commas.</li></ul><div class=\"wkcall wkwarn\"><b>Careful</b><span>\"Does Not Contain\" and \"Is Not Equal To\" are also true when the descriptor lacks the property.</span></div><h3>Several Conditions</h3><p><b>Any</b>: one must match. <b>All</b>: every one must. Set it beside the <b>Conditions</b> heading. With no conditions, an Edit rule set to <b>Any</b> matches nothing.</p><h3>Shortcuts</h3><ul><li><kbd>Enter</kbd> or double-click opens the selected condition.</li><li><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> copy it to another rule.</li><li><kbd>Ctrl</kbd>+<kbd>&uarr;</kbd>/<kbd>&darr;</kbd> move it.</li></ul><h3>One List Item</h3><p>Tick <b>Custom</b> and write the list name with the item in square brackets: <span class=\"mono\">Salves[0]</span> (from 0), <span class=\"mono\">Salves[FirstIndex]</span>, <span class=\"mono\">Salves[LastIndex]</span> or <span class=\"mono\">Salves[LastIndex-1]</span>.</p><h3>Good to Know</h3><ul><li>Properties are found at any depth in the descriptor.</li><li>To test one property among several of the same name, write a path, as for an action's target: <span class=\"mono\">Damage &gt; Index</span>, or <span class=\"mono\">&gt; Squad &gt; Index</span> for the descriptor's own property. Tick <b>Custom</b> to type it.</li><li>Quoted values match with or without quotes.</li><li>Conditions read values in one fixed layout, whatever the spacing, and never see comments.</li><li>Hover an operand for its full name.</li></ul>",
+      "text": "<p class=\"wklead\">条件用于选择规则将要修改的描述符。</p><h3>三个框</h3><div class=\"list sunken helptbl\"><table><thead><tr><th>框</th><th>包含</th><th>示例</th></tr></thead><tbody><tr><td>操作数</td><td>关注内容：名称、类型、所有文本或某个属性。</td><td>描述符标题</td></tr><tr><td>运算符</td><td>测试。</td><td>以...开头</td></tr><tr><td>值</td><td>用于测试的对象。</td><td><span class=\"mono\">Ammo_Canon</span></td></tr></tbody></table></div><h3>测试</h3><ul><li><b>文本：</b>以…开头、以…结尾、包含、不包含、等于、不等于。</li><li><b>数字：</b>小于、大于及其“或等于”形式。</li><li><b>列表：</b>包含其中任意一个、包含所有；用逗号分隔各个值。</li></ul><div class=\"wkcall wkwarn\"><b>注意</b><span>“不包含”和“不等于”在描述符不具备该属性时也成立。</span></div><h3>多个条件</h3><p><b>任意</b>：至少有一个必须匹配。<b>全部</b>：每个都必须匹配。将其设置在<b>条件</b>标题旁边。若没有条件，设为<b>任意</b>的“编辑规则”不会匹配任何内容。</p><h3>快捷方式</h3><ul><li><kbd>Enter</kbd>或双击可打开所选条件。</li><li><kbd>Ctrl</kbd>+<kbd>C</kbd>/<kbd>V</kbd> 可将其复制到另一条规则中。</li><li><kbd>Ctrl</kbd> + <kbd>&uarr;</kbd> / <kbd>&darr;</kbd> 可将其移动。</li></ul><h3>单个列表项</h3><p>勾选<b>自定义</b>，并在方括号中输入列表名称及项目：<span class=\"mono\">Salves[0]</span>（从 0 开始）、<span class=\"mono\">Salves[FirstIndex]</span>、<span class=\"mono\">Salves[LastIndex]</span> 或 <span class=\"mono\">Salves[LastIndex-1]</span>。</p><h3>知识点</h3><ul><li>属性可在描述符的任何深度处找到。</li><li>若要在多个同名属性中只检查其中一个，请像操作的目标那样写路径：<span class=\"mono\">Damage &gt; Index</span>，或用 <span class=\"mono\">&gt; Squad &gt; Index</span> 表示描述符自身的属性。勾选<b>自定义</b>即可输入。</li><li>带引号的值无论是否带引号都会匹配。</li><li>条件会以一种固定布局读取值，无论间距如何，且永远不会看到注释。</li><li>将鼠标悬停在操作数上可查看其全名。</li></ul>",
       "machine": true
     },
     "Help.Page.actions.Title": {
@@ -18577,6 +18572,111 @@
     "Help.ChangeLog.1.1.4.Html": {
       "english": "<h2>1.1.4</h2>\n<h3>Added</h3>\n<ul>\n  <li>F11 switches the main window, or a tab in its own window, to full screen and back. The title row stays. F11 does nothing while a popup, a question or the rule popup is open.</li>\n</ul>\n<h3>Fixed</h3>\n<ul>\n  <li>The window's place and the File Editor's open files are kept again when the app closes.</li>\n  <li>Tabs in their own windows: the File Editor's file list and buttons follow the Files tab at once.</li>\n  <li>Tabs in their own windows: a new language reaches their titles and the main window's notes.</li>\n  <li>Tabs in their own windows: Show in File Editor shows the File Editor.</li>\n  <li>Tabs in their own windows: a window that cannot close yet comes to the front, showing why.</li>\n  <li>Tabs in their own windows: the Theme Designer stays open when the Settings window closes.</li>\n  <li>The maximize button shows Restore when a window opens maximized.</li>\n  <li>Mod Conflicts: Show in File Editor on a conflicting constant goes to that constant.</li>\n</ul>\n<h3>Changed</h3>\n<ul>\n  <li>Reset Look and Layout also forgets where tabs in their own windows open.</li>\n  <li>Open in New Window is greyed out while a rule is open.</li>\n</ul>\n",
       "text": "<h2>1.1.4</h2>\n<h3>新增</h3>\n<ul>\n  <li>F11 可将主窗口或单独窗口中的选项卡切换为全屏，再按一次恢复。标题行保留。弹出窗口、提问或规则弹出窗口打开时，F11 不起作用。</li>\n</ul>\n<h3>修复</h3>\n<ul>\n  <li>关闭应用时，窗口位置和文件编辑器中打开的文件会再次保存。</li>\n  <li>单独窗口中的选项卡：文件编辑器的文件列表和按钮会立即跟随“文件”选项卡更新。</li>\n  <li>单独窗口中的选项卡：切换语言后，其标题和主窗口中的提示会随之更新。</li>\n  <li>单独窗口中的选项卡：“在文件编辑器中显示”会显示文件编辑器。</li>\n  <li>单独窗口中的选项卡：暂时无法关闭的窗口会移到最前面，显示原因。</li>\n  <li>单独窗口中的选项卡：关闭“设置”窗口时，主题设计器保持打开。</li>\n  <li>窗口以最大化方式打开时，最大化按钮显示“还原”。</li>\n  <li>模组冲突：对冲突常量使用“在文件编辑器中显示”会跳转到该常量。</li>\n</ul>\n<h3>更改</h3>\n<ul>\n  <li>“重置外观和布局”也会忘记单独窗口中选项卡的打开位置。</li>\n  <li>有规则打开时，“在新窗口中打开”显示为灰色。</li>\n</ul>\n",
+      "machine": true
+    },
+    "Rules.Editor.WhenItFails": {
+      "english": "When it fails",
+      "text": "失败时",
+      "machine": true
+    },
+    "Rules.Editor.StopExport": {
+      "english": "Stop the export",
+      "text": "停止导出",
+      "machine": true
+    },
+    "Rules.Editor.StopExport.Tip": {
+      "english": "Export stops before writing any file, and the Files tab names this rule.",
+      "text": "导出会在写入任何文件之前停止，“文件”选项卡会指出这条规则。",
+      "machine": true
+    },
+    "Files.Run.Stopped": {
+      "english": "Export stopped before writing any file: the Check rule \"{rule}\" failed in {file}. {message}",
+      "text": "导出已在写入任何文件之前停止：检查规则“{rule}”在 {file} 中未通过。{message}",
+      "machine": true
+    },
+    "Files.Run.Stopped.Row": {
+      "english": "Stopped the export: {rule}",
+      "text": "已停止导出：{rule}",
+      "machine": true
+    },
+    "Settings.FirstDeckNumber": {
+      "english": "First deck number for new units",
+      "text": "新单位的起始卡组编号",
+      "machine": true
+    },
+    "Settings.FirstDeckNumber.Note": {
+      "english": "Empty: one after the highest number in use. A number such as 50000 keeps new units clear of the numbers a game update gives its own new units. 1 to 65535.",
+      "text": "留空：比已用的最大编号大 1。设为 50000 之类的编号，可避免新单位与游戏更新给其自身新单位的编号冲突。范围 1 到 65535。",
+      "machine": true
+    },
+    "Settings.FirstDeckNumber.Refused": {
+      "english": "Enter a whole number from 1 to 65535, or leave it empty.",
+      "text": "请输入 1 到 65535 之间的整数，或留空。",
+      "machine": true
+    },
+    "Rules.Editor.DataFile": {
+      "english": "Read from a file",
+      "text": "从文件读取",
+      "machine": true
+    },
+    "Rules.Editor.DataFile.Hint": {
+      "english": "Empty: use the text below",
+      "text": "留空：使用下方文本",
+      "machine": true
+    },
+    "Rules.Editor.DataFile.Browse": {
+      "english": "Browse…",
+      "text": "浏览…",
+      "machine": true
+    },
+    "Rules.Editor.DataFile.Browse.Tip": {
+      "english": "Choose a .csv, .tsv or .txt file",
+      "text": "选择 .csv、.tsv 或 .txt 文件",
+      "machine": true
+    },
+    "Rules.Editor.DataFile.Title": {
+      "english": "Choose a Data File",
+      "text": "选择数据文件",
+      "machine": true
+    },
+    "Rules.Editor.DataFile.Filter": {
+      "english": "Data files (*.csv, *.tsv, *.txt)",
+      "text": "数据文件 (*.csv, *.tsv, *.txt)",
+      "machine": true
+    },
+    "Rules.Editor.DataFile.TableNote": {
+      "english": "Read again at every export, so another tool can make the table. A file inside the Mods folder is kept by its path there and goes with the mod.",
+      "text": "每次导出时重新读取，因此可由其他工具生成表格。Mods 文件夹中的文件按其在该文件夹中的路径保存，并随模组一起带走。",
+      "machine": true
+    },
+    "Rules.Editor.DataFile.VariableNote": {
+      "english": "Each row of the file is a variable: its name, then its value (a first row \"Name,Value\" is a heading). Read again at every export.",
+      "text": "文件的每一行是一个变量：先是名称，再是值（第一行“Name,Value”视为标题）。每次导出时重新读取。",
+      "machine": true
+    },
+    "Rules.Editor.DataFile.NotRead": {
+      "english": "This file can't be read. Use a .csv, .tsv or .txt file, by its full path or its path inside the Mods folder.",
+      "text": "无法读取此文件。请使用 .csv、.tsv 或 .txt 文件，填写完整路径或其在 Mods 文件夹中的路径。",
+      "machine": true
+    },
+    "Rules.ModFile.NotPackage": {
+      "english": "not a mod package ({problem})",
+      "text": "不是模组包（{problem}）",
+      "machine": true
+    },
+    "Rules.ModFile.PackageTooLarge": {
+      "english": "a mod package too large to read",
+      "text": "模组包过大，无法读取",
+      "machine": true
+    },
+    "Rules.Mod.ExportFilter.Both": {
+      "english": "Mod package, with its files and pictures (*.mod.zip)|*.mod.zip|Mod file for EasyNDF before 1.1.5 (*.mod.json)|*.mod.json",
+      "text": "模组包，含其文件和图片 (*.mod.zip)|*.mod.zip|适用于 1.1.5 之前 EasyNDF 的模组文件 (*.mod.json)|*.mod.json",
+      "machine": true
+    },
+    "Settings.ModFilesAndPackages": {
+      "english": "Mod files and packages (*.mod.zip, *.json)|*.mod.zip;*.json",
+      "text": "模组文件和模组包 (*.mod.zip, *.json)|*.mod.zip;*.json",
       "machine": true
     }
   }

@@ -420,7 +420,7 @@ public sealed partial class ActionApplier
     /// The key a path part names in square brackets, "[~/Descriptor_Deck_Division_X]": one entry of a list, such as one
     /// division's rule in Steel Division 2's DivisionRules MAP, where every division's sits. Null for any other part.
     /// </summary>
-    private static string? EntryKeyOf(string part) =>
+    internal static string? EntryKeyOf(string part) =>
         part.Length > 2 && part[0] == '[' && part[^1] == ']' ? JsText.Trim(part[1..^1]) : null;
 
     /// <summary>
@@ -428,7 +428,7 @@ public sealed partial class ActionApplier
     /// property whose value is it (a division's unit rule, by its UnitDescriptor). A reference matches by its last part
     /// too, so "~/X" finds "$/GFX/Unit/X".
     /// </summary>
-    private static bool IsEntryOf(NdfValue node, string key)
+    internal static bool IsEntryOf(NdfValue node, string key)
     {
         if (node is PairValue { Kind: PairKind.Pair } entry) return entry.First.IsPrimitive && IsKey(CanonicalWriter.PrimitiveText(entry.First), key);
         return node is ObjectValue holder && holder.Properties.Any(property => property.Value.IsPrimitive && IsKey(CanonicalWriter.PrimitiveText(property.Value), key));

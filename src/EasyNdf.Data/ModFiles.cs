@@ -11,7 +11,7 @@ namespace EasyNdf.Data;
 /// The mod file format (<c>FormatVersion: 1</c>), shared with the HTML app: "Export mod", "Back up all mods", and reading
 /// either kind back in.
 /// </summary>
-public static class ModFiles
+public static partial class ModFiles
 {
     /// <summary>
     /// The text "Export mod" saves: <c>{ModName, FormatVersion, Game, Watermark?, Presets: [{PresetName, Rules}], Divisions?, Units?, UnitEdits?, WeaponEdits?, Weapons?}</c>.
@@ -24,11 +24,16 @@ public static class ModFiles
     /// <param name="mod">The mod.</param>
     /// <param name="isOn">Whether it is switched on on the Mods tab.</param>
     /// <param name="store">Where the files of the mod's File rules are kept: the mod file carries them, so it can be shared whole. Null leaves them out.</param>
-    public static string ExportText(Mod mod, bool isOn, ModFileStore? store = null)
+    /// <param name="picture">
+    /// The bytes of a picture the mod's Armory changes name (an emblem, a unit's card picture), by the path the mod
+    /// names it by; null when it is not found. Null leaves the pictures out. Versions before 1.1.5 ignore them.
+    /// </param>
+    public static string ExportText(Mod mod, bool isOn, ModFileStore? store = null, Func<string, byte[]?>? picture = null)
     {
         JsonObject json = ToJson(mod, nameRows: true);
         json["On"] = isOn;
         if (store is not null && CarriedFilesToJson([mod], store) is JsonObject files) json["Files"] = files;
+        if (picture is not null && CarriedPicturesToJson(PicturesOf(json, picture)) is JsonObject pictures) json[PicturesKey] = pictures;
         return JsonFiles.ToText(json);
     }
 
@@ -68,7 +73,8 @@ public static class ModFiles
     /// </summary>
     /// <param name="mods">Every mod.</param>
     /// <param name="store">Where the files of the mods' File rules are kept: the first entry carries them all. Null leaves them out.</param>
-    public static string BackupText(IEnumerable<Mod> mods, ModFileStore? store = null)
+    /// <param name="picture">The bytes of a picture the mods name, as for <see cref="ExportText(Mod, bool, ModFileStore?, Func{string, byte[]?}?)"/>; the first entry carries them all.</param>
+    public static string BackupText(IEnumerable<Mod> mods, ModFileStore? store = null, Func<string, byte[]?>? picture = null)
     {
         var all = new JsonArray();
         foreach (Mod mod in mods)
@@ -93,6 +99,7 @@ public static class ModFiles
             }
         }
         if (store is not null && all.Count > 0 && CarriedFilesToJson(mods, store) is JsonObject files) all[0]!["Files"] = files;
+        if (picture is not null && all.Count > 0 && CarriedPicturesToJson(PicturesOf(all, picture)) is JsonObject pictures) all[0]![PicturesKey] = pictures;
         return JsonFiles.ToText(all);
     }
 
@@ -169,6 +176,7 @@ public static class ModFiles
         mod.UnitDeckNumbers = DeckNumbersFromJson(modFile["DeckNumbers"]);
         mod.WasOn = modFile["On"] is JsonValue on && on.TryGetValue(out bool isOn) ? isOn : null;
         mod.CarriedFiles = CarriedFilesFromJson(modFile["Files"]);
+        mod.CarriedPictures = CarriedPicturesFromJson(modFile[PicturesKey]);
         return mod;
     }
 
@@ -210,6 +218,7 @@ public static class ModFiles
             if (withDeckNumbers is not null) mod.UnitDeckNumbers = DeckNumbersFromJson(withDeckNumbers["DeckNumbers"]);
             // a backup's files ride with its first entry, for every mod
             mod.CarriedFiles = CarriedFilesFromJson(list.OfType<JsonObject>().FirstOrDefault()?["Files"]);
+            mod.CarriedPictures = CarriedPicturesFromJson(list.OfType<JsonObject>().FirstOrDefault()?[PicturesKey]);
             mods.Add(mod);
         }
         return mods;

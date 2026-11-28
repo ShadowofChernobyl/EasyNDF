@@ -78,6 +78,18 @@ public sealed class SharedVariables
                 foreach (JsonObject rule in RulesThatRun(ruleSet))
                 {
                     if ((string?)rule["Kind"] != "Variable") continue;
+                    // "Read from a file": each row of the file is one variable
+                    if (((string?)rule["Params"]?["DataFile"] ?? "").Trim() is { Length: > 0 } file)
+                    {
+                        string? text = DataFiles.Read(file);
+                        // a name twice in one file is not a clash: the last row's value counts, as in the run
+                        var rows = new Dictionary<string, string>(StringComparer.Ordinal);
+                        if (text is not null)
+                            foreach ((string rowName, string rowValue) in Engine.Rules.RuleRunner.VariableRows(Engine.Rules.TableText.Read(text)))
+                                rows[rowName] = rowValue;
+                        foreach ((string rowName, string rowValue) in rows) found.Add(new Definition(rowName, rowValue, ScopeOf(rule), mod, ruleSet, rule));
+                        continue;
+                    }
                     string name = ((string?)rule["Params"]?["VarName"] ?? "").Trim();
                     if (name != "") found.Add(new Definition(name, ((string?)rule["Params"]?["Value"] ?? "").Trim(), ScopeOf(rule), mod, ruleSet, rule));
                 }

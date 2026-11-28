@@ -4,4 +4,9 @@
     <Project Path="src/EasyNdf.Data/EasyNdf.Data.csproj" />
     <Project Path="src/EasyNdf.Engine/EasyNdf.Engine.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EasyNdf.App.Tests/EasyNdf.App.Tests.csproj" />
+    <Project Path="tests/EasyNdf.Data.Tests/EasyNdf.Data.Tests.csproj" />
+    <Project Path="tests/EasyNdf.Engine.Tests/EasyNdf.Engine.Tests.csproj" />
+  </Folder>
 </Solution>

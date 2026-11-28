@@ -531,7 +531,8 @@ public partial class FilesPage : UserControl
     /// </summary>
     public async Task AddDropped(IReadOnlyList<string> paths)
     {
-        var files = paths.Where(File.Exists).Where(path => !path.EndsWith(".json", StringComparison.OrdinalIgnoreCase)).ToList();
+        // mod files and packages (.mod.zip) dropped here are not game files: a package is not an archive of them
+        var files = paths.Where(File.Exists).Where(path => !path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && !Data.ModPackage.IsPackage(path)).ToList();
         var folders = paths.Where(Directory.Exists).ToList();
         if (folders.Count == 0)
         {

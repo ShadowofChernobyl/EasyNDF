@@ -39,7 +39,7 @@ public partial class UnitsPage
             List<string> missing = FilesMissingFor(mod =>
             {
                 ModUnit added = trial.Copy();
-                added.DeckNumber = ModUnit.NextDeckNumber(GameUnits, mod);
+                added.DeckNumber = ModUnit.NextDeckNumber(GameUnits, mod, AppData.Current.Settings[ModUnit.FirstDeckNumberSetting]?.GetValue<int>() ?? 0);
                 mod.Units.Add(added);
             });
             if (missing.Count > 0)
@@ -109,7 +109,7 @@ public partial class UnitsPage
         {
             foreach (ModWeapon copy in copies) mod.Weapons.Add(copy.Copy());
             ModUnit added = unit.Copy();
-            added.DeckNumber = ModUnit.NextDeckNumber(GameUnits, mod);
+            added.DeckNumber = ModUnit.NextDeckNumber(GameUnits, mod, AppData.Current.Settings[ModUnit.FirstDeckNumberSetting]?.GetValue<int>() ?? 0);
             mod.Units.Add(added);
             // the copies given its model's loadout reach its own loadout too, as they would its model's
             if (added.LoadoutFrom is string from) ModWeapon.FollowOwnLoadout(mod, from, LoadoutRules.OwnLoadoutName(added.Descriptor));

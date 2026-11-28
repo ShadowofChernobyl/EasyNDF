@@ -165,6 +165,7 @@ public abstract class UnitValues
         Speed = Speed ?? unit.Speed,
         SpeedScale = unit.SpeedScale,
         SpeedIsInFlight = unit.SpeedIsInFlight,
+        OpticsInFlight = unit.OpticsInFlight,
         RoadSpeed = RoadSpeed ?? unit.RoadSpeed,
         Optics = Optics ?? unit.Optics,
         Vision = Vision ?? unit.Vision,

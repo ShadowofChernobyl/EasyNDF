@@ -57,6 +57,12 @@ public sealed class Declaration
     /// </summary>
     public bool IsStandIn { get; init; }
 
+    /// <summary>
+    /// For an object standing in for a descriptor (a rule that applies to each object of one type): the descriptor
+    /// it is in, which conditions starting with "Parent:" test. Null otherwise.
+    /// </summary>
+    public Declaration? Parent { get; init; }
+
     /// <summary>True for the stand-in that holds the file's top-level constants.</summary>
     public bool IsConstantsStandIn { get; init; }
 

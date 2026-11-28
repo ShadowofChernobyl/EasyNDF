@@ -4,7 +4,7 @@ namespace EasyNdf.Engine.Text;
 /// Text helpers that behave exactly like their JavaScript counterparts.
 /// </summary>
 /// <remarks>
-/// The engine must write byte-for-byte the same files as the HTML app, whose engine is JavaScript.
+/// The engine was written to give byte-for-byte the same files as the HTML app, whose engine is JavaScript (frozen since 1.1.4).
 /// C# and JavaScript disagree on a few small things that matter here:
 /// <list type="bullet">
 /// <item>What counts as white space: JavaScript includes U+FEFF and leaves out U+0085; C# does the opposite.</item>

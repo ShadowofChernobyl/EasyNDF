@@ -209,6 +209,8 @@
   "Files.Folder.CountSelected": "{files}, {selected} selected",
   "Files.Run.NotLoaded": "Nothing to run. The files are not loaded: add them again and they reattach by name.",
   "Files.Run.NothingToRun": "Nothing to run. A file must be on, and a mod that is on must have rules for it.",
+  "Files.Run.Stopped": "Export stopped before writing any file: the Check rule \"{rule}\" failed in {file}. {message}",
+  "Files.Run.Stopped.Row": "Stopped the export: {rule}",
   "Files.Run.ModOff": "Not run: {mod} is off on the Mods tab.",
   "Files.Run.Waiting": "Waiting…",
   "Files.Run.Working": "Working…",

@@ -86,6 +86,12 @@ public sealed class Mod
     public IReadOnlyDictionary<string, byte[]> CarriedFiles { get; set; } = new Dictionary<string, byte[]>();
 
     /// <summary>
+    /// The pictures its Armory changes name (emblems, units' card pictures) that its mod file carried, by file name,
+    /// for the import to keep where the Armory finds them. Only a mod just read from a file has them.
+    /// </summary>
+    public IReadOnlyDictionary<string, byte[]> CarriedPictures { get; set; } = new Dictionary<string, byte[]>();
+
+    /// <summary>
     /// The length of the mod file's text the mod was read from; 0 for a mod made otherwise (a copy, one from a backup).
     /// Rules read from a file keep the whole file in memory while any of them is in use, for the usage readout.
     /// </summary>

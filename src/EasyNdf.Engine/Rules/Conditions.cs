@@ -79,6 +79,89 @@ public static partial class Conditions
         }
     }
 
+    /// <summary>What a condition's operand starts with to test the descriptor an object is in (<see cref="Declaration.Parent"/>).</summary>
+    public const string ParentPrefix = "Parent:";
+
+    /// <summary>The rest of an operand that starts with "Parent:", trimmed; null for any other operand.</summary>
+    private static string? ParentOperand(string? operand)
+    {
+        string trimmed = JsText.Trim(operand ?? "");
+        return trimmed.StartsWith(ParentPrefix, StringComparison.Ordinal) ? JsText.Trim(trimmed[ParentPrefix.Length..]) : null;
+    }
+
+    /// <summary>
+    /// An operand as a path: the parts above the last, whether it starts at the descriptor's own properties ("&gt; A"),
+    /// and the last part. A plain name is a path of one part, found at any depth.
+    /// </summary>
+    private static (string[] Above, bool Anchored, string Last) PathOf(string operand)
+    {
+        string trimmed = JsText.Trim(operand);
+        bool anchored = trimmed.StartsWith('>');
+        if (!anchored && !trimmed.Contains(ActionApplier.PathSeparator)) return ([], false, operand);
+        if (anchored) trimmed = JsText.Trim(trimmed[1..]);
+        string[] parts = [.. trimmed.Split(ActionApplier.PathSeparator).Select(part => JsText.Trim(part))];
+        return (parts[..^1], anchored, parts[^1]);
+    }
+
+    /// <summary>
+    /// The values of a name found along a path, as an action's target path finds them (<see cref="ActionApplier"/>):
+    /// each part above is a property name, or "[Key]" for one entry of a list; anchored, every part is one level below
+    /// the one before, starting at the descriptor's own properties. With no parts above and not anchored, the same as
+    /// <see cref="Collect"/>.
+    /// </summary>
+    private static void CollectAlong(NdfValue root, string[] above, bool anchored, string name, List<NdfValue> found)
+    {
+        if (above.Length == 0 && !anchored)
+        {
+            Collect(root, name, found);
+            return;
+        }
+        WalkAlong(root, above, anchored, name, found);
+    }
+
+    private static void WalkAlong(NdfValue node, string[] above, bool anchored, string name, List<NdfValue> found)
+    {
+        switch (node)
+        {
+            case ObjectValue obj:
+                foreach (var property in obj.Properties) VisitAlong(property.Name, property.Value, above, anchored, name, found);
+                break;
+            case ListValue list:
+                for (int i = 0; i < list.Items.Count; i++) VisitAlong("Index" + i, list.Items[i], above, anchored, name, found);
+                break;
+            case PairValue { Kind: PairKind.Pair } pair:
+                // (Key, Value) with the key as the name: the value
+                if (above.Length == 0 && pair.First.IsPrimitive && CanonicalWriter.PrimitiveText(pair.First) == name) found.Add(pair.Second);
+                VisitAlong("Value1", pair.First, above, anchored, name, found);
+                VisitAlong("Value2", pair.Second, above, anchored, name, found);
+                break;
+            case PairValue or:
+                VisitAlong(null, or.First, above, anchored, name, found);
+                VisitAlong(null, or.Second, above, anchored, name, found);
+                break;
+            case AssignValue assign:
+                VisitAlong(null, assign.Value, above, anchored, name, found);
+                break;
+        }
+    }
+
+    private static void VisitAlong(string? propertyName, NdfValue node, string[] above, bool anchored, string name, List<NdfValue> found)
+    {
+        if (above.Length > 0)
+        {
+            if (node.IsPrimitive) return;
+            if (ActionApplier.EntryKeyOf(above[0]) is string key && ActionApplier.IsEntryOf(node, key))
+                WalkAlong(node is PairValue entry ? entry.Second : node, above[1..], anchored, name, found);
+            else if (propertyName == above[0]) WalkAlong(node, above[1..], anchored, name, found);
+            // an anchored path only steps into the property its next part names
+            else if (!anchored) WalkAlong(node, above, anchored, name, found);
+            return;
+        }
+        if (propertyName == name) found.Add(node);
+        // an anchored path goes no deeper than the level its last part names
+        if (!node.IsPrimitive && !anchored) WalkAlong(node, above, anchored, name, found);
+    }
+
     /// <summary>One candidate a condition tests: the texts it can match, and its number, or NaN when it is not a number.</summary>
     private readonly record struct Candidate(string[] Forms, double Number);
 
@@ -86,6 +169,12 @@ public static partial class Conditions
     public static bool Test(Declaration descriptor, Condition condition)
     {
         string? operand = condition.OperandInUse;
+        // "Parent: TagSet": with a rule that applies to each object of one type, the descriptor the object is in; with
+        // any other rule, the descriptor itself, so the same condition reads the same way in either
+        if (ParentOperand(operand) is string onParent)
+        {
+            (descriptor, operand) = (descriptor.Parent ?? descriptor, onParent);
+        }
         string op = condition.Operator ?? "";
         string value = condition.Value ?? "";
 
@@ -121,12 +210,14 @@ public static partial class Conditions
         if (operand == DescriptorType) return [new Candidate([descriptor.TypeName], double.NaN)];
 
         var values = new List<NdfValue>();
-        Match index = IndexedOperand().Match(operand ?? "");
+        // "Outer > Inner" or "> A > B": the last part found only along the path, as an action's target path finds it
+        (string[] above, bool anchored, string last) = PathOf(operand ?? "");
+        Match index = IndexedOperand().Match(last);
         if (index.Success)
         {
             // Name[LastIndex], Name[FirstIndex], Name[2], Name[LastIndex-1]: one item of a list, counted as the list actions count.
             var lists = new List<NdfValue>();
-            Collect(descriptor.Value, index.Groups[1].Value, lists);
+            CollectAlong(descriptor.Value, above, anchored, index.Groups[1].Value, lists);
             foreach (var found in lists)
             {
                 if (found is not ListValue list) continue;
@@ -139,7 +230,7 @@ public static partial class Conditions
         }
         else
         {
-            Collect(descriptor.Value, operand, values);
+            CollectAlong(descriptor.Value, above, anchored, last, values);
         }
 
         return values.Select(v =>

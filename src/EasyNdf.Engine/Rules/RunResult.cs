@@ -83,6 +83,15 @@ public sealed class RunOptions
     /// </summary>
     public Func<string?>? GameOriginal { get; init; }
 
+    /// <summary>
+    /// Reads the data file a Table or Variable rule names ("Read from a file"), as the app finds it; null when it
+    /// cannot be read. Null for none: such rules then use their own text.
+    /// </summary>
+    public Func<string, string?>? ReadDataFile { get; init; }
+
+    /// <summary>The reader every run uses when it is given none (<see cref="ReadDataFile"/>): the app sets it at start.</summary>
+    public static Func<string, string?>? DataFileReader { get; set; }
+
     /// <summary>"Keep source comments". When false, rules run on the file as it reads without its comments.</summary>
     public bool KeepSourceComments { get; init; } = true;
 

@@ -618,7 +618,7 @@ public partial class RulesPage : UserControl
     /// <summary>The .json files being dragged or dropped.</summary>
     private static List<string> DroppedModFiles(DragEventArgs e) =>
         e.Data.GetData(DataFormats.FileDrop) is string[] paths
-            ? [.. paths.Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))]
+            ? [.. paths.Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) || ModPackage.IsPackage(path))]
             : [];
 
     /// <summary>
@@ -667,14 +667,16 @@ public partial class RulesPage : UserControl
     /// <summary>"Import mod...": adds the mods in mod files or backups; a mod of a name already here asks what to do.</summary>
     private async void ImportModClicked(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Title = Texts.Get("Rules.Mod.ImportTitle"), Filter = Texts.Get("Settings.ModFiles"), Multiselect = true };
+        var dialog = new OpenFileDialog { Title = Texts.Get("Rules.Mod.ImportTitle"), Filter = Texts.Get("Settings.ModFilesAndPackages"), Multiselect = true };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         await ImportModFiles(dialog.FileNames);
     }
 
     /// <summary>Imports mod files or backups (also the Settings tab's "Restore backup..."), asking about each mod of a name already here.</summary>
     public Task ImportModFiles(IEnumerable<string> paths) => MainView.Of(this).RefusedForOpenRule() ? Task.CompletedTask :
-        ImportMods(paths.Select(path => new ModSource(Path.GetFileName(path), Path.GetDirectoryName(path) ?? "", () => File.ReadAllText(path))));
+        ImportMods(paths.Select(path => ModPackage.IsPackage(path)
+            ? new ModSource(Path.GetFileName(path), Path.GetDirectoryName(path) ?? "", () => "", () => { using FileStream package = File.OpenRead(path); return ModPackage.Read(package, Path.GetFileName(path)); })
+            : new ModSource(Path.GetFileName(path), Path.GetDirectoryName(path) ?? "", () => File.ReadAllText(path))));
 
     /// <summary>
     /// "Import Mod from Clipboard": the mods of a mod file's text on the clipboard (as Copy Mod to Clipboard puts it
@@ -704,7 +706,7 @@ public partial class RulesPage : UserControl
     {
         Mod mod = Model.OpenMod;
         bool on = ModStack.IsOn(mod);
-        string text = await Task.Run(() => ModFiles.ExportText(mod, on, AppData.Current.ModFileStore));
+        string text = await Task.Run(() => ModFiles.ExportText(mod, on, AppData.Current.ModFileStore, ModPictures.Read));
         if (text.Length > MostClipboardText)
         {
             _ = Messages.Tell(Texts.Get("Rules.Mod.TooLargeToCopy", ("mod", mod.Name), ("size", Texts.Number((long)Math.Round(text.Length / 1048576.0)))), DialogIcon.Warning);
@@ -717,7 +719,8 @@ public partial class RulesPage : UserControl
     private const int MostClipboardText = 32 * 1024 * 1024;
 
     /// <summary>Where mods are imported from: a name to show, the folder shown under it, and how its text is read.</summary>
-    private sealed record ModSource(string Name, string Folder, Func<string> Read);
+    /// <param name="ReadMods">For a package (.mod.zip): its mods, read with the files and pictures it carries; null for a mod file's text.</param>
+    private sealed record ModSource(string Name, string Folder, Func<string> Read, Func<List<Mod>>? ReadMods = null);
 
     private async Task ImportMods(IEnumerable<ModSource> sources)
     {
@@ -767,7 +770,7 @@ public partial class RulesPage : UserControl
             List<Mod> incoming;
             // read away from the window: a mod carrying files can be 100 MB, a second or more to read, and the window
             // would stop answering ("Not Responding") meanwhile
-            try { incoming = await Task.Run(() => ModFiles.Read(path.Read(), path.Name)); }
+            try { incoming = await Task.Run(() => path.ReadMods is not null ? path.ReadMods() : ModFiles.Read(path.Read(), path.Name)); }
             catch (Exception error) when (error is ModFileException or IOException or UnauthorizedAccessException)
             {
                 problems.Add(path.Name + " (" + error.Message + ")");
@@ -793,6 +796,10 @@ public partial class RulesPage : UserControl
             {
                 try { AppData.Current.ModFileStore.KeepCarried(mod.CarriedFiles); }
                 catch (Exception error) when (error is IOException or UnauthorizedAccessException) { problems.Add(path.Name + " (" + error.Message + ")"); }
+                // the pictures its Armory changes name, where the Armory finds them; a different one of a name already
+                // here is kept under another name, and the mod points at it
+                try { if (ModPictures.KeepCarried(mod)) AppData.Current.Save(mod); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { problems.Add(path.Name + " (" + error.Message + ")"); }
             }
             // each mod comes in switched on or off as it was when exported; on when its file doesn't say
             foreach (Mod mod in kept) ModStack.SetOn(mod, mod.WasOn ?? true);
@@ -804,7 +811,8 @@ public partial class RulesPage : UserControl
     private async void ExportModClicked(object sender, RoutedEventArgs e)
     {
         Mod mod = Model.OpenMod;
-        var dialog = new SaveFileDialog { Title = Texts.Get("Rules.ExportMod"), FileName = FileNames.ForName(mod.Name) + ".mod.json", Filter = Texts.Get("Rules.Mod.ExportFilter") };
+        // a package (.mod.zip) by default; a single .mod.json for EasyNDF before 1.1.5, which reads no packages
+        var dialog = new SaveFileDialog { Title = Texts.Get("Rules.ExportMod"), FileName = FileNames.ForName(mod.Name) + ModPackage.Extension, Filter = Texts.Get("Rules.Mod.ExportFilter.Both"), FilterIndex = 1 };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         string path = dialog.FileName;
         bool on = ModStack.IsOn(mod);
@@ -812,7 +820,15 @@ public partial class RulesPage : UserControl
         try
         {
             // written away from the window: a mod carrying files can be hundreds of megabytes
-            await Task.Run(() => File.WriteAllText(path, ModFiles.ExportText(mod, on, AppData.Current.ModFileStore)));
+            await Task.Run(() =>
+            {
+                if (ModPackage.IsPackage(path) || dialog.FilterIndex == 1 && !path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                {
+                    using FileStream package = File.Create(path);
+                    ModPackage.Write(package, mod, on, AppData.Current.ModFileStore, ModPictures.Read);
+                }
+                else File.WriteAllText(path, ModFiles.ExportText(mod, on, AppData.Current.ModFileStore, ModPictures.Read));
+            });
             Model.Say(Texts.Get("Rules.Mod.Exported", ("mod", mod.Name), ("presets", RulesModel.Count(mod.Presets.Count))));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
